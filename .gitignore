@@ -1,0 +1,37 @@
+# v0 sandbox internal files
+__v0_runtime_loader.js
+__v0_devtools.tsx
+__v0_jsx-dev-runtime.ts
+.snowflake/
+.v0-trash/
+.vercel/
+
+# Environment variables
+.env*.local
+
+# Dependencies & builds
+node_modules
+.next/
+out/
+build/
+
+# TypeScript incremental cache
+*.tsbuildinfo
+
+# OS noise
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Editor
+.idea/
+.vscode/
+*.swp
+
+# Nested build-artifacts checkout (not part of the project)
+secrets-vault-plan/work-pc/
