@@ -1,0 +1,18 @@
+{
+  "id": "test-smoke-1",
+  "title": "Скажи одно слово: привет",
+  "createdAt": 1787922421056,
+  "updatedAt": 1787922422286,
+  "pinned": [],
+  "msgs": [],
+  "llm": [
+    {
+      "role": "user",
+      "content": "Скажи одно слово: привет"
+    },
+    {
+      "role": "assistant",
+      "content": "Привет"
+    }
+  ]
+}

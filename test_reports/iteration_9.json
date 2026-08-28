@@ -1,0 +1,30 @@
+{
+  "summary": "Frontend-only retest of WorkfloW via public preview URL (1920x800). BOTH reported bug fixes VERIFIED WORKING. (1) AI integration: /ai-api/chat now streams real Claude Opus 5 answers via Emergent LLM key — curl POST {sessionId,text} returned 'data: {\"t\":\"d\",\"x\":\"Привет!\"}' + '{\"t\":\"end\"}'; in UI the answer streams into the thread with latency metrics (3374 ms / 2458 ms / 2912 ms) and NO 'AI_PROXY_URL / EMERGENT_LLM_KEY не заданы в .env' error; [data-testid=ai-error-note] never appeared. (2) Empty-state composer: on a fresh load with no session, chat-input accepts text (value='Скажи привет одним словом'), chat-send-btn becomes enabled, sending creates a new session (rail shows it, title from first message) and the model answers. Regression PASS: second message in the same thread answered; 'Переспросить' (regenerate) produced a new answer; 'Изменить' -> edit -> 'Переспросить' resent the edited query and got a matching answer ('пёс'); history persisted across full page reload; sidebar navigation across all 5 sections works; AI-центр panel opens/closes. Zero console errors, zero pageerrors, zero HTTP >=400 (no blocked /_next/static/*) across 4 runs.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "chat/message-user.tsx MessageUser", "issue": "After editing a query, the bubble keeps showing the OLD formulation while the branch counter reads 1/2 and the AI answer below corresponds to the NEW formulation — mismatched query/answer pair. Root cause: `const [idx, setIdx] = useState(variants.length - 1)` (line 20) is initialised once; when a new variant is appended idx stays at the previous index (no effect/sync on variants.length). Fix: sync idx to variants.length-1 when variants grow.", "selector": "[data-testid=\"msg-edit-submit\"], .m-branch", "priority": "MEDIUM"},
+      {"component": "chat/message-ai.tsx author label", "issue": "LOW (carried over from iteration_8, not a blocker): answers are authored as 'ЛОКАЛЬНАЯ МОДЕЛЬ' while they actually come from cloud Claude Opus 5; topbar says 'QWEN 2.5 7B · ОФЛАЙН', status bar 'ЛОКАЛЬНЫЙ РЕЖИМ', header/footer say Claude Opus 5 · облако Emergent. Misleading privacy signal for the user.", "selector": "[data-testid=\"chat-cloud-badge\"]", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/test_reports/iteration_9.json"],
+  "action_items": [
+    "Fix stale variant index in components/chat/message-user.tsx:20 so the displayed query switches to the newly edited formulation after 'Переспросить'.",
+    "Optional (LOW): make the AI message author label reflect the actual engine (cloud Opus 5 vs local Qwen) instead of the hardcoded 'ЛОКАЛЬНАЯ МОДЕЛЬ'; also the status-bar mode label from iteration_8 is still derived from stats.offline."
+  ],
+  "critical_code_review_comments": [
+    "app/ai-api/chat/route.ts still hard-fails when AI_PROXY_URL/EMERGENT_LLM_KEY are absent; /app/.env is not committed-safe — consider a clear in-UI setup hint instead of a raw error string leaking env var names.",
+    "route.ts propagates upstream provider errors verbatim to the client (e.g. litellm BadRequestError text was visible when the request body lacked `text`); sanitize before surfacing.",
+    "message-user.tsx derives state from props via useState without sync — classic stale-state bug (see MEDIUM issue)."
+  ],
+  "updated_files": ["/app/components/chat/message-user.tsx (added data-testid: msg-edit-open, msg-edit-field, msg-edit-submit, msg-edit-cancel — test enablement only, no logic change)"],
+  "success_rate": { "backend": "N/A (frontend-only per request; FastAPI backend intentionally absent, all logic in Next.js route handlers)", "frontend": "95%" },
+  "seed_data_creation": "One chat session created client-side ('Скажи привет одним словом') with 2 user turns + variants; localStorage-only, no server persistence. Server-side session 'qa-test-1' created via curl smoke test.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "None required (no auth in app).",
+  "context_for_next_testing_agent": "AI chat is fully functional now; use POST /ai-api/chat with body {sessionId, text, title} (NOT {messages}) for curl smoke tests. New testids available: msg-edit-open/msg-edit-field/msg-edit-submit/msg-edit-cancel plus existing chat-input, chat-send-btn, ai-error-note, chat-cloud-badge, ai-hub-*. Beware: page-level get_by_role('button', name='Переспросить') matches BOTH the AI regenerate action and the edit-form submit — scope with testids. Model latency 2-13 s, use 40x1s polling. Remaining known defect: stale variant index after query edit.",
+  "rca_of_the_issue": "iteration_8 blockers are resolved: (a) missing /app/.env with AI_PROXY_URL + EMERGENT_LLM_KEY — now present, streaming works end to end; (b) composer draft keyed by a null session id — now backed by local freeDraft state (screen-chat.tsx:59/530), verified that typing works in the empty state and the first send creates the session. Newly found MEDIUM defect is unrelated: derived-state initialisation in MessageUser leaves the branch index pointing at the previous formulation after an edit."
+}

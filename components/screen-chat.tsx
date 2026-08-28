@@ -55,6 +55,8 @@ export function ScreenChat() {
   const [finding, setFinding] = useState(false)
   const [needle, setNeedle] = useState('')
   const [hubOpen, setHubOpen] = useState(false)
+  // Черновик до создания сессии: без него ввод в пустом состоянии терялся.
+  const [freeDraft, setFreeDraft] = useState('')
 
   const scroller = useRef<HTMLDivElement>(null)
   const findRef = useRef<HTMLInputElement>(null)
@@ -525,10 +527,11 @@ export function ScreenChat() {
     ),
   )
 
-  const draft = (active && v.drafts[active.id]) ?? ''
+  const draft = active ? (v.drafts[active.id] ?? '') : freeDraft
   const setDraft = useCallback(
     (next: string) => {
       if (active) v.setDraft(active.id, next)
+      else setFreeDraft(next)
     },
     [active, v],
   )

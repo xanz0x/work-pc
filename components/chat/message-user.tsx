@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { IconPencil, IconChevronLeft } from '../icons'
 import type { UserMsg } from './types'
 
@@ -21,6 +21,16 @@ export function MessageUser({
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(msg.text)
 
+  // Появилась новая ветка после правки — показываем именно её, а не прежнюю.
+  const seen = useRef(variants.length)
+  useEffect(() => {
+    if (variants.length !== seen.current) {
+      seen.current = variants.length
+      setIdx(variants.length - 1)
+      setDraft(variants[variants.length - 1])
+    }
+  }, [variants])
+
   const shown = variants[Math.min(idx, variants.length - 1)]
 
   function commit() {
@@ -39,6 +49,7 @@ export function MessageUser({
             <div className="m-edit">
               <textarea
                 className="textarea m-edit-field"
+                data-testid="msg-edit-field"
                 value={draft}
                 autoFocus
                 rows={2}
@@ -58,10 +69,10 @@ export function MessageUser({
               />
               <div className="m-edit-foot">
                 <span className="label-mono">enter — переспросить</span>
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditing(false)}>
+                <button type="button" className="btn btn-ghost btn-sm" data-testid="msg-edit-cancel" onClick={() => setEditing(false)}>
                   Отмена
                 </button>
-                <button type="button" className="btn btn-primary btn-sm" onClick={commit}>
+                <button type="button" className="btn btn-primary btn-sm" data-testid="msg-edit-submit" onClick={commit}>
                   Переспросить
                 </button>
               </div>
@@ -102,6 +113,7 @@ export function MessageUser({
           <button
             type="button"
             className="m-act"
+            data-testid="msg-edit-open"
             onClick={() => {
               setDraft(shown)
               setEditing(true)

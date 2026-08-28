@@ -146,3 +146,16 @@ CSS дописан слоем «VAULT v1.5» в конец `app/globals.css`, п
 CSS дописан слоями «MAP v2 · КОСМОС» и «MAP v2.1» в конец `app/globals.css`.
 Известный долг (не блокер, из code-review тест-агента): `screen-map.tsx` разросся до ~1.9 тыс.
 строк — стоит разбить на модули (планировщик / рендер канваса / инспектор / обвязка UI).
+
+## 2026-06 — Запуск превью + фикс ИИ-чата
+- Установлены зависимости (pnpm 9, `--ignore-workspace`); добавлен лончер `/app/frontend/package.json` (supervisor ждёт фронт в /app/frontend, приложение лежит в /app) -> `next dev` на 0.0.0.0:3000.
+- Фикс «ничего не кликабельно»: Next 16 блокировал /_next/static чанки -> в `next.config.mjs` добавлены wildcard `allowedDevOrigins` (*.preview.emergentagent.com, *.preview.emergentcf.cloud).
+- Создан `/app/.env`: AI_PROXY_URL=https://integrations.emergentagent.com/llm, EMERGENT_LLM_KEY (Emergent Universal Key). Модель claude-opus-5, стриминг SSE + tool calling работают.
+- Фикс композера: черновик до создания сессии (freeDraft) в `components/screen-chat.tsx`.
+- Фикс ветвления запросов: синхронизация idx с variants в `components/chat/message-user.tsx`.
+- Примечание: supervisor `backend` (FastAPI) в BACKOFF — server.py нет, вся логика в Next.js route handlers. Ожидаемо.
+
+### Бэклог
+- P1: лейбл автора ответа «ЛОКАЛЬНАЯ МОДЕЛЬ» при облачном Opus 5 — вводит в заблуждение.
+- P2: статус-бар пишет «ГИБРИДНЫЙ РЕЖИМ» при выборе «Внешняя модель» (app-shell.tsx ternary на stats.offline).
+- P2: адаптив 768px — обрезка подсказки мастер-ключа, низкий контраст disabled CTA.

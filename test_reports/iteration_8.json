@@ -1,0 +1,42 @@
+{
+  "summary": "Frontend-only e2e testing of WorkfloW (Next.js 16) via public preview URL, viewport 1920x800 + 768x1024. PRIMARY BUG VERIFIED FIXED: UI is fully hydrated and interactive — zero console errors, zero pageerrors, zero HTTP >=400 (no blocked /_next/static/* chunks) across 6 test runs. All 5 sidebar sections navigate and render. Settings: all 7 section anchors scroll/activate, engine radiogroup (role=radio) switches with aria-checked, Отменить reverts draft, Сохранить persists (engine 'Внешняя' reflected in hero + sidebar + toast 'Конфигурация записана в локальный профиль'). Library: layer segs (Всё/Файлы/Стикеры) + all cluster chips (Документы/Финансы/Изображения/Музыка/Проекты/Все) toggle with aria-pressed; file card click updates right details panel (договор_аренды_2025.pdf, стр 1/16); 'Новый стикер' and 'Быстрый стикер' forms open, save works (sticker created, counters 4->5, toast 'Стикер создан и начал таять'); 'Добавить файл' opens. Topbar search accepts input and returns semantic results dropdown; Ctrl+K command palette opens/closes; sidebar collapse toggle works (app.nav-collapsed); master-key PIN setup form renders 6-digit cells and accepts focus; map screen zoom works. 2 functional defects found (chat composer + missing AI env).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Composer / ScreenChat", "issue": "In chat empty state (no conversation yet) the message textarea silently discards ALL input: value stays '' and 'Спросить' stays disabled. Root cause: components/screen-chat.tsx:528-534 — draft = (active && v.drafts[active.id]) ?? '' and setDraft is a no-op when `active` is null, so onDraft never persists. User must first click 'Новый' or a suggestion chip. Verified: EMPTY-STATE value='' send_disabled=True; after clicking 'Новый' value='проба2' send_disabled=False.", "selector": "[data-testid=\"chat-input\"], [data-testid=\"chat-send-btn\"]", "priority": "HIGH"},
+      {"component": "AppShell status bar", "issue": "Status bar prints 'ГИБРИДНЫЙ РЕЖИМ' whenever engine != offline, so selecting 'Внешняя модель' shows 'ГИБРИДНЫЙ РЕЖИМ' while hero/sidebar say 'Внешняя' (app-shell.tsx:477 ternary on stats.offline only).", "selector": ".sb-ok", "priority": "LOW"},
+      {"component": "ScreenChat header/messages", "issue": "Inconsistent model labels on one screen: topbar 'QWEN 2.5 7B · ОФЛАЙН', header subtitle 'CLAUDE OPUS 5', message author 'ЛОКАЛЬНАЯ МОДЕЛЬ', footer 'Claude Opus 5 · облако Emergent'.", "selector": "[data-testid=\"chat-cloud-badge\"]", "priority": "LOW"}
+    ],
+    "integration_issues": [
+      {"flow": "AI chat answer (/ai-api/chat)", "issue": "Every AI request fails instantly (~120ms) with 'Не удалось получить ответ модели. Сбой запроса к модели: AI_PROXY_URL / EMERGENT_LLM_KEY не заданы в .env'. There is NO /app/.env or /app/.env.local file on disk, while app/ai-api/chat/route.ts:168-177 requires process.env.AI_PROXY_URL + EMERGENT_LLM_KEY. Chat/skills/MCP answering is therefore non-functional end to end (не багом гидратации, отдельный конфиг-баг).", "affected_selectors": ["[data-testid=\"ai-error-note\"]", "[data-testid=\"chat-send-btn\"]"]}
+    ],
+    "design_issues": [
+      {"screen": "Tablet 768px", "issues": ["Sidebar auto-collapses to icon rail but leaves a wide empty gutter left of the settings rail; no horizontal overflow (scrollWidth == clientWidth 768), so cosmetic only"]},
+      {"screen": "Settings / master-key", "issues": ["'Забытый мастер-ключ стирает файловые клю…' hint is truncated at 768px", "Disabled primary CTA 'Введите 6 цифр' has very low contrast against the dark panel"]}
+    ]
+  },
+  "test_report_links": ["/app/test_reports/iteration_8.json"],
+  "action_items": [
+    "Fix chat composer empty state: create (or lazily create) a session on first keystroke, or keep an unattached draft key so users can type before a conversation exists (screen-chat.tsx:528-534).",
+    "Provide /app/.env with AI_PROXY_URL and EMERGENT_LLM_KEY (restart frontend after) so /ai-api/chat can answer; today 100% of AI requests fail.",
+    "Make status-bar mode label derive from settings.engine instead of stats.offline (app-shell.tsx:477) and unify model naming in chat header/footer/message author.",
+    "Add data-testid to sidebar nav items, settings section anchors, library seg/f-chip buttons and library cards — currently only components/vault/* and components/chat/* have testids, which forces brittle text selectors."
+  ],
+  "critical_code_review_comments": [
+    "components/screen-chat.tsx: controlled textarea bound to a value that can never change (no active session) — a controlled-input dead end; guard should create a session rather than drop input.",
+    "app/ai-api/chat/route.ts: hard dependency on AI_PROXY_URL/EMERGENT_LLM_KEY with no .env present in repo/runtime — ship a .env or degrade gracefully to a local/mock answer instead of an error bubble.",
+    "components/screen-library.tsx (~1000+ lines) and components/screen-settings.tsx exceed the 700-line guideline; split into subcomponents.",
+    "allowedDevOrigins in next.config.mjs now includes wildcard preview hosts — verified working, no blocked dev-resource warnings for the current host in supervisor logs after restart."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped per request; FastAPI backend intentionally absent)", "frontend": "88%"},
+  "seed_data_creation": "Created one test sticker 'TEST заметка автотест' (24h TTL, self-expiring) and 1-2 chat conversations via suggestion chips; all state is client-side (localStorage) demo data, no server persistence.",
+  "should_call_test_agent_after_fix": true,
+  "should_main_agent_self_test": false,
+  "test_credentials": "None required; /app/memory/test_credentials.md not needed (no auth). Master-key PIN used in test: 6-digit form only, not committed.",
+  "context_for_next_testing_agent": "Preview URL works; use text selectors (most components lack data-testid except components/vault/* and components/chat/*). Gotchas: (1) get_by_text('Менеджер секретов').first hits the SIDEBAR item, not the settings anchor — scope with button.f-chip / [role=radio] / .seg-btn selectors; (2) library cluster chips only exist in the 'Файлы' layer, tag chips in 'Стикеры' layer; (3) DOM text is sentence-case, CSS uppercases it (use 'Документы', not 'ДОКУМЕНТЫ'); (4) chat send requires an existing conversation — click 'Новый' first (see HIGH bug). Retest after chat-draft fix + .env addition: type in empty state, send, and verify a real AI answer with sources.",
+  "rca_of_the_issue": "Original 'nothing clickable' bug: Next 16 blocked cross-origin dev-resource requests to /_next/static/*, so JS chunks never loaded and React never hydrated. Fix (wildcard allowedDevOrigins in next.config.mjs) is confirmed effective — supervisor log shows no new 'Blocked cross-origin request' entries for the active host and browser network capture recorded 0 responses with status >=400 across all runs; every interactive control responded. Remaining failures are unrelated pre-existing defects: chat draft state keyed by a null session id, and missing AI env vars."
+}
