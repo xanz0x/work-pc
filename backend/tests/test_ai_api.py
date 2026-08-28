@@ -13,7 +13,7 @@ import time
 import pytest
 import requests
 
-BASE_URL = "https://8082461d-1658-4462-acf5-7a513de552bd.preview.emergentagent.com"
+BASE_URL = "https://simple-app-290.preview.emergentagent.com"
 AI_DIR = "/app/ai"
 
 
