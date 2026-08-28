@@ -1,0 +1,179 @@
+'use client'
+
+/* ============================================================
+   ГЕНЕРАТОР · CSPRNG, локальная оценка силы, ноль сети
+   ============================================================ */
+
+import { useCallback, useEffect, useState } from 'react'
+import { IconCheck, IconClip, IconClose, IconRefresh } from '@/components/icons'
+import { useSecrets } from '@/lib/secrets-store'
+import {
+  DEFAULT_GEN,
+  generateHex,
+  generatePassword,
+  generatePin,
+  generateUuid,
+  scorePassword,
+  type GenOptions,
+} from '@/lib/secrets-gen'
+
+type Mode = 'password' | 'pin' | 'hex' | 'uuid'
+
+const MODES: { id: Mode; label: string }[] = [
+  { id: 'password', label: 'Пароль' },
+  { id: 'pin', label: 'PIN' },
+  { id: 'hex', label: 'Hex-токен' },
+  { id: 'uuid', label: 'UUID' },
+]
+
+export function VaultGenerator({
+  onUse,
+  onClose,
+}: {
+  onUse?: (value: string) => void
+  onClose: () => void
+}) {
+  const s = useSecrets()
+  const [mode, setMode] = useState<Mode>('password')
+  const [opt, setOpt] = useState<GenOptions>(DEFAULT_GEN)
+  const [value, setValue] = useState('')
+  const [copied, setCopied] = useState(false)
+
+  const roll = useCallback(() => {
+    if (mode === 'pin') setValue(generatePin(6))
+    else if (mode === 'hex') setValue(generateHex(24))
+    else if (mode === 'uuid') setValue(generateUuid())
+    else setValue(generatePassword(opt))
+  }, [mode, opt])
+
+  useEffect(roll, [roll])
+
+  const st = scorePassword(value)
+
+  return (
+    <div className="vt-modal-back" role="presentation" onPointerDown={onClose}>
+      <div
+        className="vt-modal panel"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Генератор"
+        onPointerDown={(e) => e.stopPropagation()}
+        data-testid="generator-modal"
+      >
+        <header className="vt-modal-head">
+          <span className="label-mono">Генератор · локально, CSPRNG</span>
+          <button className="vt-icon-btn" onClick={onClose} aria-label="Закрыть" data-testid="generator-close">
+            <IconClose />
+          </button>
+        </header>
+
+        <div className="vt-seg" role="tablist" aria-label="Что генерировать">
+          {MODES.map((m) => (
+            <button
+              key={m.id}
+              role="tab"
+              aria-selected={mode === m.id}
+              className={`vt-seg-btn${mode === m.id ? ' on' : ''}`}
+              onClick={() => setMode(m.id)}
+              data-testid={`gen-mode-${m.id}`}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="vt-gen-out">
+          <code className="vt-gen-value mono" data-testid="generator-value">
+            {value}
+          </code>
+          <button className="vt-icon-btn" onClick={roll} title="Ещё раз" data-testid="generator-roll">
+            <IconRefresh />
+          </button>
+          <button
+            className={`vt-icon-btn${copied ? ' ok' : ''}`}
+            title="Скопировать"
+            data-testid="generator-copy"
+            onClick={async () => {
+              await s.copySecret(value, 'password', 'Сгенерированное значение')
+              setCopied(true)
+              setTimeout(() => setCopied(false), 1400)
+            }}
+          >
+            {copied ? <IconCheck /> : <IconClip />}
+          </button>
+        </div>
+
+        <div className="vt-strength" data-testid="generator-strength">
+          <span className="vt-strength-bar" aria-hidden="true">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <i key={i} className={i <= st.score ? `on s${st.score}` : ''} />
+            ))}
+          </span>
+          <span className="vt-strength-text">
+            {st.label} · <b className="num">{st.bits}</b> бит
+          </span>
+          {st.hints.length > 0 && <span className="vt-strength-hint">{st.hints.join(' · ')}</span>}
+        </div>
+
+        {mode === 'password' && (
+          <div className="vt-gen-opts">
+            <label className="vt-range">
+              <span className="label-mono">Длина</span>
+              <input
+                type="range"
+                min={8}
+                max={64}
+                value={opt.length}
+                onChange={(e) => setOpt({ ...opt, length: Number(e.target.value) })}
+                data-testid="gen-length"
+              />
+              <b className="num">{opt.length}</b>
+            </label>
+            {(
+              [
+                ['upper', 'A-Z'],
+                ['lower', 'a-z'],
+                ['digits', '0-9'],
+                ['symbols', '!#$%'],
+                ['noAmbiguous', 'без 0/O/1/l'],
+                ['memorable', 'произносимый'],
+              ] as [keyof GenOptions, string][]
+            ).map(([key, label]) => (
+              <button
+                key={String(key)}
+                className={`chip${opt[key] ? ' on' : ''}`}
+                aria-pressed={Boolean(opt[key])}
+                onClick={() => setOpt({ ...opt, [key]: !opt[key] } as GenOptions)}
+                data-testid={`gen-opt-${String(key)}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <footer className="vt-modal-foot">
+          <span className="vt-note">
+            Значения считаются в браузере через crypto.getRandomValues. Наружу не уходит ничего.
+          </span>
+          <span className="grow" />
+          <button className="btn btn-ghost btn-sm" onClick={onClose}>
+            Закрыть
+          </button>
+          {onUse && (
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={() => {
+                onUse(value)
+                onClose()
+              }}
+              data-testid="generator-use"
+            >
+              Подставить
+            </button>
+          )}
+        </footer>
+      </div>
+    </div>
+  )
+}

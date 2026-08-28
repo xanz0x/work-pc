@@ -1,0 +1,68 @@
+{
+  "summary": "Frontend-only E2E тестирование модуля «Менеджер секретов» (CORE v1) на preview-URL (production-сборка next start). Прогнано 7 Playwright-сценариев: сайдбар/шлюзы, включение замка (пароль test-master-1234), CRUD записи + проверка localStorage на отсутствие plaintext, reveal с авто-скрытием, copy+ClipToast (кнопка и таймаут), TOTP (код независимо сверен с RFC 6238 через собственную реализацию на Python — совпал), Panic Lock+ (Ctrl+Shift+L), F5+unlock, фильтры/папки/корзина/purge-all, генератор (4 режима, длина, чипы, копирование), импорт KeePassXC CSV (3 записи + 3 папки из Group), зашифрованный экспорт (600k PBKDF2, без plaintext) и блокировка plaintext-кнопок до слова ЭКСПОРТ, бэкапы (создание/восстановление), settings-secrets (сегменты буфера/reveal, favicons ВЫКЛ по умолчанию, exclude-ai заблокирован), глобальный поиск Ctrl+K и топбар (вид «Секрет», по значению секрета ничего не находит), регрессия (Библиотека/Карта памяти/Чат/Настройки, файловый ключ set+open, смена мастер-ключа test-master-1234 -> new-master-9876 c последующей расшифровкой и после F5). npx tsc --noEmit = exit 0. Найден 1 функциональный баг (дублирование записей при восстановлении бэкапа) и 4 мелких замечания. Бэкенд отсутствует — не тестировался (по заданию).",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "vault-io / Бэкапы",
+        "issue": "Восстановление бэкапа ДУБЛИРУЕТ записи вместо замены/слияния. Шаги: 3 записи -> io-backup-now -> io-restore-<at> -> io-msg «Восстановлено 3 записей», но в списке становится 6 карточек (и 6 записей в localStorage). Причина: restoreBackup() в lib/secrets-store.tsx (~758-770) распаковывает снимок и вызывает applyImport(preview), который всегда создаёт НОВЫЕ записи (новые id) без дедупликации по id/обновления существующих.",
+        "selector": "[data-testid^=\"io-restore-\"]",
+        "priority": "HIGH"
+      },
+      {
+        "component": "secrets-section (тумблеры)",
+        "issue": "toggle-favicons / toggle-autobackup / toggle-exclude-ai не имеют role=\"switch\" и aria-pressed/aria-checked состояния (aria-pressed = null); состояние выражено только CSS-классом 'on'. Скринридер и автотесты не могут прочитать состояние. (Функционально переключение и persist в wf.secrets.settings.v1 работают, exclude-ai корректно disabled.)",
+        "selector": "[data-testid=\"toggle-favicons\"], [data-testid=\"toggle-autobackup\"], [data-testid=\"toggle-exclude-ai\"]",
+        "priority": "LOW"
+      },
+      {
+        "component": "index.html / public",
+        "issue": "На каждой загрузке в консоли 404: браузер запрашивает /favicon.ico, которого нет (в public/ есть icon.svg, icon-light/dark-32x32.png, apple-icon.png). Проверено curl: /favicon.ico -> 404.",
+        "selector": "-",
+        "priority": "LOW"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "vault-editor (Новая запись)",
+        "issues": [
+          "Поле «ИСТЕКАЕТ» — нативный <input type=\"date\">: в русскоязычном тёмном UI «Графит» показывает браузерный плейсхолдер mm/dd/yyyy и системный календарь, выбиваясь из дизайн-языка модуля (все остальные контролы кастомные)."
+        ]
+      },
+      {
+        "screen": "Глобальная палитра Ctrl+K",
+        "issues": [
+          "Запрос значения секрета «Str0ng-pass-2026» корректно НЕ находит секрет, но фаззи-поиск выдаёт 2 нерелевантных файла (бюджет_2026.xlsx, договор_аренды_2026.pdf) по подстроке «2026» — шум существующего поиска, не связан с модулем секретов."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/test_reports/pytest/totp_check.py",
+    "/app/test_reports/pytest/kp.csv"
+  ],
+  "action_items": [
+    "ИСПРАВИТЬ (HIGH): restoreBackup в lib/secrets-store.tsx — восстановление должно заменять состояние сейфа снимком (или мержить по id), а не добавлять записи через applyImport; сейчас каждый restore удваивает сейф.",
+    "Добавить role=\"switch\" + aria-checked (или aria-pressed) тумблерам секции settings-secrets.",
+    "Добавить /favicon.ico (или app/favicon.ico) чтобы убрать 404 в консоли.",
+    "Рассмотреть замену нативного input[type=date] в vault-editor на кастомный датапикер в стиле «Графит» (или хотя бы формат ДД.ММ.ГГГГ)."
+  ],
+  "critical_code_review_comments": [
+    "lib/secrets-store.tsx:758-770 restoreBackup() переиспользует applyImport() — семантика импорта (добавление новых записей) не равна семантике восстановления (замена состояния); это и есть источник дублирования.",
+    "lib/vault-store.tsx (1549 строк) и components/screen-library.tsx (2008 строк) превышают порог 700 строк — стоит декомпозировать (замок/поиск/файловые ключи в отдельные модули).",
+    "components/secrets-section.tsx использует data-testid=`reveal-${sec}` (reveal-5/8/15/30), что пересекается по префиксу с `reveal-${fieldId}` из vault/secret-value.tsx; глобальные селекторы [data-testid^=\"reveal-\"] становятся неоднозначными — стоит переименовать в reveal-secs-<n>.",
+    "Типы записей в редакторе имеют id 'api' (не 'apikey'): при написании тестов используйте editor-type-api / vault-view-type-api."
+  ],
+  "updated_files": [
+    "/app/test_reports/pytest/totp_check.py (новый: независимая проверка TOTP по RFC 6238)",
+    "/app/test_reports/pytest/kp.csv (новый: тестовый CSV в стиле KeePassXC для импорта)"
+  ],
+  "success_rate": { "backend": "N/A (бэкенда нет)", "frontend": "94% (16 из 17 сценариев ТЗ полностью зелёные; провален restore бэкапа)" },
+  "seed_data_creation": "Данные создавались в localStorage браузера тестовой сессии: мастер-ключ test-master-1234 (метод «Пароль»), запись GitHub (github.com/ivan/Str0ng-pass-2026!, TOTP JBSWY3DPEHPK3PXP, теги work,dev), запись OpenAI Key (тип api), папка «Рабочее», импорт 3 записей из /app/test_reports/pytest/kp.csv (папки Work/Cloud, Personal, Work/Git), зашифрованный экспорт с паролем backup-pass-2026, файловые ключи file-key-2026 на договор_аренды_2026.pdf / бюджет_2026.xlsx / смета_офис.xlsx. Профиль браузера обнуляется между запусками playwright, поэтому в приложении данные не остаются.",
+  "should_call_test_agent_after_fix": true,
+  "should_main_agent_self_test": false,
+  "test_credentials": "мастер-ключ test-master-1234 (после смены new-master-9876), пароль экспорта backup-pass-2026, TOTP JBSWY3DPEHPK3PXP, файловый ключ file-key-2026",
+  "context_for_next_testing_agent": "Проект без бэкенда, отдаётся production-сборкой next start на preview-URL. ВАЖНО: профиль браузера в playwright-инструменте чистый на КАЖДЫЙ запуск — мастер-ключ надо создавать в начале каждого скрипта (nav-vault -> vault-gate-setup -> .lock-setup-btn -> кликнуть текст «Пароль» -> #sec-key-new/#sec-key-rep -> .lock-submit), поэтому все шаги одного сценария (F5, panic lock, смена мастера) должны быть внутри одного скрипта. page.context — свойство, не метод: await page.context.grant_permissions(['clipboard-read','clipboard-write']). Типы записей: api (не apikey). Уже проверено и зелёное: создание/reveal/copy/ClipToast/таймауты, TOTP (сверен с RFC 6238), Panic Lock+, F5+unlock, фильтры type:/tag:/favorite:/expired:, папки, корзина (delete/restore/purge/purge-all), генератор (password/pin/hex/uuid + gen-length + чипы + копирование), импорт CSV KeePassXC, зашифрованный экспорт + гейт слова ЭКСПОРТ, settings-secrets, Ctrl+K/топбар, регрессия экранов, файловый ключ (set/disable-кнопки/open), смена мастер-ключа. Осталось перепроверить после фикса: восстановление бэкапа (io-restore) — не должно дублировать записи.",
+  "rca_of_the_issue": "restoreBackup() расшифровывает снимок мастер-ключом и передаёт его в importNativeJson -> applyImport, т.е. проходит по пути ИМПОРТА: applyImport создаёт записи с новыми id и добавляет их к текущим entries, не сравнивая с существующими. Поэтому восстановление снимка, снятого с этого же сейфа, удваивает содержимое (3 -> 6 записей, подтверждено и в UI, и в localStorage['wf.secrets.v1']). Ожидаемое поведение: восстановление заменяет entries/папки состоянием снимка (либо мержит по id с перезаписью), опционально с подтверждением пользователя."
+}

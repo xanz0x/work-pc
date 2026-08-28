@@ -17,7 +17,14 @@ export const SCOPES: { value: ScopeId; label: string; note: string }[] = [
   { value: 'notes', label: 'Мои заметки', note: 'Только то, что вы написали сами' },
 ]
 
-export type HitKind = 'file' | 'note' | 'chat' | 'cluster' | 'setting'
+export type HitKind = 'file' | 'note' | 'chat' | 'cluster' | 'setting' | 'secret'
+
+/**
+ * Индекс менеджера секретов: только название, тип и теги.
+ * Значения полей зашифрованы и в поиск не попадают ни при каком запросе —
+ * это redact по построению, а не по фильтру (§4.1 ТЗ модуля).
+ */
+export type SecretIndexItem = { id: string; title: string; type: string; tags: string[] }
 
 export type Hit = {
   key: string
@@ -58,6 +65,7 @@ export const SETTING_ENTRIES: { id: string; title: string; sub: string; words: s
   { id: 'privacy', title: 'Приватность', sub: 'Настройки · шифрование и телеметрия', words: ['приватность', 'шифрование', 'aes', 'телеметрия', 'маскировать', 'утечк'] },
   { id: 'storage', title: 'Хранилище', sub: 'Настройки · объём и состав сейфа', words: ['хранилище', 'место', 'объём', 'гб', 'квота', 'состав'] },
   { id: 'notifs', title: 'Уведомления', sub: 'Настройки · какие события показывать', words: ['уведомления', 'события', 'сводка', 'колокол'] },
+  { id: 'secrets', title: 'Менеджер секретов', sub: 'Настройки · буфер, авто-скрытие, иконки', words: ['секреты', 'пароли', 'буфер', 'clipboard', 'totp', 'иконки', 'favicon', 'менеджер'] },
 ]
 
 const norm = (s: string) => s.toLowerCase().replace('ё', 'е').trim()
@@ -107,6 +115,8 @@ export type SearchInput = {
    * ни теги, ни категория в счёт не идут и в выдачу не всплывают.
    */
   redactIds?: Set<string>
+  /** Записи сейфа секретов; пусто, когда замок закрыт (§2.4 ТЗ модуля). */
+  secrets?: SecretIndexItem[]
 }
 
 /**
@@ -199,6 +209,20 @@ export function searchAll(query: string, scope: ScopeId, input: SearchInput): Hi
           id: c.id,
           title: c.label,
           sub: `Кластер · ${count} файлов`,
+          score,
+        })
+      }
+    }
+
+    for (const s of input.secrets ?? []) {
+      const score = hitScore(s.title, base, 58) + hitScore(s.tags.join(' '), base, 20) + hitScore(s.type, base, 16)
+      if (score > 0) {
+        hits.push({
+          key: `secret:${s.id}`,
+          kind: 'secret',
+          id: s.id,
+          title: s.title,
+          sub: `Секрет · ${s.type}`,
           score,
         })
       }

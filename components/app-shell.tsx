@@ -24,6 +24,7 @@ import {
   IconChipAi,
   IconGear,
   IconGraph,
+  IconKey,
   IconLayers,
   IconLibrary,
   IconLockRound,
@@ -41,6 +42,10 @@ const WORKSPACE: { id: ScreenId; label: string; Icon: Ico }[] = [
   { id: 'chat', label: 'Чат с ИИ', Icon: IconChat },
 ]
 
+const SECRETS_NAV: { id: ScreenId; label: string; Icon: Ico }[] = [
+  { id: 'vault', label: 'Менеджер секретов', Icon: IconKey },
+]
+
 const SYSTEM: { id: ScreenId; label: string; Icon: Ico }[] = [
   { id: 'settings', label: 'Настройки', Icon: IconGear },
 ]
@@ -50,6 +55,7 @@ const PLACEHOLDER: Record<ScreenId, string> = {
   library: 'Поиск по смыслу: «договор аренды»',
   map: 'Найти узел или кластер на карте',
   chat: 'Поиск по истории разговоров',
+  vault: 'Поиск по секретам: type: tag: favorite:',
   settings: 'Поиск по настройкам',
 }
 
@@ -116,23 +122,15 @@ export function AppShell({ children }: { children: ReactNode }) {
     })
   }
 
-  /* --- замок: Ctrl+Shift+L и рендер экрана блокировки поверх всего (п.10.10) --- */
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'l') {
-        e.preventDefault()
-        v.lockNow()
-      }
-    }
-    window.addEventListener('keydown', onKey, true)
-    return () => window.removeEventListener('keydown', onKey, true)
-  }, [v])
+  /* --- замок: экран блокировки поверх всего. Хоткей Ctrl+Shift+L
+         зарегистрирован в vault-store (дубль убран, п.10.10). --- */
 
   /* --- честные числа навигации --- */
   const workspaceCount: Record<ScreenId, number> = {
     library: stats.files,
     map: stats.links,
     chat: stats.sessions,
+    vault: v.secretIndex.length,
     settings: 0,
   }
 
@@ -153,9 +151,13 @@ export function AppShell({ children }: { children: ReactNode }) {
         ? `${stats.nodes} ${plural(stats.nodes, 'узел', 'узла', 'узлов')} · ${stats.links} связей`
         : v.screen === 'chat'
           ? `${stats.model} · ${stats.offline ? 'офлайн' : 'облако'}`
-          : v.dirty
-            ? 'Есть несохранённые изменения'
-            : `${stats.engine} · AES-256`
+          : v.screen === 'vault'
+            ? v.lock.status === 'unlocked'
+              ? `${v.secretIndex.length} ${plural(v.secretIndex.length, 'запись', 'записи', 'записей')} · AES-GCM`
+              : 'Сейф секретов закрыт — нужен мастер-ключ'
+            : v.dirty
+              ? 'Есть несохранённые изменения'
+              : `${stats.engine} · AES-256`
 
   const inlineHits = v.hits.slice(0, 7)
 
@@ -267,6 +269,22 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <b className="nav-count num">{c.count}</b>
                 </button>
               ))}
+
+            <div className="nav-section">Секреты</div>
+            {SECRETS_NAV.map(({ id, label, Icon }) => (
+              <button
+                key={id}
+                className={`nav-item${v.screen === id ? ' active' : ''}`}
+                onClick={() => v.go(id)}
+                aria-current={v.screen === id ? 'page' : undefined}
+                title={label}
+                data-testid="nav-vault"
+              >
+                <Icon />
+                <span>{label}</span>
+                <b className="nav-count num">{workspaceCount[id]}</b>
+              </button>
+            ))}
 
             <div className="nav-section">Система</div>
             {SYSTEM.map(({ id, label, Icon }) => (

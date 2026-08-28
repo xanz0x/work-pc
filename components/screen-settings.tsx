@@ -8,6 +8,7 @@ import {
   IconDatabase,
   IconFolder,
   IconInbox,
+  IconKey,
   IconMemory,
   IconPipeline,
   IconRefresh,
@@ -20,6 +21,7 @@ import { useVault, type ToggleId } from '@/lib/vault-store'
 import { ENGINES, MODELS, engineOf, fmtBytes, modelOf } from '@/lib/data'
 import { NumTicker } from './ui/num-ticker'
 import { SecuritySection } from './security-section'
+import { SecretsSection } from './secrets-section'
 
 type Ico = ComponentType<SVGProps<SVGSVGElement>>
 
@@ -78,6 +80,7 @@ const SECTIONS: { id: string; label: string; Icon: Ico }[] = [
   { id: 'notify', label: 'Уведомления', Icon: IconBell },
   { id: 'storage', label: 'Хранилище', Icon: IconDatabase },
   { id: 'privacy', label: 'Приватность', Icon: IconShield },
+  { id: 'secrets', label: 'Менеджер секретов', Icon: IconKey },
   { id: 'danger', label: 'Опасная зона', Icon: IconTrash },
 ]
 
@@ -90,6 +93,8 @@ const FOCUS_ALIAS: Record<string, string> = {
   notify: 'notify',
   storage: 'storage',
   privacy: 'privacy',
+  security: 'security',
+  secrets: 'secrets',
   danger: 'danger',
 }
 
@@ -549,6 +554,7 @@ export function ScreenSettings() {
             </section>
 
             <SecuritySection />
+            <SecretsSection />
 
             <section className="sec panel danger-zone" id="set-danger">
               <div className="sec-head">

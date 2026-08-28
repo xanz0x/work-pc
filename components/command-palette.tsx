@@ -10,6 +10,7 @@ import {
   IconGear,
   IconLayers,
   IconSearch,
+  IconShield,
   IconSticker,
 } from './icons'
 
@@ -22,6 +23,7 @@ const HIT_ICON: Record<HitKind, Ico> = {
   chat: IconChat,
   cluster: IconLayers,
   setting: IconGear,
+  secret: IconShield,
 }
 
 const KIND_LABEL: Record<HitKind, string> = {
@@ -30,6 +32,7 @@ const KIND_LABEL: Record<HitKind, string> = {
   chat: 'Разговор',
   cluster: 'Кластер',
   setting: 'Настройки',
+  secret: 'Секрет',
 }
 
 /**

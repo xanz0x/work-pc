@@ -8,7 +8,13 @@ const nextConfig = {
   },
   // Dev-ресурсы запрашиваются с 127.0.0.1 — без этого Next 16 блокирует
   // отдачу чанков (страница выглядит «мёртвой»: HTML есть, JS не грузится).
-  allowedDevOrigins: ['127.0.0.1', 'localhost'],
+  allowedDevOrigins: [
+    '127.0.0.1',
+    'localhost',
+    '52b9c083-0250-4c85-930b-cff2191de938.preview.emergentagent.com',
+    '.preview.emergentagent.com',
+    'claude-lab-1.cluster-5.preview.emergentcf.cloud',
+  ],
 }
 
 export default nextConfig

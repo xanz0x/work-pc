@@ -2,6 +2,7 @@ import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { IBM_Plex_Mono, IBM_Plex_Sans } from 'next/font/google'
 import { RedactedProvider } from '@/lib/redact-context'
+import { SecretsProvider } from '@/lib/secrets-store'
 import { VaultProvider } from '@/lib/vault-store'
 import './globals.css'
 
@@ -58,7 +59,11 @@ export default function RootLayout({
         <RedactedProvider>
           {/* Единый сейф: корпус, стикеры, разговоры, настройки и события —
               одно состояние на все четыре экрана, поэтому числа не расходятся. */}
-          <VaultProvider>{children}</VaultProvider>
+          <VaultProvider>
+            {/* Менеджер секретов живёт поверх сейфа: без открытого замка
+                он ничего не расшифровывает и ничего не пишет. */}
+            <SecretsProvider>{children}</SecretsProvider>
+          </VaultProvider>
         </RedactedProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>

@@ -13,11 +13,16 @@ export const LOCK_PING_KEY = 'wf.lock.ping'
 /** Префикс обёрнутых файловых ключей (этап 5). */
 export const FILE_KEY_PREFIX = 'wf.vault.keys.'
 
-/** OWASP 2023+: PBKDF2-HMAC-SHA256 ≥ 600k, для интерактивного прототипа взят пол. */
-export const LOCK_ITERATIONS = 310_000
-const SALT_BYTES = 16
+/**
+ * OWASP 2024: PBKDF2-HMAC-SHA256 ≥ 600 000. Старые замки на 310 000 живут
+ * дальше и переезжают лениво — при первом успешном unlock (lib/lock-migrate.ts).
+ */
+export const LOCK_ITERATIONS = 600_000
+/** Историческое значение — для распознавания замков, которым нужна миграция. */
+export const LEGACY_LOCK_ITERATIONS = 310_000
+export const SALT_BYTES = 16
 const IV_BYTES = 12
-const VERIFIER_TEXT = 'workflow-lock-v1'
+export const VERIFIER_TEXT = 'workflow-lock-v1'
 const MAX_DELAY_MS = 30_000
 
 /* ---------- доступность WebCrypto ---------- */
@@ -42,6 +47,18 @@ function randomBytes(n: number): Uint8Array {
 }
 
 /* ---------- base64 (без зависимостей) ---------- */
+
+export function bytesToB64(bytes: Uint8Array): string {
+  return toB64(bytes)
+}
+
+export function b64ToBytes(b64: string): Uint8Array {
+  return fromB64(b64)
+}
+
+export function randomBytesOf(n: number): Uint8Array {
+  return randomBytes(n)
+}
 
 function toB64(bytes: Uint8Array): string {
   let s = ''

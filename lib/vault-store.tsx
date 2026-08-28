@@ -33,7 +33,7 @@ import {
 } from './data'
 import { buildGraph, clusterLoad, neighborsOf, type Graph } from './graph'
 import { DAY, HOUR, isAlive, seedNotes, type Note } from './notes'
-import { searchAll, type Hit, type ScopeId } from './search'
+import { searchAll, type Hit, type ScopeId, type SecretIndexItem } from './search'
 import {
   cryptoAvailable,
   LOCK_PING_KEY,
@@ -63,6 +63,9 @@ import {
   type LockMethod,
 } from './lock-store'
 import { useRedacted } from './redact-context'
+import { adoptMasterSession, getMasterSession } from '@/hooks/use-file-keys'
+import { migrateKdfIterations, rewrapAll } from './lock-migrate'
+import { deriveMasterKey, b64ToBytes } from './crypto-vault'
 import type { Session } from '@/components/chat/types'
 
 /* ============================================================
@@ -75,7 +78,7 @@ import type { Session } from '@/components/chat/types'
    в тот же кадр.
    ============================================================ */
 
-export type ScreenId = 'library' | 'map' | 'chat' | 'settings'
+export type ScreenId = 'library' | 'map' | 'chat' | 'vault' | 'settings'
 
 /** Вид файла живёт в data.ts — здесь он только переиспользуется. */
 export { viewOf }
@@ -240,6 +243,15 @@ export type VaultCtx = {
   clusterFocus: Focus
   nodeFocus: Focus
   settingFocus: Focus
+  /** Открытая запись менеджера секретов (переход из поиска и палитры). */
+  secretFocus: Focus
+  openSecret: (id: string) => void
+  /**
+   * Индекс сейфа секретов для глобального поиска: заполняет SecretsProvider,
+   * только когда замок открыт. Пустой массив = секретов в поиске нет.
+   */
+  secretIndex: SecretIndexItem[]
+  setSecretIndex: (list: SecretIndexItem[]) => void
   openFile: (fileId: string) => void
   /** Открыть стикер в инспекторе библиотеки. */
   openNote: (noteId: string) => void
@@ -355,6 +367,8 @@ export function VaultProvider({ children }: { children: ReactNode }) {
   const [nodeFocus, setNodeFocus] = useState<Focus>(null)
   const [settingFocus, setSettingFocus] = useState<Focus>(null)
   const [noteFocus, setNoteFocus] = useState<Focus>(null)
+  const [secretFocus, setSecretFocus] = useState<Focus>(null)
+  const [secretIndex, setSecretIndexState] = useState<SecretIndexItem[]>([])
   const [query, setQuery] = useState('')
   const [scope, setScope] = useState<ScopeId>('all')
   const [palette, setPalette] = useState(false)
@@ -377,6 +391,14 @@ export function VaultProvider({ children }: { children: ReactNode }) {
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const settingsRef = useRef(settings)
   settingsRef.current = settings
+  /** Стикеры для крипто-миграций (нужны при переупаковке под новый мастер). */
+  const notesRef = useRef(notes)
+  notesRef.current = notes
+  const patchNoteSecret = useCallback(
+    (id: string, secret: string) =>
+      setNotes((all) => all.map((n) => (n.id === id ? { ...n, secret } : n))),
+    [setNotes],
+  )
 
   /** Общие часы. Один таймер на всё приложение вместо четырёх. */
   useEffect(() => {
@@ -846,6 +868,8 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       setLock((p) => ({ ...p, busy: true }))
       try {
         await setMasterSecret(secret)
+        /* Сеанс мастера нужен сразу: менеджер секретов создаёт свой ключ поверх него. */
+        await adoptMasterSession(secret)
         const nextCfg: LockConfig = {
           enabled: true,
           method,
@@ -869,7 +893,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
           cat: 'privacy',
           icon: 'lockRound',
           title: 'Замок включён',
-          body: `Мастер-ключ (${method === 'pin' ? 'PIN' : 'пароль'}) создан на этом устройстве. PBKDF2 · 310 000 итераций.`,
+          body: `Мастер-ключ (${method === 'pin' ? 'PIN' : 'пароль'}) создан на этом устройстве. PBKDF2 · 600 000 итераций.`,
         })
         return null
       } catch (e) {
@@ -904,8 +928,35 @@ export function VaultProvider({ children }: { children: ReactNode }) {
           setLock((p) => ({ ...p, busy: false }))
           return policyError
         }
+        /* Ключ старого мастера нужен до перезаписи состояния — им расшифруем обёртки. */
+        const prevState = readLockState()
+        let oldKey: CryptoKey | null = getMasterSession()
+        if (!oldKey && prevState) {
+          oldKey = await deriveMasterKey(
+            currentSecret,
+            b64ToBytes(prevState.saltB64),
+            prevState.iterations,
+          )
+        }
         await setMasterSecret(nextSecret) // свежая соль + верификатор, счётчики в ноль
         resetFailures()
+        /* Всё, что было завёрнуто прежним мастером (файловые ключи, секреты
+           стикеров, ключ сейфа секретов), переупаковывается под новый —
+           иначе смена мастера тихо ломает уровень B. */
+        const nextState = readLockState()
+        if (oldKey && nextState) {
+          try {
+            const newKey = await deriveMasterKey(
+              nextSecret,
+              b64ToBytes(nextState.saltB64),
+              nextState.iterations,
+            )
+            await rewrapAll(oldKey, newKey, notesRef.current, patchNoteSecret)
+          } catch {
+            /* переупаковка не удалась — сообщим ниже, данные не потеряны */
+          }
+        }
+        await adoptMasterSession(nextSecret)
         writeLockConfig({ ...cfg, enabled: true, method })
         activityRef.current = Date.now()
         postLockSync('unlock-config-changed') // п.10.9: вкладки перечитают конфиг
@@ -981,6 +1032,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     setNoteFocus(null)
     setNodeFocus(null)
     setClusterFocus(null)
+    setSecretFocus(null)
     /* Локальный sel библиотеки отсюда недоступен — экраны сбрасывают его сами,
        глядя на эпоху (screen-library подключит этап 5). */
     setLockEpoch((n) => n + 1)
@@ -1020,6 +1072,22 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       }
       if (ok) {
         resetFailures()
+        /* Ленивая миграция KDF 310k → 600k: только после подтверждённого пароля,
+           с бэкапом старой схемы и переупаковкой всех обёрток (гейт §6 ТЗ). */
+        try {
+          const mig = await migrateKdfIterations(secret, notesRef.current, patchNoteSecret)
+          if (mig.migrated) {
+            notify({
+              kind: 'ok',
+              cat: 'privacy',
+              icon: 'shield',
+              title: 'Замок усилен: PBKDF2 600 000',
+              body: `Итерации подняты с ${mig.from.toLocaleString('ru-RU')} до ${mig.to.toLocaleString('ru-RU')}. Переупаковано ключей файлов: ${mig.report.files}, секретов стикеров: ${mig.report.notes}.`,
+            })
+          }
+        } catch {
+          /* миграция не обязана мешать входу */
+        }
         setLock((p) => ({ ...p, busy: false, cooldownUntil: 0, failCount: 0 }))
       } else {
         const st = registerFailure()
@@ -1306,6 +1374,20 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     setScreen('settings')
   }, [])
 
+  const openSecret = useCallback((id: string) => {
+    setSecretFocus({ id, at: Date.now() })
+    setScreen('vault')
+  }, [])
+
+  const setSecretIndex = useCallback((list: SecretIndexItem[]) => {
+    setSecretIndexState((prev) => {
+      if (prev.length === list.length && prev.every((p, i) => p.id === list[i].id && p.title === list[i].title)) {
+        return prev
+      }
+      return list
+    })
+  }, [])
+
   const openSession = useCallback(
     (id: string) => {
       setActiveSessionId(id)
@@ -1320,8 +1402,8 @@ export function VaultProvider({ children }: { children: ReactNode }) {
   const { redactIds } = useRedacted()
 
   const searchInput = useMemo(
-    () => ({ files, notes: liveNotes, sessions, now: now || Date.now(), redactIds }),
-    [files, liveNotes, sessions, now, redactIds],
+    () => ({ files, notes: liveNotes, sessions, now: now || Date.now(), redactIds, secrets: secretIndex }),
+    [files, liveNotes, sessions, now, redactIds, secretIndex],
   )
 
   const hits = useMemo(() => searchAll(query, scope, searchInput), [query, scope, searchInput])
@@ -1347,6 +1429,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       else if (h.kind === 'cluster') openCluster(h.id as ClusterId)
       else if (h.kind === 'chat') openSession(h.id)
       else if (h.kind === 'setting') openSetting(h.id)
+      else if (h.kind === 'secret') openSecret(h.id)
       else if (h.kind === 'note') {
         const n = liveNotes.find((x) => x.id === h.id)
         if (n?.pinnedTo) openFile(n.pinnedTo)
@@ -1356,7 +1439,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
         }
       }
     },
-    [liveNotes, openCluster, openFile, openSession, openSetting],
+    [liveNotes, openCluster, openFile, openSession, openSetting, openSecret],
   )
 
   /** Ctrl/Cmd+K — палитра. Работает на любом экране, кроме поля ввода чата. */
@@ -1420,6 +1503,10 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     clusterFocus,
     nodeFocus,
     settingFocus,
+    secretFocus,
+    openSecret,
+    secretIndex,
+    setSecretIndex,
     openFile,
     openNote,
     openOnMap,

@@ -48,6 +48,14 @@ export function hasMasterSession(): boolean {
 }
 
 /**
+ * Ключ сеанса для модулей, которые строятся ПОВЕРХ замка (менеджер секретов).
+ * Отдаём сам CryptoKey (он неэкстрагируемый), а не секрет пользователя.
+ */
+export function getMasterSession(): CryptoKey | null {
+  return masterRef
+}
+
+/**
  * Принять мастер-ключ в память сессии. Вызывается ТОЛЬКО сразу после
  * успешной проверки пароля (verifyMasterSecret уже подтвердил его).
  */

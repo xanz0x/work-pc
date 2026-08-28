@@ -587,6 +587,10 @@ export type IconId =
   | 'sparkText'
   | 'refresh'
   | 'folder'
+  | 'key'
+  | 'node'
+  | 'database'
+  | 'user'
 
 export const ICONS: Record<IconId, ComponentType<P>> = {
   doc: IconDoc,
@@ -613,6 +617,10 @@ export const ICONS: Record<IconId, ComponentType<P>> = {
   sparkText: IconSparkText,
   refresh: IconRefresh,
   folder: IconFolder,
+  key: IconKey,
+  node: IconNode,
+  database: IconDatabase,
+  user: IconUser,
 }
 
 /** Иконка по id с безопасным запасным вариантом. */
