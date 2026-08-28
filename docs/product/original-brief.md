@@ -17,7 +17,7 @@
 
 Прежде чем писать код — прочитай в проекте:
 
-1. `LOCK-FEATURE-PLAN.md` (362 строки — полная архитектура замка + аудит-цепочки 10.1–10.13, обязательное чтение перед крипто-работой)
+1. `../architecture/lock-system.md` (362 строки — полная архитектура замка + аудит-цепочки 10.1–10.13, обязательное чтение перед крипто-работой)
 2. `lib/crypto-vault.ts` — PBKDF2-HMAC-SHA256 (310 000 итераций) → AES-GCM-256, verifier `'workflow-lock-v1'`, анти-брутфорс `failDelayMs()` 1s→2s→4s… потолок 30s, `cryptoSelfTest()`
 3. `lib/lock-store.ts` — `readLockBootstrap()` (синхронный bootstrap до первого рендера), `wipeLockData`, BroadcastChannel-синк вкладок, `wf.lock.config` / `wf.lock.state`
 4. `hooks/use-file-keys.ts` (v3.2b) — **образец двухфакторной обёртки**: random 32B fileKey → wrapped двумя факторами (мастер-ключом сеанса `wct/wiv` + паролем файла PBKDF2(salt=SHA-256('wf.filekey.'+id)) `pct/piv`) в `localStorage['wf.vault.keys.<id>']`; мастер в модульной переменной `masterRef`, обнуляется при потере статуса 'unlocked'; миграция стикеров `migrateLockedNotes` (маркер `wf.vault.keys.migrated`)

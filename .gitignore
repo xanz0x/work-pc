@@ -34,7 +34,6 @@ pnpm-debug.log*
 *.swp
 
 # Nested build-artifacts checkout (not part of the project)
-secrets-vault-plan/work-pc/
 .env
 .env.*
 *.env
@@ -42,3 +41,13 @@ credentials.json
 *.pem
 *.key
 .credentials
+
+# Локальный store пакетного менеджера и кеши инструментов
+.pnpm-store/
+.ruff_cache/
+__pycache__/
+*.pyc
+
+# Приватные данные ИИ-слоя: диалоги пользователя не место в репозитории
+ai/sessions/*.json
+!ai/sessions/.gitkeep

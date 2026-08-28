@@ -277,6 +277,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   onClick={() => v.go(id)}
                   aria-current={v.screen === id ? 'page' : undefined}
                   title={label}
+                  data-testid={`nav-${id}`}
                 >
                   <Icon />
                   <span>{label}</span>
@@ -309,6 +310,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 onClick={() => v.go(id)}
                 aria-current={v.screen === id ? 'page' : undefined}
                 title={label}
+                data-testid={`nav-${id}`}
               >
                 <Icon />
                 <span>{label}</span>

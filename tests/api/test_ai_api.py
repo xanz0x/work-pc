@@ -13,8 +13,8 @@ import time
 import pytest
 import requests
 
-BASE_URL = "https://simple-app-290.preview.emergentagent.com"
-AI_DIR = "/app/ai"
+BASE_URL = os.environ.get("APP_URL", "http://localhost:3000").rstrip("/")
+AI_DIR = os.environ.get("AI_DIR", "/app/ai")
 
 
 @pytest.fixture

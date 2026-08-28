@@ -1,7 +1,7 @@
 # PRD · WorkfloW · Менеджер секретов (модуль VAULT)
 
 ## Исходная задача
-`02-prompt-claude-opus.md`: реализовать в существующем прототипе `vault-core-arch`
+`docs/product/original-brief.md`: реализовать в существующем прототипе `vault-core-arch`
 (Next.js 16 / React 19 / TS strict / Tailwind v4, local-first, дизайн «Графит») модуль
 «Менеджер секретов» — менеджер паролей, TOTP и seed-фраз ПОВЕРХ существующей
 криптосистемы замка (PBKDF2 → AES-GCM), не ломая ничего существующего.
@@ -55,7 +55,7 @@
 - Смена мастер-ключа → секрет по-прежнему расшифровывается (путь `rewrapAll`).
 
 ## Не сделано (осознанно, backlog)
-Подробная передача дел — в `/app/HANDOFF-VAULT.md` (что сделано, как запускать, что осталось).
+Подробная передача дел — в `/app/docs/architecture/secrets-vault.md` (что сделано, как запускать, что осталось).
 P0: живая проверка ленивой миграции KDF 310k→600k (ядро `rewrapAll` проверено через смену мастер-ключа).
 P1 (v1.1 по промту): Password Health (локальный score), expiration-напоминания и бейджи в списке
 (бейдж EXPIRED реализован, напоминаний нет), BIP39-генератор и checksum, Generator Hub
@@ -114,7 +114,7 @@ npx tsc --noEmit                                        # главный гей�
 CSS дописан слоем «VAULT v1.5» в конец `app/globals.css`, палитра «Графит» не менялась.
 
 ## Бэклог после v1.5
-- P0: живая проверка ленивой миграции KDF 310k→600k (код готов, сценарий в NEXT-CHAT.md).
+- P0: живая проверка ленивой миграции KDF 310k→600k (код готов, сценарий в docs/architecture/secrets-vault.md).
 - P2: drag&drop записей в папки; переименование папок из UI (`renameFolder` уже есть);
   виртуализация списка при 1000+ записей; отдельный аудит-журнал модуля секретов.
 - Вырезано осознанно: duress vault, WebAuthn, .kdbx, HIBP, team/shared, autofill.
@@ -181,3 +181,14 @@ CSS дописан слоями «MAP v2 · КОСМОС» и «MAP v2.1» в к
 - Волна 1 (P0): P0-1 честный режим приватности, P0-2 auth+rate limit на /ai-api, UX-1 единый источник лейблов, LG-2 каталог ошибок.
 - Волна 2 (P0–P1): P0-3 IndexedDB-репозитории, P0-4 тесты и CI, UX-2 состояния ошибок, LG-1 окно контекста, AR-5 логи и валидация env.
 - Волна 3 (P1): NF-1 реальный индексатор файлов, NF-2 локальный движок, AR-1 разделение стора, AR-2 code splitting, NF-4 онбординг, LG-3 журнал безопасности.
+
+## 2026-06 — Уборка репозитория (пункт AR-4 аудита)
+- Создан каталог `docs/` как единственное место для прозы: `docs/README.md` (индекс), `docs/architecture/` (lock-system.md, secrets-vault.md), `docs/product/` (original-brief.md, secrets-vault-plan.md/.pdf, secrets-vault-inventory.md), `docs/audit/` (PDF аудита + инструкция по пересборке).
+- Корень репозитория: только README.md, AGENTS.md, CLAUDE.md + конфиги. Было 7 md-файлов и каталог планов.
+- Удалено: `NEXT-CHAT.md` (устаревший хендовер), `secrets-vault-plan/report.html` и `build_report.py` (генерируемое), `hooks/use-fake-stream.ts` (мёртвый код), `lib/utils.ts` + `components.json` (shadcn не используется), `test_reports/pytest/*` (артефакты), `ai/sessions/*.json` (тестовые диалоги), кеши `.pnpm-store` (435 МБ), `.ruff_cache`, `scripts/__pycache__`, `frontend/node_modules`.
+- Из package.json убраны неиспользуемые зависимости: `shadcn`, `clsx`, `tailwind-merge`.
+- Тесты API от QA-агента переехали в `tests/api/test_ai_api.py`, BASE_URL читается из `APP_URL`; добавлен `tests/README.md`.
+- Пояснительные README добавлены в `backend/` (намеренно пустой) и `frontend/` (лончер для supervisor).
+- `.gitignore`: добавлены `ai/sessions/*.json` (приватные диалоги не в репозитории), `.pnpm-store/`, `__pycache__/`, `.ruff_cache/`.
+- README обновлён: раздел «Документация», актуальное дерево проекта, ссылки на новые пути.
+- Проверка: `npx tsc --noEmit` = 0, `npx next build` = успешно (12 маршрутов), регресс тест-агентом iteration_11.json = 100% PASS, ссылок на удалённые модули в коде нет.

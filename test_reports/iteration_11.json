@@ -1,0 +1,27 @@
+{
+  "summary": "Регресс-прогон UI после уборки репозитория (удаление lib/utils.ts, components.json, hooks/use-fake-stream.ts, пакетов shadcn/clsx/tailwind-merge, переноса документации в docs/). Внешний preview URL, viewport 1920x900, frontend-only. Проверено: загрузка приложения (0 ошибок консоли, 0 запросов >=400, 0 pageerror/hydration-warning); все 5 разделов сайдбара рендерятся; Библиотека (кластеры в сайдбаре 6 шт., чипы фильтров, клик по карточке файла заполняет правую панель — договор_аренды_2026.pdf, 4,2 МБ, кластер ДОКУМЕНТЫ, ИИ-описание, приколотые стикеры; 'Новый стикер' открывает композер; 'Добавить файл' открывает file chooser multiple=True); Карта памяти (canvas рисуется, зум 120%->150%, fit, клик по узлу открывает map-inspector); Чат с ИИ (сообщение -> потоковый ответ Claude Opus 5 'Привет' за ~2.5 c, /ai-api/chat=200, /ai-api/sessions=200, retrieval-trace раскрывается, AI-центр открывается/закрывается); Менеджер секретов (гейт -> настройка мастер-ключа паролем test-master-1234 -> экран сейфа рендерится полностью, стили целы, AES-GCM-256, пустое состояние без исключений — подтверждает, что удаление lib/utils.ts/clsx/tailwind-merge ничего не сломало); Настройки (все 7 разделов рендерятся, выбор движка + Сохранить применяется 'Локальный'->'Гибридный', Отменить откатывает); смоук уведомлений (панель, toggle прочитано badge 2->1, 'Очистить прочитанные' -> undo). GET /WorkfloW-Audit-2026-06.pdf = 200, application/pdf, 393135 байт, сигнатура %PDF-1.4. Ссылок на удалённые модули в исходниках нет.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Чат с ИИ", "issues": ["Заголовок сообщения ассистента подписан 'ЛОКАЛЬНАЯ МОДЕЛЬ', хотя чип шапки и футер композера показывают 'ОБЛАКО · OPUS 5' / 'Claude Opus 5 · облако Emergent', и запрос реально ушёл в облако. Расхождение подписи вводит в заблуждение (минорно, не регресс уборки)."]},
+      {"screen": "Библиотека", "issues": ["После клика по карточке файла активный чип представления возвращается к 'Всё' (выбранный фильтр 'Файлы' сбрасывается) — вероятно намеренно (показать приколотые стикеры), но выглядит как потеря состояния фильтра."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "scripts/audit_content.py (строки 253/258) всё ещё описывает hooks/use-fake-stream.ts как существующий 'мёртвый код' — это только текст для генерации PDF-аудита, импортов нет, но после уборки формулировку стоит перевести в прошедшее время либо отметить как устранённый пункт.",
+    "Пункты сайдбара 'Карта памяти', 'Чат с ИИ', 'Настройки' не имели data-testid (были только title) — добавлены data-testid={`nav-${id}`} в components/app-shell.tsx для устойчивого автотестирования.",
+    "Мастер-форма замка (components/screen-lock.tsx, components/security-section.tsx) не имеет ни одного data-testid — тесты вынуждены цепляться за CSS-классы lock-setup-btn/lf-submit и placeholder'ы; рекомендуется добавить testid'ы (lock-method-password, lock-pass-1, lock-pass-2, lock-submit)."
+  ],
+  "updated_files": ["/app/components/app-shell.tsx"],
+  "success_rate": {"backend": "n/a (skipped by request)", "frontend": "100%"},
+  "seed_data_creation": "В одноразовом браузерном контексте создан мастер-ключ методом 'Пароль' = test-master-1234 (из /app/memory/test_credentials.md) для открытия экрана сейфа. Данные локальны для контекста Playwright, персистентного состояния приложения не затрагивают.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "не требуются (авторизации нет); мастер-ключ создаётся вручную: test-master-1234",
+  "context_for_next_testing_agent": "Новые селекторы: nav-library, nav-map, nav-chat, nav-vault, nav-settings, nav-library-toggle, nav-cluster-{id}. Экран настроек — контейнер .set-main, рельс разделов .set-rail; кнопки 'Сохранить'/'Отменить' в нижнем баре. Экран сейфа: vault-gate-lock -> vault-gate-setup -> button.lock-setup-btn -> input[placeholder='от 8 символов'] + input[placeholder='Повторите'] -> button.lf-submit. Чат: ждать исчезновения кнопки 'Стоп' как признак конца стрима, ответ модели приходит за 2-4 с; сводка retrieval — button.tsum-btn. Карта: клик в центр canvas открывает map-inspector. Уведомления протестированы в iteration_10 полностью, здесь только смоук. Ошибок консоли/сети за весь прогон: 0.",
+  "rca_of_the_issue": "Не применимо — регрессий после уборки репозитория не обнаружено."
+}

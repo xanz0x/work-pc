@@ -2,7 +2,7 @@
 
 /* ============================================================
    FILE-KEYS v3.2b · хук файловых ключей и криптомиграции (этап 5)
-   План LOCK-FEATURE-PLAN.md: п.4 (wrapped = AES-GCM(masterKey, fileKey)),
+   План docs/architecture/lock-system.md: п.4 (wrapped = AES-GCM(masterKey, fileKey)),
    п.10.6 (миграция стикеров), инвариант locked=true ⇒ secret вида ct:iv.
    Мастер-ключ живёт в памяти сессии РОВНО до lockNow()/конца сессии
    (кэширование после блокировки запрещено п.10.8) — ссылка обнуляется
