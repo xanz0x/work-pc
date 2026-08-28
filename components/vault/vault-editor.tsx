@@ -11,6 +11,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { IconClose, IconLock, IconPlus, IconSparkText, IconTrash, iconOf } from '@/components/icons'
 import { useSecrets } from '@/lib/secrets-store'
+import { VtSelect } from './vt-select'
 import {
   TYPE_META,
   TYPE_ORDER,
@@ -36,6 +37,22 @@ const KINDS: { id: FieldKind; label: string }[] = [
   { id: 'multiline', label: 'многострочный' },
   { id: 'boolean', label: 'да/нет' },
 ]
+
+/* Короткие подписи для компактной сетки типов (полное имя — в title). */
+const SHORT: Record<SecretType, string> = {
+  login: 'Пароль',
+  api: 'API-ключ',
+  seed: 'Seed',
+  card: 'Карта',
+  ssh: 'SSH',
+  note: 'Заметка',
+  recovery: 'Коды',
+  wifi: 'Wi-Fi',
+  license: 'Лицензия',
+  identity: 'Личные',
+  'passkey-meta': 'Passkey',
+  custom: 'Своя',
+}
 
 /** ДД.ММ.ГГГГ по мере ввода: точки ставятся сами, лишнее отбрасывается. */
 function maskRuDate(raw: string): string {
@@ -212,11 +229,11 @@ export function VaultEditor({
                       aria-checked={type === t}
                       className={`vt-type${type === t ? ' on' : ''}`}
                       onClick={() => switchType(t)}
-                      title={TYPE_META[t].note}
+                      title={`${TYPE_META[t].label} — ${TYPE_META[t].note}`}
                       data-testid={`editor-type-${t}`}
                     >
                       <Icon />
-                      <span>{TYPE_META[t].label}</span>
+                      <span>{SHORT[t]}</span>
                     </button>
                   )
                 })}
@@ -252,19 +269,16 @@ export function VaultEditor({
             <div className="vt-field-row">
               <label className="vt-field">
                 <span className="label-mono">Папка</span>
-                <select
-                  className="input"
+                <VtSelect
                   value={folder ?? ''}
-                  onChange={(e) => setFolder(e.target.value || null)}
-                  data-testid="editor-folder"
-                >
-                  <option value="">Без папки</option>
-                  {s.folders.map((f) => (
-                    <option key={f.id} value={f.id}>
-                      {f.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => setFolder(v || null)}
+                  ariaLabel="Папка"
+                  testId="editor-folder"
+                  options={[
+                    { value: '', label: 'Без папки' },
+                    ...s.folders.map((f) => ({ value: f.id, label: f.name })),
+                  ]}
+                />
               </label>
               <label className="vt-field">
                 <span className={`label-mono${expiresBad ? ' vt-bad' : ''}`}>
@@ -313,31 +327,39 @@ export function VaultEditor({
               </div>
 
               {fields.map((f, i) => (
-                <div className={`vt-fe${f.secret ? ' is-ct' : ''}`} key={f.id ?? `new-${i}`}>
+                <div className={`vt-fe${f.secret ? ' is-ct' : ''}${f.kind === 'multiline' ? ' is-multi' : ''}`} key={f.id ?? `new-${i}`}>
                   <div className="vt-fe-top">
                     <input
                       className="input vt-fe-name"
                       value={f.name}
                       onChange={(e) => patch(i, { name: e.target.value })}
                       aria-label="Имя поля"
+                      placeholder="Поле"
                       data-testid={`editor-field-name-${i}`}
                     />
-                    <select
-                      className="input vt-fe-kind"
+                    <VtSelect
+                      className="vt-fe-kind"
                       value={f.kind}
-                      onChange={(e) => {
-                        const kind = e.target.value as FieldKind
+                      onChange={(v) => {
+                        const kind = v as FieldKind
                         patch(i, { kind, secret: kind === 'password' || kind === 'secret' ? true : f.secret })
                       }}
-                      aria-label="Тип поля"
-                      data-testid={`editor-field-kind-${i}`}
-                    >
-                      {KINDS.map((k) => (
-                        <option key={k.id} value={k.id}>
-                          {k.label}
-                        </option>
-                      ))}
-                    </select>
+                      ariaLabel="Тип поля"
+                      testId={`editor-field-kind-${i}`}
+                      options={KINDS.map((k) => ({ value: k.id, label: k.label }))}
+                    />
+                    {f.kind !== 'multiline' && (
+                      <input
+                        className="input vt-fe-value"
+                        type={f.secret ? 'password' : 'text'}
+                        placeholder={f.kind === 'date' ? 'дд.мм.гггг' : 'Значение'}
+                        value={f.value}
+                        onChange={(e) => patch(i, { value: e.target.value })}
+                        autoComplete="off"
+                        aria-label={f.name}
+                        data-testid={`editor-field-value-${i}`}
+                      />
+                    )}
                     <button
                       className={`vt-ct${f.secret ? ' on' : ''}`}
                       title={f.secret ? 'Шифруется AES-GCM · нажмите, чтобы сделать открытым' : 'Открытое поле · нажмите, чтобы шифровать'}
@@ -365,23 +387,13 @@ export function VaultEditor({
                       <IconTrash />
                     </button>
                   </div>
-                  {f.kind === 'multiline' ? (
+                  {f.kind === 'multiline' && (
                     <textarea
                       className="input vt-fe-value"
                       rows={2}
+                      placeholder="Значение"
                       value={f.value}
                       onChange={(e) => patch(i, { value: e.target.value })}
-                      aria-label={f.name}
-                      data-testid={`editor-field-value-${i}`}
-                    />
-                  ) : (
-                    <input
-                      className="input vt-fe-value"
-                      type={f.secret ? 'password' : 'text'}
-                      placeholder={f.kind === 'date' ? 'дд.мм.гггг' : undefined}
-                      value={f.value}
-                      onChange={(e) => patch(i, { value: e.target.value })}
-                      autoComplete="off"
                       aria-label={f.name}
                       data-testid={`editor-field-value-${i}`}
                     />

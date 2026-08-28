@@ -10262,3 +10262,167 @@ button.chip:hover {
 @media (max-width: 640px) {
   .vt-seed-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* ============================================================
+   ===== VAULT v1.3 · КОМПАКТНЫЙ РЕДАКТОР, VtSelect, ПАПКИ ====
+   ============================================================ */
+
+/* --- Папки: явное красное подтверждение удаления --- */
+.vt-folder-row .vt-nav-item { width: auto; }
+.vt-folder-del-ask {
+  flex: none;
+  padding: 3px 8px;
+  border: 1px solid var(--danger);
+  border-radius: var(--r);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  animation: vt-rise 140ms ease-out;
+}
+.vt-folder-del-ask:hover {
+  background: var(--danger);
+  color: #0b0f0d;
+}
+
+/* --- VtSelect · кастомный выпадающий список --- */
+.vts {
+  position: relative;
+  min-width: 0;
+}
+.vts-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--bg-input);
+  color: var(--text);
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+  transition-property: border-color, background-color;
+  transition-duration: 130ms;
+}
+.vts-btn > span { flex: 1; min-width: 0; }
+.vts-btn svg {
+  width: 11px;
+  height: 11px;
+  flex: none;
+  stroke: var(--text-3);
+  fill: none;
+  stroke-width: 1.7;
+  transition: transform 160ms var(--ease-quart);
+}
+.vts-btn:hover { border-color: var(--border-2); }
+.vts.open .vts-btn {
+  border-color: var(--accent-line);
+  background: var(--panel-2);
+}
+.vts.open .vts-btn svg { transform: rotate(180deg); }
+.vts-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  max-height: 232px;
+  padding: 4px;
+  overflow-y: auto;
+  border: 1px solid var(--border-2);
+  border-radius: var(--r);
+  background: var(--panel);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.5);
+  animation: vt-rise 140ms ease-out;
+}
+.vts-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: calc(var(--r) - 2px);
+  background: transparent;
+  color: var(--text-2);
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+  transition-property: background-color, color;
+  transition-duration: 100ms;
+}
+.vts-item > span { flex: 1; min-width: 0; }
+.vts-item svg {
+  width: 11px;
+  height: 11px;
+  flex: none;
+  stroke: var(--accent);
+  fill: none;
+  stroke-width: 2;
+}
+.vts-item:hover { background: var(--raise-1); color: var(--text); }
+.vts-item.on { color: var(--accent); background: var(--panel-2); }
+
+/* --- Редактор: всё в один экран --- */
+.vt-modal.vt-editor {
+  max-width: 780px;
+  max-height: calc(100vh - 32px);
+  padding: 16px 18px;
+  gap: 10px;
+  overflow: hidden;
+}
+.vt-editor .vt-form {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  gap: 10px;
+  padding-right: 4px;
+  margin-right: -4px;
+}
+.vt-editor .vt-modal-head,
+.vt-editor .vt-modal-foot { flex: none; }
+.vt-editor .vt-field-row { gap: 8px; }
+.vt-editor .vt-field { gap: 4px; }
+.vt-editor .input { height: 32px; font-size: 12.5px; }
+.vt-editor textarea.input { height: auto; }
+.vt-ed-ico, .vt-fav { width: 32px; height: 32px; }
+
+/* Сетка типов: 6 колонок, компактные чипы */
+.vt-type-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 4px;
+}
+.vt-type {
+  gap: 6px;
+  padding: 6px 8px;
+  font-size: 11px;
+}
+.vt-type svg { width: 12px; height: 12px; }
+
+/* Поля: одна строка на поле */
+.vt-fe { padding: 7px 8px; gap: 5px; }
+.vt-fe .input { height: 30px; }
+.vt-fe-top { gap: 5px; }
+.vt-fe-name { flex: 0 0 128px; min-width: 90px; }
+.vt-fe-kind { flex: 0 0 128px; }
+.vt-fe .vts-btn { height: 30px; font-size: 12px; }
+.vt-fe-value { flex: 1 1 auto; min-width: 80px; width: auto; }
+.vt-fe textarea.vt-fe-value { width: 100%; flex: none; }
+.vt-mini-strength { margin-top: 1px; }
+
+@media (max-width: 900px) {
+  .vt-type-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .vt-type-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .vt-fe-top { flex-wrap: wrap; }
+  .vt-fe-value { flex: 1 1 100%; }
+}

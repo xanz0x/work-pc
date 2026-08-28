@@ -1,6 +1,7 @@
 'use client'
 
 import {
+  Fragment,
   useEffect,
   useRef,
   useState,
@@ -230,29 +231,45 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div className="nav-section">Рабочее место</div>
             {WORKSPACE.map(({ id, label, Icon }) =>
               id === 'library' ? (
-                <div className="nav-lib-row" key={id}>
-                  <button
-                    className={`nav-item${v.screen === id ? ' active' : ''}`}
-                    onClick={() => v.go(id)}
-                    aria-current={v.screen === id ? 'page' : undefined}
-                    title={label}
-                    data-testid="nav-library"
-                  >
-                    <Icon />
-                    <span>{label}</span>
-                    <b className="nav-count num">{workspaceCount[id]}</b>
-                  </button>
-                  <button
-                    className={`nav-lib-chev${libOpen ? ' open' : ''}`}
-                    onClick={() => setLibOpen((o) => !o)}
-                    aria-expanded={libOpen}
-                    title={libOpen ? 'Свернуть кластеры' : 'Показать кластеры библиотеки'}
-                    aria-label="Кластеры библиотеки"
-                    data-testid="nav-library-toggle"
-                  >
-                    <IconChevronDown />
-                  </button>
-                </div>
+                <Fragment key={id}>
+                  <div className="nav-lib-row">
+                    <button
+                      className={`nav-item${v.screen === id ? ' active' : ''}`}
+                      onClick={() => v.go(id)}
+                      aria-current={v.screen === id ? 'page' : undefined}
+                      title={label}
+                      data-testid="nav-library"
+                    >
+                      <Icon />
+                      <span>{label}</span>
+                      <b className="nav-count num">{workspaceCount[id]}</b>
+                    </button>
+                    <button
+                      className={`nav-lib-chev${libOpen ? ' open' : ''}`}
+                      onClick={() => setLibOpen((o) => !o)}
+                      aria-expanded={libOpen}
+                      title={libOpen ? 'Свернуть кластеры' : 'Показать кластеры библиотеки'}
+                      aria-label="Кластеры библиотеки"
+                      data-testid="nav-library-toggle"
+                    >
+                      <IconChevronDown />
+                    </button>
+                  </div>
+                  {libOpen &&
+                    liveClusters.map((c) => (
+                      <button
+                        key={c.id}
+                        className="nav-item nav-sub"
+                        onClick={() => v.openCluster(c.id)}
+                        title={`${c.label} · ${c.count} ${plural(c.count, 'файл', 'файла', 'файлов')}`}
+                        data-testid={`nav-cluster-${c.id}`}
+                      >
+                        <i className="cluster-dot" style={{ background: `rgba(${c.rgb},.9)` }} />
+                        <span>{c.label}</span>
+                        <b className="nav-count num">{c.count}</b>
+                      </button>
+                    ))}
+                </Fragment>
               ) : (
                 <button
                   key={id}
@@ -267,20 +284,6 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </button>
               ),
             )}
-            {libOpen &&
-              liveClusters.map((c) => (
-                <button
-                  key={c.id}
-                  className="nav-item nav-sub"
-                  onClick={() => v.openCluster(c.id)}
-                  title={`${c.label} · ${c.count} ${plural(c.count, 'файл', 'файла', 'файлов')}`}
-                  data-testid={`nav-cluster-${c.id}`}
-                >
-                  <i className="cluster-dot" style={{ background: `rgba(${c.rgb},.9)` }} />
-                  <span>{c.label}</span>
-                  <b className="nav-count num">{c.count}</b>
-                </button>
-              ))}
 
             <div className="nav-section">Секреты</div>
             {SECRETS_NAV.map(({ id, label, Icon }) => (

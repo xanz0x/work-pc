@@ -5,7 +5,7 @@
    ============================================================ */
 
 import { useEffect, useRef, useState } from 'react'
-import { IconCheck, IconPlus, IconSearch, IconShield, IconTrash } from '@/components/icons'
+import { IconPlus, IconSearch, IconShield, IconTrash } from '@/components/icons'
 import { iconOf } from '@/components/icons'
 import { useSecrets } from '@/lib/secrets-store'
 import { TYPE_META, TYPE_ORDER, type SecretRecord, type SecretType } from '@/lib/secrets'
@@ -36,7 +36,7 @@ export function VaultNav({
   const s = useSecrets()
   const [adding, setAdding] = useState(false)
   const [name, setName] = useState('')
-  /* Удаление папки — в два клика: корзина → галочка-подтверждение (2.5 с). */
+  /* Удаление папки — в два клика: корзина → явная красная «Удалить?» (5 с). */
   const [delAsk, setDelAsk] = useState<string | null>(null)
   const askTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(
@@ -54,7 +54,7 @@ export function VaultNav({
     }
     setDelAsk(id)
     if (askTimer.current) clearTimeout(askTimer.current)
-    askTimer.current = setTimeout(() => setDelAsk(null), 2500)
+    askTimer.current = setTimeout(() => setDelAsk(null), 5000)
   }
 
   const countType = (t: SecretType) => live.filter((e) => e.type === t).length
@@ -170,19 +170,27 @@ export function VaultNav({
             <span>{f.name}</span>
             <b className="nav-count num">{live.filter((e) => e.folderId === f.id).length}</b>
           </button>
-          <button
-            className={`vt-icon-btn tiny vt-folder-del${delAsk === f.id ? ' ask' : ''}`}
-            title={
-              delAsk === f.id
-                ? 'Подтвердить удаление папки (записи останутся без папки)'
-                : `Удалить папку «${f.name}»`
-            }
-            aria-label={`Удалить папку ${f.name}`}
-            onClick={() => askDelete(f.id)}
-            data-testid={`vault-folder-del-${f.id}`}
-          >
-            {delAsk === f.id ? <IconCheck /> : <IconTrash />}
-          </button>
+          {delAsk === f.id ? (
+            <button
+              className="vt-folder-del-ask"
+              title="Подтвердить удаление папки (записи останутся без папки)"
+              aria-label={`Подтвердить удаление папки ${f.name}`}
+              onClick={() => askDelete(f.id)}
+              data-testid={`vault-folder-del-${f.id}`}
+            >
+              Удалить?
+            </button>
+          ) : (
+            <button
+              className="vt-icon-btn tiny vt-folder-del"
+              title={`Удалить папку «${f.name}»`}
+              aria-label={`Удалить папку ${f.name}`}
+              onClick={() => askDelete(f.id)}
+              data-testid={`vault-folder-del-${f.id}`}
+            >
+              <IconTrash />
+            </button>
+          )}
         </div>
       ))}
 

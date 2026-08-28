@@ -165,3 +165,10 @@ duress vault, полноценный WebAuthn/passkey как аутентифи�
 нажатием (`restoreHistory`/`openCipher` в store, `HistoryRow` в детали); напоминания об
 истечении 30/7/1/просрочено в ленту уведомлений (дедуп `wf.secrets.expiry.v1`).
 Из P1-бэклога закрыты: Password Health, история с откатом, expiry-напоминания, BIP39.
+
+### Сессия «VAULT v1.3» (июнь 2026, приёмка iteration_4 — 100% PASS)
+Удаление папок: явная красная «Удалить?» (vt-folder-del-ask, 5 с). Сайдбар: кластеры сразу
+под «Библиотекой» (Fragment в WORKSPACE.map). Редактор: компактный (в один экран),
+сетка типов 6×2, кастомные дропдауны `VtSelect` (vt-select.tsx) вместо нативных select —
+ВАЖНО для автотестов: select_option больше не работает, опции кликаются по testid
+`editor-folder-opt-<id|none>`, `editor-field-kind-<i>-opt-<kind>`.
