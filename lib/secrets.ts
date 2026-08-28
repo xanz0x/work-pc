@@ -94,6 +94,8 @@ export type SecretsSettings = {
   clipboard: Record<ClipTarget, number>
   /** Загружать иконки сайтов (единственный сетевой вызов; наружу только домен). */
   favicons: boolean
+  /** true — пользователь сам трогал тумблер favicons (иначе действует дефолт «вкл»). */
+  faviconsSet?: boolean
   /** Исключать секреты из ИИ-чата. Выключить нельзя — защита жёсткая. */
   excludeFromAi: true
   revealSeconds: number
@@ -102,7 +104,7 @@ export type SecretsSettings = {
 
 export const DEFAULT_SECRETS_SETTINGS: SecretsSettings = {
   clipboard: { password: 10, totp: 5, cvv: 5, username: 30, other: 10 },
-  favicons: false,
+  favicons: true,
   excludeFromAi: true,
   revealSeconds: 8,
   autoBackup: true,

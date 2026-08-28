@@ -101,7 +101,7 @@ export function SecretsSection() {
             role="switch"
             aria-checked={s.settings.favicons}
             aria-label="Загружать иконки сайтов"
-            onClick={() => s.setSettings((p) => ({ ...p, favicons: !p.favicons }))}
+            onClick={() => s.setSettings((p) => ({ ...p, favicons: !p.favicons, faviconsSet: true }))}
             data-testid="toggle-favicons"
           />
         </div>

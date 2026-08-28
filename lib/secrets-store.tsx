@@ -104,6 +104,10 @@ export type SecretsCtx = {
 
   /** Расшифровать значение поля (для показа/копирования). */
   openValue: (entryId: string, fieldId: string) => Promise<string | null>
+  /** Расшифровать произвольный шифртекст записи (история изменений, аудит). */
+  openCipher: (entryId: string, ct: string) => Promise<string | null>
+  /** Вернуть прежнее значение поля из истории одним нажатием. */
+  restoreHistory: (entryId: string, at: number, fieldId: string) => void
   /** Все значения записи в открытом виде — редактор и экспорт. */
   openEntry: (entryId: string) => Promise<Record<string, string> | null>
   openTotpSecret: (entryId: string) => Promise<string | null>
@@ -166,7 +170,7 @@ async function writeClipboard(text: string): Promise<boolean> {
 
 export function SecretsProvider({ children }: { children: ReactNode }) {
   const v = useVault()
-  const [box, setBox] = usePersistedState<SecretsFile>(SECRETS_KEY, EMPTY_SECRETS)
+  const [box, setBox, boxHydrated] = usePersistedState<SecretsFile>(SECRETS_KEY, EMPTY_SECRETS)
   const [folders, setFolders] = usePersistedState<SecretFolder[]>(SECRETS_FOLDERS_KEY, [])
   const [settingsRaw, setSettingsRaw] = usePersistedState<SecretsSettings>(
     SECRETS_SETTINGS_KEY,
@@ -179,6 +183,9 @@ export function SecretsProvider({ children }: { children: ReactNode }) {
       ...DEFAULT_SECRETS_SETTINGS,
       ...settingsRaw,
       clipboard: { ...DEFAULT_SECRETS_SETTINGS.clipboard, ...(settingsRaw?.clipboard ?? {}) },
+      /* Иконки сайтов включены по умолчанию; старый снимок с favicons:false
+         уважается только если пользователь сам трогал тумблер (faviconsSet). */
+      favicons: settingsRaw?.faviconsSet ? Boolean(settingsRaw.favicons) : true,
       excludeFromAi: true,
     }),
     [settingsRaw],
@@ -487,6 +494,41 @@ export function SecretsProvider({ children }: { children: ReactNode }) {
       return plain
     },
     [ready, v],
+  )
+
+  const openCipher = useCallback(
+    async (entryId: string, ct: string): Promise<string | null> => {
+      if (!ready || !ct) return null
+      return openField(entryId, ct)
+    },
+    [ready],
+  )
+
+  const restoreHistory = useCallback(
+    (entryId: string, at: number, fieldId: string) => {
+      write((all) =>
+        all.map((e) => {
+          if (e.id !== entryId) return e
+          const h = e.history.find((x) => x.at === at && x.fieldId === fieldId)
+          const f = e.fields.find((x) => x.id === fieldId)
+          if (!h || !f) return e
+          /* Оба значения — шифртексты одного ключа записи: обмен без пере-крипто.
+             Текущее значение уходит в историю, так что откат обратим. */
+          const history = [
+            { at: Date.now(), fieldId: f.id, fieldName: f.name, prevCt: f.value },
+            ...e.history.filter((x) => !(x.at === at && x.fieldId === fieldId)),
+          ].slice(0, 20)
+          return {
+            ...e,
+            fields: e.fields.map((x) => (x.id === fieldId ? { ...x, value: h.prevCt } : x)),
+            history,
+            updatedAt: Date.now(),
+          }
+        }),
+      )
+      v.flash('Прежнее значение возвращено')
+    },
+    [v, write],
   )
 
   const openEntry = useCallback(
@@ -848,6 +890,43 @@ export function SecretsProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, box.entries.length, settings.autoBackup])
 
+  /* ---------- напоминания об истечении: за 30, 7 и 1 день + просрочено ---------- */
+
+  const [expiryNotified, setExpiryNotified] = usePersistedState<Record<string, string>>(
+    'wf.secrets.expiry.v1',
+    {},
+  )
+  useEffect(() => {
+    if (!boxHydrated) return
+    const nowTs = Date.now()
+    const next: Record<string, string> = {}
+    let fired = false
+    for (const e of box.entries) {
+      if (!isLive(e) || !e.expiredAfter) continue
+      const days = Math.ceil((e.expiredAfter - nowTs) / 86_400_000)
+      const stage = days <= 0 ? 0 : days <= 1 ? 1 : days <= 7 ? 7 : days <= 30 ? 30 : null
+      if (stage === null) continue
+      /* Ключ включает дату: перенос срока в редакторе сбрасывает напоминания. */
+      const key = `${e.expiredAfter}:${stage}`
+      next[e.id] = key
+      if (expiryNotified[e.id] === key) continue
+      fired = true
+      v.notify({
+        kind: stage === 0 ? 'danger' : 'warn',
+        cat: 'system',
+        icon: 'clock',
+        title:
+          stage === 0
+            ? `Срок записи «${e.title}» истёк`
+            : `«${e.title}» истекает через ${Math.max(days, 1)} дн.`,
+        body: `Срок: ${new Date(e.expiredAfter).toLocaleDateString('ru-RU')}. Обновите значение — напоминания приходят за 30, 7 и 1 день.`,
+      })
+    }
+    if (fired || Object.keys(next).length !== Object.keys(expiryNotified).length)
+      setExpiryNotified(next)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [boxHydrated, box.entries])
+
   /* ---------- иконки сайтов ---------- */
 
   const loadIcon = useCallback(
@@ -858,11 +937,14 @@ export function SecretsProvider({ children }: { children: ReactNode }) {
       const domain = domainOf(e)
       if (!domain) return
       try {
-        /* Наружу уходит ТОЛЬКО домен. Картинка сохраняется в сейф как b64,
-           поэтому в DOM никогда нет внешнего src (никаких referrer-утечек). */
-        const res = await fetch(
-          `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(domain)}`,
-        )
+        /* Наружу уходит ТОЛЬКО домен. Сначала свой origin (/proxy/favicon —
+           не режется адблоком, CORS и ингрессом), затем прямой Google S2.
+           Картинка сохраняется в сейф как b64, в DOM нет внешних src. */
+        let res = await fetch(`/proxy/favicon?domain=${encodeURIComponent(domain)}`).catch(() => null)
+        if (!res || !res.ok)
+          res = await fetch(
+            `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(domain)}`,
+          )
         if (!res.ok) return
         const blob = await res.blob()
         if (blob.size > 64 * 1024) return
@@ -902,6 +984,8 @@ export function SecretsProvider({ children }: { children: ReactNode }) {
     renameFolder,
     removeFolder,
     openValue,
+    openCipher,
+    restoreHistory,
     openEntry,
     openTotpSecret,
     totpNow,

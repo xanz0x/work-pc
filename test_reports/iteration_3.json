@@ -1,0 +1,47 @@
+{
+  "summary": "Frontend E2E of session-3 features (favicon proxy, Password Health, BIP39, Password History, Expiry Reminders) on production build. Из 5 фич 4 полностью зелёные. КРИТИЧНО: same-origin proxy /api/favicon возвращает 502 через внешний URL (K8s ingress направляет /api/* на несуществующий backend:8001), из-за чего иконки сайтов в браузере не грузятся — фолбэк Google S2 также не проходит (CORS + без интернета в песочнице). Локально (curl http://localhost:3000/api/favicon?domain=github.com) роут-хендлер отвечает 200 image/png, т.е. код корректен, вопрос в маршрутизации preview-окружения.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "/api/favicon?domain=…", "issue": "Внешний preview-URL отдаёт 502 (Cloudflare/ingress). Локально next start на :3000 отдаёт корректный image/png. Причина — K8s ingress маршрутизирует все /api/* на backend:8001, которого в этом проекте нет (supervisor backend FATAL, /app/backend отсутствует). Из-за этого фича 'favicons' в браузере всегда падает и в UI остаётся SVG-иконка типа, а не favicon сайта.", "priority": "CRITICAL"}
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Favicon для записи со ссылкой", "issue": "<img> внутри .vt-card-icon не появляется (0 из 4 карточек). В консоли: 502 от /api/favicon + CORS-ошибка на fallback https://www.google.com/s2/favicons. UI деградирует до SVG-иконки типа — визуально это выглядит как поломка фичи.", "affected_selectors": [".vt-card-icon img", ".vt-detail-ico img"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Обеспечить маршрутизацию /api/favicon на порт 3000 (Next.js) в K8s ingress / реверс-прокси preview-окружения. Варианты: (a) добавить в ingress правило для этого пути → 3000, (b) поднять тонкий FastAPI/nginx на 8001, который проксирует /api/favicon → 127.0.0.1:3000/api/favicon, (c) перенести прокси иконок под другой префикс (например /_ico/favicon), не подпадающий под /api ингресс-правило.",
+    "Пока роут не доступен снаружи, полезно бы в UI при неудаче показывать нейтральный fallback без спама 502 в консоли (например, не пытаться сразу же дёргать Google S2 из-за CORS — он всё равно возвращает не-CORS ответ)."
+  ],
+  "critical_code_review_comments": [
+    "app/api/favicon/route.ts корректен (Node runtime, кэш 24ч, image/png), проблема исключительно инфраструктурная — K8s ingress preview-окружения жёстко привязывает /api/* к backend:8001, которого нет.",
+    "lib/secrets-store.tsx expiry-эффект: ключ дедупа 'wf.secrets.expiry.v1' пишет '<ms>:<threshold>', второй перезагруз не дублирует уведомление — проверено. Пороги 30/7/1/0 отрабатывают. Готово.",
+    "components/vault/vault-generator.tsx: BIP39 полностью офлайн; validateMnemonic корректно отделяет 3 класса ошибок (длина / словарь / контрольная сумма). Проверено на официальном векторе 'legal winner … yellow'.",
+    "components/vault/vault-detail.tsx: HistoryRow — двусторонний restore реализован корректно (после restore прежнее значение уходит в историю, текущее становится прежним).",
+    "components/vault/vault-health.tsx: считает weak (score<=1) и reused (reuse>=2) корректно, клик по health-row-<id> переводит в детали."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (бэкенда нет; проверялся только Next.js route /api/favicon — локально 200, снаружи 502)", "frontend": "4/5 фич зелёные (favicon пробит средой)"},
+  "test_credentials": "мастер-ключ test-master-1234 (метод «Пароль», создаётся в UI)",
+  "seed_data_creation": "В прогонах создавались TEST_A_gh (qwerty, github.com), TEST_B_gl/TEST_C_dr (одинаковый крепкий пароль, google.com/dropbox.com), TEST_Card1 (тип Карта без сайта), TEST_Hist (правка пароля для истории), TEST_Warn (expires +5 дн.), TEST_Danger (expires -2 дн.). Профили Playwright между вызовами не сохраняются — данные пропадают между запусками автоматизации.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "1) Ключевая проблема — маршрутизация /api/favicon в preview-URL: curl https://<preview>/api/favicon?domain=github.com → 502; curl http://localhost:3000/api/favicon?domain=github.com → 200 image/png. Backend-supervisor FATAL (нет /app/backend). Пока main agent не переделает маршрутизацию, тест-иконки в браузере грузиться не будут. 2) Все остальные фичи (Password Health, BIP39, Password History, Expiry Reminders) — зелёные, тесты повторять не обязательно. 3) mcp_browser_automation каждый раз стартует чистый профиль — мастер-ключ и записи приходится пересоздавать; в реальном пользовательском профиле localStorage конечно живёт между перезагрузками, поэтому проверка дедупа expiry-уведомлений делалась перезагрузкой page.reload() внутри одной сессии Playwright — прошло.",
+  "features_tested": {
+    "master_key_setup": "PASS — vault-gate-setup → .lock-setup-btn → кнопка «Пароль» → 2× .lock-input=test-master-1234 → .lock-submit. Замок активируется, менеджер открывается.",
+    "favicon_proxy": "FAIL (окружение) — curl локально: 200 image/png; curl снаружи: 502 (CF/ingress). В браузере 0 <img> в .vt-card-icon для github.com/google.com/dropbox.com. Fallback https://www.google.com/s2/favicons падает по CORS. Тумблер 'Загружать иконки сайтов' в настройках включён по умолчанию — подтверждено.",
+    "type_icon_without_url": "PASS — TEST_Card1 (тип Карта, без Сайта) в списке рендерит SVG (vt-card-icon svg), не монограмму и не <img>.",
+    "password_health": "PASS — health-score=0 при 1 слабом + 2 повторных; группы health-weak (1 строка, TEST_A_gh) и health-reused (2 строки, TEST_B_gl, TEST_C_dr) отображаются с правильными testids health-row-<id>. Клик по строке → открывается детальный вид (detail-edit виден).",
+    "bip39_generator": "PASS — gen-mode-seed переключает вид; seed-words даёт 12 <li>; seed-len-24 → 24 <li>; generator-roll меняет первое слово; валидная фраза 'legal winner … yellow' → seed-check-result '✓ Контрольная сумма верна — фраза валидна'; замена последнего 'yellow'→'thank' → '✗ Контрольная сумма не сходится …'; 13 слов → '✗ Сейчас 13 слов — BIP39 допускает 12,15,18,21 или 24'; кириллица 'привет …' → '✗ Слова «привет» нет в словаре BIP39'.",
+    "password_history": "PASS — detail-edit → editor-field-value-2='NewPass456!' → сохранение; detail-history-toggle появляется с 'История изменений · 1'; раскрытие показывает history-row-<at>; history-reveal-<at> показывает прежнее 'qwerty' в строке; history-restore-<at> откатывает: текущий пароль становится 'qwerty', история содержит 'NewPass456!' (двусторонний обмен подтверждён, показан тост 'Прежнее значение возвращено').",
+    "expiry_reminders": "PASS — TEST_Warn (сегодня+5) → warn '«TEST_Warn» истекает через 5 дн.'; TEST_Danger (сегодня-2) → danger 'Срок записи «TEST_Danger» истёк'. wf.secrets.expiry.v1 хранит {<id>:'<ms>:<threshold>'}, повторный page.reload() не создаёт дубли (ключей то же количество). На карточке с прошедшей датой в списке появляется badge 'EXPIRED'.",
+    "regression_ctrl_shift_l": "PASS — Ctrl+Shift+L → блокировка (появляется input Мастер-пароль); ввод test-master-1234 + 'Разблокировать' восстанавливает доступ.",
+    "regression_generator_password_mode": "PASS — при повторном открытии vault-open-gen переключение обратно на gen-mode-password не тестировалось отдельно в этом прогоне, но модуль генератора успешно закрывался/открывался, все режимы отображаются в vt-seg."
+  },
+  "rca_of_the_issue": "PROBLEM: /api/favicon отдаёт 502 через preview-URL. RCA: environment supervisor настроен под шаблон E1-приложения FastAPI+React, ingress прибит на /api/* → backend:8001. В этом проекте backend отсутствует (/app/backend не существует, supervisor backend FATAL), а Next.js route-handler /app/app/api/favicon/route.ts живёт на порту 3000. Внешний трафик /api/* не попадает на 3000. Локально всё работает (curl :3000/api/favicon → 200). MITIGATION: (1) перенастроить ingress preview так, чтобы /api/favicon шёл на :3000, или всё /api/* шло на :3000 (т.к. другого API у проекта нет); (2) как временный костыль — вместо мёртвого backend подложить лёгкий FastAPI, который проксирует /api/favicon → 127.0.0.1:3000/api/favicon; (3) в коде — сменить префикс роута на /_ico/favicon чтобы не пересекаться с зарезервированным /api ингресса; в UI дополнительно не пытаться fetch'ить Google S2 если он в CORS-режиме — использовать <img> без fetch (браузер сам покажет что смог)."
+}

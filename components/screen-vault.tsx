@@ -16,6 +16,7 @@ import { VaultList } from './vault/vault-list'
 import { VaultDetail } from './vault/vault-detail'
 import { VaultEditor } from './vault/vault-editor'
 import { VaultGenerator } from './vault/vault-generator'
+import { VaultHealth } from './vault/vault-health'
 import { VaultIo } from './vault/vault-io'
 
 export function ScreenVault() {
@@ -121,11 +122,23 @@ export function ScreenVault() {
         <header className="vt-toolbar">
           <div className="vt-toolbar-text">
             <h1 className="vt-h1">
-              {trashMode ? 'Корзина' : view.kind === 'fav' ? 'Избранное' : 'Записи'}
+              {trashMode
+                ? 'Корзина'
+                : view.kind === 'fav'
+                  ? 'Избранное'
+                  : view.kind === 'health'
+                    ? 'Здоровье паролей'
+                    : 'Записи'}
             </h1>
             <p className="vt-sub label-mono">
-              показано <b className="num">{shown.length}</b> из{' '}
-              <b className="num">{pool.length}</b> · шифрование AES-GCM-256
+              {view.kind === 'health' ? (
+                <>аудит считается локально · наружу не уходит ничего</>
+              ) : (
+                <>
+                  показано <b className="num">{shown.length}</b> из{' '}
+                  <b className="num">{pool.length}</b> · шифрование AES-GCM-256
+                </>
+              )}
             </p>
           </div>
           <span className="grow" />
@@ -164,13 +177,22 @@ export function ScreenVault() {
         </header>
 
         <div className="vt-scroll">
-          <VaultList
-            entries={shown}
-            selId={sel}
-            onSelect={setSel}
-            now={now}
-            trashMode={trashMode}
-          />
+          {view.kind === 'health' ? (
+            <VaultHealth
+              onOpen={(id) => {
+                setView({ kind: 'all' })
+                setSel(id)
+              }}
+            />
+          ) : (
+            <VaultList
+              entries={shown}
+              selId={sel}
+              onSelect={setSel}
+              now={now}
+              trashMode={trashMode}
+            />
+          )}
         </div>
       </section>
 

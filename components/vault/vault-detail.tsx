@@ -5,9 +5,18 @@
    Поля с [Показать]/[Копировать], TOTP с отсчётом, история, теги.
    ============================================================ */
 
-import { IconExternal, IconPencil, IconRefresh, IconTrash, iconOf } from '@/components/icons'
+import { useEffect, useRef, useState } from 'react'
+import { IconChevronDown, IconExternal, IconPencil, IconRefresh, IconTrash, iconOf } from '@/components/icons'
 import { useSecrets } from '@/lib/secrets-store'
-import { TYPE_HUE, TYPE_META, domainOf, fmtAgo, isExpired, type SecretRecord } from '@/lib/secrets'
+import {
+  TYPE_HUE,
+  TYPE_META,
+  domainOf,
+  fmtAgo,
+  isExpired,
+  type HistoryEntry,
+  type SecretRecord,
+} from '@/lib/secrets'
 import { SecretValue } from './secret-value'
 import { TotpCell } from './totp-cell'
 
@@ -21,6 +30,8 @@ export function VaultDetail({
   onEdit: () => void
 }) {
   const s = useSecrets()
+  const [histOpen, setHistOpen] = useState(false)
+  useEffect(() => setHistOpen(false), [entry?.id])
 
   if (!entry) {
     return (
@@ -145,6 +156,30 @@ export function VaultDetail({
         </div>
       )}
 
+      {!inTrash && entry.history.length > 0 && (
+        <div className="vt-hist" data-testid="detail-history">
+          <button
+            className={`vt-hist-toggle label-mono${histOpen ? ' open' : ''}`}
+            onClick={() => setHistOpen((o) => !o)}
+            aria-expanded={histOpen}
+            data-testid="detail-history-toggle"
+          >
+            <IconChevronDown />
+            История изменений · <b className="num">{entry.history.length}</b>
+          </button>
+          {histOpen &&
+            entry.history.map((h) => (
+              <HistoryRow
+                key={`${h.at}-${h.fieldId}`}
+                entryId={entry.id}
+                h={h}
+                now={now}
+                canRestore={entry.fields.some((f) => f.id === h.fieldId)}
+              />
+            ))}
+        </div>
+      )}
+
       <footer className="vt-detail-foot">
         {entry.tags.length > 0 && (
           <div className="vt-tags">
@@ -175,5 +210,70 @@ export function VaultDetail({
         </p>
       </footer>
     </aside>
+  )
+}
+
+/** Строка истории: дата, скрытое прежнее значение, показ с автогашением, откат. */
+function HistoryRow({
+  entryId,
+  h,
+  now,
+  canRestore,
+}: {
+  entryId: string
+  h: HistoryEntry
+  now: number
+  canRestore: boolean
+}) {
+  const s = useSecrets()
+  const [shown, setShown] = useState<string | null>(null)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => setShown(null), [s.hideEpoch])
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current)
+    },
+    [],
+  )
+
+  async function toggle() {
+    if (shown !== null) {
+      setShown(null)
+      return
+    }
+    const plain = await s.openCipher(entryId, h.prevCt)
+    if (plain === null) return
+    setShown(plain)
+    const secs = Math.max(1, Math.round(Number(s.settings.revealSeconds) || 8))
+    if (timer.current) clearTimeout(timer.current)
+    timer.current = setTimeout(() => setShown(null), secs * 1000)
+  }
+
+  return (
+    <div className="vt-hist-row" data-testid={`history-row-${h.at}`}>
+      <span className="vt-hist-name label-mono ellipsis">{h.fieldName}</span>
+      <span className="vt-hist-at label-mono">{fmtAgo(h.at, now)}</span>
+      <code className={`vt-hist-val mono ellipsis${shown !== null ? ' open' : ''}`}>
+        {shown ?? '••••••••'}
+      </code>
+      <button
+        className="btn btn-ghost btn-sm"
+        onClick={toggle}
+        title={shown !== null ? 'Скрыть' : 'Показать прежнее значение'}
+        data-testid={`history-reveal-${h.at}`}
+      >
+        {shown !== null ? 'Скрыть' : 'Показать'}
+      </button>
+      {canRestore && (
+        <button
+          className="btn btn-ghost btn-sm vt-hist-restore"
+          onClick={() => s.restoreHistory(entryId, h.at, h.fieldId)}
+          title="Вернуть это значение полю (текущее уйдёт в историю)"
+          data-testid={`history-restore-${h.at}`}
+        >
+          Вернуть
+        </button>
+      )}
+    </div>
   )
 }

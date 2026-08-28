@@ -5,7 +5,7 @@
    ============================================================ */
 
 import { useEffect, useRef, useState } from 'react'
-import { IconCheck, IconPlus, IconSearch, IconTrash } from '@/components/icons'
+import { IconCheck, IconPlus, IconSearch, IconShield, IconTrash } from '@/components/icons'
 import { iconOf } from '@/components/icons'
 import { useSecrets } from '@/lib/secrets-store'
 import { TYPE_META, TYPE_ORDER, type SecretRecord, type SecretType } from '@/lib/secrets'
@@ -13,6 +13,7 @@ import { TYPE_META, TYPE_ORDER, type SecretRecord, type SecretType } from '@/lib
 export type VaultView =
   | { kind: 'all' }
   | { kind: 'fav' }
+  | { kind: 'health' }
   | { kind: 'trash' }
   | { kind: 'type'; type: SecretType }
   | { kind: 'folder'; id: string }
@@ -95,6 +96,15 @@ export function VaultNav({
         <span className="vt-dot" />
         <span>Все записи</span>
         <b className="nav-count num">{live.length}</b>
+      </button>
+      <button
+        className={`vt-nav-item${isOn({ kind: 'health' }) ? ' active' : ''}`}
+        onClick={() => setView({ kind: 'health' })}
+        title="Аудит слабых, повторных и старых паролей — локально"
+        data-testid="vault-view-health"
+      >
+        <IconShield />
+        <span>Здоровье паролей</span>
       </button>
 
       <div className="vt-nav-head label-mono">Типы</div>

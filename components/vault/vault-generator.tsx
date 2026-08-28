@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { IconCheck, IconClip, IconClose, IconRefresh } from '@/components/icons'
 import { useSecrets } from '@/lib/secrets-store'
+import { generateMnemonic, validateMnemonic, type MnemonicCheck } from '@/lib/bip39'
 import {
   DEFAULT_GEN,
   generateHex,
@@ -18,10 +19,11 @@ import {
   type GenOptions,
 } from '@/lib/secrets-gen'
 
-type Mode = 'password' | 'pin' | 'hex' | 'uuid'
+type Mode = 'password' | 'seed' | 'pin' | 'hex' | 'uuid'
 
 const MODES: { id: Mode; label: string }[] = [
   { id: 'password', label: 'Пароль' },
+  { id: 'seed', label: 'Seed BIP39' },
   { id: 'pin', label: 'PIN' },
   { id: 'hex', label: 'Hex-токен' },
   { id: 'uuid', label: 'UUID' },
@@ -48,15 +50,32 @@ export function VaultGenerator({
   const [opt, setOpt] = useState<GenOptions>(DEFAULT_GEN)
   const [value, setValue] = useState('')
   const [copied, setCopied] = useState(false)
+  const [seedLen, setSeedLen] = useState<12 | 24>(12)
+  const [check, setCheck] = useState('')
+  const [checkRes, setCheckRes] = useState<MnemonicCheck | null>(null)
 
   const roll = useCallback(() => {
     if (mode === 'pin') setValue(generatePin(6))
     else if (mode === 'hex') setValue(generateHex(24))
     else if (mode === 'uuid') setValue(generateUuid())
+    else if (mode === 'seed') void generateMnemonic(seedLen).then((ws) => setValue(ws.join(' ')))
     else setValue(generatePassword(opt))
-  }, [mode, opt])
+  }, [mode, opt, seedLen])
 
   useEffect(roll, [roll])
+
+  /* Живая проверка контрольной суммы вставленной фразы. */
+  useEffect(() => {
+    if (mode !== 'seed' || !check.trim()) {
+      setCheckRes(null)
+      return
+    }
+    let alive = true
+    void validateMnemonic(check).then((r) => alive && setCheckRes(r))
+    return () => {
+      alive = false
+    }
+  }, [check, mode])
 
   const st = scorePassword(value)
 
@@ -92,38 +111,112 @@ export function VaultGenerator({
           ))}
         </div>
 
-        <div className="vt-gen-out">
-          <code className="vt-gen-value mono" data-testid="generator-value">
-            {value}
-          </code>
-          <button className="vt-icon-btn" onClick={roll} title="Ещё раз" data-testid="generator-roll">
-            <IconRefresh />
-          </button>
-          <button
-            className={`vt-icon-btn${copied ? ' ok' : ''}`}
-            title="Скопировать"
-            data-testid="generator-copy"
-            onClick={async () => {
-              await s.copySecret(value, 'password', 'Сгенерированное значение')
-              setCopied(true)
-              setTimeout(() => setCopied(false), 1400)
-            }}
-          >
-            {copied ? <IconCheck /> : <IconClip />}
-          </button>
-        </div>
+        {mode === 'seed' ? (
+          <>
+            <div className="vt-seed-head">
+              <div className="vt-seg vt-seg-mini" role="tablist" aria-label="Длина фразы">
+                {([12, 24] as const).map((n) => (
+                  <button
+                    key={n}
+                    role="tab"
+                    aria-selected={seedLen === n}
+                    className={`vt-seg-btn${seedLen === n ? ' on' : ''}`}
+                    onClick={() => setSeedLen(n)}
+                    data-testid={`seed-len-${n}`}
+                  >
+                    {n === 12 ? '12 слов' : '24 слова'}
+                  </button>
+                ))}
+              </div>
+              <span className="grow" />
+              <button className="vt-icon-btn" onClick={roll} title="Ещё раз" data-testid="generator-roll">
+                <IconRefresh />
+              </button>
+              <button
+                className={`vt-icon-btn${copied ? ' ok' : ''}`}
+                title="Скопировать фразу"
+                data-testid="generator-copy"
+                onClick={async () => {
+                  await s.copySecret(value, 'password', 'Seed-фраза BIP39')
+                  setCopied(true)
+                  setTimeout(() => setCopied(false), 1400)
+                }}
+              >
+                {copied ? <IconCheck /> : <IconClip />}
+              </button>
+            </div>
+            <ol className="vt-seed-grid" data-testid="seed-words">
+              {value.split(' ').map((w, i) => (
+                <li key={`${i}-${w}`}>
+                  <b className="num">{i + 1}</b>
+                  <span className="mono">{w}</span>
+                </li>
+              ))}
+            </ol>
+            <p className="vt-note">
+              BIP39 · {seedLen === 12 ? '128' : '256'} бит энтропии + контрольная сумма SHA-256.
+              Словарь встроен, генерация полностью офлайн.
+            </p>
+            <label className="vt-field">
+              <span className="label-mono">Проверка фразы · вставьте 12–24 слова</span>
+              <textarea
+                className="input mono"
+                rows={2}
+                value={check}
+                onChange={(e) => setCheck(e.target.value)}
+                placeholder="abandon ability able …"
+                autoComplete="off"
+                spellCheck={false}
+                data-testid="seed-check-input"
+              />
+            </label>
+            {checkRes && (
+              <p
+                className={checkRes.ok ? 'vt-seed-ok' : 'vt-error'}
+                role="status"
+                data-testid="seed-check-result"
+              >
+                {checkRes.ok ? '✓ ' : '✗ '}
+                {checkRes.msg}
+              </p>
+            )}
+          </>
+        ) : (
+          <>
+            <div className="vt-gen-out">
+              <code className="vt-gen-value mono" data-testid="generator-value">
+                {value}
+              </code>
+              <button className="vt-icon-btn" onClick={roll} title="Ещё раз" data-testid="generator-roll">
+                <IconRefresh />
+              </button>
+              <button
+                className={`vt-icon-btn${copied ? ' ok' : ''}`}
+                title="Скопировать"
+                data-testid="generator-copy"
+                onClick={async () => {
+                  await s.copySecret(value, 'password', 'Сгенерированное значение')
+                  setCopied(true)
+                  setTimeout(() => setCopied(false), 1400)
+                }}
+              >
+                {copied ? <IconCheck /> : <IconClip />}
+              </button>
+            </div>
 
-        <div className="vt-strength" data-testid="generator-strength">
-          <span className="vt-strength-bar" aria-hidden="true">
-            {[0, 1, 2, 3, 4].map((i) => (
-              <i key={i} className={i <= st.score ? `on s${st.score}` : ''} />
-            ))}
-          </span>
-          <span className="vt-strength-text">
-            {st.label} · <b className="num">{st.bits}</b> бит
-          </span>
-          {st.hints.length > 0 && <span className="vt-strength-hint">{st.hints.join(' · ')}</span>}
-        </div>
+            <div className="vt-strength" data-testid="generator-strength">
+              <span className="vt-strength-bar" aria-hidden="true">
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <i key={i} className={i <= st.score ? `on s${st.score}` : ''} />
+                ))}
+              </span>
+              <span className="vt-strength-text">
+                {st.label} · <b className="num">{st.bits}</b> бит
+              </span>
+              {st.hints.length > 0 && <span className="vt-strength-hint">{st.hints.join(' · ')}</span>}
+            </div>
+          </>
+        )}
 
         {mode === 'password' ? (
           <div className="vt-gen-panel">
@@ -163,7 +256,7 @@ export function VaultGenerator({
               })}
             </div>
           </div>
-        ) : (
+        ) : mode === 'seed' ? null : (
           <p className="vt-note">
             {mode === 'pin'
               ? 'PIN · 6 случайных цифр без смещения по модулю.'
