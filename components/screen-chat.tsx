@@ -4,9 +4,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   IconChat,
   IconChevronDown,
+  IconChipAi,
   IconClose,
   IconExternal,
-  IconLock,
   IconPlus,
   IconSearch,
   IconShield,
@@ -18,12 +18,16 @@ import { MessageAi, type LiveState } from './chat/message-ai'
 import { MessageUser } from './chat/message-user'
 import { SessionRail } from './chat/session-rail'
 import { SourceDesk } from './chat/source-desk'
-import type { AiMsg, ChatMsg, Session, TraceStage, UserMsg } from './chat/types'
+import { AiHub } from './chat/ai-hub'
+import type { AiMsg, ChatMsg, Session, UserMsg } from './chat/types'
 import { usePersistedState } from '@/hooks/use-persisted-state'
-import { useFakeStream } from '@/hooks/use-fake-stream'
+import { useAiChat, type ExecResult, type TurnBody } from '@/hooks/use-ai-chat'
 import { useVault } from '@/lib/vault-store'
+import { useSecrets } from '@/lib/secrets-store'
 import { useRedacted } from '@/lib/redact-context'
-import { CHAT_SUGGESTIONS, answerFor, buildStages, isBroad, seedSession } from '@/lib/chat-data'
+import { aiApi } from '@/lib/ai-client'
+import { fileMeta, fileTags } from '@/lib/data'
+import { CHAT_SUGGESTIONS } from '@/lib/chat-data'
 
 const hhmm = () =>
   new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
@@ -32,41 +36,56 @@ let seq = 0
 const uid = (p: string) => `${p}-${Date.now().toString(36)}-${seq++}`
 
 /**
- * Экран разговора с сейфом. Главная мысль: каждое утверждение модели можно
- * проверить, не покидая переписку, — сноска, засечка на хребте и стол
- * источника справа образуют одну цепочку.
- *
- * История разговоров, черновики и позиции прокрутки лежат в едином сейфе:
- * рельс диалогов, счётчик в навигации и поиск по истории видят одни и те же
- * записи, а сноска на источник ведёт в библиотеку или на карту через ту же
- * навигацию, что и остальные экраны.
+ * Экран разговора с сейфом. Модель настоящая — Claude Opus 5 через шлюз
+ * Emergent, скиллы выполняются на устройстве: поиск по файлам и запись в
+ * секретницу не покидают браузер, наружу уходит только сам разговор и
+ * метаданные файлов. Сессии зеркалятся файлами в ai/sessions репозитория.
  */
 export function ScreenChat() {
   const v = useVault()
+  const secrets = useSecrets()
   const { redactIds } = useRedacted()
   const sessions = v.sessions
   const [railOpen, setRailOpen] = usePersistedState('wf.chat.rail', true)
-  const [answerCursor, setAnswerCursor] = useState(0)
   const [streamFor, setStreamFor] = useState<string | null>(null)
-  const [liveStages, setLiveStages] = useState<TraceStage[]>([])
-  const [liveLockedSrcs, setLiveLockedSrcs] = useState(0)
   const [picked, setPicked] = useState<{ msgId: string; n: number } | null>(null)
   const [atBottom, setAtBottom] = useState(true)
   const [fresh, setFresh] = useState(false)
   const [say, setSay] = useState('')
   const [finding, setFinding] = useState(false)
   const [needle, setNeedle] = useState('')
+  const [hubOpen, setHubOpen] = useState(false)
 
   const scroller = useRef<HTMLDivElement>(null)
   const findRef = useRef<HTMLInputElement>(null)
   const restored = useRef<string | null>(null)
+  const synced = useRef(false)
 
-  /** Первый запуск: демо-разговор ложится в рельс как сохранённая сессия. */
+  /** Разовая синхронизация: сессии из файлов ai/sessions подтягиваются в рельс. */
   useEffect(() => {
-    if (!v.hydrated || v.sessions.length > 0 || v.stats.files === 0) return
-    const seed = seedSession(Date.now(), v.stats.files)
-    v.addSession(seed)
-    v.setActiveSession(seed.id)
+    if (!v.hydrated || synced.current) return
+    synced.current = true
+    void (async () => {
+      try {
+        const metas = await aiApi.sessions()
+        const known = new Set(v.sessions.map((s) => s.id))
+        for (const m of metas) {
+          if (known.has(m.id)) continue
+          const full = await aiApi.session(m.id).catch(() => null)
+          if (full && Array.isArray(full.msgs) && full.msgs.length) {
+            v.addSession({
+              id: full.id,
+              title: full.title,
+              createdAt: full.createdAt,
+              pinned: full.pinned ?? [],
+              msgs: full.msgs,
+            })
+          }
+        }
+      } catch {
+        /* сервер недоступен — работаем с локальной копией */
+      }
+    })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [v.hydrated])
 
@@ -77,65 +96,192 @@ export function ScreenChat() {
 
   const patch = v.patchSession
 
-  /* ---------- поток генерации ---------- */
+  /* ---------- скиллы: выполнение на устройстве ---------- */
 
-  const stream = useFakeStream(({ answer, text, stopped, ms, stages }) => {
-    const sid = streamFor
-    setStreamFor(null)
-    if (!sid) return
-    const msg: AiMsg = {
-      id: uid('a'),
-      role: 'ai',
-      time: hhmm(),
-      text,
-      sources: stopped ? [] : answer.sources,
-      scanned: answer.scanned,
-      picked: answer.picked,
-      grounded: stopped ? true : answer.grounded,
-      stopped,
-      ms,
-      stages,
-    }
-    patch(sid, (s) => ({ ...s, msgs: [...s.msgs, msg] }))
-    setSay(stopped ? 'Ответ остановлен.' : `Ответ готов, источников: ${msg.sources.length}.`)
-  })
+  const exec = useCallback(
+    async (name: string, args: Record<string, unknown>): Promise<ExecResult> => {
+      if (name === 'find_file') {
+        const q = String(args.query ?? '')
+        const toks = q
+          .toLowerCase()
+          .split(/[^\p{L}\p{N}]+/u)
+          .filter((w) => w.length > 1)
+        const scored = v.views
+          .map((f) => {
+            const hay = `${f.name} ${f.cat} ${fileTags(f).join(' ')}`.toLowerCase()
+            let score = 0
+            for (const t of toks) if (hay.includes(t)) score += 1
+            return { f, score }
+          })
+          .filter((x) => x.score > 0)
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 8)
+        const max = scored[0]?.score || 1
+        return {
+          ok: true,
+          summary: scored.length ? `найдено файлов: ${scored.length}` : 'совпадений в сейфе нет',
+          files: scored.map(({ f, score }) => ({
+            id: f.id,
+            name: f.name,
+            weight: Math.round(55 + 45 * (score / max)),
+          })),
+          content: JSON.stringify({
+            found: scored.map(({ f }) => ({
+              id: f.id,
+              name: f.name,
+              category: f.cat,
+              tags: fileTags(f),
+              info: fileMeta(f),
+            })),
+          }),
+        }
+      }
 
-  /**
-   * Запуск ответа. Модель считает по тому же сейфу, что показывают остальные
-   * экраны: сколько файлов просканировано и на что можно ссылаться —
-   * это живое состояние, а не заготовленное число.
-   */
-  const run = useCallback(
-    (sessionId: string, query: string) => {
-      const answer = answerFor(query, answerCursor, {
-        scanned: v.stats.files,
-        has: (fileId) => Boolean(v.fileById(fileId)),
-      })
-      if (!isBroad(query)) setAnswerCursor((c) => c + 1)
-      const stages = buildStages(answer.scanned, answer.picked, answer.sources.length)
-      /* п.10.3: цитат из-под ключа модели не видно — вместо них в трассировке
-         красакт-строки, и сам факт остаётся в ленте сейфа. */
-      const lockedCount = answer.sources.filter((s) => redactIds.has(s.fileId)).length
-      setLiveLockedSrcs(lockedCount)
-      if (lockedCount > 0) {
+      if (name === 'save_password') {
+        const title = String(args.title ?? 'Без названия').slice(0, 60)
+        if (secrets.needsLock) {
+          return {
+            ok: false,
+            summary: 'мастер-ключ не настроен',
+            content: JSON.stringify({
+              ok: false,
+              error: 'Мастер-ключ не настроен: пусть пользователь включит замок в настройках безопасности.',
+            }),
+          }
+        }
+        const fields = [
+          { name: 'Сайт', kind: 'url' as const, value: String(args.url ?? ''), secret: false },
+          { name: 'Логин', kind: 'text' as const, value: String(args.login ?? ''), secret: false },
+          { name: 'Пароль', kind: 'password' as const, value: String(args.password ?? ''), secret: true },
+          { name: 'Заметки', kind: 'multiline' as const, value: String(args.notes ?? ''), secret: false },
+        ].filter((f) => f.value)
+        const problem = await secrets.createEntry('login', title, fields, { tags: ['ИИ'] })
+        if (problem) {
+          return {
+            ok: false,
+            summary: problem,
+            content: JSON.stringify({ ok: false, error: `${problem}. Пусть пользователь откроет сейф и повторит.` }),
+          }
+        }
         v.notify({
-          kind: 'info',
+          kind: 'ok',
           cat: 'privacy',
           icon: 'lockRound',
-          title: 'ИИ не имеет доступа к объектам под файловым ключом',
-          body:
-            lockedCount === 1
-              ? 'Один источник скрыт красактом: цитата не читается, пока файл не открыт ключом.'
-              : `${lockedCount} источников скрыты красактом: цитаты не читаются, пока файлы не открыты ключом.`,
+          title: 'ИИ сохранил пароль в сейф',
+          body: `Запись «${title}» создана скиллом save_password с вашего разрешения.`,
         })
+        return {
+          ok: true,
+          summary: `запись «${title}» зашифрована и сохранена`,
+          content: JSON.stringify({ ok: true, title, note: 'Пароль сохранён. Не показывай его в ответе.' }),
+        }
       }
-      setStreamFor(sessionId)
-      setLiveStages(stages)
-      setSay('Модель читает архив.')
-      stream.start(answer, stages)
+
+      if (name === 'notion_pull') {
+        const r = (await aiApi
+          .mcpAction('notion', { action: 'pull', query: String(args.query ?? '') })
+          .catch(() => null)) as { ok?: boolean; doc?: { title?: string }; error?: string } | null
+        if (!r) {
+          return {
+            ok: false,
+            summary: 'MCP не ответил',
+            content: JSON.stringify({ ok: false, error: 'MCP-сервер не ответил.' }),
+          }
+        }
+        if (!r.ok) {
+          return { ok: false, summary: String(r.error ?? 'ошибка MCP'), content: JSON.stringify(r) }
+        }
+        return {
+          ok: true,
+          summary: `получен макет «${r.doc?.title ?? ''}» · скелет MCP`,
+          content: JSON.stringify(r),
+        }
+      }
+
+      return {
+        ok: false,
+        summary: 'неизвестный скилл',
+        content: JSON.stringify({ ok: false, error: `Скилл ${name} не реализован на устройстве.` }),
+      }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- v.notify стабилен, как остальные действия store
-    [answerCursor, stream, v, redactIds],
+    [v, secrets],
+  )
+
+  const ai = useAiChat(exec)
+
+  /* ---------- запуск хода ---------- */
+
+  const buildCtx = useCallback(
+    (pinned: string[]): TurnBody['ctx'] => ({
+      files: v.views.map((f) => ({ id: f.id, name: f.name, cat: f.cat, tags: fileTags(f) })),
+      pinned: pinned.map((id) => v.viewById(id)?.name ?? id),
+      lock: secrets.needsLock ? 'не настроен' : 'настроен (содержимое секретов ИИ недоступно)',
+      scanned: v.stats.files,
+    }),
+    [v, secrets.needsLock],
+  )
+
+  const run = useCallback(
+    (
+      sessionId: string,
+      opts: { text?: string; title?: string; dropUsers?: number; regenerate?: boolean },
+    ) => {
+      setStreamFor(sessionId)
+      setSay('Модель думает.')
+      const pinned = sessions.find((s) => s.id === sessionId)?.pinned ?? []
+      ai.start({ sessionId, ...opts, ctx: buildCtx(pinned) }, (r) => {
+        setStreamFor(null)
+        const sources = r.stopped
+          ? []
+          : r.found.map((f, i) => {
+              const view = v.viewById(f.id)
+              return {
+                n: i + 1,
+                fileId: f.id,
+                locator: view?.cat,
+                quote: view ? fileMeta(view) : f.name,
+                weight: f.weight,
+              }
+            })
+        const msg: AiMsg = {
+          id: uid('a'),
+          role: 'ai',
+          time: hhmm(),
+          text:
+            r.text ||
+            (r.error
+              ? 'Не удалось получить ответ модели.'
+              : r.stopped
+                ? ''
+                : 'Модель вернула пустой ответ.'),
+          sources,
+          scanned: v.stats.files,
+          picked: sources.length,
+          grounded: !(r.findRan && sources.length === 0),
+          stopped: r.stopped || undefined,
+          error: r.error,
+          ms: r.ms,
+          stages: r.stages,
+          tools: r.tools.length ? r.tools : undefined,
+        }
+        let snap: Session | null = null
+        patch(sessionId, (s) => {
+          snap = { ...s, msgs: [...s.msgs, msg] }
+          return snap
+        })
+        const done = snap as Session | null
+        if (done) {
+          void aiApi.patchSession(done.id, {
+            title: done.title,
+            msgs: done.msgs,
+            pinned: done.pinned,
+            createdAt: done.createdAt,
+          })
+        }
+        setSay(r.error ? 'Сбой запроса к модели.' : r.stopped ? 'Ответ остановлен.' : 'Ответ готов.')
+      })
+    },
+    [ai, buildCtx, patch, sessions, v],
   )
 
   const send = useCallback(
@@ -151,7 +297,7 @@ export function ScreenChat() {
         }
         v.addSession(s)
         v.setActiveSession(s.id)
-        run(s.id, text)
+        run(s.id, { text, title: s.title })
         return
       }
       patch(active.id, (s) => ({
@@ -159,7 +305,7 @@ export function ScreenChat() {
         title: s.msgs.length === 0 ? text.slice(0, 42) : s.title,
         msgs: [...s.msgs, msg],
       }))
-      run(active.id, text)
+      run(active.id, { text, title: active.msgs.length === 0 ? text.slice(0, 42) : active.title })
     },
     [active, patch, run, v],
   )
@@ -167,45 +313,45 @@ export function ScreenChat() {
   /** Переспросить: ответ заменяется новым, вопрос остаётся на месте. */
   const regenerate = useCallback(
     (msgId: string) => {
-      if (!active || stream.active) return
+      if (!active || ai.active) return
       const i = active.msgs.findIndex((m) => m.id === msgId)
       if (i < 0) return
-      const before = active.msgs.slice(0, i)
-      const query = [...before].reverse().find((m) => m.role === 'user')?.text ?? ''
       patch(active.id, (s) => ({ ...s, msgs: s.msgs.slice(0, i) }))
       setPicked(null)
-      run(active.id, query)
+      run(active.id, { regenerate: true })
     },
-    [active, patch, run, stream.active],
+    [active, ai.active, patch, run],
   )
 
-  /** Правка запроса: добавляем ветку и пересчитываем всё после неё. */
+  /** Правка запроса: ветка сохраняется, история модели откатывается к этому месту. */
   const editUser = useCallback(
     (msgId: string, text: string) => {
-      if (!active || stream.active) return
+      if (!active || ai.active) return
+      const i = active.msgs.findIndex((m) => m.id === msgId)
+      if (i < 0) return
+      const dropUsers = active.msgs.slice(i).filter((m) => m.role === 'user').length
       patch(active.id, (s) => {
-        const i = s.msgs.findIndex((m) => m.id === msgId)
-        if (i < 0) return s
-        const prev = s.msgs[i] as UserMsg
+        const j = s.msgs.findIndex((m) => m.id === msgId)
+        if (j < 0) return s
+        const prev = s.msgs[j] as UserMsg
         const variants = prev.variants?.length ? [...prev.variants] : [prev.text]
         const next: UserMsg = { ...prev, text, variants: [...variants, text] }
-        return { ...s, msgs: [...s.msgs.slice(0, i), next] }
+        return { ...s, msgs: [...s.msgs.slice(0, j), next] }
       })
       setPicked(null)
-      run(active.id, text)
+      run(active.id, { text, dropUsers })
     },
-    [active, patch, run, stream.active],
+    [active, ai.active, patch, run],
   )
 
   const togglePin = useCallback(
     (fileId: string) => {
       if (!active) return
-      patch(active.id, (s) => ({
-        ...s,
-        pinned: s.pinned.includes(fileId)
-          ? s.pinned.filter((p) => p !== fileId)
-          : [...s.pinned, fileId],
-      }))
+      const next = active.pinned.includes(fileId)
+        ? active.pinned.filter((p) => p !== fileId)
+        : [...active.pinned, fileId]
+      patch(active.id, (s) => ({ ...s, pinned: next }))
+      void aiApi.patchSession(active.id, { pinned: next, createdAt: active.createdAt })
     },
     [active, patch],
   )
@@ -221,11 +367,23 @@ export function ScreenChat() {
     v.addSession(s)
     v.setActiveSession(s.id)
     setPicked(null)
+    void aiApi.createSession(s.id, s.title)
   }, [v])
 
   const renameSession = useCallback(
-    (id: string, title: string) => patch(id, (s) => ({ ...s, title })),
+    (id: string, title: string) => {
+      patch(id, (s) => ({ ...s, title }))
+      void aiApi.patchSession(id, { title })
+    },
     [patch],
+  )
+
+  const deleteSession = useCallback(
+    (id: string) => {
+      v.removeSession(id)
+      void aiApi.deleteSession(id)
+    },
+    [v],
   )
 
   /** Экспорт переписки в Markdown: файл уходит на диск, а не в сеть. */
@@ -236,12 +394,14 @@ export function ScreenChat() {
       if (m.role === 'user') lines.push(`**Вопрос (${m.time}):** ${m.text}`, '')
       else {
         lines.push(`**Ответ (${m.time}):** ${m.text}`, '')
+        for (const t of m.tools ?? []) {
+          lines.push(`> скилл ${t.label}: ${t.summary ?? t.status}`)
+        }
         for (const s of m.sources) {
           const name = v.fileById(s.fileId)?.name ?? s.fileId
-          /* п.10.3: экспорт не должен выносить содержимое файла под ключом. */
           lines.push(
             redactIds.has(s.fileId)
-              ? `> [${s.n}] ${name} — источник под ключом, цитата скрыта`
+              ? `> [${s.n}] ${name} — источник под ключом, детали скрыты`
               : `> [${s.n}] ${name} — ${s.locator ?? ''}: ${s.quote}`,
           )
         }
@@ -276,7 +436,7 @@ export function ScreenChat() {
     if (atBottom) el.scrollTop = el.scrollHeight
     else setFresh(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active?.msgs.length, stream.text, stream.stagesShown])
+  }, [active?.msgs.length, ai.text, ai.stages.length, ai.tools.length])
 
   /** Возврат на экран или к другому разговору не теряет позицию чтения. */
   useEffect(() => {
@@ -299,11 +459,7 @@ export function ScreenChat() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active?.id])
 
-  /**
-   * Ctrl/Cmd+F — поиск внутри разговора. Ctrl+K остаётся за палитрой сейфа,
-   * поэтому две похожие вещи больше не спорят за одно сочет��ние. Если в шапке
-   * уже набран запрос, он подставляется в поле поиска по переписке.
-   */
+  /** Ctrl/Cmd+F — поиск внутри разговора; Ctrl+K остаётся за палитрой сейфа. */
   const openFind = useCallback(() => {
     setFinding(true)
     setNeedle((cur) => cur || v.query.trim())
@@ -338,28 +494,25 @@ export function ScreenChat() {
     [picked, msgs],
   )
 
-  const live: LiveState | null = stream.active
-    ? {
-        text: stream.text,
-        stages: liveStages,
-        shown: stream.stagesShown,
-        tracing: stream.phase === 'trace',
-        lockedSources: liveLockedSrcs,
-      }
+  const streaming = ai.active && streamFor !== null && active?.id === streamFor
+
+  const live: LiveState | null = streaming
+    ? { text: ai.text, stages: ai.stages, shown: ai.stages.length, tracing: !ai.text }
     : null
 
-  const liveMsg: AiMsg | null = live
+  const liveMsg: AiMsg | null = streaming
     ? {
         id: 'live',
         role: 'ai',
         time: hhmm(),
-        text: stream.text,
+        text: ai.text,
         sources: [],
         scanned: v.stats.files,
         picked: 0,
         grounded: true,
         ms: 0,
         stages: [],
+        tools: ai.tools.length ? ai.tools : undefined,
       }
     : null
 
@@ -380,6 +533,8 @@ export function ScreenChat() {
     [active, v],
   )
 
+  const openFile = useCallback((fileId: string) => v.openFile(fileId), [v])
+
   return (
     <div className={`chat${railOpen ? ' has-rail' : ''}${deskMsg ? ' has-desk' : ''}`}>
       {railOpen ? (
@@ -393,7 +548,7 @@ export function ScreenChat() {
               setPicked(null)
             }}
             onNew={newSession}
-            onDelete={v.removeSession}
+            onDelete={deleteSession}
             onRename={renameSession}
             onCollapse={() => setRailOpen(false)}
           />
@@ -418,25 +573,31 @@ export function ScreenChat() {
           <div className="chat-titles">
             <h1 className="chat-title ellipsis">{active?.title ?? 'Новый диалог'}</h1>
             <p className="chat-sub mono">
-              {v.stats.model} · контекст: {v.stats.files} файлов
-              {active?.pinned.length ? ` · закреплено ${active.pinned.length}` : ''} · индекс{' '}
-              {v.stats.indexedAgo}
+              Claude Opus 5 · контекст: {v.stats.files} файлов
+              {active?.pinned.length ? ` · закреплено ${active.pinned.length}` : ''} · скиллы и MCP —
+              в AI-центре
             </p>
           </div>
           <span className="grow" />
           {fill >= 80 ? <span className="badge badge-warn chat-fill">контекст {fill}%</span> : null}
           <button
             type="button"
-            className={`badge chat-offline ${v.stats.offline ? 'badge-ok' : 'badge-warn'}`}
-            onClick={() => v.openSetting('engine')}
-            title="Открыть настройки движка"
+            className="badge badge-warn chat-offline"
+            onClick={() => setHubOpen(true)}
+            title="Разговор идёт через облако Emergent — файлы остаются на устройстве"
+            data-testid="chat-cloud-badge"
           >
-            {v.stats.offline ? (
-              <IconLock aria-hidden="true" />
-            ) : (
-              <IconShield aria-hidden="true" />
-            )}
-            {v.stats.offline ? 'офлайн' : 'есть исходящие'}
+            <IconShield aria-hidden="true" />
+            облако · Opus 5
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => setHubOpen(true)}
+            data-testid="ai-hub-open"
+          >
+            <IconChipAi aria-hidden="true" />
+            AI-центр
           </button>
           <button
             type="button"
@@ -507,7 +668,7 @@ export function ScreenChat() {
             if (bottom) setFresh(false)
           }}
         >
-          <div className="chat-thread" aria-busy={stream.active}>
+          <div className="chat-thread" aria-busy={streaming}>
             {msgs.length === 0 && !live ? (
               <div className="chat-empty">
                 <span className="chat-empty-mark" aria-hidden="true">
@@ -515,8 +676,8 @@ export function ScreenChat() {
                 </span>
                 <h2 className="chat-empty-title">Спросите свой архив</h2>
                 <p className="chat-empty-note">
-                  Поиск идёт по смыслу, а не по названию файла. Каждый ответ приходит со ссылкой на
-                  страницу источника — ответ без источника помечается отдельно.
+                  Отвечает Claude Opus 5 со скиллами: находит файлы в сейфе, сохраняет пароли в
+                  секретницу (с вашего разрешения) и вытягивает документы из Notion через MCP.
                 </p>
                 <ul className="chat-sugs">
                   {CHAT_SUGGESTIONS.map((s) => (
@@ -528,8 +689,7 @@ export function ScreenChat() {
                   ))}
                 </ul>
                 <p className="chat-empty-stat mono">
-                  {v.stats.files} файлов проиндексировано · последнее обновление{' '}
-                  {v.stats.indexedAgo}
+                  {v.stats.files} файлов проиндексировано · скиллы и MCP настраиваются в AI-центре
                 </p>
               </div>
             ) : null}
@@ -551,6 +711,7 @@ export function ScreenChat() {
                   onSource={(msgId, n) => setPicked({ msgId, n })}
                   onRegenerate={regenerate}
                   onPinSource={togglePin}
+                  onOpenFile={openFile}
                 />
               ),
             )}
@@ -560,7 +721,15 @@ export function ScreenChat() {
             ) : null}
 
             {liveMsg && live ? (
-              <MessageAi msg={liveMsg} live={live} activeSource={null} onSource={() => {}} />
+              <MessageAi
+                msg={liveMsg}
+                live={live}
+                activeSource={null}
+                onSource={() => {}}
+                onAllow={ai.allow}
+                onDeny={ai.deny}
+                onOpenFile={openFile}
+              />
             ) : null}
           </div>
 
@@ -574,8 +743,8 @@ export function ScreenChat() {
 
         <Composer
           onSend={send}
-          onStop={stream.stop}
-          busy={stream.active}
+          onStop={ai.stop}
+          busy={ai.active}
           pinned={active?.pinned ?? []}
           onTogglePin={togglePin}
           lastQuery={lastQuery}
@@ -596,6 +765,8 @@ export function ScreenChat() {
           pinned={active?.pinned ?? []}
         />
       ) : null}
+
+      {hubOpen ? <AiHub onClose={() => setHubOpen(false)} /> : null}
 
       {/* Вежливая область: скринридер узнаёт итог, а не каждый выданный токен. */}
       <p className="sr-only" role="status" aria-live="polite">

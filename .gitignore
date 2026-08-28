@@ -35,3 +35,10 @@ pnpm-debug.log*
 
 # Nested build-artifacts checkout (not part of the project)
 secrets-vault-plan/work-pc/
+.env
+.env.*
+*.env
+credentials.json
+*.pem
+*.key
+.credentials

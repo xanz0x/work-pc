@@ -160,6 +160,7 @@ export function Composer({
         <textarea
           ref={area}
           className="dock-input"
+          data-testid="chat-input"
           rows={1}
           value={value}
           maxLength={MAX}
@@ -192,6 +193,7 @@ export function Composer({
           <button
             type="button"
             className="btn btn-primary btn-sm dock-send"
+            data-testid="chat-send-btn"
             onClick={send}
             disabled={!value.trim()}
           >
@@ -223,7 +225,7 @@ export function Composer({
         ) : null}
         <span className="dock-stat">
           <IconLock aria-hidden="true" />
-          {vault.stats.model} · {vault.stats.offline ? 'офлайн' : 'есть исходящие'}
+          Claude Opus 5 · облако Emergent
         </span>
         {value.length > MAX - 120 ? (
           <span className="dock-stat mono">

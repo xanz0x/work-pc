@@ -1,0 +1,14 @@
+{
+  "id": "notion",
+  "name": "Notion",
+  "transport": "http",
+  "host": "192.168.1.10",
+  "port": 443,
+  "token": "",
+  "enabled": true,
+  "tools": [
+    "pull_document",
+    "search_pages"
+  ],
+  "note": "Скелет MCP-сервера: до реального токена ответы имитируются."
+}

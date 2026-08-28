@@ -20,6 +20,17 @@ export type ChatSource = {
 /** Стадия поиска: показывается до текста, потом сворачивается в сводку. */
 export type TraceStage = { label: string; ms: number }
 
+/** Запуск скилла внутри ответа: статус, аргументы, итог одним взглядом. */
+export type ToolRun = {
+  id: string
+  name: string
+  label: string
+  args: Record<string, unknown>
+  status: 'run' | 'wait' | 'ok' | 'err' | 'deny'
+  summary?: string
+  files?: { id: string; name: string }[]
+}
+
 export type UserMsg = {
   id: string
   role: 'user'
@@ -44,6 +55,10 @@ export type AiMsg = {
   grounded: boolean
   /** Ответ прерван пользователем. */
   stopped?: boolean
+  /** Текст сбоя (модель недоступна, поток оборвался). */
+  error?: string
+  /** Скиллы, выполненные в этом ответе. */
+  tools?: ToolRun[]
   stages: TraceStage[]
 }
 

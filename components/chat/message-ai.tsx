@@ -5,42 +5,73 @@ import { IconNode, IconRefresh, IconCheck, IconClip, IconTarget } from '../icons
 import { useVault } from '@/lib/vault-store'
 import { useRedacted } from '@/lib/redact-context'
 import { RetrievalTrace, TraceSummary } from './retrieval-trace'
+import { ToolCards } from './tool-card'
 import type { AiMsg, ChatSource, TraceStage } from './types'
 
-/** Разбирает [1] в тексте на кликабельные сноски. */
+/** Инлайновая разметка строки: сноски [1], **выделение**, `код`. */
+function renderInline(
+  line: string,
+  keyBase: string,
+  onPick: (n: number) => void,
+  onHover: (n: number | null) => void,
+  active: number | null,
+): ReactNode[] {
+  const out: ReactNode[] = []
+  const re = /\[(\d+)\]|\*\*([^*]+?)\*\*|`([^`]+?)`/g
+  let last = 0
+  let m: RegExpExecArray | null
+  let key = 0
+  while ((m = re.exec(line))) {
+    if (m.index > last) out.push(line.slice(last, m.index))
+    if (m[1]) {
+      const n = Number(m[1])
+      out.push(
+        <button
+          key={`${keyBase}-fn-${key++}`}
+          type="button"
+          className={`fn${active === n ? ' is-active' : ''}`}
+          onClick={() => onPick(n)}
+          onMouseEnter={() => onHover(n)}
+          onMouseLeave={() => onHover(null)}
+          onFocus={() => onHover(n)}
+          onBlur={() => onHover(null)}
+          aria-label={`Источник ${n}`}
+        >
+          {n}
+        </button>,
+      )
+    } else if (m[2] !== undefined) {
+      out.push(<strong key={`${keyBase}-b-${key++}`}>{m[2]}</strong>)
+    } else if (m[3] !== undefined) {
+      out.push(
+        <code key={`${keyBase}-c-${key++}`} className="m-code">
+          {m[3]}
+        </code>,
+      )
+    }
+    last = m.index + m[0].length
+  }
+  if (last < line.length) out.push(line.slice(last))
+  return out
+}
+
+/** Лёгкая разметка ответа: строки, списки через дефис, сноски, выделение. */
 function withFootnotes(
   text: string,
   onPick: (n: number) => void,
   onHover: (n: number | null) => void,
   active: number | null,
 ): ReactNode[] {
-  const out: ReactNode[] = []
-  const re = /\[(\d+)\]/g
-  let last = 0
-  let m: RegExpExecArray | null
-  let key = 0
-  while ((m = re.exec(text))) {
-    if (m.index > last) out.push(text.slice(last, m.index))
-    const n = Number(m[1])
-    out.push(
-      <button
-        key={`fn-${key++}`}
-        type="button"
-        className={`fn${active === n ? ' is-active' : ''}`}
-        onClick={() => onPick(n)}
-        onMouseEnter={() => onHover(n)}
-        onMouseLeave={() => onHover(null)}
-        onFocus={() => onHover(n)}
-        onBlur={() => onHover(null)}
-        aria-label={`Источник ${n}`}
-      >
-        {n}
-      </button>,
+  return text.split('\n').map((ln, i) => {
+    const bullet = /^\s*[-•*]\s+/.test(ln)
+    const clean = bullet ? ln.replace(/^\s*[-•*]\s+/, '') : ln
+    return (
+      /* eslint-disable-next-line react/no-array-index-key -- строки статичны в рамках текста */
+      <span key={`ln-${i}`} className={`m-line${bullet ? ' is-li' : ''}${clean.trim() ? '' : ' is-gap'}`}>
+        {renderInline(clean, `ln-${i}`, onPick, onHover, active)}
+      </span>
     )
-    last = m.index + m[0].length
-  }
-  if (last < text.length) out.push(text.slice(last))
-  return out
+  })
 }
 
 export type LiveState = {
@@ -67,6 +98,9 @@ export function MessageAi({
   onSource,
   onRegenerate,
   onPinSource,
+  onAllow,
+  onDeny,
+  onOpenFile,
 }: {
   msg: AiMsg
   live?: LiveState
@@ -74,6 +108,9 @@ export function MessageAi({
   onSource: (msgId: string, n: number) => void
   onRegenerate?: (msgId: string) => void
   onPinSource?: (fileId: string) => void
+  onAllow?: () => void
+  onDeny?: () => void
+  onOpenFile?: (fileId: string) => void
 }) {
   const { viewById } = useVault()
   const { redactIds } = useRedacted()
@@ -156,6 +193,9 @@ export function MessageAi({
         </div>
 
         <div className="m-ai-col">
+          {msg.tools?.length ? (
+            <ToolCards tools={msg.tools} onAllow={onAllow} onDeny={onDeny} onOpenFile={onOpenFile} />
+          ) : null}
           {text ? (
             <p className={`m-ai-text${clamp ? ' is-clamped' : ''}`}>
               {body}
@@ -176,6 +216,12 @@ export function MessageAi({
 
           {msg.stopped ? (
             <p className="m-note is-stop">Ответ остановлен вами — показано то, что успело прийти.</p>
+          ) : null}
+
+          {msg.error && !streaming ? (
+            <p className="m-note is-stop" data-testid="ai-error-note">
+              Сбой запроса к модели: {msg.error}
+            </p>
           ) : null}
 
           {!msg.grounded && !streaming ? (
