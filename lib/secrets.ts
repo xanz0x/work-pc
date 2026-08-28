@@ -138,7 +138,7 @@ export const TYPE_META: Record<
   },
   card: {
     label: 'Карта',
-    icon: 'sheetSmall',
+    icon: 'card',
     note: 'Номер, срок, CVV, PIN',
     fields: [
       { name: 'Держатель', kind: 'text' },
@@ -162,7 +162,7 @@ export const TYPE_META: Record<
   },
   ssh: {
     label: 'SSH',
-    icon: 'node',
+    icon: 'terminal',
     note: 'Хост, пользователь, приватный ключ',
     fields: [
       { name: 'Хост', kind: 'text' },
@@ -175,7 +175,7 @@ export const TYPE_META: Record<
   },
   seed: {
     label: 'Seed-фраза',
-    icon: 'memory',
+    icon: 'seed',
     note: 'Сеть, адрес, seed, passphrase',
     fields: [
       { name: 'Сеть', kind: 'text' },
@@ -187,7 +187,7 @@ export const TYPE_META: Record<
   },
   wifi: {
     label: 'Wi-Fi',
-    icon: 'database',
+    icon: 'wifi',
     note: 'SSID, пароль, тип защиты',
     fields: [
       { name: 'SSID', kind: 'text' },
@@ -230,7 +230,7 @@ export const TYPE_META: Record<
   },
   'passkey-meta': {
     label: 'Passkey (метаданные)',
-    icon: 'lockRound',
+    icon: 'fingerprint',
     note: 'Только метаданные: приватный материал остаётся в браузере',
     fields: [
       { name: 'Сайт', kind: 'url' },
@@ -261,6 +261,35 @@ export const TYPE_ORDER: SecretType[] = [
   'passkey-meta',
   'custom',
 ]
+
+/** Стабильный тон иконки типа: запись без favicon узнаваема по цвету. */
+export const TYPE_HUE: Record<SecretType, number> = {
+  login: 152,
+  api: 205,
+  seed: 42,
+  card: 262,
+  ssh: 95,
+  note: 25,
+  recovery: 0,
+  wifi: 190,
+  license: 58,
+  identity: 300,
+  'passkey-meta': 170,
+  custom: 330,
+}
+
+/** ДД.ММ.ГГГГ → timestamp полуночи локального времени; иначе null. */
+export function parseRuDate(s: string): number | null {
+  const m = s.trim().match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/)
+  if (!m) return null
+  const d = Number(m[1])
+  const mo = Number(m[2])
+  const y = Number(m[3])
+  const dt = new Date(y, mo - 1, d)
+  return dt.getFullYear() === y && dt.getMonth() === mo - 1 && dt.getDate() === d
+    ? dt.getTime()
+    : null
+}
 
 let seq = 0
 export const sid = (p: string) => `${p}-${Date.now().toString(36)}-${(seq++).toString(36)}`

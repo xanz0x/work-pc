@@ -9586,3 +9586,455 @@ h1 {
   width: 14px;
   height: 14px;
 }
+
+
+/* ============================================================
+   ===== VAULT v1.1 · ДИЗАЙН-ПРАВКИ ===========================
+   1. Кластеры — выпадашка у «Библиотеки». 2. Удаление папок.
+   3–4. Генератор и редактор: явные вкл/выкл, компактность.
+   5. Иконки типов записей. Законы «Графит» соблюдены.
+   ============================================================ */
+
+/* --- Библиотека: выпадающий список кластеров в сайдбаре --- */
+.nav-lib-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.nav-lib-row .nav-item {
+  flex: 1;
+  min-width: 0;
+}
+.nav-lib-chev {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 30px;
+  flex: none;
+  border: 0;
+  border-radius: var(--r);
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  transition-property: background-color, color;
+  transition-duration: 120ms;
+}
+.nav-lib-chev svg {
+  width: 12px;
+  height: 12px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 160ms var(--ease-quart);
+}
+.nav-lib-chev:hover {
+  background: var(--raise-1);
+  color: var(--text);
+}
+.nav-lib-chev:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 2px;
+}
+.nav-lib-chev.open svg {
+  transform: rotate(180deg);
+}
+.app.nav-collapsed .nav-lib-chev {
+  display: none;
+}
+
+/* --- Папки сейфа: удаление по ховеру, подтверждение вторым кликом --- */
+.vt-folder-row {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.vt-folder-row .vt-nav-item {
+  flex: 1;
+  min-width: 0;
+}
+.vt-folder-del {
+  opacity: 0;
+  transition-property: opacity, color, border-color;
+  transition-duration: 120ms;
+}
+.vt-folder-row:hover .vt-folder-del,
+.vt-folder-del:focus-visible,
+.vt-folder-del.ask {
+  opacity: 1;
+}
+.vt-folder-del:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+.vt-folder-del.ask {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: var(--panel-2);
+}
+
+/* --- Чипы-тумблеры: включённое состояние видно сразу --- */
+button.chip {
+  cursor: pointer;
+  transition-property: border-color, color, background-color;
+  transition-duration: 130ms;
+}
+button.chip:hover {
+  color: var(--text);
+  background: var(--raise-1);
+}
+.chip.on {
+  border-color: var(--accent-line);
+  color: var(--accent);
+  background: var(--panel-2);
+}
+
+/* --- Генератор: компактная панель параметров --- */
+.vt-gen {
+  max-width: 480px;
+}
+.vt-gen-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--panel);
+}
+.vt-len {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.vt-len input[type='range'] {
+  flex: 1;
+  accent-color: var(--accent);
+}
+.vt-len-num {
+  min-width: 26px;
+  text-align: right;
+  color: var(--accent);
+  font-size: 13px;
+}
+.vt-opts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.vt-opt {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--bg-input);
+  color: var(--text-3);
+  text-align: left;
+  cursor: pointer;
+  transition-property: border-color, color, background-color;
+  transition-duration: 130ms;
+}
+.vt-opt:hover {
+  border-color: var(--border-2);
+  color: var(--text-2);
+}
+.vt-opt.on {
+  border-color: var(--accent-line);
+  color: var(--text);
+  background: var(--panel-2);
+}
+.vt-opt-box {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  flex: none;
+  border: 1px solid var(--border-2);
+  border-radius: 3px;
+  background: transparent;
+  color: transparent;
+  transition-property: background-color, border-color, color;
+  transition-duration: 130ms;
+}
+.vt-opt-box svg {
+  width: 10px;
+  height: 10px;
+  stroke-width: 2.4;
+}
+.vt-opt.on .vt-opt-box {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #06130c;
+}
+.vt-opt-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.vt-opt-text b {
+  font-size: 12px;
+  font-weight: 500;
+}
+.vt-opt-text em {
+  font-style: normal;
+  font-size: 10px;
+  color: var(--text-3);
+}
+.vt-opt.on .vt-opt-text em {
+  color: var(--text-2);
+}
+
+/* --- Редактор записи: компактная сетка, явные состояния --- */
+.vt-editor {
+  max-width: 680px;
+}
+.vt-ed-type {
+  color: var(--text-3);
+  flex: none;
+}
+.vt-type-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+}
+.vt-type {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--bg-input);
+  color: var(--text-3);
+  font-size: 11.5px;
+  text-align: left;
+  cursor: pointer;
+  transition-property: border-color, color, background-color;
+  transition-duration: 130ms;
+}
+.vt-type svg {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  opacity: 0.85;
+}
+.vt-type span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vt-type:hover {
+  color: var(--text-2);
+  border-color: var(--border-2);
+}
+.vt-type.on {
+  border-color: var(--accent-line);
+  color: var(--accent);
+  background: var(--panel-2);
+}
+.vt-ed-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.vt-ed-title-row .input {
+  flex: 1;
+  min-width: 0;
+}
+.vt-ed-ico {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--bg-2);
+  color: var(--text-2);
+}
+.vt-ed-ico svg {
+  width: 15px;
+  height: 15px;
+}
+.vt-fav {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: transparent;
+  color: var(--text-3);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition-property: color, border-color, background-color;
+  transition-duration: 130ms;
+}
+.vt-fav:hover {
+  color: var(--text);
+  border-color: var(--border-2);
+}
+.vt-fav.on {
+  color: var(--accent);
+  border-color: var(--accent-line);
+  background: var(--panel-2);
+}
+.vt-ed-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.vt-ed-fields-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 2px;
+  color: var(--text-3);
+}
+.vt-ed-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-3);
+}
+.vt-ed-legend svg {
+  width: 10px;
+  height: 10px;
+}
+.vt-fe {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-left-width: 2px;
+  border-radius: var(--r);
+  background: var(--panel);
+  transition-property: border-color;
+  transition-duration: 130ms;
+}
+.vt-fe.is-ct {
+  border-left-color: var(--accent-line);
+}
+.vt-fe .input {
+  height: 30px;
+  font-size: 12.5px;
+}
+.vt-fe textarea.input {
+  height: auto;
+  padding-top: 6px;
+}
+.vt-fe-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.vt-fe-name {
+  flex: 1 1 140px;
+  min-width: 90px;
+}
+.vt-fe-kind {
+  flex: 0 0 132px;
+}
+.vt-fe-value {
+  width: 100%;
+}
+.vt-ct {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 9px;
+  flex: none;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: transparent;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition-property: color, border-color, background-color;
+  transition-duration: 130ms;
+}
+.vt-ct svg {
+  width: 11px;
+  height: 11px;
+}
+.vt-ct:hover {
+  color: var(--text-2);
+  border-color: var(--border-2);
+}
+.vt-ct.on {
+  color: var(--accent);
+  border-color: var(--accent-line);
+  background: var(--panel-2);
+}
+.vt-bad {
+  color: var(--danger);
+}
+.vt-input-bad {
+  border-color: var(--danger);
+}
+
+/* Нативные select в редакторе — под «Графит», без системной стрелки. */
+.vt-editor select.input {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23848f88' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 12px 12px;
+  padding-right: 26px;
+  cursor: pointer;
+}
+
+/* --- Иконки типов в списке и детали --- */
+.vt-card-icon svg {
+  width: 15px;
+  height: 15px;
+}
+.vt-detail-ico {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--bg-2);
+}
+.vt-detail-ico svg {
+  width: 16px;
+  height: 16px;
+}
+.vt-detail-ico img {
+  border-radius: 2px;
+}
+
+/* --- адаптив правок --- */
+@media (max-width: 900px) {
+  .vt-type-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 640px) {
+  .vt-opts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .vt-type-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-lib-chev svg {
+    transition-duration: 0ms;
+  }
+}

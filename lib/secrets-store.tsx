@@ -140,7 +140,7 @@ export function useSecrets(): SecretsCtx {
 
 async function writeClipboard(text: string): Promise<boolean> {
   try {
-    if (navigator.clipboard?.writeText) {
+    if (document.hasFocus() && navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(text)
       return true
     }
@@ -149,7 +149,8 @@ async function writeClipboard(text: string): Promise<boolean> {
   }
   try {
     const ta = document.createElement('textarea')
-    ta.value = text
+    /* Пустую строку execCommand не копирует: «очистка» кладёт одиночный пробел. */
+    ta.value = text === '' ? ' ' : text
     ta.setAttribute('readonly', '')
     ta.style.position = 'fixed'
     ta.style.top = '-1000px'
@@ -167,9 +168,20 @@ export function SecretsProvider({ children }: { children: ReactNode }) {
   const v = useVault()
   const [box, setBox] = usePersistedState<SecretsFile>(SECRETS_KEY, EMPTY_SECRETS)
   const [folders, setFolders] = usePersistedState<SecretFolder[]>(SECRETS_FOLDERS_KEY, [])
-  const [settings, setSettingsRaw] = usePersistedState<SecretsSettings>(
+  const [settingsRaw, setSettingsRaw] = usePersistedState<SecretsSettings>(
     SECRETS_SETTINGS_KEY,
     DEFAULT_SECRETS_SETTINGS,
+  )
+  /* Сохранённые настройки дополняются дефолтами: снимок старого формата без
+     какого-то ключа не должен превращать таймеры в NaN (баг «не гаснет»). */
+  const settings = useMemo<SecretsSettings>(
+    () => ({
+      ...DEFAULT_SECRETS_SETTINGS,
+      ...settingsRaw,
+      clipboard: { ...DEFAULT_SECRETS_SETTINGS.clipboard, ...(settingsRaw?.clipboard ?? {}) },
+      excludeFromAi: true,
+    }),
+    [settingsRaw],
   )
   const [backupRecs, setBackupRecs] = usePersistedState<BackupRec[]>(SECRETS_BACKUPS_KEY, [])
 
@@ -224,7 +236,9 @@ export function SecretsProvider({ children }: { children: ReactNode }) {
     setHideEpoch((n) => n + 1)
     if (clipTimer.current) clearTimeout(clipTimer.current)
     setClip(null)
-    void writeClipboard('')
+    void writeClipboard('').then((cleared) => {
+      pendingClear.current = !cleared
+    })
   }, [v.lockEpoch])
 
   /* Индекс для глобального поиска: только title/type/tags — содержимое не отдаём. */
@@ -520,10 +534,25 @@ export function SecretsProvider({ children }: { children: ReactNode }) {
 
   /* ---------- буфер обмена с автоочисткой ---------- */
 
+  /* Очистка требует фокуса документа. Если пользователь ушёл вставлять пароль
+     в другое окно, очистка откладывается и выполняется при возврате фокуса. */
+  const pendingClear = useRef(false)
+
+  useEffect(() => {
+    const onFocus = () => {
+      if (!pendingClear.current) return
+      pendingClear.current = false
+      void writeClipboard('')
+    }
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [])
+
   const clearClipboard = useCallback(async () => {
     if (clipTimer.current) clearTimeout(clipTimer.current)
     clipTimer.current = null
-    await writeClipboard('')
+    const ok = await writeClipboard('')
+    pendingClear.current = !ok
     setClip(null)
   }, [])
 
@@ -534,6 +563,7 @@ export function SecretsProvider({ children }: { children: ReactNode }) {
         v.flash('Браузер не дал доступ к буферу обмена.')
         return
       }
+      pendingClear.current = false
       const sec = settings.clipboard[target] ?? 10
       if (clipTimer.current) clearTimeout(clipTimer.current)
       if (sec <= 0) {
@@ -542,7 +572,9 @@ export function SecretsProvider({ children }: { children: ReactNode }) {
       }
       setClip({ label, until: Date.now() + sec * 1000, target })
       clipTimer.current = setTimeout(() => {
-        void writeClipboard('')
+        void writeClipboard('').then((cleared) => {
+          pendingClear.current = !cleared
+        })
         setClip(null)
       }, sec * 1000)
     },

@@ -9,12 +9,11 @@ import { useEffect } from 'react'
 import { iconOf } from '@/components/icons'
 import { useSecrets } from '@/lib/secrets-store'
 import {
+  TYPE_HUE,
   TYPE_META,
   domainOf,
   fmtAgo,
   isExpired,
-  monogram,
-  monogramHue,
   type SecretRecord,
 } from '@/lib/secrets'
 
@@ -70,17 +69,16 @@ export function VaultList({
             onClick={() => onSelect(e.id)}
             data-testid={`vault-card-${e.id}`}
           >
-            <span className="vt-card-icon" aria-hidden="true">
+            <span
+              className="vt-card-icon"
+              aria-hidden="true"
+              style={{ color: `hsl(${TYPE_HUE[e.type]} 32% 70%)` }}
+            >
               {e.icon?.b64 ? (
                 /* eslint-disable-next-line @next/next/no-img-element */
                 <img src={e.icon.b64} alt="" width={18} height={18} />
               ) : (
-                <i
-                  className="vt-mono"
-                  style={{ color: `hsl(${monogramHue(e.id)} 30% 72%)` }}
-                >
-                  {monogram(e.title)}
-                </i>
+                <Icon />
               )}
             </span>
             <span className="vt-card-text">

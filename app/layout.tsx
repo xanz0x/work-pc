@@ -65,7 +65,8 @@ export default function RootLayout({
             <SecretsProvider>{children}</SecretsProvider>
           </VaultProvider>
         </RedactedProvider>
-        {process.env.NODE_ENV === 'production' && <Analytics />}
+        {/* Скрипт аналитики существует только на хостинге Vercel — вне его даёт 404. */}
+        {process.env.VERCEL === '1' && <Analytics />}
       </body>
     </html>
   )

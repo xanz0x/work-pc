@@ -485,6 +485,62 @@ export function IconKey(p: P) {
   )
 }
 
+/* ---------- Типы записей сейфа секретов ---------- */
+
+export function IconCard(p: P) {
+  return (
+    <svg {...base} {...p}>
+      <rect x="3" y="5.5" width="18" height="13" rx="2" />
+      <path d="M3 10h18" />
+      <path d="M6.5 14.5h4" />
+    </svg>
+  )
+}
+
+export function IconWifi(p: P) {
+  return (
+    <svg {...base} {...p}>
+      <path d="M2.5 9.6a14.2 14.2 0 0 1 19 0" />
+      <path d="M5.6 12.9a9.4 9.4 0 0 1 12.8 0" />
+      <path d="M8.7 16.1a4.9 4.9 0 0 1 6.6 0" />
+      <circle cx="12" cy="19" r="1" />
+    </svg>
+  )
+}
+
+export function IconSeed(p: P) {
+  return (
+    <svg {...base} {...p}>
+      <path d="M12 21v-8.5" />
+      <path d="M12 12.5c0-3.6 2.7-6 6.6-6 0 3.9-2.7 6-6.6 6z" />
+      <path d="M12 10.2C12 7.2 9.7 4.8 5.4 4.8c0 4 2.5 6.4 6.6 6.4" />
+    </svg>
+  )
+}
+
+export function IconTerminal(p: P) {
+  return (
+    <svg {...base} {...p}>
+      <rect x="3" y="4.5" width="18" height="15" rx="2" />
+      <path d="m7 9.5 3 3-3 3" />
+      <path d="M12.5 15.5H17" />
+    </svg>
+  )
+}
+
+export function IconFingerprint(p: P) {
+  return (
+    <svg {...base} {...p}>
+      <path d="M12 11.2a3.3 3.3 0 0 0-3.3 3.3c0 1.9.35 3.5.95 4.9" />
+      <path d="M15.3 14.5c0 2.5-.3 4.4-.8 5.7" />
+      <path d="M12 7.7a6.8 6.8 0 0 1 6.8 6.8c0 1.6-.1 3-.4 4.3" />
+      <path d="M5.2 14.5a6.8 6.8 0 0 1 2.9-5.6" />
+      <path d="M12 4.2a10.2 10.2 0 0 1 8.8 5" />
+      <path d="M3.2 9.2A10.2 10.2 0 0 1 7.6 5.2" />
+    </svg>
+  )
+}
+
 /* ---------- Доска библиотеки ---------- */
 
 /** Ручка переноса: шесть точек захвата. */
@@ -591,6 +647,11 @@ export type IconId =
   | 'node'
   | 'database'
   | 'user'
+  | 'card'
+  | 'wifi'
+  | 'seed'
+  | 'terminal'
+  | 'fingerprint'
 
 export const ICONS: Record<IconId, ComponentType<P>> = {
   doc: IconDoc,
@@ -621,6 +682,11 @@ export const ICONS: Record<IconId, ComponentType<P>> = {
   node: IconNode,
   database: IconDatabase,
   user: IconUser,
+  card: IconCard,
+  wifi: IconWifi,
+  seed: IconSeed,
+  terminal: IconTerminal,
+  fingerprint: IconFingerprint,
 }
 
 /** Иконка по id с безопасным запасным вариантом. */

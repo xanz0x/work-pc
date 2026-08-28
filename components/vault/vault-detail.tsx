@@ -5,9 +5,9 @@
    Поля с [Показать]/[Копировать], TOTP с отсчётом, история, теги.
    ============================================================ */
 
-import { IconExternal, IconPencil, IconRefresh, IconTrash } from '@/components/icons'
+import { IconExternal, IconPencil, IconRefresh, IconTrash, iconOf } from '@/components/icons'
 import { useSecrets } from '@/lib/secrets-store'
-import { TYPE_META, domainOf, fmtAgo, isExpired, type SecretRecord } from '@/lib/secrets'
+import { TYPE_HUE, TYPE_META, domainOf, fmtAgo, isExpired, type SecretRecord } from '@/lib/secrets'
 import { SecretValue } from './secret-value'
 import { TotpCell } from './totp-cell'
 
@@ -36,10 +36,23 @@ export function VaultDetail({
   const expired = isExpired(entry, now)
   const folder = s.folders.find((f) => f.id === entry.folderId)
   const inTrash = entry.deletedAt !== null
+  const TypeIcon = iconOf(TYPE_META[entry.type].icon)
 
   return (
     <aside className="vt-detail panel" aria-label="Деталь записи" data-testid="vault-detail">
       <header className="vt-detail-head">
+        <span
+          className="vt-detail-ico"
+          aria-hidden="true"
+          style={{ color: `hsl(${TYPE_HUE[entry.type]} 32% 70%)` }}
+        >
+          {entry.icon?.b64 ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img src={entry.icon.b64} alt="" width={20} height={20} />
+          ) : (
+            <TypeIcon />
+          )}
+        </span>
         <div className="vt-detail-titles">
           <h2 className="vt-detail-title ellipsis" data-testid="detail-title">
             {entry.title}

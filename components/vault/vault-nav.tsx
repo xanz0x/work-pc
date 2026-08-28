@@ -4,8 +4,8 @@
    ЛЕВАЯ КОЛОНКА · поиск, избранное, типы записей, папки, корзина
    ============================================================ */
 
-import { useState } from 'react'
-import { IconPlus, IconSearch, IconTrash } from '@/components/icons'
+import { useEffect, useRef, useState } from 'react'
+import { IconCheck, IconPlus, IconSearch, IconTrash } from '@/components/icons'
 import { iconOf } from '@/components/icons'
 import { useSecrets } from '@/lib/secrets-store'
 import { TYPE_META, TYPE_ORDER, type SecretRecord, type SecretType } from '@/lib/secrets'
@@ -35,6 +35,26 @@ export function VaultNav({
   const s = useSecrets()
   const [adding, setAdding] = useState(false)
   const [name, setName] = useState('')
+  /* Удаление папки — в два клика: корзина → галочка-подтверждение (2.5 с). */
+  const [delAsk, setDelAsk] = useState<string | null>(null)
+  const askTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(
+    () => () => {
+      if (askTimer.current) clearTimeout(askTimer.current)
+    },
+    [],
+  )
+  function askDelete(id: string) {
+    if (delAsk === id) {
+      s.removeFolder(id)
+      setDelAsk(null)
+      if (view.kind === 'folder' && view.id === id) setView({ kind: 'all' })
+      return
+    }
+    setDelAsk(id)
+    if (askTimer.current) clearTimeout(askTimer.current)
+    askTimer.current = setTimeout(() => setDelAsk(null), 2500)
+  }
 
   const countType = (t: SecretType) => live.filter((e) => e.type === t).length
   const favCount = live.filter((e) => e.favorite).length
@@ -130,16 +150,30 @@ export function VaultNav({
         </form>
       )}
       {s.folders.map((f) => (
-        <button
-          key={f.id}
-          className={`vt-nav-item${isOn({ kind: 'folder', id: f.id }) ? ' active' : ''}`}
-          onClick={() => setView({ kind: 'folder', id: f.id })}
-          data-testid={`vault-view-folder-${f.id}`}
-        >
-          <i className="cluster-dot" style={{ background: `rgba(${f.rgb},.9)` }} />
-          <span>{f.name}</span>
-          <b className="nav-count num">{live.filter((e) => e.folderId === f.id).length}</b>
-        </button>
+        <div className="vt-folder-row" key={f.id}>
+          <button
+            className={`vt-nav-item${isOn({ kind: 'folder', id: f.id }) ? ' active' : ''}`}
+            onClick={() => setView({ kind: 'folder', id: f.id })}
+            data-testid={`vault-view-folder-${f.id}`}
+          >
+            <i className="cluster-dot" style={{ background: `rgba(${f.rgb},.9)` }} />
+            <span>{f.name}</span>
+            <b className="nav-count num">{live.filter((e) => e.folderId === f.id).length}</b>
+          </button>
+          <button
+            className={`vt-icon-btn tiny vt-folder-del${delAsk === f.id ? ' ask' : ''}`}
+            title={
+              delAsk === f.id
+                ? 'Подтвердить удаление папки (записи останутся без папки)'
+                : `Удалить папку «${f.name}»`
+            }
+            aria-label={`Удалить папку ${f.name}`}
+            onClick={() => askDelete(f.id)}
+            data-testid={`vault-folder-del-${f.id}`}
+          >
+            {delAsk === f.id ? <IconCheck /> : <IconTrash />}
+          </button>
+        </div>
       ))}
 
       <span className="grow" />

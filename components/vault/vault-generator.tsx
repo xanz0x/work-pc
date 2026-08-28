@@ -2,6 +2,7 @@
 
 /* ============================================================
    ГЕНЕРАТОР · CSPRNG, локальная оценка силы, ноль сети
+   v1.1: параметры — явные тумблеры с чекбоксом (вкл/выкл видно сразу)
    ============================================================ */
 
 import { useCallback, useEffect, useState } from 'react'
@@ -24,6 +25,15 @@ const MODES: { id: Mode; label: string }[] = [
   { id: 'pin', label: 'PIN' },
   { id: 'hex', label: 'Hex-токен' },
   { id: 'uuid', label: 'UUID' },
+]
+
+const OPTS: { key: keyof GenOptions; label: string; hint: string }[] = [
+  { key: 'upper', label: 'Прописные', hint: 'A–Z' },
+  { key: 'lower', label: 'Строчные', hint: 'a–z' },
+  { key: 'digits', label: 'Цифры', hint: '0–9' },
+  { key: 'symbols', label: 'Символы', hint: '!#$%&*' },
+  { key: 'noAmbiguous', label: 'Без похожих', hint: '0/O · 1/l · 5/S' },
+  { key: 'memorable', label: 'Произносимый', hint: 'kuva-tery-9' },
 ]
 
 export function VaultGenerator({
@@ -53,7 +63,7 @@ export function VaultGenerator({
   return (
     <div className="vt-modal-back" role="presentation" onPointerDown={onClose}>
       <div
-        className="vt-modal panel"
+        className="vt-modal panel vt-gen"
         role="dialog"
         aria-modal="true"
         aria-label="Генератор"
@@ -115,9 +125,9 @@ export function VaultGenerator({
           {st.hints.length > 0 && <span className="vt-strength-hint">{st.hints.join(' · ')}</span>}
         </div>
 
-        {mode === 'password' && (
-          <div className="vt-gen-opts">
-            <label className="vt-range">
+        {mode === 'password' ? (
+          <div className="vt-gen-panel">
+            <label className="vt-len">
               <span className="label-mono">Длина</span>
               <input
                 type="range"
@@ -127,29 +137,40 @@ export function VaultGenerator({
                 onChange={(e) => setOpt({ ...opt, length: Number(e.target.value) })}
                 data-testid="gen-length"
               />
-              <b className="num">{opt.length}</b>
+              <b className="vt-len-num num">{opt.length}</b>
             </label>
-            {(
-              [
-                ['upper', 'A-Z'],
-                ['lower', 'a-z'],
-                ['digits', '0-9'],
-                ['symbols', '!#$%'],
-                ['noAmbiguous', 'без 0/O/1/l'],
-                ['memorable', 'произносимый'],
-              ] as [keyof GenOptions, string][]
-            ).map(([key, label]) => (
-              <button
-                key={String(key)}
-                className={`chip${opt[key] ? ' on' : ''}`}
-                aria-pressed={Boolean(opt[key])}
-                onClick={() => setOpt({ ...opt, [key]: !opt[key] } as GenOptions)}
-                data-testid={`gen-opt-${String(key)}`}
-              >
-                {label}
-              </button>
-            ))}
+            <div className="vt-opts" role="group" aria-label="Параметры пароля">
+              {OPTS.map(({ key, label, hint }) => {
+                const on = Boolean(opt[key])
+                return (
+                  <button
+                    key={String(key)}
+                    className={`vt-opt${on ? ' on' : ''}`}
+                    role="switch"
+                    aria-checked={on}
+                    onClick={() => setOpt({ ...opt, [key]: !on } as GenOptions)}
+                    data-testid={`gen-opt-${String(key)}`}
+                  >
+                    <i className="vt-opt-box" aria-hidden="true">
+                      <IconCheck />
+                    </i>
+                    <span className="vt-opt-text">
+                      <b>{label}</b>
+                      <em className="mono">{hint}</em>
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
           </div>
+        ) : (
+          <p className="vt-note">
+            {mode === 'pin'
+              ? 'PIN · 6 случайных цифр без смещения по модулю.'
+              : mode === 'hex'
+                ? 'Hex-токен · 24 байта энтропии (48 символов).'
+                : 'UUID v4 · 122 бита случайности.'}
+          </p>
         )}
 
         <footer className="vt-modal-foot">

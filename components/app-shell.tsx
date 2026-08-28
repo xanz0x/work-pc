@@ -25,7 +25,6 @@ import {
   IconGear,
   IconGraph,
   IconKey,
-  IconLayers,
   IconLibrary,
   IconLockRound,
   IconLogoMark,
@@ -135,11 +134,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   const liveClusters = clusters.filter((c) => c.count > 0)
-  /* Кластеры свёрнуты по умолчанию — сайдбар дышит, список не простыня.
-     Состояние живёт в сессии (не в localStorage): сайдбар обязан быть
-     предсказуемым при каждом открытии приложения. */
-  const [clustersOpen, setClustersOpen] = useState(false)
-  const clusterFilesCount = liveClusters.reduce((sum, c) => sum + c.count, 0)
+  /* Кластеры — часть Библиотеки: выпадающий список у пункта меню.
+     Свёрнут по умолчанию, состояние живёт в сессии (не в localStorage). */
+  const [libOpen, setLibOpen] = useState(false)
 
   /* --- честная строка статуса --- */
   const statusText =
@@ -231,38 +228,53 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           <nav className="nav" aria-label="Основная навигация">
             <div className="nav-section">Рабочее место</div>
-            {WORKSPACE.map(({ id, label, Icon }) => (
-              <button
-                key={id}
-                className={`nav-item${v.screen === id ? ' active' : ''}`}
-                onClick={() => v.go(id)}
-                aria-current={v.screen === id ? 'page' : undefined}
-                title={label}
-              >
-                <Icon />
-                <span>{label}</span>
-                <b className="nav-count num">{workspaceCount[id]}</b>
-              </button>
-            ))}
-
-            <button
-              className={`nav-section nav-section-btn${clustersOpen ? ' open' : ''}`}
-              onClick={() => setClustersOpen((o) => !o)}
-              aria-expanded={clustersOpen}
-              title={clustersOpen ? 'Свернуть кластеры' : 'Показать кластеры'}
-            >
-              <IconLayers className="ns-icon" />
-              <span>Кластеры</span>
-              <b className="nav-count num">{clusterFilesCount}</b>
-              <IconChevronDown className="ns-chev" />
-            </button>
-            {clustersOpen &&
+            {WORKSPACE.map(({ id, label, Icon }) =>
+              id === 'library' ? (
+                <div className="nav-lib-row" key={id}>
+                  <button
+                    className={`nav-item${v.screen === id ? ' active' : ''}`}
+                    onClick={() => v.go(id)}
+                    aria-current={v.screen === id ? 'page' : undefined}
+                    title={label}
+                    data-testid="nav-library"
+                  >
+                    <Icon />
+                    <span>{label}</span>
+                    <b className="nav-count num">{workspaceCount[id]}</b>
+                  </button>
+                  <button
+                    className={`nav-lib-chev${libOpen ? ' open' : ''}`}
+                    onClick={() => setLibOpen((o) => !o)}
+                    aria-expanded={libOpen}
+                    title={libOpen ? 'Свернуть кластеры' : 'Показать кластеры библиотеки'}
+                    aria-label="Кластеры библиотеки"
+                    data-testid="nav-library-toggle"
+                  >
+                    <IconChevronDown />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  key={id}
+                  className={`nav-item${v.screen === id ? ' active' : ''}`}
+                  onClick={() => v.go(id)}
+                  aria-current={v.screen === id ? 'page' : undefined}
+                  title={label}
+                >
+                  <Icon />
+                  <span>{label}</span>
+                  <b className="nav-count num">{workspaceCount[id]}</b>
+                </button>
+              ),
+            )}
+            {libOpen &&
               liveClusters.map((c) => (
                 <button
                   key={c.id}
                   className="nav-item nav-sub"
                   onClick={() => v.openCluster(c.id)}
                   title={`${c.label} · ${c.count} ${plural(c.count, 'файл', 'файла', 'файлов')}`}
+                  data-testid={`nav-cluster-${c.id}`}
                 >
                   <i className="cluster-dot" style={{ background: `rgba(${c.rgb},.9)` }} />
                   <span>{c.label}</span>

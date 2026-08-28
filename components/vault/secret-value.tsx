@@ -78,10 +78,12 @@ export function SecretValue({
     const plain = await s.openValue(entryId, field.id)
     setBusy(false)
     if (plain === null) return
+    /* Секунды показа защищены от кривого снимка настроек: минимум 1 с. */
+    const secs = Math.max(1, Math.round(Number(s.settings.revealSeconds) || 8))
     setShown(plain)
-    setLeft(s.settings.revealSeconds)
+    setLeft(secs)
     if (timer.current) clearTimeout(timer.current)
-    timer.current = setTimeout(hide, s.settings.revealSeconds * 1000)
+    timer.current = setTimeout(hide, secs * 1000)
   }
 
   async function copy() {

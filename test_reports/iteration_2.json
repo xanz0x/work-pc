@@ -1,0 +1,34 @@
+{
+  "summary": "Frontend-only E2E regression по 6 правкам этой сессии (сайдбар/шеврон Библиотеки, удаление папок 2-кликом, тумблеры генератора, редактор с иконками+датой ДД.ММ.ГГГГ+ct, иконки типов в списке/детали, авто-скрытие reveal и автоочистка буфера). Плюс регрессия Ctrl+Shift+L / Ctrl+K / favicon. Playwright, production-сборка на preview URL, чистый профиль браузера. Все 6 правок и регрессия — ЗЕЛЁНЫЕ.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "TYPE_ORDER не содержит идентификатор 'password' (типы называются 'login','api','seed','card','ssh','note','recovery','wifi','license','identity','passkey-meta','custom'). В описании задачи упомянуто 'editor-type-password' — это опечатка ТЗ, реальный дефолтный тип — 'login' (data-testid=editor-type-login). Стоит уточнить формулировку в документации/скриптах регрессии.",
+    "На каждой загрузке приложения по-прежнему регистрируется 404 в консоли (единственная ошибка). curl /favicon.ico при этом возвращает 200 — вероятно, 404 приходит на другой отсутствующий статический ресурс. Стоит найти этот запрос (DevTools Network) и добавить файл или убрать ссылку."
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "N/A (бэкенда нет)", "frontend": "100% (все 6 правок + регрессия зелёные)" },
+  "test_credentials": "мастер-ключ test-master-1234 (метод «Пароль»)",
+  "seed_data_creation": "Все данные создавались в localStorage чистого профиля Playwright: мастер-ключ test-master-1234, папка TEST_DEL (удалена двойным кликом), запись TEST_github / TEST_pw (тип login, github.com / user / Secret123!, expires 31.12.2026, favorite=on).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Приложение без бэкенда. Данные пропадают между запусками (чистый профиль). Все test-ids подтверждены и работают. Замечания: 1) типы записи имеют id 'login' (по умолчанию), 'api', 'seed', 'card', 'ssh', 'note', 'recovery', 'wifi', 'license', 'identity', 'passkey-meta', 'custom' — 'password' НЕТ; 2) generator-value рендерится как input (input_value); 3) настройка clip-password-<n> влияет ТОЛЬКО на очистку буфера при копировании паролей — при копировании логина используется свой сегмент; 4) поле expires — теперь текстовый input с автоточками (data-testid=editor-expires), невалидная дата даёт editor-error при сохранении.",
+  "rca_of_the_issue": "n/a — regression pass",
+  "features_tested": {
+    "sidebar_no_clusters_section_and_toggle": "PASS — nav-library-toggle раскрывает 6 кластеров (nav-cluster-*), клик по кластеру открывает библиотеку, повторный клик сворачивает; отдельной секции 'Кластеры' в сайдбаре нет.",
+    "folder_2click_delete": "PASS — создали TEST_DEL через vault-folder-add+Enter, кнопка vault-folder-del-<id> удалила папку двойным кликом.",
+    "generator_toggles_with_checkboxes": "PASS — все 6 gen-opt-* (upper/lower/digits/symbols/noAmbiguous/memorable) есть с классом 'vt-opt on/off'. Выключив upper/digits/symbols/memorable/noAmbiguous и оставив только lower, сгенерирован пароль 'fhuigqenzhdttphbnopb' — только строчные буквы.",
+    "editor_types_grid_favorite_expires_ct": "PASS — все 12 editor-type-* есть, aria-checked=true на выбранном; editor-favorite переключает aria-pressed false↔true; editor-expires автоматически ставит точки при вводе 31122026 → '31.12.2026'; невалидная дата 99992026 при сохранении даёт editor-error; тумблер editor-field-secret-0 переключает класс 'vt-ct' ↔ 'vt-ct on'; запись TEST_github сохранена и появилась в vault-list; при её открытии значения расшифровываются.",
+    "type_icons_in_list_and_detail": "PASS — vault-card содержит 2 SVG (иконка типа + звезда/статус), vault-detail — 7 SVG (иконка типа в шапке + иконки действий/полей). Монограммы-буквы не используются.",
+    "auto_hide_reveal_5s": "PASS — reveal-secs-5 в настройках, reveal-<fieldId> показал 'Secret123!' в детали, через ~6.5с значение снова замаскировано (••••).",
+    "auto_clear_clipboard_5s": "PASS — clip-password-5 в настройках, copy-<fieldId> для пароля скопировал 'Secret123!' в navigator.clipboard, показал clip-toast с обратным отсчётом 'очистится через 5 с', через ~6.5с clipboard пуст и тост исчез.",
+    "regression_ctrl_shift_l_and_ctrl_k": "PASS — Ctrl+Shift+L блокирует сейф (.lock-input появляется), ввод test-master-1234 + .lock-submit разблокирует; Ctrl+K открывает палитру, поиск 'TEST_github' находит запись (2 hits).",
+    "favicon": "PASS (curl 200) — но в консоли всё ещё одна 404-ошибка на каждой загрузке (не /favicon.ico). Стоит выяснить, какой именно ресурс."
+  }
+}
