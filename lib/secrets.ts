@@ -354,6 +354,27 @@ export function isExpired(e: SecretRecord, now: number): boolean {
   return e.expiredAfter !== null && e.expiredAfter < now
 }
 
+/** Стадия срока записи для вида «Истекающие» и бейджей. */
+export type ExpiryStage = 'expired' | 'd1' | 'd7' | 'd30' | 'later'
+
+export function expiryStage(e: SecretRecord, now: number): ExpiryStage | null {
+  if (e.expiredAfter === null) return null
+  const days = Math.ceil((e.expiredAfter - now) / 86_400_000)
+  if (days <= 0) return 'expired'
+  if (days <= 1) return 'd1'
+  if (days <= 7) return 'd7'
+  if (days <= 30) return 'd30'
+  return 'later'
+}
+
+/** Сколько записей просрочено или истекает в ближайшие 30 дней. */
+export function expiringCount(entries: SecretRecord[], now: number): number {
+  return entries.filter((e) => {
+    const st = expiryStage(e, now)
+    return st !== null && st !== 'later'
+  }).length
+}
+
 export function typeCounts(entries: SecretRecord[]): Record<SecretType, number> {
   const out = {} as Record<SecretType, number>
   for (const t of TYPE_ORDER) out[t] = 0

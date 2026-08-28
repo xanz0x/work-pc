@@ -10426,3 +10426,162 @@ button.chip:hover {
   .vt-fe-top { flex-wrap: wrap; }
   .vt-fe-value { flex: 1 1 100%; }
 }
+
+/* ============================================================
+   VAULT v1.5 · Wi-Fi QR, Generator Hub, вид «Истекающие», вложения
+   Слой только дописывает: ничего выше не переопределяется силой.
+   ============================================================ */
+
+/* ---------- бейдж счётчика с предупреждением ---------- */
+.nav-count.vt-count-warn {
+  color: rgba(226, 184, 120, 0.95);
+  border-color: rgba(226, 184, 120, 0.32);
+}
+
+/* ---------- вид «Истекающие» ---------- */
+.vt-exp {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 2px 2px 18px;
+}
+.vt-exp-summary {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 16px 18px;
+}
+.vt-exp-score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 104px;
+  padding-right: 20px;
+  border-right: 1px solid var(--line);
+}
+.vt-exp-score b {
+  font-size: 30px;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+.vt-exp-score.s4 b { color: var(--accent); }
+.vt-exp-score.s2 b { color: rgba(226, 184, 120, 0.95); }
+.vt-exp-score.s0 b { color: rgba(226, 128, 116, 0.95); }
+.vt-exp-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 22px;
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+.vt-exp-stats .bad { color: rgba(226, 128, 116, 0.95); }
+.vt-exp-stats .warn { color: rgba(226, 184, 120, 0.95); }
+
+.vt-exp-badge {
+  flex: none;
+  padding: 2px 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-family: var(--font-mono, ui-monospace), monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: var(--text-2);
+  background: var(--panel-2);
+}
+.vt-exp-badge.b-expired {
+  color: rgba(240, 150, 138, 0.98);
+  border-color: rgba(226, 128, 116, 0.4);
+  background: rgba(226, 128, 116, 0.1);
+}
+.vt-exp-badge.b-d1,
+.vt-exp-badge.b-d7 {
+  color: rgba(232, 194, 132, 0.98);
+  border-color: rgba(226, 184, 120, 0.36);
+  background: rgba(226, 184, 120, 0.08);
+}
+.vt-exp-badge.b-d30 { color: var(--text-2); }
+.vt-health-meta svg { width: 11px; height: 11px; margin-right: 4px; vertical-align: -1px; }
+
+/* ---------- вложения ---------- */
+.vt-att {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.vt-att-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.vt-att-used { color: var(--text-3); }
+.vt-att-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.vt-att-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+  transition: border-color 0.16s ease, background-color 0.16s ease;
+}
+.vt-att-row:hover {
+  border-color: var(--accent-line);
+  background: color-mix(in oklab, var(--panel-2) 84%, var(--accent) 16%);
+}
+.vt-att-ico { display: inline-flex; color: var(--text-3); }
+.vt-att-ico svg { width: 13px; height: 13px; }
+.vt-att-name { flex: 1 1 auto; min-width: 0; font-size: 12.5px; }
+.vt-att-size { flex: none; color: var(--text-3); }
+
+/* ---------- Wi-Fi QR ---------- */
+.vt-qr {
+  width: min(400px, 94vw);
+  gap: 12px;
+  align-items: stretch;
+}
+.vt-qr-head-ico { display: inline-flex; color: var(--accent); }
+.vt-qr-head-ico svg { width: 14px; height: 14px; }
+.vt-qr-frame {
+  display: flex;
+  justify-content: center;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel-2);
+}
+.vt-qr-svg {
+  width: min(256px, 68vw);
+  height: auto;
+  border-radius: 4px;
+  animation: vt-qr-in 0.22s ease both;
+}
+@keyframes vt-qr-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+.vt-qr-ssid {
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+
+/* ---------- генератор: разделитель фразы ---------- */
+.vt-gen-sep {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.vt-gen-sep-select { flex: 0 0 168px; }
+.vt-gen .vt-seg { flex-wrap: wrap; }

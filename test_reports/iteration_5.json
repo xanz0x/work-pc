@@ -1,0 +1,35 @@
+{
+  "summary": "P1 модуля «Менеджер секретов»: полная приёмка 4 фич — Wi-Fi QR (собственный кодер), Generator Hub (Фраза + Имя + прежние 5 режимов), вид «Истекающие», зашифрованные вложения — плюс регрессия health/reveal/copy/soft-delete/trash/folder-add-del. Всё зелёное на production build через preview URL, консоль без ошибок и предупреждений.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "lib/qr.ts — самописный QR (модель 2, GF(256), RS-коды, чередование блоков, штрафы 4 правил, format/version info для v1–v10). Байтовый режим, UTF-8, level M. Отлично покрывает Wi-Fi payload; проверено на латинском (HomeNet+p@ssw0rd!123 → 29 модулей = v3) и кириллическом SSID+пароле (37 модулей = v5).",
+    "components/vault/wifi-qr.tsx — правильный dataflow: пароль расшифровывается через s.openValue(entryId, fieldId), затем передаётся в qrMatrix; в DOM попадают только svg-модули, текстовое значение секрета в разметке отсутствует (проверено: 'p@ssw0rd!123' не найдено в innerHTML модалки). Автозакрытие 45 с, refresh через nonce, hideEpoch слушает panic-lock.",
+    "lib/secrets-store.tsx — addAttachment корректно возвращает строку-ошибку при size > 256 КБ и sum > 1 МБ; вложения хранятся зашифрованно (маркер PLAINTEXT-MARKER-42 отсутствует в localStorage[wf.secrets.v1]). removeAttachment/downloadAttachment работают, скачанный blob получает исходное имя файла.",
+    "components/vault/vault-expiring.tsx — три группы (expired/soon/later); expiring-count = expired+soon; сортировка по возрастанию срока; клик по строке передаёт onOpen → view→'all' + selectedId (подтверждено в UI). Nav-счётчик и внутренний счётчик показывают одинаковое число (2).",
+    "components/vault/vault-generator.tsx — все 7 режимов присутствуют, ползунки min/max ограничивают корректно (words 3..8 отрендерил 3 и 8 слов), VtSelect gen-phrase-sep-opt-. подставляет точку, capitalize/number флаги применяются, roll даёт новое значение. Username: 2..4 блока по 4 буквы (CV-CV), dotted вставляет 3 точки при 4 блоках, digits дописывает 2 цифры.",
+    "Мелкая заметка (не блокер): элемент карточки записи имеет data-testid vault-card-<id> (не entry-row-*); в сценарии problem statement указано detail-title, что соответствует реализации. detail-wifi-qr корректно рендерится ТОЛЬКО для type='wifi' — на type='password' отсутствует."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (нет бэкенда по задумке)", "frontend": "100% (6/6 групп проверок)"},
+  "test_credentials": "мастер-ключ метод «Пароль» = test-master-1234",
+  "seed_data_creation": "Профили Playwright не сохраняются между запусками — тестовые записи Домашний Wi-Fi, Кафе-Гуща, Тест-Пароль, Просроченная, Скоро-5дн, Позже-2года, папка TestFolder создавались и удалялись в рамках прогона.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Все P1 фичи сессии-5 подтверждены. Точки, где легко споткнуться: (а) карточка записи имеет data-testid=vault-card-<id>, класс vt-card (не vt-list-row/entry-row-*); (б) после editor-save запись НЕ выделяется автоматически — нужно кликнуть vault-card после сохранения; (в) editor-expires это masked input, вводить через page.keyboard.type только цифры (маска сама расставит точки); (г) поле пароля в editor (kind=password) отрендерено как input[type=password] — page.fill работает; (д) VtSelect: клик по кнопке testid, потом клик по <testid>-opt-<value> (для '.'-разделителя testid = gen-phrase-sep-opt-.); (е) attach-input скрыт — использовать set_input_files с buffer, а не click; (ё) счётчик nav-item отображается конкатенацией в text_content, без пробела: 'Истекающие2'. Console — без ошибок.",
+  "detailed_results": {
+    "generator_hub": "PASS — 7 вкладок присутствуют. Passphrase: 3 и 8 слов рендерятся точно, VtSelect gen-phrase-sep-opt-. переключает на точку (val='melt.seven.assume…'), capitalize/number флаги работают, roll даёт другое значение, generator-strength = 'Крепкая · 94 бит · 8 слов из 2048'. Username: генерирует произносимое имя (tupekynu), 4 блока → 16 символов, dotted → 3 точки, digits → 2 цифры в конце, copy без ошибок. Password: len=24 применяется, все 6 gen-opt-* есть. Seed: seed-len-12/24 есть, ввод правильных 12 слов → seed-check-result '✓ Контрольная сумма верна'. PIN/HEX/UUID выдают значения.",
+    "wifi_qr": "PASS — detail-wifi-qr виден только у type=wifi (на password его нет); latin QR: 29 модулей (v3, в диапазоне 25..45), ssid=HomeNet, timer виден, пароль 'p@ssw0rd!123' НЕ обнаружен в innerHTML модалки → секрет живёт только в модулях; wifi-qr-again перерисовывает svg; wifi-qr-close и wifi-qr-done закрывают модалку; кириллический Wi-Fi (SSID 'Кафе-Гуща', pwd 'Секрет;пароль:1') строит QR без ошибки (37 модулей, v5).",
+    "expiring_view": "PASS — vault-view-expiring присутствует в nav; при пустом сейфе → expiring-empty; после создания трёх записей с датами (01.01.2020 / +5дн / +2года) → expiring-count=2 (expired+soon), три группы expired/soon/later отрисованы; бейджи 'EXPIRED' для просроченной, '5 дн' для ближней, '730 дн' для дальней; nav показывает 'Истекающие2'; клик по expiring-row переключает view на 'all' (class='vt-nav-item active' на vault-view-all) и выделяет запись (detail-title='Просроченная').",
+    "attachments": "PASS — attach-empty при создании; файл 2 КБ с MARKER 'PLAINTEXT-MARKER-42-...' → attach-row-<id> появляется; localStorage['wf.secrets.v1'] длиной 7553, MARKER НЕ найден (шифрование подтверждено); attach-get-<id> инициирует download 'note.txt' без attach-error; attach-del-<id> → снова attach-empty; попытка 400 КБ → attach-error '«big.bin» больше 256 КБ — вложение не добавлено', rows=0.",
+    "regression": "PASS — vault-view-health → health-score виден; reveal-<id> и copy-<id> кнопки на пароле работают; detail-delete → запись в vault-view-trash (1 карточка); vault-folder-add + vault-folder-name + Enter создаёт папку; двойной клик vault-folder-del-<id> удаляет.",
+    "console": "clean — 0 ошибок и 0 предупреждений за все прогоны."
+  },
+  "rca_of_the_issue": "N/A — багов не обнаружено. Все 4 P1 фичи и регрессия зелёные."
+}

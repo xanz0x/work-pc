@@ -125,8 +125,66 @@ export function generateUuid(): string {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
 }
 
-/* ---------- оценка силы ---------- */
+/* ---------- парольные фразы и имена пользователя ---------- */
 
+export type PhraseOptions = {
+  /** Количество слов из словаря BIP39 (3–10). */
+  words: number
+  separator: string
+  /** Первая буква каждого слова — заглавная. */
+  capitalize: boolean
+  /** Дописать двузначное число в конец. */
+  number: boolean
+}
+
+export const DEFAULT_PHRASE: PhraseOptions = {
+  words: 5,
+  separator: '-',
+  capitalize: false,
+  number: false,
+}
+
+/** Парольная фраза из словаря BIP39: 11 бит энтропии на слово. */
+export function generatePassphrase(opt: PhraseOptions, dict: string[]): string {
+  const n = Math.max(3, Math.min(10, Math.round(opt.words)))
+  const parts: string[] = []
+  for (let i = 0; i < n; i++) {
+    const w = dict[randomInt(dict.length)]
+    parts.push(opt.capitalize ? w[0].toUpperCase() + w.slice(1) : w)
+  }
+  let out = parts.join(opt.separator)
+  if (opt.number) out += `${opt.separator}${randomInt(90) + 10}`
+  return out
+}
+
+/** Энтропия фразы: log2(2048) на слово плюс шесть с половиной бит на число. */
+export function phraseBits(opt: PhraseOptions, dictSize: number): number {
+  const n = Math.max(3, Math.min(10, Math.round(opt.words)))
+  return Math.round(n * Math.log2(dictSize) + (opt.number ? Math.log2(90) : 0))
+}
+
+export type UsernameOptions = {
+  /** Количество произносимых блоков-слогов (2–4). */
+  blocks: number
+  /** Дописать двузначное число. */
+  digits: boolean
+  /** Ставить точку между блоками (иначе — слитно). */
+  dotted: boolean
+}
+
+export const DEFAULT_USERNAME: UsernameOptions = { blocks: 2, digits: false, dotted: false }
+
+/** Имя пользователя из произносимых пар слогов: kuva.tery. */
+export function generateUsername(opt: UsernameOptions): string {
+  const n = Math.max(2, Math.min(4, Math.round(opt.blocks)))
+  const parts: string[] = []
+  for (let i = 0; i < n; i++) parts.push(syllable())
+  let out = parts.join(opt.dotted ? '.' : '')
+  if (opt.digits) out += String(randomInt(90) + 10)
+  return out
+}
+
+/* ---------- оценка силы ---------- */
 const WEAK = [
   'password',
   'пароль',

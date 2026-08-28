@@ -172,3 +172,21 @@ duress vault, полноценный WebAuthn/passkey как аутентифи�
 сетка типов 6×2, кастомные дропдауны `VtSelect` (vt-select.tsx) вместо нативных select —
 ВАЖНО для автотестов: select_option больше не работает, опции кликаются по testid
 `editor-folder-opt-<id|none>`, `editor-field-kind-<i>-opt-<kind>`.
+
+### Сессия «VAULT v1.5» (июнь 2026, приёмка iteration_5 — 100% PASS)
+Закрыты 4 пункта P1-бэклога:
+- **Wi-Fi QR** — `lib/qr.ts` (свой кодер: RS-коды, чередование, маски по штрафам, v1–10, level M,
+  байтовый режим UTF-8) + `components/vault/wifi-qr.tsx`. Кнопка появляется только у type='wifi'.
+  Пароль расшифровывается в память и уходит прямо в модули; в DOM нет ни одного символа секрета.
+  Кодер валидирован внешним декодером (OpenCV) — 14 длин от 5 до 213 байт, включая кириллицу.
+- **Generator Hub** — режимы «Фраза» (BIP39-словарь) и «Имя» в `vault-generator.tsx`,
+  функции `generatePassphrase`/`phraseBits`/`generateUsername` в `lib/secrets-gen.ts`.
+- **Вид «Истекающие»** — `components/vault/vault-expiring.tsx`, `expiryStage`/`expiringCount`
+  в `lib/secrets.ts`, пункт `vault-view-expiring` в навигации (счётчик = просрочено + ≤30 дн).
+- **Вложения** — `vault-attachments.tsx` + три метода store; шифрование AES-GCM ключом записи,
+  лимиты `ATTACH_MAX_BYTES`=256 КБ, `ATTACH_MAX_TOTAL`=1 МБ (экспортируются из store).
+
+Заметки для автотестов (из отчёта iteration_5): карточка записи — `vault-card-<id>`;
+после `editor-save` запись НЕ выделяется автоматически (нужен клик по карточке);
+`editor-expires` — masked input (печатать только цифры); `attach-input` скрыт (set_input_files);
+опция разделителя фразы — `gen-phrase-sep-opt-.`; счётчик в nav склеен с текстом («Истекающие2»).

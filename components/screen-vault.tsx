@@ -17,6 +17,7 @@ import { VaultDetail } from './vault/vault-detail'
 import { VaultEditor } from './vault/vault-editor'
 import { VaultGenerator } from './vault/vault-generator'
 import { VaultHealth } from './vault/vault-health'
+import { VaultExpiring } from './vault/vault-expiring'
 import { VaultIo } from './vault/vault-io'
 
 export function ScreenVault() {
@@ -128,11 +129,15 @@ export function ScreenVault() {
                   ? 'Избранное'
                   : view.kind === 'health'
                     ? 'Здоровье паролей'
-                    : 'Записи'}
+                    : view.kind === 'expiring'
+                      ? 'Истекающие'
+                      : 'Записи'}
             </h1>
             <p className="vt-sub label-mono">
               {view.kind === 'health' ? (
                 <>аудит считается локально · наружу не уходит ничего</>
+              ) : view.kind === 'expiring' ? (
+                <>сроки записей · напоминания за 30, 7 и 1 день</>
               ) : (
                 <>
                   показано <b className="num">{shown.length}</b> из{' '}
@@ -179,6 +184,15 @@ export function ScreenVault() {
         <div className="vt-scroll">
           {view.kind === 'health' ? (
             <VaultHealth
+              onOpen={(id) => {
+                setView({ kind: 'all' })
+                setSel(id)
+              }}
+            />
+          ) : view.kind === 'expiring' ? (
+            <VaultExpiring
+              entries={s.live}
+              now={now}
               onOpen={(id) => {
                 setView({ kind: 'all' })
                 setSel(id)

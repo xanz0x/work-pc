@@ -6,7 +6,15 @@
    ============================================================ */
 
 import { useEffect, useRef, useState } from 'react'
-import { IconChevronDown, IconExternal, IconPencil, IconRefresh, IconTrash, iconOf } from '@/components/icons'
+import {
+  IconChevronDown,
+  IconExternal,
+  IconGridBoard,
+  IconPencil,
+  IconRefresh,
+  IconTrash,
+  iconOf,
+} from '@/components/icons'
 import { useSecrets } from '@/lib/secrets-store'
 import {
   TYPE_HUE,
@@ -19,6 +27,8 @@ import {
 } from '@/lib/secrets'
 import { SecretValue } from './secret-value'
 import { TotpCell } from './totp-cell'
+import { VaultAttachments } from './vault-attachments'
+import { WifiQr } from './wifi-qr'
 
 export function VaultDetail({
   entry,
@@ -31,7 +41,11 @@ export function VaultDetail({
 }) {
   const s = useSecrets()
   const [histOpen, setHistOpen] = useState(false)
-  useEffect(() => setHistOpen(false), [entry?.id])
+  const [qr, setQr] = useState(false)
+  useEffect(() => {
+    setHistOpen(false)
+    setQr(false)
+  }, [entry?.id])
 
   if (!entry) {
     return (
@@ -82,6 +96,17 @@ export function VaultDetail({
         >
           <span className="vt-star">★</span>
         </button>
+        {!inTrash && entry.type === 'wifi' && (
+          <button
+            className="vt-icon-btn"
+            onClick={() => setQr(true)}
+            title="QR-код для подключения к сети"
+            aria-label="Показать QR-код Wi-Fi"
+            data-testid="detail-wifi-qr"
+          >
+            <IconGridBoard />
+          </button>
+        )}
         {!inTrash && (
           <button className="vt-icon-btn" onClick={onEdit} title="Изменить" data-testid="detail-edit">
             <IconPencil />
@@ -156,6 +181,8 @@ export function VaultDetail({
         </div>
       )}
 
+      <VaultAttachments entry={entry} readOnly={inTrash} />
+
       {!inTrash && entry.history.length > 0 && (
         <div className="vt-hist" data-testid="detail-history">
           <button
@@ -209,6 +236,8 @@ export function VaultDetail({
           таймауту. ИИ-чат к этой записи доступа не имеет.
         </p>
       </footer>
+
+      {qr && <WifiQr entry={entry} onClose={() => setQr(false)} />}
     </aside>
   )
 }

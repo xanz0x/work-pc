@@ -58,6 +58,10 @@ import { totpCode } from './secrets-totp'
 
 const MAX_BACKUPS = 5
 
+/** Лимиты вложений: localStorage конечен, base64 раздувает данные на треть. */
+export const ATTACH_MAX_BYTES = 256 * 1024
+export const ATTACH_MAX_TOTAL = 1024 * 1024
+
 type BackupRec = { at: number; count: number; ct: string; iv: string; auto: boolean }
 
 export type ClipState = { label: string; until: number; target: ClipTarget } | null
@@ -129,6 +133,11 @@ export type SecretsCtx = {
   removeBackup: (at: number) => void
 
   loadIcon: (entryId: string) => Promise<void>
+  /** Зашифровать и приложить файл к записи; строка — текст ошибки. */
+  addAttachment: (entryId: string, file: File) => Promise<string | null>
+  removeAttachment: (entryId: string, attId: string) => void
+  /** Расшифровать вложение в память и отдать браузеру как файл. */
+  downloadAttachment: (entryId: string, attId: string) => Promise<boolean>
   /** Счётчик закрытий раскрытых значений: экраны прячут reveal по нему. */
   hideEpoch: number
   hideAll: () => void
@@ -964,6 +973,102 @@ export function SecretsProvider({ children }: { children: ReactNode }) {
 
   const hideAll = useCallback(() => setHideEpoch((n) => n + 1), [])
 
+  /* ---------- вложения: AES-GCM ключом записи ---------- */
+
+  const addAttachment = useCallback<SecretsCtx['addAttachment']>(
+    async (entryId, file) => {
+      if (!ready) return 'Сейф закрыт — разблокируйте замок'
+      const e = entriesRef.current.find((x) => x.id === entryId)
+      if (!e) return 'Запись не найдена'
+      if (file.size > ATTACH_MAX_BYTES)
+        return `«${file.name}» больше ${Math.round(ATTACH_MAX_BYTES / 1024)} КБ — вложение не добавлено`
+      const used = e.attachments.reduce((n, a) => n + a.size, 0)
+      if (used + file.size > ATTACH_MAX_TOTAL)
+        return `Лимит вложений записи — ${Math.round(ATTACH_MAX_TOTAL / 1024)} КБ. Удалите лишнее и повторите`
+
+      const bytes = new Uint8Array(await file.arrayBuffer())
+      let bin = ''
+      for (let i = 0; i < bytes.length; i += 8192)
+        bin += String.fromCharCode(...bytes.subarray(i, i + 8192))
+      const packed = await sealField(entryId, `${file.type || 'application/octet-stream'}|${btoa(bin)}`)
+      if (!packed) return 'Нет сеанса мастера — файл не зашифрован'
+      const cut = packed.indexOf(':')
+      const att = {
+        id: sid('att'),
+        name: file.name.slice(0, 80),
+        size: file.size,
+        ct: packed.slice(0, cut),
+        iv: packed.slice(cut + 1),
+      }
+      write((all) =>
+        all.map((x) =>
+          x.id === entryId
+            ? { ...x, attachments: [...x.attachments, att], updatedAt: Date.now() }
+            : x,
+        ),
+      )
+      v.notify({
+        kind: 'ok',
+        cat: 'privacy',
+        icon: 'lockRound',
+        title: 'Вложение зашифровано',
+        body: `«${att.name}» приложено к записи «${e.title}» и зашифровано AES-GCM ключом записи.`,
+      })
+      return null
+    },
+    [ready, v, write],
+  )
+
+  const removeAttachment = useCallback(
+    (entryId: string, attId: string) => {
+      write((all) =>
+        all.map((x) =>
+          x.id === entryId
+            ? {
+                ...x,
+                attachments: x.attachments.filter((a) => a.id !== attId),
+                updatedAt: Date.now(),
+              }
+            : x,
+        ),
+      )
+      v.flash('Вложение удалено вместе с шифртекстом.')
+    },
+    [v, write],
+  )
+
+  const downloadAttachment = useCallback<SecretsCtx['downloadAttachment']>(
+    async (entryId, attId) => {
+      if (!ready) return false
+      const e = entriesRef.current.find((x) => x.id === entryId)
+      const a = e?.attachments.find((x) => x.id === attId)
+      if (!a) return false
+      const plain = await openField(entryId, `${a.ct}:${a.iv}`)
+      if (plain === null) return false
+      const cut = plain.indexOf('|')
+      const mime = cut > 0 ? plain.slice(0, cut) : 'application/octet-stream'
+      const b64 = cut > 0 ? plain.slice(cut + 1) : plain
+      let bytes: Uint8Array
+      try {
+        const bin = atob(b64)
+        bytes = new Uint8Array(bin.length)
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+      } catch {
+        return false
+      }
+      const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: mime }))
+      const link = document.createElement('a')
+      link.href = url
+      link.download = a.name
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 4000)
+      return true
+    },
+    [ready],
+  )
+
   const value: SecretsCtx = {
     ready,
     needsLock,
@@ -1001,6 +1106,9 @@ export function SecretsProvider({ children }: { children: ReactNode }) {
     restoreBackup,
     removeBackup,
     loadIcon,
+    addAttachment,
+    removeAttachment,
+    downloadAttachment,
     hideEpoch,
     hideAll,
   }

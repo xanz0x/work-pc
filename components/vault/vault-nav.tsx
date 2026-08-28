@@ -5,15 +5,16 @@
    ============================================================ */
 
 import { useEffect, useRef, useState } from 'react'
-import { IconPlus, IconSearch, IconShield, IconTrash } from '@/components/icons'
+import { IconClock, IconPlus, IconSearch, IconShield, IconTrash } from '@/components/icons'
 import { iconOf } from '@/components/icons'
 import { useSecrets } from '@/lib/secrets-store'
-import { TYPE_META, TYPE_ORDER, type SecretRecord, type SecretType } from '@/lib/secrets'
+import { TYPE_META, TYPE_ORDER, expiringCount, type SecretRecord, type SecretType } from '@/lib/secrets'
 
 export type VaultView =
   | { kind: 'all' }
   | { kind: 'fav' }
   | { kind: 'health' }
+  | { kind: 'expiring' }
   | { kind: 'trash' }
   | { kind: 'type'; type: SecretType }
   | { kind: 'folder'; id: string }
@@ -58,6 +59,7 @@ export function VaultNav({
   }
 
   const countType = (t: SecretType) => live.filter((e) => e.type === t).length
+  const expiring = expiringCount(live, Date.now())
   const favCount = live.filter((e) => e.favorite).length
 
   const isOn = (v: VaultView) =>
@@ -105,6 +107,17 @@ export function VaultNav({
       >
         <IconShield />
         <span>Здоровье паролей</span>
+      </button>
+
+      <button
+        className={`vt-nav-item${isOn({ kind: 'expiring' }) ? ' active' : ''}`}
+        onClick={() => setView({ kind: 'expiring' })}
+        title="Записи со сроком: просроченные и близкие к истечению"
+        data-testid="vault-view-expiring"
+      >
+        <IconClock />
+        <span>Истекающие</span>
+        <b className={`nav-count num${expiring ? ' vt-count-warn' : ''}`}>{expiring}</b>
       </button>
 
       <div className="vt-nav-head label-mono">Типы</div>

@@ -9,24 +9,42 @@ import { useCallback, useEffect, useState } from 'react'
 import { IconCheck, IconClip, IconClose, IconRefresh } from '@/components/icons'
 import { useSecrets } from '@/lib/secrets-store'
 import { generateMnemonic, validateMnemonic, type MnemonicCheck } from '@/lib/bip39'
+import { BIP39_WORDS } from '@/lib/bip39-words'
+import { VtSelect } from './vt-select'
 import {
   DEFAULT_GEN,
+  DEFAULT_PHRASE,
+  DEFAULT_USERNAME,
   generateHex,
+  generatePassphrase,
   generatePassword,
   generatePin,
+  generateUsername,
   generateUuid,
+  phraseBits,
   scorePassword,
   type GenOptions,
+  type PhraseOptions,
+  type UsernameOptions,
 } from '@/lib/secrets-gen'
 
-type Mode = 'password' | 'seed' | 'pin' | 'hex' | 'uuid'
+type Mode = 'password' | 'passphrase' | 'username' | 'seed' | 'pin' | 'hex' | 'uuid'
 
 const MODES: { id: Mode; label: string }[] = [
   { id: 'password', label: 'Пароль' },
+  { id: 'passphrase', label: 'Фраза' },
+  { id: 'username', label: 'Имя' },
   { id: 'seed', label: 'Seed BIP39' },
   { id: 'pin', label: 'PIN' },
   { id: 'hex', label: 'Hex-токен' },
   { id: 'uuid', label: 'UUID' },
+]
+
+const SEPARATORS: { value: string; label: string }[] = [
+  { value: '-', label: 'дефис  a-b' },
+  { value: '.', label: 'точка  a.b' },
+  { value: '_', label: 'подчёрк  a_b' },
+  { value: ' ', label: 'пробел  a b' },
 ]
 
 const OPTS: { key: keyof GenOptions; label: string; hint: string }[] = [
@@ -51,6 +69,8 @@ export function VaultGenerator({
   const [value, setValue] = useState('')
   const [copied, setCopied] = useState(false)
   const [seedLen, setSeedLen] = useState<12 | 24>(12)
+  const [phrase, setPhrase] = useState<PhraseOptions>(DEFAULT_PHRASE)
+  const [uname, setUname] = useState<UsernameOptions>(DEFAULT_USERNAME)
   const [check, setCheck] = useState('')
   const [checkRes, setCheckRes] = useState<MnemonicCheck | null>(null)
 
@@ -59,8 +79,10 @@ export function VaultGenerator({
     else if (mode === 'hex') setValue(generateHex(24))
     else if (mode === 'uuid') setValue(generateUuid())
     else if (mode === 'seed') void generateMnemonic(seedLen).then((ws) => setValue(ws.join(' ')))
+    else if (mode === 'passphrase') setValue(generatePassphrase(phrase, BIP39_WORDS))
+    else if (mode === 'username') setValue(generateUsername(uname))
     else setValue(generatePassword(opt))
-  }, [mode, opt, seedLen])
+  }, [mode, opt, seedLen, phrase, uname])
 
   useEffect(roll, [roll])
 
@@ -77,7 +99,19 @@ export function VaultGenerator({
     }
   }, [check, mode])
 
-  const st = scorePassword(value)
+  const st =
+    mode === 'passphrase'
+      ? (() => {
+          const bits = phraseBits(phrase, BIP39_WORDS.length)
+          const score: 0 | 1 | 2 | 3 | 4 = bits < 40 ? 1 : bits < 55 ? 2 : bits < 75 ? 3 : 4
+          return {
+            score,
+            bits,
+            label: ['Очень слабая', 'Слабая', 'Средняя', 'Хорошая', 'Крепкая'][score],
+            hints: [`${phrase.words} слов из ${BIP39_WORDS.length}`],
+          }
+        })()
+      : scorePassword(value)
 
   return (
     <div className="vt-modal-back" role="presentation" onPointerDown={onClose}>
@@ -255,6 +289,111 @@ export function VaultGenerator({
                 )
               })}
             </div>
+          </div>
+        ) : mode === 'passphrase' ? (
+          <div className="vt-gen-panel">
+            <label className="vt-len">
+              <span className="label-mono">Слов</span>
+              <input
+                type="range"
+                min={3}
+                max={10}
+                value={phrase.words}
+                onChange={(e) => setPhrase({ ...phrase, words: Number(e.target.value) })}
+                data-testid="gen-phrase-words"
+              />
+              <b className="vt-len-num num">{phrase.words}</b>
+            </label>
+            <div className="vt-gen-sep">
+              <span className="label-mono">Разделитель</span>
+              <VtSelect
+                className="vt-gen-sep-select"
+                value={phrase.separator}
+                onChange={(v) => setPhrase({ ...phrase, separator: v })}
+                ariaLabel="Разделитель слов"
+                testId="gen-phrase-sep"
+                options={SEPARATORS}
+              />
+            </div>
+            <div className="vt-opts" role="group" aria-label="Параметры фразы">
+              {(
+                [
+                  { key: 'capitalize' as const, label: 'С заглавных', hint: 'Kuva-Tery' },
+                  { key: 'number' as const, label: 'Число в конце', hint: '…-42' },
+                ]
+              ).map(({ key, label, hint }) => {
+                const on = Boolean(phrase[key])
+                return (
+                  <button
+                    key={key}
+                    className={`vt-opt${on ? ' on' : ''}`}
+                    role="switch"
+                    aria-checked={on}
+                    onClick={() => setPhrase({ ...phrase, [key]: !on })}
+                    data-testid={`gen-phrase-${key}`}
+                  >
+                    <i className="vt-opt-box" aria-hidden="true">
+                      <IconCheck />
+                    </i>
+                    <span className="vt-opt-text">
+                      <b>{label}</b>
+                      <em className="mono">{hint}</em>
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+            <p className="vt-note">
+              Слова берутся из встроенного словаря BIP39 ({BIP39_WORDS.length} слов) равномерным
+              CSPRNG: 11 бит энтропии на слово, легко произносится и печатается.
+            </p>
+          </div>
+        ) : mode === 'username' ? (
+          <div className="vt-gen-panel">
+            <label className="vt-len">
+              <span className="label-mono">Блоков</span>
+              <input
+                type="range"
+                min={2}
+                max={4}
+                value={uname.blocks}
+                onChange={(e) => setUname({ ...uname, blocks: Number(e.target.value) })}
+                data-testid="gen-username-blocks"
+              />
+              <b className="vt-len-num num">{uname.blocks}</b>
+            </label>
+            <div className="vt-opts" role="group" aria-label="Параметры имени">
+              {(
+                [
+                  { key: 'dotted' as const, label: 'С точкой', hint: 'kuva.tery' },
+                  { key: 'digits' as const, label: 'Цифры', hint: '…42' },
+                ]
+              ).map(({ key, label, hint }) => {
+                const on = Boolean(uname[key])
+                return (
+                  <button
+                    key={key}
+                    className={`vt-opt${on ? ' on' : ''}`}
+                    role="switch"
+                    aria-checked={on}
+                    onClick={() => setUname({ ...uname, [key]: !on })}
+                    data-testid={`gen-username-${key}`}
+                  >
+                    <i className="vt-opt-box" aria-hidden="true">
+                      <IconCheck />
+                    </i>
+                    <span className="vt-opt-text">
+                      <b>{label}</b>
+                      <em className="mono">{hint}</em>
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+            <p className="vt-note">
+              Произносимые пары слогов «согласная-гласная»: имя выглядит человеческим, но не
+              содержит ни слов, ни данных о вас.
+            </p>
           </div>
         ) : mode === 'seed' ? null : (
           <p className="vt-note">
