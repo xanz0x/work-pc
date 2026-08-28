@@ -3,17 +3,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Dropdown, type DropdownOption } from './dropdown'
 import {
+  IconArrowRight,
   IconClose,
   IconDoc,
   IconLayers,
   IconMinus,
-  IconPlay,
   IconPlus,
   IconSticker,
   IconTarget,
 } from './icons'
 import { CLUSTERS, clusterIndex, fmtBytes, kindOf, type ClusterId } from '@/lib/data'
-import type { Graph } from '@/lib/graph'
+import { neighborsOf, type Graph } from '@/lib/graph'
 import { useVault } from '@/lib/vault-store'
 import { Beam } from '@/components/ui/beam'
 
@@ -29,7 +29,8 @@ import { Beam } from '@/components/ui/beam'
 const WAVE = '47,190,126'
 const BEAT_MS = 2400
 const BEAT_FAST_MS = 1000
-const BG = '11,14,18'
+/* Космос: притухание и виньетка красятся в глубокий синий, а не в графит. */
+const BG = '6,9,16'
 
 /* ---------------- Таймлайн проигрывания поиска ----------------
    Один источник истины: и канвас, и лог инспектора читают фазу
@@ -44,7 +45,9 @@ const TIMELINE: { at: number; phase: Phase }[] = [
 ]
 const SEARCH_END = 2700
 const PHASE_ORDER: Phase[] = ['idle', 'query', 'cluster', 'filter', 'found', 'settled']
-const PLAYED_KEY = 'wf-map-wave-played'
+/* Пауза между волнами: карта живёт сама, кнопки «проиграть» больше нет. */
+const AUTO_GAP = 4200
+const IDLE_GUARD = 2200
 
 /** Золотой угол: узлы кластера ложатся ровно и не прыгают между сборками. */
 const GOLDEN = 2.399963
@@ -119,7 +122,10 @@ function phaseAt(t: number): Phase {
 }
 
 /** Что нужно движку для проигрывания поиска: цель и текст запроса. */
-type Seed = { targetId: string | null; query: string; clusterLabel: string }
+type Seed = { targetId: string | null; query: string; clusterLabel: string; raw: string }
+
+/** Живое описание текущей волны для инспектора и статуса. */
+type WaveMeta = { seq: number; query: string; clusterLabel: string; target: string }
 
 export function ScreenMap() {
   const v = useVault()
@@ -132,6 +138,8 @@ export function ScreenMap() {
   const [cluster, setCluster] = useState<ClusterId | 'all'>('all')
   const [phase, setPhase] = useState<Phase>('idle')
   const [cands, setCands] = useState(0)
+  const [wave, setWave] = useState<WaveMeta | null>(null)
+  const [history, setHistory] = useState<{ name: string; cluster: string; at: number }[]>([])
 
   /* Движок читает эти ссылки внутри кадра: сам эффект не пересоздаётся,
      иначе анимация перезапускалась бы на каждое изменение сейфа. */
@@ -163,6 +171,7 @@ export function ScreenMap() {
       targetId: pick?.id ?? null,
       query: v.query.trim() || (pick ? pick.label : 'связи сейфа'),
       clusterLabel: pick ? CLUSTERS[clusterIndex(pick.cluster)].label : '—',
+      raw: v.query.trim(),
     }
   }, [v.hits, v.query, graph])
   const seedRef = useRef<Seed>(seed)
@@ -173,8 +182,8 @@ export function ScreenMap() {
     zoomOut: () => void
     reset: () => void
     fit: () => void
-    play: () => void
     clear: () => void
+    wave: (id?: string) => void
     core: () => void
     filter: (ci: number | null) => void
     focusIds: (ids: string[]) => void
@@ -197,7 +206,18 @@ export function ScreenMap() {
     let byId = new Map<string, Node>()
     const adj = new Map<Node, Node[]>()
     let pulses: Pulse[] = []
-    let dust: { x: number; y: number; r: number; a: number; ph: number; vx: number; vy: number }[] = []
+    let dust: {
+      x: number
+      y: number
+      r: number
+      a: number
+      ph: number
+      vx: number
+      vy: number
+      hue: string
+    }[] = []
+    /* Метеор: редкая штриховая вспышка поперёк неба, живёт меньше секунды. */
+    let meteors: { x: number; y: number; vx: number; vy: number; life: number }[] = []
     let core: Node | null = null
     let spokes: Edge[] = []
     const rings: { r: number; a: number }[] = []
@@ -430,7 +450,7 @@ export function ScreenMap() {
         Math.max(W, H) * 0.72,
       )
       g.addColorStop(0, `rgba(${BG},0)`)
-      g.addColorStop(1, `rgba(${BG},.72)`)
+      g.addColorStop(1, `rgba(${BG},.42)`)
       vignette = g
     }
 
@@ -515,15 +535,20 @@ export function ScreenMap() {
         })
       }
 
-      for (let i = 0; i < 46; i++) {
+      /* Звёздное поле канваса поверх CSS-космоса: даёт параллакс при панораме. */
+      const STAR_TINT = ['230,238,255', '198,220,255', '255,236,208', '208,255,236']
+      const count = Math.round(clamp((W * H) / 12000, 60, 150))
+      for (let i = 0; i < count; i++) {
+        const big = Math.random() < 0.12
         dust.push({
           x: Math.random() * W * 1.7 - W * 0.35,
           y: Math.random() * H * 1.7 - H * 0.35,
-          r: 0.6 + Math.random() * 1.2,
-          a: 0.05 + Math.random() * 0.09,
+          r: big ? 1.1 + Math.random() * 1.1 : 0.35 + Math.random() * 0.8,
+          a: big ? 0.24 + Math.random() * 0.3 : 0.06 + Math.random() * 0.16,
           ph: Math.random() * 7,
-          vx: (Math.random() - 0.5) * 0.05,
-          vy: (Math.random() - 0.5) * 0.05,
+          vx: (Math.random() - 0.5) * 0.04,
+          vy: (Math.random() - 0.5) * 0.04,
+          hue: big ? STAR_TINT[Math.floor(Math.random() * STAR_TINT.length)] : '226,234,245',
         })
       }
       drift = CR + 14
@@ -597,11 +622,19 @@ export function ScreenMap() {
       }
     }
 
-    /* ---------- Проигрывание поиска ---------- */
-    function startSearch(instant = false) {
+    /* ---------- Волна активации ---------- */
+    /* Ручной выбор узла сильнее автоматики: волна анимируется, но карточку
+       в инспекторе не подменяет, пока пользователь сам не закроет её. */
+    let userPinned = false
+    let waveSeq = 0
+    let rotate = 0
+    let lastInteract = 0
+    let autoTimer = 0
+
+    function startSearch(instant = false, explicit: Node | null = null) {
       const sd = seedRef.current
       if (!core || nodes.length < 3) return
-      const target = (sd.targetId ? byId.get(sd.targetId) : null) ?? null
+      const target = explicit ?? (sd.targetId ? byId.get(sd.targetId) : null) ?? null
       if (!target) return
       const ring = target.cluster
       const family = nodes.filter((n) => n.cluster === ring && !n.core)
@@ -631,12 +664,58 @@ export function ScreenMap() {
       }
       setPhase(search.phase)
       setCands(instant ? 1 : pool.length + 1)
-      if (instant) select(target, true)
-      try {
-        sessionStorage.setItem(PLAYED_KEY, '1')
-      } catch {
-        /* приватный режим — просто не запоминаем */
+      waveSeq++
+      setWave({
+        seq: waveSeq,
+        query: sd.raw || target.name,
+        clusterLabel: CLUSTERS[clusterIndex(target.clusterId ?? 'misc')].label,
+        target: target.name,
+      })
+      if (instant && !userPinned) select(target, true)
+    }
+
+    /** Кого исследовать в следующей волне: сначала живой поиск, потом хабы. */
+    function autoTarget(): Node | null {
+      const m = matchedRef.current
+      if (m.size > 0) {
+        const hits = nodes.filter((n) => !n.core && m.has(n.id))
+        if (hits.length) return hits[rotate++ % hits.length]
       }
+      const sd = seedRef.current
+      if (sd.raw && sd.targetId) {
+        const t = byId.get(sd.targetId)
+        if (t) return t
+      }
+      const pool = nodes
+        .filter((n) => !n.core && n.deg > 0 && (filterCluster === null || n.cluster === filterCluster))
+        .sort((a, b) => b.deg - a.deg)
+      if (!pool.length) return null
+      const top = pool.slice(0, Math.min(14, Math.max(4, Math.round(pool.length * 0.4))))
+      return top[rotate++ % top.length]
+    }
+
+    /* Планировщик: волны идут сами, но уступают живому взаимодействию —
+       пока тянут карту или ведут курсор по узлам, автоматика ждёт. */
+    function scheduleAuto(delay = AUTO_GAP) {
+      clearTimeout(autoTimer)
+      /* prefers-reduced-motion: волны продолжают идти, но без анимации —
+         состояние сразу «найдено», журнал и инспектор живут как обычно. */
+      autoTimer = window.setTimeout(runAuto, reduced ? Math.max(delay, 6000) : delay)
+    }
+
+    function runAuto() {
+      if (document.hidden || drag || hovered || performance.now() - lastInteract < IDLE_GUARD) {
+        scheduleAuto(1200)
+        return
+      }
+      const t = autoTarget()
+      if (!t) {
+        scheduleAuto(AUTO_GAP)
+        return
+      }
+      search = null
+      startSearch(reduced, t)
+      scheduleAuto(SEARCH_END + AUTO_GAP)
     }
 
     function stopSearch() {
@@ -661,6 +740,19 @@ export function ScreenMap() {
       }
     }
     const pulseTimer = setInterval(spawnPulse, 650)
+
+    /* Метеор раз в ~18 секунд: небо живое, но внимание не перетягивает. */
+    const meteorTimer = setInterval(() => {
+      if (reduced || document.hidden || Math.random() > 0.55 || meteors.length > 1) return
+      const fromLeft = Math.random() < 0.7
+      meteors.push({
+        x: fromLeft ? -80 : Math.random() * W * 0.6,
+        y: Math.random() * H * 0.45,
+        vx: 0.26 + Math.random() * 0.16,
+        vy: 0.1 + Math.random() * 0.09,
+        life: 2600,
+      })
+    }, 9000)
 
     function qpoint(e: Edge, u: number) {
       const iu = 1 - u
@@ -803,7 +895,7 @@ export function ScreenMap() {
           search.phase = ph
           setPhase(ph)
           if (ph === 'found') setCands(1)
-          if (ph === 'settled') select(search.target, true)
+          if (ph === 'settled' && !userPinned) select(search.target, true)
         }
         if (ph === 'filter') {
           const start = search.cands.length + 1
@@ -813,8 +905,8 @@ export function ScreenMap() {
         }
         search.dim =
           st < 2000
-            ? clamp(st / 160, 0, 0.65)
-            : clamp(0.65 * (1 - (st - 2000) / 700), 0, 0.65)
+            ? clamp(st / 160, 0, 0.5)
+            : clamp(0.5 * (1 - (st - 2000) / 700), 0, 0.5)
         for (const n of nodes) n.hot = 0
         if (st >= 0) search.q.hot = 1
         if (st >= 180 && core) core.hot = 1
@@ -848,19 +940,54 @@ export function ScreenMap() {
         for (const n of nodes) if (n.hot) n.hot = Math.max(0, n.hot - dt * 0.004)
       }
 
-      /* ---- пыль ---- */
+      /* ---- звёздное поле ---- */
       for (const d of dust) {
         const sx = d.x * view.z * 0.55 + view.x * 0.8
         const sy = d.y * view.z * 0.55 + view.y * 0.8
         if (sx < -8 || sx > W + 8 || sy < -8 || sy > H + 8) continue
-        const tw = reduced ? 0.75 : 0.6 + 0.4 * Math.sin(d.ph + now * 0.0012)
+        const tw = reduced ? 0.75 : 0.55 + 0.45 * Math.sin(d.ph + now * 0.0011)
         ctx!.globalAlpha = d.a * tw
         ctx!.beginPath()
         ctx!.arc(sx, sy, d.r, 0, 7)
-        ctx!.fillStyle = 'rgba(230,234,238,1)'
+        ctx!.fillStyle = `rgba(${d.hue},1)`
         ctx!.fill()
+        /* Крупные звёзды получают короткие лучи — небо перестаёт быть «точками». */
+        if (d.r > 1) {
+          ctx!.globalAlpha = d.a * tw * 0.5
+          ctx!.strokeStyle = `rgba(${d.hue},1)`
+          ctx!.lineWidth = 0.6
+          const l = d.r * 2.6
+          ctx!.beginPath()
+          ctx!.moveTo(sx - l, sy)
+          ctx!.lineTo(sx + l, sy)
+          ctx!.moveTo(sx, sy - l)
+          ctx!.lineTo(sx, sy + l)
+          ctx!.stroke()
+        }
       }
       ctx!.globalAlpha = 1
+
+      /* ---- метеоры ---- */
+      for (let k = meteors.length - 1; k >= 0; k--) {
+        const m = meteors[k]
+        m.x += m.vx * dt
+        m.y += m.vy * dt
+        m.life -= dt
+        if (m.life <= 0 || m.x > W + 120 || m.y > H + 120) {
+          meteors.splice(k, 1)
+          continue
+        }
+        const tail = 74
+        const g = ctx!.createLinearGradient(m.x, m.y, m.x - m.vx * tail, m.y - m.vy * tail)
+        g.addColorStop(0, 'rgba(236,244,255,.75)')
+        g.addColorStop(1, 'rgba(236,244,255,0)')
+        ctx!.strokeStyle = g
+        ctx!.lineWidth = 1.2
+        ctx!.beginPath()
+        ctx!.moveTo(m.x, m.y)
+        ctx!.lineTo(m.x - m.vx * tail, m.y - m.vy * tail)
+        ctx!.stroke()
+      }
 
       /* ---- пульс ядра ---- */
       beatAcc += dt
@@ -1023,8 +1150,10 @@ export function ScreenMap() {
 
       /* ---- подписи с LOD ---- */
       ctx!.font = '10px "IBM Plex Mono",monospace'
-      if (view.z < 1.05) {
-        const a = clamp((1.05 - view.z) / 0.25, 0, 1) * 0.8
+      /* Подписи кластеров держатся до 1.3× — на дефолтном масштабе карта
+         сразу читается по названиям, а не только по цветам. */
+      if (view.z < 1.3) {
+        const a = clamp((1.32 - view.z) / 0.3, 0.35, 1) * 0.85
         const s = spread()
         const seen = new Set<number>()
         for (const n of nodes) {
@@ -1041,7 +1170,7 @@ export function ScreenMap() {
           ctx!.fillRect(sx - tw / 2, sy + 2, tw, 1)
         }
       } else {
-        const a = clamp((view.z - 1.05) / 0.3, 0, 1) * 0.7
+        const a = clamp((view.z - 1.3) / 0.3, 0, 1) * 0.72
         let drawn = 0
         for (const n of nodes) {
           if (drawn > 28) break
@@ -1093,6 +1222,7 @@ export function ScreenMap() {
     }
 
     const onDown = (e: MouseEvent) => {
+      lastInteract = performance.now()
       const p = stagePos(e)
       drag = { x: p.x, y: p.y, vx: view.x, vy: view.y }
       moved = false
@@ -1108,6 +1238,7 @@ export function ScreenMap() {
         view.y = drag.vy + dy
       } else if (e.target === cv) {
         hovered = pick(sp)
+        if (hovered) lastInteract = performance.now()
         cv!.style.cursor = hovered ? 'pointer' : 'grab'
       } else {
         hovered = null
@@ -1117,14 +1248,17 @@ export function ScreenMap() {
       if (!drag) return
       cv!.style.cursor = 'grab'
       drag = null
+      lastInteract = performance.now()
       if (!moved && e.target === cv) {
         const n = pick(stagePos(e))
         if (n) stopSearch()
+        userPinned = Boolean(n)
         select(n)
       }
     }
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
+      lastInteract = performance.now()
       zoomAt(stagePos(e), e.deltaY < 0 ? 1.12 : 0.89)
     }
     const onTouchStart = (e: TouchEvent) => {
@@ -1168,11 +1302,13 @@ export function ScreenMap() {
       }
     }
     const onTouchEnd = (e: TouchEvent) => {
+      lastInteract = performance.now()
       if (drag && !moved && e.changedTouches.length) {
         const t = e.changedTouches[0]
         const r = cv!.getBoundingClientRect()
         const n = pick({ x: t.clientX - r.left, y: t.clientY - r.top })
         if (n) stopSearch()
+        userPinned = Boolean(n)
         select(n)
       }
       drag = null
@@ -1188,7 +1324,10 @@ export function ScreenMap() {
     /* Не жжём CPU в фоне: сдвигаем начало таймлайна на время простоя. */
     const onVis = () => {
       if (document.hidden) hiddenAt = performance.now()
-      else if (search && hiddenAt) search.t0 += performance.now() - hiddenAt
+      else if (hiddenAt) {
+        if (search) search.t0 += performance.now() - hiddenAt
+        scheduleAuto(1500)
+      }
     }
 
     cv.addEventListener('mousedown', onDown)
@@ -1206,11 +1345,17 @@ export function ScreenMap() {
       zoomOut: () => zoomStep(0.8),
       reset: () => centerOn(core ? core.x : 0, core ? core.y : 0, 1),
       fit: fitView,
-      play: () => {
-        stopSearch()
-        startSearch(reduced)
+      wave: (id) => {
+        const t = id ? byId.get(id) ?? null : autoTarget()
+        if (!t) return
+        search = null
+        startSearch(false, t)
+        scheduleAuto(SEARCH_END + AUTO_GAP)
       },
-      clear: () => select(null),
+      clear: () => {
+        userPinned = false
+        select(null)
+      },
       core: () => select(core),
       filter: (ci) => {
         filterCluster = ci
@@ -1237,6 +1382,7 @@ export function ScreenMap() {
       },
       /* Сейф изменился — пересобираем сцену, сохраняя выбранный узел. */
       rebuild: () => {
+        scheduleAuto(1600)
         const keep = selected && !selected.core ? selected.id : null
         const wasCore = Boolean(selected?.core)
         build()
@@ -1249,6 +1395,7 @@ export function ScreenMap() {
         const n = byId.get(id)
         if (!n) return
         stopSearch()
+        userPinned = true
         n.flash = 1
         centerOn(n.x, n.y, 1.5)
         select(n)
@@ -1261,20 +1408,15 @@ export function ScreenMap() {
     select(core)
     raf = requestAnimationFrame(tick)
 
-    /* Автопроигрывание — один раз за сессию, после отрисовки графа. */
-    let autoplay = 0
-    let played = false
-    try {
-      played = sessionStorage.getItem(PLAYED_KEY) === '1'
-    } catch {
-      /* приватный режим */
-    }
-    if (!played) autoplay = window.setTimeout(() => startSearch(reduced), 600)
+    /* Карта показывает поиск сама: первая волна через мгновение после сборки,
+       дальше — бесконечный спокойный поток с паузами. */
+    scheduleAuto(900)
 
     return () => {
       cancelAnimationFrame(raf)
-      clearTimeout(autoplay)
+      clearTimeout(autoTimer)
       clearInterval(pulseTimer)
+      clearInterval(meteorTimer)
       cv.removeEventListener('mousedown', onDown)
       removeEventListener('mousemove', onMove)
       removeEventListener('mouseup', onUp)
@@ -1289,7 +1431,7 @@ export function ScreenMap() {
   }, [])
 
   const call = useCallback(
-    (fn: 'zoomIn' | 'zoomOut' | 'reset' | 'fit' | 'play' | 'clear' | 'core') => {
+    (fn: 'zoomIn' | 'zoomOut' | 'reset' | 'fit' | 'clear' | 'core') => {
       api.current?.[fn]()
     },
     [],
@@ -1307,6 +1449,23 @@ export function ScreenMap() {
   useEffect(() => {
     api.current?.filter(cluster === 'all' ? null : clusterIndex(cluster))
   }, [cluster])
+
+  /* Живой поиск в шапке — карта сразу ведёт волну к верхнему результату:
+     смотреть, как ищется файл, можно не нажимая ничего. */
+  useEffect(() => {
+    if (!seed.raw || !seed.targetId) return
+    const id = setTimeout(() => api.current?.wave(seed.targetId ?? undefined), 260)
+    return () => clearTimeout(id)
+  }, [seed.raw, seed.targetId])
+
+  /* Журнал наблюдения: последние найденные цели остаются в инспекторе. */
+  useEffect(() => {
+    if (phase !== 'found' || !wave) return
+    setHistory((h) =>
+      [{ name: wave.target, cluster: wave.clusterLabel, at: Date.now() }, ...h.filter((x) => x.name !== wave.target)].slice(0, 3),
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, wave?.seq])
 
   /* Переход «показать на карте» из библиотеки, чата или палитры Ctrl+K. */
   useEffect(() => {
@@ -1369,11 +1528,42 @@ export function ScreenMap() {
   const playing = phase !== 'idle' && phase !== 'settled'
   const pi = PHASE_ORDER.indexOf(phase)
   const rows: { t: string; text: string; phase: Phase; accent?: boolean }[] = [
-    { t: '00.0', text: `запрос: «${seed.query}»`, phase: 'query' },
-    { t: '00.2', text: `кластер «${seed.clusterLabel}» активирован`, phase: 'cluster' },
+    { t: '00.0', text: `запрос: «${wave?.query ?? seed.query}»`, phase: 'query' },
+    { t: '00.2', text: `кластер «${wave?.clusterLabel ?? seed.clusterLabel}» активирован`, phase: 'cluster' },
     { t: '00.5', text: `кандидатов: ${cands} → отсев`, phase: 'filter' },
-    { t: '00.8', text: 'цель найдена', phase: 'found', accent: true },
+    { t: '00.8', text: `цель: ${wave?.target ?? '—'}`, phase: 'found', accent: true },
   ]
+
+  /* Короткая подпись состояния потока — для ambient-пилюли над картой. */
+  const flowText =
+    phase === 'query'
+      ? `запрос: ${wave?.query ?? '…'}`
+      : phase === 'cluster'
+        ? `кластер «${wave?.clusterLabel ?? '—'}»`
+        : phase === 'filter'
+          ? `отсев · осталось ${cands}`
+          : phase === 'found'
+            ? `цель: ${wave?.target ?? '—'}`
+            : phase === 'settled'
+              ? `связь установлена · ${wave?.target ?? ''}`
+              : 'поток спокоен · ждём следующую волну'
+
+  /* Соседи выбранного узла — настоящие связи из графа, а не декорация. */
+  const neighbors = useMemo(() => {
+    if (!info || info.core || !info.id) return []
+    return neighborsOf(graph, info.id, 5)
+  }, [graph, info])
+
+  const REASON: Record<string, string> = {
+    pin: 'приколот',
+    tag: 'метка',
+    cluster: 'кластер',
+  }
+
+  const topClusters = useMemo(
+    () => v.clusters.filter((c) => c.count > 0).sort((a, b) => b.count - a.count).slice(0, 4),
+    [v.clusters],
+  )
 
   const processingIds = useMemo(
     () => v.files.filter((f) => f.processing).map((f) => f.id),
@@ -1381,8 +1571,18 @@ export function ScreenMap() {
   )
 
   return (
-    <div className="map-stage">
-      <div className="map-grid" />
+    <div className="map-stage map-space" data-testid="screen-map">
+      <div className="cosmos" aria-hidden="true">
+        <i className="cos-deep" />
+        <i className="cos-neb n1" />
+        <i className="cos-neb n2" />
+        <i className="cos-neb n3" />
+        <i className="cos-way" />
+        <i className="cos-stars s1" />
+        <i className="cos-stars s2" />
+        <i className="cos-stars s3" />
+        <i className="cos-vig" />
+      </div>
       <canvas id="net" ref={canvasRef} aria-label="Карта связей файлов и стикеров" />
 
       <div className="float-panel map-topleft">
@@ -1391,6 +1591,7 @@ export function ScreenMap() {
             <button
               className="icon-btn"
               onClick={() => call('zoomIn')}
+              data-testid="map-zoom-in"
               title="Приблизить (+)"
               aria-label="Приблизить, горячая клавиша плюс"
             >
@@ -1399,6 +1600,7 @@ export function ScreenMap() {
             <button
               className="icon-btn"
               onClick={() => call('zoomOut')}
+              data-testid="map-zoom-out"
               title="Отдалить (−)"
               aria-label="Отдалить, горячая клавиша минус"
             >
@@ -1407,6 +1609,7 @@ export function ScreenMap() {
             <button
               className="icon-btn"
               onClick={() => call('fit')}
+              data-testid="map-zoom-fit"
               title="Вписать граф в экран (F)"
               aria-label="Вписать граф в экран, горячая клавиша F"
             >
@@ -1414,6 +1617,7 @@ export function ScreenMap() {
             </button>
             <button
               className="map-zoom-val mono num"
+            data-testid="map-zoom-level"
               onClick={() => call('reset')}
               onDoubleClick={() => call('fit')}
               title="Клик — вернуть 100% (0) · двойной клик — вписать (F)"
@@ -1434,10 +1638,27 @@ export function ScreenMap() {
           />
         </div>
 
+        {/* Поток активации идёт сам: пилюля только рассказывает, что происходит. */}
+        <div
+          className={`map-flow glass${playing ? ' live' : ''}`}
+          role="status"
+          aria-live="polite"
+          data-testid="map-flow"
+        >
+          <i className="flow-dot" aria-hidden="true" />
+          <span className="flow-text mono" data-testid="map-flow-text">
+            {flowText}
+          </span>
+          <span className="flow-seq label-mono num" title="Волн активации за сеанс" data-testid="map-flow-seq">
+            {wave?.seq ?? 0}
+          </span>
+        </div>
+
         {/* Чип живёт от состояния конвейера, а не от таймера на 7 секунд. */}
         {stats.processing > 0 && (
           <button
             className="map-status status-chip"
+            data-testid="map-processing-chip"
             role="status"
             aria-live="polite"
             onClick={() => api.current?.focusIds(processingIds)}
@@ -1466,18 +1687,25 @@ export function ScreenMap() {
             стикеры · {stats.notes}
           </span>
         </div>
-        <span className="lg-hint">тяните карту · колесо — зум · клик по точке — карточка</span>
+        <span className="lg-hint">
+          волны идут сами · тяните карту · колесо — зум · клик по точке — карточка
+        </span>
       </div>
 
       <aside
         className={`float-panel node-inspector glass${info?.found ? ' found' : ''}`}
         aria-label="Инспектор узла"
+        data-testid="map-inspector"
       >
         {/* Узел найден поиском: луч по кромке подтверждает попадание. */}
         {info?.found ? <Beam duration={3.6} size={44} /> : null}
         <div className="ni-scroll">
           <div className="ni-head" ref={headRef} tabIndex={-1}>
           <span className="label-mono">Инспектор узла</span>
+          <span className={`ni-live label-mono${playing ? ' on' : ''}`} title="Волны активации идут автоматически">
+            <i aria-hidden="true" />
+            {playing ? 'волна' : 'наблюдение'}
+          </span>
           <button
             className="icon-btn ni-close"
             title="Закрыть (Esc)"
@@ -1496,7 +1724,9 @@ export function ScreenMap() {
               </span>
               <div className="ni-file-text">
                 <div className="ni-title-row">
-                  <h3 className="mono">{info.name}</h3>
+                  <h3 className="mono" data-testid="map-node-title">
+                    {info.name}
+                  </h3>
                   <span className="ni-badge mono">{info.typeLabel}</span>
                 </div>
                 <p>{info.meta}</p>
@@ -1544,19 +1774,84 @@ export function ScreenMap() {
                   else v.go('library')
                 }}
                 disabled={info.core}
+                data-testid="map-open-node"
               >
                 Открыть
               </button>
               <button
                 className="btn btn-ghost btn-sm"
                 onClick={() => v.openCluster(info.clusterId ?? 'all')}
+                data-testid="map-open-cluster"
               >
                 Кластер
               </button>
             </div>
 
+            {!info.core && neighbors.length > 0 && (
+              <div className="ni-section">
+                <span className="label-mono">
+                  Связи узла · <b className="num">{info.links}</b>
+                </span>
+                <div className="ni-links">
+                  {neighbors.map((nb) => (
+                    <button
+                      className="ni-link"
+                      key={nb.node.id}
+                      onClick={() => api.current?.select(nb.node.id)}
+                      title={`Перейти к «${nb.node.label}»`}
+                      data-testid={`map-neighbor-${nb.node.id}`}
+                    >
+                      <span className="ni-link-ico">
+                        {nb.node.kind === 'note' ? <IconSticker /> : <IconDoc />}
+                      </span>
+                      <span className="ni-link-name ellipsis">{nb.node.label}</span>
+                      <span className="ni-link-reason label-mono">{REASON[nb.reason]}</span>
+                      <span className="ni-link-bar" aria-hidden="true">
+                        <i style={{ width: `${clampPct(nb.w * 100)}%` }} />
+                      </span>
+                      <IconArrowRight className="ni-link-go" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {info.core && topClusters.length > 0 && (
+              <div className="ni-section">
+                <span className="label-mono">Магистрали к кластерам</span>
+                <div className="ni-links">
+                  {topClusters.map((c) => (
+                    <button
+                      className="ni-link"
+                      key={c.id}
+                      onClick={() => setCluster(c.id as ClusterId)}
+                      title={`Показать кластер «${c.label}»`}
+                      data-testid={`map-core-cluster-${c.id}`}
+                    >
+                      <span className="ni-link-ico">
+                        <i className="cluster-dot" style={{ background: `rgba(${c.rgb},.9)` }} />
+                      </span>
+                      <span className="ni-link-name ellipsis">{c.label}</span>
+                      <span
+                        className="ni-link-reason label-mono num"
+                        title={`${c.count} узлов · ${c.links} внутренних связей`}
+                      >
+                        {c.count}/{c.links}
+                      </span>
+                      <span className="ni-link-bar" aria-hidden="true">
+                        <i style={{ width: `${clampPct((c.count / Math.max(1, stats.nodes)) * 260)}%` }} />
+                      </span>
+                      <IconArrowRight className="ni-link-go" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="ni-section">
-              <span className="label-mono">Волна активации</span>
+              <span className="label-mono">
+                Поток активации · <b className="ni-auto">авто</b>
+              </span>
               <div className="wave-log wave-tl mono">
                 {rows.map((r) => {
                   const idx = PHASE_ORDER.indexOf(r.phase)
@@ -1564,36 +1859,50 @@ export function ScreenMap() {
                   return (
                     <div className={`step${state}${r.accent ? ' accent' : ''}`} key={r.t}>
                       <span className="t num">{r.t}</span>
-                      <span className="wave-text">{r.text}</span>
+                      <span className="wave-text ellipsis">{r.text}</span>
                     </div>
                   )
                 })}
               </div>
+              {history.length > 0 && (
+                <div className="ni-trace">
+                  <span className="label-mono">Найдено в этом сеансе</span>
+                  {history.map((h) => (
+                    <button
+                      className="ni-trace-row"
+                      key={h.at}
+                      data-testid={`map-trace-${h.at}`}
+                      onClick={() => {
+                        const hit = graph.nodes.find((n) => n.label === h.name)
+                        if (hit) api.current?.select(hit.id)
+                      }}
+                      title={`Показать «${h.name}»`}
+                    >
+                      <i aria-hidden="true" />
+                      <span className="ellipsis">{h.name}</span>
+                      <span className="label-mono">{h.cluster}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </>
         ) : (
           <div className="ni-empty">
             <p>
-              Узел не выбран. Кликните точку на карте — покажу связи и метрики. В сейфе{' '}
-              {stats.nodes} узлов и {stats.links} связей на {fmtBytes(stats.bytes)}.
+              Узел не выбран — карта продолжает искать сама. В сейфе {stats.nodes} узлов и{' '}
+              {stats.links} связей на {fmtBytes(stats.bytes)}: кликните точку, чтобы разобрать её
+              связи, или просто наблюдайте за потоком.
             </p>
-            <button className="btn btn-ghost btn-sm" onClick={() => call('core')}>
+            <div className="ni-empty-flow mono">
+              <i className={`flow-dot${playing ? ' on' : ''}`} aria-hidden="true" />
+              {flowText}
+            </div>
+            <button className="btn btn-ghost btn-sm" onClick={() => call('core')} data-testid="map-show-core">
               Показать ядро
             </button>
           </div>
         )}
-
-        <div className="ni-foot">
-          <button
-            className="btn btn-ghost btn-sm btn-full"
-            onClick={() => call('play')}
-            disabled={playing}
-            aria-busy={playing}
-          >
-            <IconPlay />
-            {playing ? 'Идёт поиск…' : 'Проиграть поиск'}
-          </button>
-        </div>
         </div>
       </aside>
     </div>
