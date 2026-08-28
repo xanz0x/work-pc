@@ -124,6 +124,14 @@ export const DEFAULT_SETTINGS: Settings = {
 export type NotifKind = 'ok' | 'warn' | 'danger' | 'info'
 export type NotifCat = 'pipeline' | 'privacy' | 'system'
 
+/** Куда ведёт уведомление: клик по телу открывает источник события. */
+export type NotifLink =
+  | { kind: 'file'; id: string }
+  | { kind: 'note'; id: string }
+  | { kind: 'secret'; id: string }
+  | { kind: 'setting'; id: string }
+  | { kind: 'screen'; id: ScreenId }
+
 export type Notif = {
   id: string
   kind: NotifKind
@@ -133,8 +141,29 @@ export type Notif = {
   body: string
   at: number
   unread: boolean
+  /** В архиве: не видно в основной ленте, но можно восстановить. */
+  archived?: boolean
+  /** Источник события — открывается кликом по телу уведомления. */
+  link?: NotifLink
   /** Сколько событий склеено в это (ежедневная сводка). */
   merged?: number
+}
+
+const NOTIF_ACTIVE_CAP = 200
+const NOTIF_ARCHIVE_CAP = 300
+const NOTIF_ARCHIVE_TTL = 30 * 24 * 60 * 60_000
+
+/**
+ * Retention ленты: активные события ограничены количеством, архив —
+ * количеством и сроком. События безопасности (cat privacy) не удаляются
+ * автоочисткой, пока лежат в активной части.
+ */
+function pruneNotifs(all: Notif[]): Notif[] {
+  const t = Date.now()
+  const kept = all.filter((n) => !(n.archived && t - n.at > NOTIF_ARCHIVE_TTL))
+  const active = kept.filter((n) => !n.archived).slice(0, NOTIF_ACTIVE_CAP)
+  const arch = kept.filter((n) => n.archived).slice(0, NOTIF_ARCHIVE_CAP)
+  return [...active, ...arch]
 }
 
 let seq = 0
@@ -231,8 +260,28 @@ export type VaultCtx = {
   notifs: Notif[]
   unread: number
   notify: (n: Omit<Notif, 'id' | 'at' | 'unread'>) => void
+  /** Прочитать все непрочитанные вне архива (с возможностью отмены). */
   markAllRead: () => void
+  /** Сменить статус одного уведомления: прочитано ⟷ непрочитано. */
   toggleRead: (id: string) => void
+  /** Открыть источник события и снять unread одним действием. */
+  openNotif: (id: string) => void
+  /** Убрать одно уведомление в архив (обратимо). */
+  archiveNotif: (id: string) => void
+  /** Вернуть из архива в ленту с прежним статусом. */
+  restoreNotif: (id: string) => void
+  /** Удалить безвозвратно (только из архива). */
+  deleteNotif: (id: string) => void
+  /** Очистить прочитанные: уходят в архив, непрочитанные не затрагиваются. */
+  clearRead: () => void
+  /** Очистить всю ленту в архив. */
+  clearAllNotifs: () => void
+  /** Стереть архив безвозвратно. */
+  purgeArchive: () => void
+  /** Отмена последнего действия над лентой; живёт 7 секунд. */
+  notifUndo: { label: string; at: number } | null
+  undoNotifs: () => void
+  /** Совместимость: старое имя действия «убрать». */
   dismissNotif: (id: string) => void
 
   /* навигация */
@@ -359,6 +408,12 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     DEFAULT_SETTINGS,
   )
   const [notifs, setNotifs, notifReady] = usePersistedState<Notif[]>('wf.notifs.v1', [])
+  /** Демо-лента наливается один раз: очищенная лента больше не возрождается. */
+  const [notifsSeeded, setNotifsSeeded, seededReady] = usePersistedState<boolean>(
+    'wf.notifs.seeded.v1',
+    false,
+  )
+  const [notifUndo, setNotifUndo] = useState<{ label: string; at: number } | null>(null)
 
   const [draftSettings, setDraftState] = useState<Settings>(DEFAULT_SETTINGS)
   const [screen, setScreen] = useState<ScreenId>('library')
@@ -524,14 +579,14 @@ export function VaultProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      setNotifs((all) => [{ ...n, id: uid('n'), at: Date.now(), unread: true }, ...all].slice(0, 40))
+      setNotifs((all) => pruneNotifs([{ ...n, id: uid('n'), at: Date.now(), unread: true }, ...all]))
     },
     [setNotifs],
   )
 
   /** Лента первого запуска собирается из настоящего состояния сейфа. */
   useEffect(() => {
-    if (!hydrated || notifs.length > 0) return
+    if (!hydrated || !seededReady || notifsSeeded || notifs.length > 0) return
     const t0 = Date.now()
     const bytes = totalBytes(files)
     const g = buildGraph(files, [], t0)
@@ -578,8 +633,9 @@ export function VaultProvider({ children }: { children: ReactNode }) {
         unread: false,
       },
     ])
+    setNotifsSeeded(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hydrated])
+  }, [hydrated, seededReady])
 
   /** Стикеры первого запуска. */
   useEffect(() => {
@@ -588,16 +644,147 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [notesReady])
 
-  const markAllRead = useCallback(
-    () => setNotifs((all) => all.map((n) => ({ ...n, unread: false }))),
-    [setNotifs],
-  )
+  /* ---------- события: действия и синхронизация ---------- */
+
+  const notifsRef = useRef(notifs)
+  notifsRef.current = notifs
+  /** Снимок для отмены последнего массового действия. */
+  const notifSnap = useRef<Notif[] | null>(null)
+  /** Пришло из другой вкладки — не отправлять обратно (иначе эхо). */
+  const notifFromChannel = useRef(false)
+  const notifChannel = useRef<BroadcastChannel | null>(null)
+
+  useEffect(() => {
+    if (typeof BroadcastChannel === 'undefined') return
+    const ch = new BroadcastChannel('workflow-notifs')
+    notifChannel.current = ch
+    ch.onmessage = (e: MessageEvent) => {
+      const list = (e.data as { notifs?: Notif[] } | null)?.notifs
+      if (!Array.isArray(list)) return
+      notifFromChannel.current = true
+      setNotifs(list)
+    }
+    return () => {
+      ch.close()
+      notifChannel.current = null
+    }
+  }, [setNotifs])
+
+  useEffect(() => {
+    if (!notifReady) return
+    if (notifFromChannel.current) {
+      notifFromChannel.current = false
+      return
+    }
+    notifChannel.current?.postMessage({ notifs })
+  }, [notifs, notifReady])
+
+  /** Запомнить состояние ленты перед обратимым действием. */
+  const rememberNotifs = useCallback((label: string) => {
+    notifSnap.current = notifsRef.current
+    setNotifUndo({ label, at: Date.now() })
+  }, [])
+
+  const undoNotifs = useCallback(() => {
+    const snap = notifSnap.current
+    if (!snap) return
+    notifSnap.current = null
+    setNotifUndo(null)
+    setNotifs(snap)
+    flash('Действие с уведомлениями отменено.')
+  }, [flash, setNotifs])
+
+  const markAllRead = useCallback(() => {
+    if (!notifsRef.current.some((n) => n.unread && !n.archived)) return
+    rememberNotifs('Все отмечены прочитанными')
+    setNotifs((all) => all.map((n) => (n.archived ? n : { ...n, unread: false })))
+  }, [rememberNotifs, setNotifs])
+
   const toggleRead = useCallback(
-    (id: string) => setNotifs((all) => all.map((n) => (n.id === id ? { ...n, unread: !n.unread } : n))),
+    (id: string) =>
+      setNotifs((all) => all.map((n) => (n.id === id ? { ...n, unread: !n.unread } : n))),
     [setNotifs],
   )
-  const dismissNotif = useCallback(
+
+  const archiveNotif = useCallback(
+    (id: string) => {
+      rememberNotifs('Уведомление убрано')
+      setNotifs((all) => all.map((n) => (n.id === id ? { ...n, archived: true } : n)))
+    },
+    [rememberNotifs, setNotifs],
+  )
+
+  const restoreNotif = useCallback(
+    (id: string) =>
+      setNotifs((all) => all.map((n) => (n.id === id ? { ...n, archived: false } : n))),
+    [setNotifs],
+  )
+
+  const deleteNotif = useCallback(
     (id: string) => setNotifs((all) => all.filter((n) => n.id !== id)),
+    [setNotifs],
+  )
+
+  const clearRead = useCallback(() => {
+    if (!notifsRef.current.some((n) => !n.unread && !n.archived)) return
+    rememberNotifs('Прочитанные убраны в архив')
+    setNotifs((all) => all.map((n) => (!n.archived && !n.unread ? { ...n, archived: true } : n)))
+  }, [rememberNotifs, setNotifs])
+
+  const clearAllNotifs = useCallback(() => {
+    if (!notifsRef.current.some((n) => !n.archived)) return
+    rememberNotifs('Лента очищена в архив')
+    setNotifs((all) => all.map((n) => (n.archived ? n : { ...n, archived: true, unread: false })))
+  }, [rememberNotifs, setNotifs])
+
+  const purgeArchive = useCallback(() => {
+    if (!notifsRef.current.some((n) => n.archived)) return
+    rememberNotifs('Архив стёрт')
+    setNotifs((all) => all.filter((n) => !n.archived))
+  }, [rememberNotifs, setNotifs])
+
+  /**
+   * Клик по телу уведомления: снимаем unread и открываем источник события.
+   * Если источник не указан, ведём в раздел, к которому относится событие.
+   */
+  const openNotif = useCallback(
+    (id: string) => {
+      const n = notifsRef.current.find((x) => x.id === id)
+      if (!n) return
+      setNotifs((all) => all.map((x) => (x.id === id ? { ...x, unread: false } : x)))
+      const at = Date.now()
+      const link = n.link
+      if (link?.kind === 'file') {
+        setScreen('library')
+        setFileFocus({ id: link.id, at })
+        return
+      }
+      if (link?.kind === 'note') {
+        setScreen('library')
+        setNoteFocus({ id: link.id, at })
+        return
+      }
+      if (link?.kind === 'secret') {
+        setScreen('vault')
+        setSecretFocus({ id: link.id, at })
+        return
+      }
+      if (link?.kind === 'setting') {
+        setScreen('settings')
+        setSettingFocus({ id: link.id, at })
+        return
+      }
+      if (link?.kind === 'screen') {
+        setScreen(link.id)
+        return
+      }
+      if (n.cat === 'pipeline') {
+        setScreen('library')
+        return
+      }
+      setScreen('settings')
+      setSettingFocus({ id: n.cat === 'privacy' ? 'privacy' : 'notifs', at })
+    },
     [setNotifs],
   )
 
@@ -647,6 +834,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
         icon: 'inbox',
         title: created.length === 1 ? 'Файл в конвейере' : `${created.length} файлов в конвейере`,
         body: `Источник: ${settingsRef.current.folder}. Распознавание ${t.ocr ? 'включено' : 'выключено'}.`,
+        link: { kind: 'file', id: created[0].id },
       })
 
       const delay = t.ocr ? 4200 : 2200
@@ -661,6 +849,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
           body: `${created.length} ${created.length === 1 ? 'файл' : 'файлов'} разобран${
             created.length === 1 ? '' : 'ы'
           } и связан${created.length === 1 ? '' : 'ы'} с картой памяти.`,
+          link: { kind: 'file', id: created[0].id },
         })
       }, delay)
     },
@@ -1491,11 +1680,20 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     saveSettings,
     revertSettings,
     notifs,
-    unread: notifs.filter((n) => n.unread).length,
+    unread: notifs.filter((n) => n.unread && !n.archived).length,
     notify,
     markAllRead,
     toggleRead,
-    dismissNotif,
+    openNotif,
+    archiveNotif,
+    restoreNotif,
+    deleteNotif,
+    clearRead,
+    clearAllNotifs,
+    purgeArchive,
+    notifUndo,
+    undoNotifs,
+    dismissNotif: archiveNotif,
     screen,
     go,
     fileFocus,

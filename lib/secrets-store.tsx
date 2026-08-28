@@ -342,6 +342,7 @@ export function SecretsProvider({ children }: { children: ReactNode }) {
         icon: 'key',
         title: 'Запись добавлена в сейф секретов',
         body: `«${rec.title}» · ${TYPE_META[type].label}. Секретные поля зашифрованы AES-GCM.`,
+        link: { kind: 'secret', id: rec.id },
       })
       return null
     },
@@ -929,6 +930,7 @@ export function SecretsProvider({ children }: { children: ReactNode }) {
             ? `Срок записи «${e.title}» истёк`
             : `«${e.title}» истекает через ${Math.max(days, 1)} дн.`,
         body: `Срок: ${new Date(e.expiredAfter).toLocaleDateString('ru-RU')}. Обновите значение — напоминания приходят за 30, 7 и 1 день.`,
+        link: { kind: 'secret', id: e.id },
       })
     }
     if (fired || Object.keys(next).length !== Object.keys(expiryNotified).length)
@@ -1013,6 +1015,7 @@ export function SecretsProvider({ children }: { children: ReactNode }) {
         icon: 'lockRound',
         title: 'Вложение зашифровано',
         body: `«${att.name}» приложено к записи «${e.title}» и зашифровано AES-GCM ключом записи.`,
+        link: { kind: 'secret', id: entryId },
       })
       return null
     },

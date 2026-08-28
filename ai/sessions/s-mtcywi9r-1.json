@@ -2,7 +2,7 @@
   "id": "s-mtcywi9r-1",
   "title": "Скажи привет одним словом",
   "createdAt": 1787922515665,
-  "updatedAt": 1787922820671,
+  "updatedAt": 1787927485973,
   "pinned": [],
   "msgs": [
     {
@@ -35,6 +35,33 @@
           "ms": 1743
         }
       ]
+    },
+    {
+      "id": "u-mtd1v099-0",
+      "role": "user",
+      "time": "14:31",
+      "text": "Скажи одним словом: привет"
+    },
+    {
+      "id": "a-mtd1v1d5-1",
+      "role": "ai",
+      "time": "14:31",
+      "text": "Привет",
+      "sources": [],
+      "scanned": 13,
+      "picked": 0,
+      "grounded": true,
+      "ms": 1436,
+      "stages": [
+        {
+          "label": "запрос к Claude Opus 5",
+          "ms": 1
+        },
+        {
+          "label": "модель пишет",
+          "ms": 1366
+        }
+      ]
     }
   ],
   "llm": [
@@ -53,6 +80,14 @@
     {
       "role": "assistant",
       "content": "Пёс"
+    },
+    {
+      "role": "user",
+      "content": "Скажи одним словом: привет"
+    },
+    {
+      "role": "assistant",
+      "content": "Привет"
     }
   ]
 }
