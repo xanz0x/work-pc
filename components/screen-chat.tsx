@@ -625,10 +625,9 @@ export function ScreenChat() {
           </span>
           <div className="chat-titles">
             <h1 className="chat-title ellipsis">{active?.title ?? 'Новый диалог'}</h1>
-            <p className="chat-sub mono" data-testid="chat-engine-sub">
-              {v.engineView.model} · {v.engineView.label} · контекст: {v.stats.files} файлов
-              {active?.pinned.length ? ` · закреплено ${active.pinned.length}` : ''} · скиллы и MCP —
-              в AI-центре
+            <p className="chat-sub mono ellipsis" data-testid="chat-engine-sub">
+              {v.engineView.model} · {v.engineView.label} · {v.stats.files} файлов
+              {active?.pinned.length ? ` · закреплено ${active.pinned.length}` : ''}
             </p>
           </div>
           <span className="grow" />

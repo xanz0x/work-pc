@@ -310,8 +310,8 @@ export function VaultEditor({
             <div className="vt-ed-fields">
               <div className="vt-ed-fields-head">
                 <span className="label-mono">Поля</span>
-                <span className="vt-ed-legend label-mono" title="Поле с включённым ct шифруется AES-GCM">
-                  <IconLock /> ct — поле шифруется
+                <span className="vt-ed-legend label-mono" title="Поле с включённым замком шифруется AES-GCM">
+                  <IconLock /> замок — поле шифруется
                 </span>
                 <span className="grow" />
                 <button
@@ -368,7 +368,6 @@ export function VaultEditor({
                       data-testid={`editor-field-secret-${i}`}
                     >
                       <IconLock />
-                      <span>ct</span>
                     </button>
                     <button
                       className="vt-icon-btn"

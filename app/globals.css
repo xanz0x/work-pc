@@ -3062,6 +3062,11 @@ p {
   text-transform: uppercase;
   color: var(--text-3);
   margin-top: 1px;
+  white-space: nowrap;
+}
+/* Шапка чата: заголовок и подпись — по одной строке, без переносов. */
+.chat-titles {
+  max-width: 320px;
 }
 .chat-offline svg {
   width: 11px;
@@ -9948,9 +9953,11 @@ button.chip:hover {
 .vt-ct {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  justify-content: center;
+  gap: 0;
   height: 30px;
-  padding: 0 9px;
+  width: 30px;
+  padding: 0;
   flex: none;
   border: 1px solid var(--border);
   border-radius: var(--r);
@@ -9965,8 +9972,8 @@ button.chip:hover {
   transition-duration: 130ms;
 }
 .vt-ct svg {
-  width: 11px;
-  height: 11px;
+  width: 13px;
+  height: 13px;
 }
 .vt-ct:hover {
   color: var(--text-2);
