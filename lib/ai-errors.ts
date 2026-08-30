@@ -11,6 +11,7 @@ export type AiErrorCode =
   | 'CONTEXT_TOO_LONG'
   | 'RATE_LIMITED'
   | 'AUTH_REQUIRED'
+  | 'BAD_REQUEST'
   | 'NETWORK'
   | 'UNKNOWN'
 
@@ -50,6 +51,11 @@ export const AI_ERRORS: Record<AiErrorCode, { title: string; hint: string; retry
   AUTH_REQUIRED: {
     title: 'Нужен вход в приложение',
     hint: 'Сессия истекла. Войдите паролем приложения и повторите запрос.',
+    retry: false,
+  },
+  BAD_REQUEST: {
+    title: 'Запрос не понят',
+    hint: 'Приложение отправило некорректные данные. Обновите страницу и повторите.',
     retry: false,
   },
   NETWORK: {

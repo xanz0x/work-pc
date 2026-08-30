@@ -11,6 +11,14 @@ import {
   type SessionFile,
 } from '@/lib/ai-server'
 import { requestId, type AiErrorCode } from '@/lib/ai-errors'
+import { log } from '@/lib/log'
+import { countLatency, countTokens, countTurn, trackError } from '@/lib/metrics'
+import {
+  MAX_TOOL_CHARS,
+  MAX_USER_CHARS,
+  fillPercent,
+  trimLlm,
+} from '@/lib/context-window'
 import { clientIp, limitChat } from '@/lib/rate-limit'
 
 export const runtime = 'nodejs'
@@ -196,11 +204,14 @@ async function callUpstream(
 }
 
 export async function POST(req: NextRequest) {
-  const rid = requestId()
+  /* request-id рождается в proxy.ts и связывает лог, метрики и ответ (AR-5). */
+  const rid = req.headers.get('x-request-id') ?? requestId()
+  const t0 = Date.now()
   const ip = clientIp(req.headers)
 
   const limit = limitChat(ip)
   if (!limit.ok) {
+    log('warn', 'chat.limited', { rid, route: '/ai-api/chat', status: 429, code: limit.scope })
     const resp = fail(
       'RATE_LIMITED',
       limit.scope === 'minute'
@@ -213,7 +224,15 @@ export async function POST(req: NextRequest) {
     return resp
   }
 
-  const body = (await req.json()) as Body
+  let body: Body
+  try {
+    body = (await req.json()) as Body
+  } catch {
+    log('warn', 'chat.bad-json', { rid, route: '/ai-api/chat', status: 400 })
+    return fail('BAD_REQUEST', 'Тело запроса не является корректным JSON.', 400, { requestId: rid })
+  }
+  /* Форма тела проверяется после гейтов движка: локальный движок отвечает
+     409 независимо от полей (инвариант волны 1). */
   const engine = body.engine === 'hybrid' || body.engine === 'cloud' ? body.engine : 'local'
 
   /* Заявленный локальный режим проверяется здесь: ни одного внешнего запроса. */
@@ -224,11 +243,22 @@ export async function POST(req: NextRequest) {
   const proxy = process.env.AI_PROXY_URL
   const key = process.env.EMERGENT_LLM_KEY
   if (!proxy || !key) {
-    console.error(`[ai-chat ${rid}] облачный движок не настроен на сервере`)
+    log('error', 'chat.cloud-off', { rid, route: '/ai-api/chat', status: 503 })
     return fail('CLOUD_NOT_CONFIGURED', 'Облачный движок не настроен.', 503)
   }
 
-  const id = safeId(body.sessionId)
+  if (typeof body.sessionId !== 'string' || !body.sessionId) {
+    log('warn', 'chat.bad-body', { rid, route: '/ai-api/chat', status: 400 })
+    return fail('BAD_REQUEST', 'Не указан идентификатор диалога.', 400, { requestId: rid })
+  }
+
+  let id: string
+  try {
+    id = safeId(body.sessionId)
+  } catch {
+    log('warn', 'chat.bad-session-id', { rid, route: '/ai-api/chat', status: 400 })
+    return fail('BAD_REQUEST', 'Недопустимый идентификатор диалога.', 400, { requestId: rid })
+  }
   let s: SessionFile | null = await getSession(id)
   if (!s) {
     s = {
@@ -253,10 +283,10 @@ export async function POST(req: NextRequest) {
     while (s.llm.length && s.llm[s.llm.length - 1].role !== 'user') s.llm.pop()
   }
 
-  if (body.text) s.llm.push({ role: 'user', content: body.text.slice(0, 4000) })
+  if (body.text) s.llm.push({ role: 'user', content: body.text.slice(0, MAX_USER_CHARS) })
   if (body.toolResults?.length) {
     for (const r of body.toolResults) {
-      s.llm.push({ role: 'tool', tool_call_id: r.id, content: r.content.slice(0, 8000) })
+      s.llm.push({ role: 'tool', tool_call_id: r.id, content: r.content.slice(0, MAX_TOOL_CHARS) })
     }
   }
 
@@ -269,23 +299,39 @@ export async function POST(req: NextRequest) {
     async start(controller) {
       const push = (o: unknown) => controller.enqueue(enc.encode(`data: ${JSON.stringify(o)}\n\n`))
       try {
+        /* LG-1: наружу уходят последние ходы, вытесненное — одним резюме.
+           История на диске остаётся полной: это данные пользователя. */
+        const win = trimLlm(session.llm)
+        const sys = win.summary ? `${system}\n\n## Ранее в диалоге\n${win.summary}` : system
+        push({
+          t: 'ctx',
+          used: win.used,
+          limit: win.limit,
+          fill: fillPercent(win.used, win.limit),
+          dropped: win.dropped,
+        })
+
         const upstream = await callUpstream(
           proxy,
           key,
           {
             model: MODEL,
             stream: true,
+            stream_options: { include_usage: true },
             max_tokens: 2048,
-            messages: [{ role: 'system', content: system }, ...session.llm],
+            messages: [{ role: 'system', content: sys }, ...win.msgs],
             ...(tools.length ? { tools, tool_choice: 'auto' } : {}),
           },
           req.signal,
         )
+        countTurn()
 
         const reader = upstream.body!.getReader()
         const dec = new TextDecoder()
         let buf = ''
         let text = ''
+        /* Токены пишем только если провайдер их прислал: выдуманных цифр нет. */
+        let usage: { prompt_tokens?: number; completion_tokens?: number } | null = null
         const acc: { id: string; name: string; args: string }[] = []
 
         for (;;) {
@@ -300,6 +346,7 @@ export async function POST(req: NextRequest) {
             const payload = l.slice(5).trim()
             if (!payload || payload === '[DONE]') continue
             let j: {
+              usage?: { prompt_tokens?: number; completion_tokens?: number }
               choices?: {
                 delta?: {
                   content?: string
@@ -316,6 +363,7 @@ export async function POST(req: NextRequest) {
             } catch {
               continue
             }
+            if (j.usage) usage = j.usage
             const d = j.choices?.[0]?.delta
             if (!d) continue
             if (typeof d.content === 'string' && d.content) {
@@ -364,10 +412,23 @@ export async function POST(req: NextRequest) {
 
         if (calls.length) push({ t: 'tool', calls })
         push({ t: 'end' })
+        countTokens(usage?.prompt_tokens ?? null, usage?.completion_tokens ?? null)
+        const ms = Date.now() - t0
+        countLatency(ms)
+        log('info', 'chat.done', {
+          rid,
+          route: '/ai-api/chat',
+          status: 200,
+          ms,
+          count: calls.length,
+          chars: win.used,
+          tokens: (usage?.prompt_tokens ?? 0) + (usage?.completion_tokens ?? 0) || undefined,
+        })
       } catch (e) {
         const f =
           e instanceof AiFail ? e : new AiFail('UNKNOWN', e instanceof Error ? e.message : 'сбой потока')
-        console.error(`[ai-chat ${rid}] ${f.code}: ${f.detail}`)
+        countLatency(Date.now() - t0)
+        trackError({ rid, where: '/ai-api/chat', code: f.code, reason: f.detail })
         try {
           push({ t: 'err', code: f.code, requestId: rid })
         } catch {

@@ -1,12 +1,13 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { deleteSession, getSession, safeId, saveSession } from '@/lib/ai-server'
+import { withRoute } from '@/lib/route-log'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 type P = { params: Promise<{ id: string }> }
 
-export async function GET(_req: NextRequest, { params }: P) {
+export const GET = withRoute('/ai-api/sessions/[id]', async (_req: NextRequest, { params }: P) => {
   const { id } = await params
   const s = await getSession(safeId(id))
   if (!s) return NextResponse.json({ error: 'нет такой сессии' }, { status: 404 })
@@ -18,15 +19,15 @@ export async function GET(_req: NextRequest, { params }: P) {
     pinned: s.pinned,
     msgs: s.msgs,
   })
-}
+})
 
-export async function PATCH(req: NextRequest, { params }: P) {
+export const PATCH = withRoute('/ai-api/sessions/[id]', async (req: NextRequest, { params }: P) => {
   const { id } = await params
-  const b = (await req.json()) as {
-    title?: string
-    msgs?: unknown[]
-    pinned?: string[]
-    createdAt?: number
+  let b: { title?: string; msgs?: unknown[]; pinned?: string[]; createdAt?: number }
+  try {
+    b = (await req.json()) as typeof b
+  } catch {
+    return NextResponse.json({ code: 'BAD_REQUEST', error: 'тело запроса не JSON' }, { status: 400 })
   }
   let s = await getSession(safeId(id))
   if (!s) {
@@ -46,10 +47,13 @@ export async function PATCH(req: NextRequest, { params }: P) {
   s.updatedAt = Date.now()
   await saveSession(s)
   return NextResponse.json({ ok: true })
-}
+})
 
-export async function DELETE(_req: NextRequest, { params }: P) {
-  const { id } = await params
-  await deleteSession(safeId(id))
-  return NextResponse.json({ ok: true })
-}
+export const DELETE = withRoute(
+  '/ai-api/sessions/[id]',
+  async (_req: NextRequest, { params }: P) => {
+    const { id } = await params
+    await deleteSession(safeId(id))
+    return NextResponse.json({ ok: true })
+  },
+)

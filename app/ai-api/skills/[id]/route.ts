@@ -1,12 +1,13 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { deleteSkill, getSkill, safeId, saveSkill } from '@/lib/ai-server'
+import { withRoute } from '@/lib/route-log'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 type P = { params: Promise<{ id: string }> }
 
-export async function PUT(req: NextRequest, { params }: P) {
+export const PUT = withRoute('/ai-api/skills/[id]', async (req: NextRequest, { params }: P) => {
   const { id } = await params
   const s = await getSkill(safeId(id))
   if (!s) return NextResponse.json({ error: 'нет такого скилла' }, { status: 404 })
@@ -22,14 +23,17 @@ export async function PUT(req: NextRequest, { params }: P) {
   if (typeof b.enabled === 'boolean') s.enabled = b.enabled
   await saveSkill(s)
   return NextResponse.json(s)
-}
+})
 
-export async function DELETE(_req: NextRequest, { params }: P) {
+export const DELETE = withRoute('/ai-api/skills/[id]', async (_req: NextRequest, { params }: P) => {
   const { id } = await params
   const s = await getSkill(safeId(id))
   if (s?.builtin) {
-    return NextResponse.json({ error: 'встроенный скилл нельзя удалить — только выключить' }, { status: 400 })
+    return NextResponse.json(
+      { error: 'встроенный скилл нельзя удалить — только выключить' },
+      { status: 400 },
+    )
   }
   await deleteSkill(safeId(id))
   return NextResponse.json({ ok: true })
-}
+})

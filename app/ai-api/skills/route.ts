@@ -1,16 +1,22 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { listSkills, saveSkill, type SkillFile } from '@/lib/ai-server'
+import { withRoute } from '@/lib/route-log'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
-  return NextResponse.json(await listSkills())
-}
+export const GET = withRoute('/ai-api/skills', async () =>
+  NextResponse.json(await listSkills()),
+)
 
 /** Создание пользовательского скилла-инструкции. */
-export async function POST(req: NextRequest) {
-  const b = (await req.json()) as { name?: string; description?: string; instructions?: string }
+export const POST = withRoute('/ai-api/skills', async (req: NextRequest) => {
+  let b: { name?: string; description?: string; instructions?: string }
+  try {
+    b = (await req.json()) as typeof b
+  } catch {
+    return NextResponse.json({ code: 'BAD_REQUEST', error: 'тело запроса не JSON' }, { status: 400 })
+  }
   const name = (b.name ?? '').trim().slice(0, 60)
   const instructions = (b.instructions ?? '').trim().slice(0, 4000)
   if (!name || !instructions) {
@@ -27,4 +33,4 @@ export async function POST(req: NextRequest) {
   }
   await saveSkill(s)
   return NextResponse.json(s)
-}
+})

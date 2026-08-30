@@ -1,11 +1,12 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { SESSION_COOKIE, equalConst, issueSession, sessionTtlMs, sha256 } from '@/lib/app-auth'
 import { clientIp, limitLogin, resetLogin } from '@/lib/rate-limit'
+import { withRoute } from '@/lib/route-log'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-export async function POST(req: NextRequest) {
+export const POST = withRoute('/ai-api/auth/login', async (req: NextRequest) => {
   const password = process.env.APP_PASSWORD
   const secret = process.env.APP_SESSION_SECRET
   if (!password || !secret) {
@@ -43,4 +44,4 @@ export async function POST(req: NextRequest) {
     expires,
   })
   return res
-}
+})

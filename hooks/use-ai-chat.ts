@@ -73,6 +73,8 @@ export function useAiChat(
   const [tools, setTools] = useState<ToolRun[]>([])
   const [active, setActive] = useState(false)
   const [pending, setPending] = useState<ToolRun | null>(null)
+  /** Реальное заполнение окна контекста: цифру считает сервер (LG-1). */
+  const [usage, setUsage] = useState<{ used: number; limit: number; fill: number } | null>(null)
 
   const abortRef = useRef<AbortController | null>(null)
   const decision = useRef<((ok: boolean) => void) | null>(null)
@@ -133,7 +135,15 @@ export function useAiChat(
         for (const ch of chunks) {
           const line = ch.split('\n').find((l) => l.startsWith('data:'))
           if (!line) continue
-          let ev: { t: string; x?: string; calls?: Call[]; code?: string }
+          let ev: {
+            t: string
+            x?: string
+            calls?: Call[]
+            code?: string
+            used?: number
+            limit?: number
+            fill?: number
+          }
           try {
             ev = JSON.parse(line.slice(5))
           } catch {
@@ -150,6 +160,8 @@ export function useAiChat(
             calls = ev.calls
           } else if (ev.t === 'err') {
             errCode = isAiErrorCode(ev.code) ? ev.code : 'UNKNOWN'
+          } else if (ev.t === 'ctx' && typeof ev.fill === 'number') {
+            setUsage({ used: ev.used ?? 0, limit: ev.limit ?? 0, fill: ev.fill })
           }
         }
       }
@@ -279,5 +291,5 @@ export function useAiChat(
   const allow = useCallback(() => decision.current?.(true), [])
   const deny = useCallback(() => decision.current?.(false), [])
 
-  return { text, stages, tools, active, pending, start, stop, allow, deny }
+  return { text, stages, tools, active, pending, usage, start, stop, allow, deny }
 }

@@ -1,8 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  typescript: {
-    ignoreBuildErrors: true,
-  },
+  // P0-4: сборка обязана падать на ошибке типов — гейт, а не пожелание.
   images: {
     unoptimized: true,
   },

@@ -214,6 +214,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <input
             ref={picker}
             type="file"
+            data-testid="file-picker"
             multiple
             className="sr-only"
             aria-hidden="true"
@@ -227,6 +228,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <button
             className="btn btn-primary nav-add"
             title="Добавить файл"
+            data-testid="file-add-btn"
             onClick={() => picker.current?.click()}
           >
             <IconPlus />

@@ -568,14 +568,11 @@ export function ScreenChat() {
       }
     : null
 
-  /** Окно контекста: считаем по длине переписки, предупреждаем заранее. */
-  const fill = Math.min(
-    100,
-    Math.round(
-      (msgs.reduce((n, m) => n + m.text.length, 0) / 9000) * 100 +
-        (active?.pinned.length ?? 0) * 4,
-    ),
-  )
+  /**
+   * Окно контекста (LG-1): цифра приходит с сервера — сколько символов
+   * реально ушло в модель. До первого ответа источника нет, значит «—».
+   */
+  const fill = ai.usage?.fill ?? null
 
   const draft = active ? (v.drafts[active.id] ?? '') : freeDraft
   const setDraft = useCallback(
@@ -637,7 +634,15 @@ export function ScreenChat() {
               нужен вход
             </a>
           ) : null}
-          {fill >= 80 ? <span className="badge badge-warn chat-fill">контекст {fill}%</span> : null}
+          {fill !== null && fill >= 70 ? (
+            <span
+              className="badge badge-warn chat-fill"
+              title="Доля символьного окна, которое уходит в модель. Старые ходы сворачиваются в резюме автоматически."
+              data-testid="chat-context-fill"
+            >
+              контекст {fill}%
+            </span>
+          ) : null}
           <button
             type="button"
             className={`badge ${v.engineView.isCloud ? 'badge-warn' : 'badge-ok'} chat-offline`}

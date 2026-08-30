@@ -12,6 +12,7 @@ import {
   type ReactNode,
 } from 'react'
 import type { IconId } from '@/components/icons'
+import { pruneNotifs } from '@/lib/notifs'
 import { usePersistedState } from '@/hooks/use-persisted-state'
 import {
   CLOUD_MODEL_LABEL,
@@ -211,28 +212,8 @@ export type Notif = {
   snoozedUntil?: number
 }
 
-const NOTIF_ACTIVE_CAP = 200
-const NOTIF_ARCHIVE_CAP = 300
-const NOTIF_ARCHIVE_TTL = 30 * 24 * 60 * 60_000
-
-/**
- * Retention ленты: активные события ограничены количеством, архив —
- * количеством и сроком. События приватности и журнала безопасности из
- * обрезки активной части исключены полностью (N-4): они не должны
- * исчезать под потоком конвейера.
- */
-function pruneNotifs(all: Notif[]): Notif[] {
-  const t = Date.now()
-  const kept = all.filter((n) => !(n.archived && t - n.at > NOTIF_ARCHIVE_TTL))
-  const active = kept.filter((n) => !n.archived)
-  const keepAlways = active.filter((n) => n.cat === 'privacy')
-  const trimmable = active.filter((n) => n.cat !== 'privacy').slice(0, NOTIF_ACTIVE_CAP)
-  const arch = kept.filter((n) => n.archived).slice(0, NOTIF_ARCHIVE_CAP)
-  return [
-    ...[...keepAlways, ...trimmable].sort((a, b) => b.at - a.at),
-    ...arch,
-  ]
-}
+/* Retention ленты вынесен в `lib/notifs.ts` (P0-4): чистые функции
+   покрыты unit-тестами, стор только вызывает pruneNotifs. */
 
 let seq = 0
 const uid = (p: string) => `${p}-${Date.now().toString(36)}-${seq++}`

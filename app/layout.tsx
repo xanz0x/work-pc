@@ -1,6 +1,7 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { IBM_Plex_Mono, IBM_Plex_Sans } from 'next/font/google'
+import { StorageAlert } from '@/components/storage-alert'
 import { RedactedProvider } from '@/lib/redact-context'
 import { SecretsProvider } from '@/lib/secrets-store'
 import { VaultProvider } from '@/lib/vault-store'
@@ -65,6 +66,9 @@ export default function RootLayout({
             <SecretsProvider>{children}</SecretsProvider>
           </VaultProvider>
         </RedactedProvider>
+        {/* Ошибка записи хранилища видна пользователю (P0-3): «не сохранилось»
+            с повтором, переполнение квоты — отдельный честный экран. */}
+        <StorageAlert />
         {/* Скрипт аналитики существует только на хостинге Vercel — вне его даёт 404. */}
         {process.env.VERCEL === '1' && <Analytics />}
       </body>

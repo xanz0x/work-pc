@@ -1,30 +1,44 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { SESSION_COOKIE, verifySession } from '@/lib/app-auth'
+import { log, newRequestId } from '@/lib/log'
 
 /**
  * Всё под /ai-api закрыто сессией: без cookie — 401, кроме самого входа.
  * В Next 16 конвенция middleware переименована в proxy (P0-2).
+ * Здесь же рождается request-id (AR-5): он уезжает в маршрут заголовком
+ * x-request-id и возвращается клиенту в X-Request-Id.
  */
 export const config = { matcher: ['/ai-api/:path*'] }
 
 export async function proxy(req: NextRequest) {
-  if (req.nextUrl.pathname.startsWith('/ai-api/auth')) return NextResponse.next()
+  const rid = newRequestId()
+  const route = req.nextUrl.pathname
+  const method = req.method
+
+  const deny = (status: number, code: string, error: string) => {
+    log('warn', 'ai-api.deny', { rid, route, method, status, code })
+    const res = NextResponse.json({ code, error, requestId: rid }, { status })
+    res.headers.set('X-Request-Id', rid)
+    return res
+  }
+
+  const pass = () => {
+    const headers = new Headers(req.headers)
+    headers.set('x-request-id', rid)
+    const res = NextResponse.next({ request: { headers } })
+    res.headers.set('X-Request-Id', rid)
+    return res
+  }
+
+  if (route.startsWith('/ai-api/auth')) return pass()
 
   const secret = process.env.APP_SESSION_SECRET
   const password = process.env.APP_PASSWORD
   if (!secret || !password) {
-    return NextResponse.json(
-      { code: 'CLOUD_NOT_CONFIGURED', error: 'Вход в приложение не настроен на сервере.' },
-      { status: 503 },
-    )
+    return deny(503, 'CLOUD_NOT_CONFIGURED', 'Вход в приложение не настроен на сервере.')
   }
 
   const ok = await verifySession(secret, req.cookies.get(SESSION_COOKIE)?.value)
-  if (!ok) {
-    return NextResponse.json(
-      { code: 'AUTH_REQUIRED', error: 'Нужен вход в приложение.' },
-      { status: 401 },
-    )
-  }
-  return NextResponse.next()
+  if (!ok) return deny(401, 'AUTH_REQUIRED', 'Нужен вход в приложение.')
+  return pass()
 }

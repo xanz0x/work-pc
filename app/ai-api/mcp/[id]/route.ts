@@ -1,12 +1,13 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { getMcp, safeId, saveMcp } from '@/lib/ai-server'
+import { withRoute } from '@/lib/route-log'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 type P = { params: Promise<{ id: string }> }
 
-export async function PUT(req: NextRequest, { params }: P) {
+export const PUT = withRoute('/ai-api/mcp/[id]', async (req: NextRequest, { params }: P) => {
   const { id } = await params
   const m = await getMcp(safeId(id))
   if (!m) return NextResponse.json({ error: 'нет такого MCP-сервера' }, { status: 404 })
@@ -21,10 +22,10 @@ export async function PUT(req: NextRequest, { params }: P) {
   /* Токен через API не принимается: он живёт только в окружении сервера. */
   await saveMcp(m)
   return NextResponse.json(m)
-}
+})
 
 /** Действия скелета: проверка соединения и мок «вытянуть документ». */
-export async function POST(req: NextRequest, { params }: P) {
+export const POST = withRoute('/ai-api/mcp/[id]', async (req: NextRequest, { params }: P) => {
   const { id } = await params
   const m = await getMcp(safeId(id))
   if (!m) return NextResponse.json({ error: 'нет такого MCP-сервера' }, { status: 404 })
@@ -70,4 +71,4 @@ export async function POST(req: NextRequest, { params }: P) {
   }
 
   return NextResponse.json({ error: 'неизвестное действие' }, { status: 400 })
-}
+})

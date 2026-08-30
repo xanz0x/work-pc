@@ -1,11 +1,13 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { loadPersisted, savePersisted } from '@/lib/db/persist'
 
 /**
  * Состояние, которое живёт между перезагрузками. Первый рендер всегда отдаёт
- * значение по умолчанию — иначе разъедется гидратация; localStorage читается
- * в эффекте. В приватном режиме хук просто работает как useState.
+ * значение по умолчанию — иначе разъедется гидратация; хранилище читается в
+ * эффекте (IndexedDB асинхронный, мелочь — синхронно из localStorage).
+ * Третий элемент кортежа — признак «данные прочитаны».
  */
 export function usePersistedState<T>(
   key: string,
@@ -14,26 +16,28 @@ export function usePersistedState<T>(
   const [value, setValue] = useState<T>(initial)
   const [hydrated, setHydrated] = useState(false)
   const keyRef = useRef(key)
+  /** Пользователь успел записать раньше, чем пришло прочитанное — его значение важнее. */
+  const dirtyRef = useRef(false)
 
   useEffect(() => {
     keyRef.current = key
-    try {
-      const raw = localStorage.getItem(key)
-      if (raw !== null) setValue(JSON.parse(raw) as T)
-    } catch {
-      /* приватный режим или битый JSON — остаёмся на значении по умолчанию */
+    dirtyRef.current = false
+    let alive = true
+    void loadPersisted<T>(key).then((stored) => {
+      if (!alive) return
+      if (stored !== undefined && !dirtyRef.current) setValue(stored)
+      setHydrated(true)
+    })
+    return () => {
+      alive = false
     }
-    setHydrated(true)
   }, [key])
 
   const set = useCallback((next: T | ((prev: T) => T)) => {
+    dirtyRef.current = true
     setValue((prev) => {
       const resolved = typeof next === 'function' ? (next as (p: T) => T)(prev) : next
-      try {
-        localStorage.setItem(keyRef.current, JSON.stringify(resolved))
-      } catch {
-        /* игнорируем: интерфейс продолжает работать без сохранения */
-      }
+      savePersisted(keyRef.current, resolved)
       return resolved
     })
   }, [])
