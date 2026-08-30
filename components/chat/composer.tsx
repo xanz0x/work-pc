@@ -223,9 +223,13 @@ export function Composer({
             контекст: {pinned.length}
           </span>
         ) : null}
-        <span className="dock-stat">
+        <span className="dock-stat" data-testid="composer-engine">
           <IconLock aria-hidden="true" />
-          Claude Opus 5 · облако Emergent
+          {vault.engineView.isCloud
+            ? `${vault.engineView.model} · внешняя модель`
+            : vault.engineView.ready
+              ? `${vault.engineView.model} · на устройстве`
+              : 'локальный движок не подключён'}
         </span>
         {value.length > MAX - 120 ? (
           <span className="dock-stat mono">

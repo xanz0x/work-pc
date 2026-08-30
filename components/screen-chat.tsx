@@ -19,6 +19,7 @@ import { MessageUser } from './chat/message-user'
 import { SessionRail } from './chat/session-rail'
 import { SourceDesk } from './chat/source-desk'
 import { AiHub } from './chat/ai-hub'
+import { CloudConsent } from './chat/cloud-consent'
 import type { AiMsg, ChatMsg, Session, UserMsg } from './chat/types'
 import { usePersistedState } from '@/hooks/use-persisted-state'
 import { useAiChat, type ExecResult, type TurnBody } from '@/hooks/use-ai-chat'
@@ -36,7 +37,7 @@ let seq = 0
 const uid = (p: string) => `${p}-${Date.now().toString(36)}-${seq++}`
 
 /**
- * Экран разговора с сейфом. Модель настоящая — Claude Opus 5 через шлюз
+ * Экран разговора с сейфом. Модель настоящая — Claude Sonnet 4.5 через шлюз
  * Emergent, скиллы выполняются на устройстве: поиск по файлам и запись в
  * секретницу не покидают браузер, наружу уходит только сам разговор и
  * метаданные файлов. Сессии зеркалятся файлами в ai/sessions репозитория.
@@ -55,6 +56,11 @@ export function ScreenChat() {
   const [finding, setFinding] = useState(false)
   const [needle, setNeedle] = useState('')
   const [hubOpen, setHubOpen] = useState(false)
+  /** Отложенный ход: ждёт согласия на облачный запрос. */
+  const [consentOpen, setConsentOpen] = useState(false)
+  const pendingRun = useRef<(() => void) | null>(null)
+  /** Есть ли сессия входа: без неё ИИ-слой отвечает 401. */
+  const [authed, setAuthed] = useState(true)
   // Черновик до создания сессии: без него ввод в пустом состоянии терялся.
   const [freeDraft, setFreeDraft] = useState('')
 
@@ -68,6 +74,9 @@ export function ScreenChat() {
     if (!v.hydrated || synced.current) return
     synced.current = true
     void (async () => {
+      const auth = await aiApi.authSession()
+      setAuthed(auth.authed)
+      if (!auth.authed) return
       try {
         const metas = await aiApi.sessions()
         const known = new Set(v.sessions.map((s) => s.id))
@@ -215,7 +224,10 @@ export function ScreenChat() {
 
   const buildCtx = useCallback(
     (pinned: string[]): TurnBody['ctx'] => ({
-      files: v.views.map((f) => ({ id: f.id, name: f.name, cat: f.cat, tags: fileTags(f) })),
+      /* P0-1: индекс сейфа уходит наружу только с разрешения пользователя. */
+      files: v.settings.toggles.sendIndex
+        ? v.views.map((f) => ({ id: f.id, name: f.name, cat: f.cat, tags: fileTags(f) }))
+        : [],
       pinned: pinned.map((id) => v.viewById(id)?.name ?? id),
       lock: secrets.needsLock ? 'не настроен' : 'настроен (содержимое секретов ИИ недоступно)',
       scanned: v.stats.files,
@@ -231,8 +243,34 @@ export function ScreenChat() {
       setStreamFor(sessionId)
       setSay('Модель думает.')
       const pinned = sessions.find((s) => s.id === sessionId)?.pinned ?? []
-      ai.start({ sessionId, ...opts, ctx: buildCtx(pinned) }, (r) => {
+      const ctx = buildCtx(pinned)
+      const view = v.engineView
+      ai.start(
+        {
+          sessionId,
+          ...opts,
+          engine: view.mode,
+          sendIndex: v.settings.toggles.sendIndex,
+          modelLabel: view.model,
+          ctx,
+        },
+        (r) => {
         setStreamFor(null)
+        /* P0-1: каждый облачный ход виден в ленте событий. */
+        if (view.isCloud && !r.errorCode && !r.stopped) {
+          v.notify({
+            kind: 'warn',
+            cat: 'privacy',
+            icon: 'shield',
+            title: `В облако ушло ${ctx.files.length} ${
+              ctx.files.length === 1 ? 'имя файла' : 'имён файлов'
+            }`,
+            body: `${view.model}: отправлен текст запроса, история диалога${
+              ctx.pinned.length ? ` и ${ctx.pinned.length} закреплённых файла` : ''
+            }. Содержимое файлов и секреты остались на устройстве.`,
+            link: { kind: 'screen', id: 'chat' },
+          })
+        }
         const sources = r.stopped
           ? []
           : r.found.map((f, i) => {
@@ -251,8 +289,8 @@ export function ScreenChat() {
           time: hhmm(),
           text:
             r.text ||
-            (r.error
-              ? 'Не удалось получить ответ модели.'
+            (r.errorCode
+              ? ''
               : r.stopped
                 ? ''
                 : 'Модель вернула пустой ответ.'),
@@ -261,7 +299,8 @@ export function ScreenChat() {
           picked: sources.length,
           grounded: !(r.findRan && sources.length === 0),
           stopped: r.stopped || undefined,
-          error: r.error,
+          errorCode: r.errorCode,
+          via: view.isCloud ? 'cloud' : 'local',
           ms: r.ms,
           stages: r.stages,
           tools: r.tools.length ? r.tools : undefined,
@@ -280,34 +319,45 @@ export function ScreenChat() {
             createdAt: done.createdAt,
           })
         }
-        setSay(r.error ? 'Сбой запроса к модели.' : r.stopped ? 'Ответ остановлен.' : 'Ответ готов.')
-      })
+        setSay(r.errorCode ? 'Сбой запроса к модели.' : r.stopped ? 'Ответ остановлен.' : 'Ответ готов.')
+        },
+      )
     },
     [ai, buildCtx, patch, sessions, v],
   )
 
   const send = useCallback(
     (text: string) => {
-      const msg: UserMsg = { id: uid('u'), role: 'user', time: hhmm(), text }
-      if (!active) {
-        const s: Session = {
-          id: uid('s'),
-          title: text.slice(0, 42),
-          createdAt: Date.now(),
-          pinned: [],
-          msgs: [msg],
+      const fire = () => {
+        const msg: UserMsg = { id: uid('u'), role: 'user', time: hhmm(), text }
+        if (!active) {
+          const s: Session = {
+            id: uid('s'),
+            title: text.slice(0, 42),
+            createdAt: Date.now(),
+            pinned: [],
+            msgs: [msg],
+          }
+          v.addSession(s)
+          v.setActiveSession(s.id)
+          run(s.id, { text, title: s.title })
+          return
         }
-        v.addSession(s)
-        v.setActiveSession(s.id)
-        run(s.id, { text, title: s.title })
+        patch(active.id, (s) => ({
+          ...s,
+          title: s.msgs.length === 0 ? text.slice(0, 42) : s.title,
+          msgs: [...s.msgs, msg],
+        }))
+        run(active.id, { text, title: active.msgs.length === 0 ? text.slice(0, 42) : active.title })
+      }
+
+      /* P0-1: первый облачный ход в профиле — только после согласия. */
+      if (v.engineView.isCloud && !v.engineView.consented) {
+        pendingRun.current = fire
+        setConsentOpen(true)
         return
       }
-      patch(active.id, (s) => ({
-        ...s,
-        title: s.msgs.length === 0 ? text.slice(0, 42) : s.title,
-        msgs: [...s.msgs, msg],
-      }))
-      run(active.id, { text, title: active.msgs.length === 0 ? text.slice(0, 42) : active.title })
+      fire()
     },
     [active, patch, run, v],
   )
@@ -575,23 +625,37 @@ export function ScreenChat() {
           </span>
           <div className="chat-titles">
             <h1 className="chat-title ellipsis">{active?.title ?? 'Новый диалог'}</h1>
-            <p className="chat-sub mono">
-              Claude Opus 5 · контекст: {v.stats.files} файлов
+            <p className="chat-sub mono" data-testid="chat-engine-sub">
+              {v.engineView.model} · {v.engineView.label} · контекст: {v.stats.files} файлов
               {active?.pinned.length ? ` · закреплено ${active.pinned.length}` : ''} · скиллы и MCP —
               в AI-центре
             </p>
           </div>
           <span className="grow" />
+          {!authed ? (
+            <a className="badge badge-warn chat-offline" href="/login" data-testid="chat-login-link">
+              <IconShield aria-hidden="true" />
+              нужен вход
+            </a>
+          ) : null}
           {fill >= 80 ? <span className="badge badge-warn chat-fill">контекст {fill}%</span> : null}
           <button
             type="button"
-            className="badge badge-warn chat-offline"
-            onClick={() => setHubOpen(true)}
-            title="Разговор идёт через облако Emergent — файлы остаются на устройстве"
+            className={`badge ${v.engineView.isCloud ? 'badge-warn' : 'badge-ok'} chat-offline`}
+            onClick={() => v.openSetting('engine')}
+            title={
+              v.engineView.isCloud
+                ? 'Запросы идут во внешнюю модель — файлы остаются на устройстве'
+                : 'Локальный режим: внешних запросов нет'
+            }
             data-testid="chat-cloud-badge"
           >
             <IconShield aria-hidden="true" />
-            облако · Opus 5
+            {v.engineView.isCloud
+              ? `облако · ${v.engineView.model}`
+              : v.engineView.ready
+                ? 'локально'
+                : 'локальный движок не подключён'}
           </button>
           <button
             type="button"
@@ -679,8 +743,9 @@ export function ScreenChat() {
                 </span>
                 <h2 className="chat-empty-title">Спросите свой архив</h2>
                 <p className="chat-empty-note">
-                  Отвечает Claude Opus 5 со скиллами: находит файлы в сейфе, сохраняет пароли в
-                  секретницу (с вашего разрешения) и вытягивает документы из Notion через MCP.
+                  {v.engineView.isCloud
+                    ? `Отвечает ${v.engineView.model} со скиллами: находит файлы в сейфе, сохраняет пароли в секретницу (с вашего разрешения) и вытягивает документы из Notion через MCP.`
+                    : 'Выбран локальный движок, а локальной модели в этой сборке ещё нет: чат ответит после её появления. Переключить движок можно в настройках.'}
                 </p>
                 <ul className="chat-sugs">
                   {CHAT_SUGGESTIONS.map((s) => (
@@ -770,6 +835,26 @@ export function ScreenChat() {
       ) : null}
 
       {hubOpen ? <AiHub onClose={() => setHubOpen(false)} /> : null}
+
+      {consentOpen ? (
+        <CloudConsent
+          model={v.engineView.model}
+          fileNames={v.settings.toggles.sendIndex ? v.views.length : 0}
+          sendIndex={v.settings.toggles.sendIndex}
+          onAccept={() => {
+            v.grantCloudConsent()
+            setConsentOpen(false)
+            const go = pendingRun.current
+            pendingRun.current = null
+            go?.()
+          }}
+          onCancel={() => {
+            pendingRun.current = null
+            setConsentOpen(false)
+          }}
+          onDisableIndex={() => v.setToggle('sendIndex', false)}
+        />
+      ) : null}
 
       {/* Вежливая область: скринридер узнаёт итог, а не каждый выданный токен. */}
       <p className="sr-only" role="status" aria-live="polite">

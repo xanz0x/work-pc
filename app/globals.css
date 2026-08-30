@@ -11168,3 +11168,236 @@ button.chip:hover {
   text-transform: uppercase;
   color: var(--text-3);
 }
+
+/* ===== ВОЛНА 1 · ПРАВДА И БЕЗОПАСНОСТЬ =====
+   Слой добавлен сверху существующей системы «Графит»: вход паролем,
+   согласие на облачный ход, каталог ошибок и хвост уведомлений. */
+
+/* --- вход в приложение --- */
+.login-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 32px;
+  background:
+    radial-gradient(1200px 600px at 20% -10%, rgba(47, 190, 126, 0.07), transparent 60%),
+    var(--bg-0, #030507);
+}
+.login-card {
+  width: min(420px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 28px;
+}
+.login-mark {
+  display: inline-flex;
+  width: 38px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line-1, rgba(255, 255, 255, 0.08));
+}
+.login-title {
+  font-size: 20px;
+  letter-spacing: 0.02em;
+  margin: 0;
+}
+.login-note {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+.login-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.login-err {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(255, 120, 110, 0.95);
+}
+.login-submit {
+  justify-content: center;
+}
+.login-foot {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+/* --- согласие на облачный ход --- */
+.consent-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(3, 5, 7, 0.72);
+  backdrop-filter: blur(14px);
+  animation: consent-in 0.18s ease-out;
+}
+@keyframes consent-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.consent-card {
+  width: min(520px, 100%);
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.consent-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.consent-mark {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 190, 90, 0.28);
+  background: rgba(255, 190, 90, 0.1);
+  color: rgba(255, 200, 110, 0.95);
+}
+.consent-mark svg,
+.login-mark svg {
+  width: 16px;
+  height: 16px;
+}
+.consent-title {
+  margin: 0;
+  font-size: 16px;
+}
+.consent-sub {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: var(--text-3);
+}
+.consent-note {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+.consent-dim {
+  color: var(--text-3);
+  font-size: 12px;
+}
+.consent-list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-1);
+}
+.consent-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* --- каталог ошибок в ответе модели --- */
+.m-err {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 120, 110, 0.22);
+  background: rgba(255, 120, 110, 0.07);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.m-err-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.m-err-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+.m-err-acts {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+.m-err-code {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  text-transform: uppercase;
+}
+
+/* --- хвост уведомлений: сводка и действия --- */
+.notif-item {
+  flex-wrap: wrap;
+}
+.notif-digest,
+.notif-extra {
+  flex: 1 0 100%;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 0 0 2px 30px;
+}
+.notif-digest {
+  flex-direction: column;
+  gap: 6px;
+}
+.notif-digest-list {
+  margin: 0;
+  padding: 0 0 0 12px;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-left: 1px solid var(--line-1, rgba(255, 255, 255, 0.08));
+}
+.notif-digest-title,
+.notif-digest-body {
+  display: block;
+  font-size: 12px;
+}
+.notif-digest-body {
+  color: var(--text-3);
+}
+.notif-extra {
+  opacity: 0.55;
+  transition: opacity 0.15s ease;
+}
+.notif-item:hover .notif-extra,
+.notif-item:focus-within .notif-extra {
+  opacity: 1;
+}
+
+/* --- MCP: токен только из окружения --- */
+.mcp-token-state {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  font-size: 11px;
+  color: var(--text-3);
+}
+

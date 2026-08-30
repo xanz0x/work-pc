@@ -13,13 +13,12 @@ export async function PUT(req: NextRequest, { params }: P) {
   const b = (await req.json()) as {
     host?: string
     port?: number
-    token?: string
     enabled?: boolean
   }
   if (typeof b.host === 'string') m.host = b.host.trim().slice(0, 200)
   if (typeof b.port === 'number' && b.port > 0 && b.port < 65536) m.port = Math.round(b.port)
-  if (typeof b.token === 'string') m.token = b.token.trim().slice(0, 300)
   if (typeof b.enabled === 'boolean') m.enabled = b.enabled
+  /* Токен через API не принимается: он живёт только в окружении сервера. */
   await saveMcp(m)
   return NextResponse.json(m)
 }
@@ -42,7 +41,11 @@ export async function POST(req: NextRequest, { params }: P) {
       ok: true,
       mode: 'skeleton',
       latency: 40 + Math.round(Math.random() * 80),
-      message: `Скелет ответил: ${m.host}:${m.port} принят. Реальное соединение появится после ввода токена Notion.`,
+      message: `Скелет ответил: ${m.host}:${m.port} принят. ${
+        m.tokenSet
+          ? 'Токен задан в окружении — реальное соединение появится вместе с клиентом MCP.'
+          : 'Токен в окружении не задан (MCP_NOTION_TOKEN) — ответы остаются макетом.'
+      }`,
     })
   }
 

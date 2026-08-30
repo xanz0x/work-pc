@@ -236,15 +236,35 @@ export type Model = {
   label: string
   /** Короткое имя для шапки чата и статус-бара. */
   short: string
-  ram: string
-  tokensPerSec: number
+  /**
+   * Требования и скорость появятся из настоящего локального движка (NF-2).
+   * До него источника у этих чисел нет, поэтому здесь null, а в UI — «—».
+   */
+  ram: string | null
+  tokensPerSec: number | null
 }
 
 export const MODELS: Model[] = [
-  { id: 'qwen-7b', label: 'Qwen 2.5 · 7B · Q4', short: 'Qwen 2.5 7B', ram: '4,1 ГБ', tokensPerSec: 26 },
-  { id: 'llama-8b', label: 'Llama 3.1 · 8B · Q4', short: 'Llama 3.1 8B', ram: '4,7 ГБ', tokensPerSec: 21 },
-  { id: 'mistral-7b', label: 'Mistral · 7B · Q5', short: 'Mistral 7B', ram: '5,2 ГБ', tokensPerSec: 18 },
+  { id: 'qwen-7b', label: 'Qwen 2.5 · 7B · Q4', short: 'Qwen 2.5 7B', ram: null, tokensPerSec: null },
+  { id: 'llama-8b', label: 'Llama 3.1 · 8B · Q4', short: 'Llama 3.1 8B', ram: null, tokensPerSec: null },
+  { id: 'mistral-7b', label: 'Mistral · 7B · Q5', short: 'Mistral 7B', ram: null, tokensPerSec: null },
 ]
+
+/** Прочерк вместо выдуманного значения: у метрики нет источника. */
+export const NO_DATA = '—'
+
+/**
+ * Локального движка в сборке ещё нет (задача NF-2). Пока флаг выключен,
+ * продукт не имеет права писать «модель загружена» и показывать скорость.
+ */
+export const LOCAL_ENGINE_READY = false
+
+/**
+ * Единственная подпись облачной модели на весь продукт. Берётся из окружения
+ * рядом с самим идентификатором модели, чтобы подпись не расходилась с тем,
+ * кто на самом деле отвечает (UX-1).
+ */
+export const CLOUD_MODEL_LABEL = process.env.NEXT_PUBLIC_AI_MODEL_LABEL || 'Claude Sonnet 4.5'
 
 export function modelOf(id: ModelId): Model {
   return MODELS.find((m) => m.id === id) ?? MODELS[0]

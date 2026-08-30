@@ -2,11 +2,13 @@
 
 import { useCallback, useRef, useState } from 'react'
 import type { ToolRun, TraceStage } from '@/components/chat/types'
+import { isAiErrorCode, type AiErrorCode } from '@/lib/ai-errors'
 
 /**
- * Живой разговор с Claude Opus 5 через /ai-api/chat (SSE). Цикл агента:
+ * Живой разговор с облачной моделью через /ai-api/chat (SSE). Цикл агента:
  * поток текста → вызовы скиллов → выполнение на устройстве → продолжение.
  * Скилл save_password не выполняется без явного разрешения пользователя.
+ * Наружу отдаётся код ошибки из каталога, а не текст провайдера.
  */
 
 export type ExecResult = {
@@ -24,7 +26,7 @@ export type TurnResult = {
   ms: number
   stages: TraceStage[]
   stopped: boolean
-  error?: string
+  errorCode?: AiErrorCode
 }
 
 export type TurnBody = {
@@ -33,6 +35,12 @@ export type TurnBody = {
   text?: string
   dropUsers?: number
   regenerate?: boolean
+  /** Заявленный движок: сервер проверяет его сам и локальный никуда не шлёт. */
+  engine: 'local' | 'hybrid' | 'cloud'
+  /** Разрешён ли вынос индекса сейфа наружу. */
+  sendIndex: boolean
+  /** Подпись источника хода — она же попадает в трассировку. */
+  modelLabel: string
   ctx: {
     files: { id: string; name: string; cat: string; tags: string[] }[]
     pinned: string[]
@@ -48,6 +56,14 @@ const LABELS: Record<string, string> = {
 }
 
 type Call = { id: string; name: string; args: Record<string, unknown> }
+
+class TurnError extends Error {
+  code: AiErrorCode
+  constructor(code: AiErrorCode) {
+    super(code)
+    this.code = code
+  }
+}
 
 export function useAiChat(
   exec: (name: string, args: Record<string, unknown>) => Promise<ExecResult>,
@@ -83,19 +99,29 @@ export function useAiChat(
 
   const loop = useCallback(
     async (body: Record<string, unknown>, signal: AbortSignal): Promise<void> => {
-      const res = await fetch('/ai-api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-        signal,
-      })
-      if (!res.ok || !res.body) throw new Error(`сервер ответил ${res.status}`)
+      let res: Response
+      try {
+        res = await fetch('/ai-api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+          signal,
+        })
+      } catch (e) {
+        if (signal.aborted) return
+        throw new TurnError('NETWORK')
+      }
+      if (!res.ok || !res.body) {
+        const j = (await res.json().catch(() => null)) as { code?: string } | null
+        if (isAiErrorCode(j?.code)) throw new TurnError(j.code)
+        throw new TurnError(res.status === 401 ? 'AUTH_REQUIRED' : 'UNKNOWN')
+      }
 
       const reader = res.body.getReader()
       const dec = new TextDecoder()
       let buf = ''
       let calls: Call[] = []
-      let errMsg: string | null = null
+      let errCode: AiErrorCode | null = null
       const s = st.current
 
       for (;;) {
@@ -107,7 +133,7 @@ export function useAiChat(
         for (const ch of chunks) {
           const line = ch.split('\n').find((l) => l.startsWith('data:'))
           if (!line) continue
-          let ev: { t: string; x?: string; calls?: Call[]; message?: string }
+          let ev: { t: string; x?: string; calls?: Call[]; code?: string }
           try {
             ev = JSON.parse(line.slice(5))
           } catch {
@@ -123,12 +149,12 @@ export function useAiChat(
           } else if (ev.t === 'tool' && Array.isArray(ev.calls)) {
             calls = ev.calls
           } else if (ev.t === 'err') {
-            errMsg = ev.message ?? 'сбой потока'
+            errCode = isAiErrorCode(ev.code) ? ev.code : 'UNKNOWN'
           }
         }
       }
 
-      if (errMsg) throw new Error(errMsg)
+      if (errCode) throw new TurnError(errCode)
       if (!calls.length || signal.aborted) return
 
       const results: { id: string; name: string; content: string }[] = []
@@ -192,7 +218,16 @@ export function useAiChat(
       }
 
       if (signal.aborted) return
-      await loop({ sessionId: body.sessionId, toolResults: results, ctx: body.ctx }, signal)
+      await loop(
+        {
+          sessionId: body.sessionId,
+          toolResults: results,
+          ctx: body.ctx,
+          engine: body.engine,
+          sendIndex: body.sendIndex,
+        },
+        signal,
+      )
     },
     [pushStage, syncTools],
   )
@@ -207,9 +242,9 @@ export function useAiChat(
       setTools([])
       setPending(null)
       setActive(true)
-      pushStage('запрос к Claude Opus 5')
+      pushStage(`запрос · ${body.modelLabel}`)
 
-      const finalize = (error?: string) => {
+      const finalize = (errorCode?: AiErrorCode) => {
         const s = st.current
         abortRef.current = null
         setActive(false)
@@ -222,7 +257,7 @@ export function useAiChat(
           ms: Math.max(1, Math.round(performance.now() - s.t0)),
           stages: s.stages,
           stopped: ctrl.signal.aborted,
-          error,
+          errorCode,
         })
       }
 
@@ -230,7 +265,7 @@ export function useAiChat(
         .then(() => finalize())
         .catch((e: unknown) => {
           if (ctrl.signal.aborted) finalize()
-          else finalize(e instanceof Error ? e.message : 'сбой запроса')
+          else finalize(e instanceof TurnError ? e.code : 'UNKNOWN')
         })
     },
     [loop, pushStage],

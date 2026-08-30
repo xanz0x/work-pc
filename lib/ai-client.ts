@@ -36,7 +36,8 @@ export type McpDto = {
   transport: string
   host: string
   port: number
-  token: string
+  /** Токен наружу не отдаётся: известно только, задан он в окружении или нет. */
+  tokenSet: boolean
   enabled: boolean
   tools: string[]
   note?: string
@@ -82,11 +83,19 @@ export const aiApi = {
   delSkill: (id: string) => fetch(`/ai-api/skills/${id}`, { method: 'DELETE' }),
 
   mcp: () => jget<McpDto[]>('/ai-api/mcp'),
-  putMcp: (id: string, b: Partial<Pick<McpDto, 'host' | 'port' | 'token' | 'enabled'>>) =>
+  putMcp: (id: string, b: Partial<Pick<McpDto, 'host' | 'port' | 'enabled'>>) =>
     jsend<McpDto>(`/ai-api/mcp/${id}`, 'PUT', b),
   mcpAction: (id: string, b: { action: 'test' | 'pull'; query?: string }) =>
     jsend<Record<string, unknown>>(`/ai-api/mcp/${id}`, 'POST', b),
 
   systemPrompt: () => jget<{ text: string }>('/ai-api/system'),
   saveSystemPrompt: (text: string) => jsend<{ ok: boolean }>('/ai-api/system', 'PUT', { text }),
+
+  /** Состояние входа: нужно, чтобы честно показать «Войти» до первого хода. */
+  authSession: () =>
+    jget<{ authed: boolean; configured: boolean }>('/ai-api/auth/session').catch(() => ({
+      authed: false,
+      configured: true,
+    })),
+  logout: () => fetch('/ai-api/auth/session', { method: 'DELETE' }).catch(() => null),
 }

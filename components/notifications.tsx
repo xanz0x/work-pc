@@ -79,6 +79,8 @@ export function NotificationsBell() {
   const [open, setOpen] = useState(false)
   const [filter, setFilter] = useState<Filter>('all')
   const [limit, setLimit] = useState(PAGE)
+  /** Раскрытая сводка: показываем склеенные события списком. */
+  const [openDigest, setOpenDigest] = useState<string | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
 
@@ -108,7 +110,10 @@ export function NotificationsBell() {
     if (open) setLimit(PAGE)
   }, [open, filter])
 
-  const active = useMemo(() => items.filter((n) => !n.archived), [items])
+  const active = useMemo(
+    () => items.filter((n) => !n.archived && !(n.snoozedUntil && n.snoozedUntil > now)),
+    [items, now],
+  )
   const archived = useMemo(() => items.filter((n) => n.archived), [items])
 
   /** Счётчик на чипе — непрочитанные, кроме архива (там всего записей). */
@@ -333,6 +338,52 @@ export function NotificationsBell() {
                           {n.merged ? ` · склеено ${n.merged}` : ''}
                         </span>
                       </button>
+                      {n.items?.length ? (
+                        <div className="notif-digest">
+                          <button
+                            className="notif-link"
+                            onClick={() => setOpenDigest((cur) => (cur === n.id ? null : n.id))}
+                            aria-expanded={openDigest === n.id}
+                            data-testid={`notif-digest-toggle-${n.id}`}
+                          >
+                            {openDigest === n.id
+                              ? 'Свернуть события'
+                              : `Показать ${n.items.length} ${n.items.length === 1 ? 'событие' : 'события'}`}
+                          </button>
+                          {openDigest === n.id ? (
+                            <ul className="notif-digest-list" data-testid={`notif-digest-list-${n.id}`}>
+                              {n.items.map((it) => (
+                                <li key={it.id}>
+                                  <span className="notif-digest-title">{it.title}</span>
+                                  <span className="notif-digest-body">{it.body}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : null}
+                        </div>
+                      ) : null}
+                      {!inArchive ? (
+                        <div className="notif-extra">
+                          <button
+                            className="notif-link"
+                            onClick={() => v.snoozeNotif(n.id, 3_600_000)}
+                            title="Скрыть из ленты на час"
+                            data-testid={`notif-snooze-${n.id}`}
+                          >
+                            Отложить на час
+                          </button>
+                          {CAT_TOGGLE[n.cat] ? (
+                            <button
+                              className="notif-link"
+                              onClick={() => v.muteNotifCat(n.cat)}
+                              title="Больше не присылать события этой категории"
+                              data-testid={`notif-mute-${n.id}`}
+                            >
+                              Выключить категорию
+                            </button>
+                          ) : null}
+                        </div>
+                      ) : null}
                       <span className="notif-acts">
                         <button
                           className={`notif-dot${n.unread ? ' on' : ''}`}

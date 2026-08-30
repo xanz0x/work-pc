@@ -6,6 +6,7 @@ import { useVault } from '@/lib/vault-store'
 import { useRedacted } from '@/lib/redact-context'
 import { RetrievalTrace, TraceSummary } from './retrieval-trace'
 import { ToolCards } from './tool-card'
+import { describeAiError } from '@/lib/ai-errors'
 import type { AiMsg, ChatSource, TraceStage } from './types'
 
 /** Инлайновая разметка строки: сноски [1], **выделение**, `код`. */
@@ -112,7 +113,7 @@ export function MessageAi({
   onDeny?: () => void
   onOpenFile?: (fileId: string) => void
 }) {
-  const { viewById } = useVault()
+  const { viewById, engineView, openSetting } = useVault()
   const { redactIds } = useRedacted()
   const [hover, setHover] = useState<number | null>(null)
   const [copied, setCopied] = useState(false)
@@ -120,6 +121,11 @@ export function MessageAi({
 
   const text = live ? live.text : msg.text
   const streaming = Boolean(live)
+
+  /* UX-1: автор берётся из фактического источника хода, а не из настройки. */
+  const viaCloud = streaming ? engineView.isCloud : (msg.via ?? (engineView.isCloud ? 'cloud' : 'local')) === 'cloud'
+  const author = viaCloud ? `${engineView.model} · облако` : 'Локальная модель'
+  const failure = !streaming && (msg.errorCode || msg.error) ? describeAiError(msg.errorCode) : null
 
   /** п.10.3: источники под ключом не отдают ни цитату, ни упоминание содержимого. */
   const srcLocked = streaming
@@ -158,12 +164,14 @@ export function MessageAi({
   }
 
   return (
-    <article className={`m-ai${streaming ? ' is-live' : ''}`} aria-label="Ответ локальной модели">
+    <article className={`m-ai${streaming ? ' is-live' : ''}`} aria-label={`Ответ: ${author}`}>
       <header className="m-ai-head">
         <span className="m-ai-mark" aria-hidden="true">
           <IconNode />
         </span>
-        <span className="m-ai-who">Локальная модель</span>
+        <span className="m-ai-who" data-testid="ai-author">
+          {author}
+        </span>
         <span className="m-ai-dot" aria-hidden="true" />
         <span className="m-ai-time mono">{msg.time}</span>
         <span className="grow" />
@@ -218,10 +226,40 @@ export function MessageAi({
             <p className="m-note is-stop">Ответ остановлен вами — показано то, что успело прийти.</p>
           ) : null}
 
-          {msg.error && !streaming ? (
-            <p className="m-note is-stop" data-testid="ai-error-note">
-              Сбой запроса к модели: {msg.error}
-            </p>
+          {failure ? (
+            <div className="m-err" data-testid="ai-error-note">
+              <p className="m-err-title">{failure.title}</p>
+              <p className="m-err-hint">{failure.hint}</p>
+              <div className="m-err-acts">
+                {failure.code === 'AUTH_REQUIRED' ? (
+                  <a className="btn btn-primary btn-sm" href="/login" data-testid="ai-error-login">
+                    Войти
+                  </a>
+                ) : null}
+                {failure.code === 'ENGINE_NOT_CONFIGURED' ? (
+                  <button
+                    type="button"
+                    className="btn btn-tertiary btn-sm"
+                    onClick={() => openSetting('engine')}
+                    data-testid="ai-error-engine"
+                  >
+                    Сменить движок
+                  </button>
+                ) : null}
+                {onRegenerate ? (
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => onRegenerate(msg.id)}
+                    data-testid="ai-error-retry"
+                  >
+                    <IconRefresh aria-hidden="true" />
+                    Повторить
+                  </button>
+                ) : null}
+                <span className="m-err-code mono">код {failure.code}</span>
+              </div>
+            </div>
           ) : null}
 
           {!msg.grounded && !streaming ? (

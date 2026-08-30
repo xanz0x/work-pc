@@ -14,13 +14,17 @@ import pytest
 import requests
 
 BASE_URL = os.environ.get("APP_URL", "http://localhost:3000").rstrip("/")
-AI_DIR = os.environ.get("AI_DIR", "/app/ai")
+AI_DIR = os.environ.get("AI_DIR", "/root/.workflow/ai")
+APP_PASSWORD = os.environ.get("APP_PASSWORD", "IceKrymTeam13@")
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def api():
+    """Сессия с cookie входа: с волны 1 весь /ai-api закрыт паролем (P0-2)."""
     s = requests.Session()
     s.headers.update({"Content-Type": "application/json"})
+    r = s.post(f"{BASE_URL}/ai-api/auth/login", json={"password": APP_PASSWORD}, timeout=30)
+    assert r.status_code == 200, f"вход не удался: {r.status_code} {r.text[:200]}"
     return s
 
 
@@ -157,12 +161,14 @@ def _parse_sse(text):
 class TestChat:
     def test_chat_text_streams_and_persists_session(self, api):
         sid = f"test-sess-{int(time.time())}"
-        r = requests.post(
+        r = api.post(
             f"{BASE_URL}/ai-api/chat",
             json={
                 "sessionId": sid,
                 "title": "TEST",
                 "text": "Ответь одним словом: привет",
+                "engine": "cloud",
+                "sendIndex": False,
             },
             stream=True,
             timeout=90,
@@ -196,12 +202,13 @@ class TestChat:
             "scanned": 2,
             "lock": "открыт",
         }
-        r = requests.post(
+        r = api.post(
             f"{BASE_URL}/ai-api/chat",
             json={
                 "sessionId": sid,
                 "text": "Где смета на офис? Используй инструмент find_file для поиска.",
                 "ctx": ctx,
+                "engine": "cloud",
             },
             timeout=120,
         )
@@ -215,7 +222,7 @@ class TestChat:
             assert "find_file" in names, f"expected find_file, got {names}"
             # Now simulate second POST with toolResults
             tc = next(c for c in calls if c["name"] == "find_file")
-            r2 = requests.post(
+            r2 = api.post(
                 f"{BASE_URL}/ai-api/chat",
                 json={
                     "sessionId": sid,
@@ -223,6 +230,7 @@ class TestChat:
                         {"id": tc["id"], "name": "find_file", "content": json.dumps({"found": [ctx["files"][0]]})}
                     ],
                     "ctx": ctx,
+                    "engine": "cloud",
                 },
                 timeout=120,
             )

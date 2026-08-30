@@ -2,11 +2,12 @@ import { promises as fs } from 'fs'
 import path from 'path'
 
 /**
- * Файловый слой AI-папки: скиллы, MCP-конфиги и сессии живут в репозитории
- * (каталог /ai) и редактируются через UI. Никакой базы — только диск.
+ * Файловый слой AI-папки: скиллы, MCP-конфиги и сессии лежат на диске и
+ * редактируются через UI. Никакой базы — только диск. Каталог задаётся
+ * переменной AI_DIR: приватные диалоги по умолчанию живут вне репозитория.
  */
 
-const ROOT = path.join(process.cwd(), 'ai')
+const ROOT = process.env.AI_DIR?.trim() || path.join(process.cwd(), 'ai')
 
 export type SkillFile = {
   id: string
@@ -25,10 +26,19 @@ export type McpFile = {
   transport: string
   host: string
   port: number
+  /** Всегда пустая строка: секрет живёт только в окружении. */
   token: string
+  /** Признак «токен задан» — единственное, что знает файл и интерфейс. */
+  tokenSet: boolean
   enabled: boolean
   tools: string[]
   note?: string
+}
+
+/** Токен MCP-сервера берётся из окружения: MCP_NOTION_TOKEN и т.п. */
+export function mcpToken(id: string): string {
+  const key = `MCP_${id.replace(/[^a-zA-Z0-9]/g, '_').toUpperCase()}_TOKEN`
+  return (process.env[key] ?? '').trim()
 }
 
 export type LlmToolCall = {
@@ -110,16 +120,22 @@ export async function deleteSkill(id: string): Promise<void> {
 
 /* ---------- MCP ---------- */
 
+/** Наружу отдаём конфиг без секрета: только признак, задан ли токен. */
+function maskMcp(m: McpFile): McpFile {
+  return { ...m, token: '', tokenSet: mcpToken(m.id).length > 0 }
+}
+
 export async function listMcp(): Promise<McpFile[]> {
-  return listJson<McpFile>(path.join(ROOT, 'mcp'))
+  return (await listJson<McpFile>(path.join(ROOT, 'mcp'))).map(maskMcp)
 }
 
 export async function getMcp(id: string): Promise<McpFile | null> {
-  return readJson<McpFile>(path.join(ROOT, 'mcp', `${safeId(id)}.json`))
+  const m = await readJson<McpFile>(path.join(ROOT, 'mcp', `${safeId(id)}.json`))
+  return m ? maskMcp(m) : null
 }
 
 export async function saveMcp(m: McpFile): Promise<void> {
-  await writeJson(path.join(ROOT, 'mcp', `${safeId(m.id)}.json`), m)
+  await writeJson(path.join(ROOT, 'mcp', `${safeId(m.id)}.json`), maskMcp(m))
 }
 
 /* ---------- системный промпт ---------- */

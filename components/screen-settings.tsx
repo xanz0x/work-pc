@@ -18,7 +18,7 @@ import {
   IconTrash,
 } from './icons'
 import { useVault, type ToggleId } from '@/lib/vault-store'
-import { ENGINES, MODELS, engineOf, fmtBytes, modelOf } from '@/lib/data'
+import { ENGINES, LOCAL_ENGINE_READY, MODELS, NO_DATA, engineOf, fmtBytes, modelOf } from '@/lib/data'
 import { NumTicker } from './ui/num-ticker'
 import { SecuritySection } from './security-section'
 import { SecretsSection } from './secrets-section'
@@ -66,6 +66,11 @@ const PRIVACY_TOGGLES: { id: ToggleId; title: string; note: string }[] = [
     id: 'redact',
     title: 'Скрывать чувствительные фрагменты в превью',
     note: 'Паспортные данные, счета и ключи заменяются плашкой',
+  },
+  {
+    id: 'sendIndex',
+    title: 'Отправлять индекс сейфа во внешнюю модель',
+    note: 'Имена, категории и теги файлов. Выключено — наружу уходят только закреплённые файлы',
   },
   {
     id: 'telemetry',
@@ -215,6 +220,7 @@ export function ScreenSettings() {
               role="switch"
               aria-checked={d.toggles[t.id]}
               aria-label={t.title}
+              data-testid={`toggle-${t.id}`}
               onClick={() => flip(t.id)}
             />
           </div>
@@ -262,16 +268,22 @@ export function ScreenSettings() {
                     Движок ИИ, конвейер обработки и границы приватности. Всё применяется локально.
                   </p>
                 </div>
-                <span className={`badge set-hero-badge ${stats.offline ? 'badge-ok' : 'badge-warn'}`}>
-                  <i className={`net-dot${stats.offline ? '' : ' warn'}`} />
-                  {stats.offline ? 'локальный режим' : 'есть исходящие'}
+                <span className={`badge set-hero-badge ${v.engineView.isCloud ? 'badge-warn' : 'badge-ok'}`}>
+                  <i className={`net-dot${v.engineView.isCloud ? ' warn' : ''}`} />
+                  {v.engineView.isCloud ? 'есть исходящие' : 'локальный режим'}
                 </span>
               </div>
               <div className="set-hero-stats">
                 <div className="set-stat">
                   <span className="label-mono">Движок</span>
-                  <b>{engineOf(v.settings.engine).short}</b>
-                  <span className="mono set-stat-sub num">{stats.tokensPerSec} токенов/с</span>
+                  <b>{v.engineView.label}</b>
+                  <span className="mono set-stat-sub num">
+                    {stats.tokensPerSec === null
+                      ? v.engineView.isCloud
+                        ? v.engineView.model
+                        : `${NO_DATA} токенов/с`
+                      : `${stats.tokensPerSec} токенов/с`}
+                  </span>
                 </div>
                 <div className="set-stat">
                   <span className="label-mono">Индекс</span>
@@ -319,6 +331,7 @@ export function ScreenSettings() {
                     aria-checked={d.engine === e.id}
                     className={`engine-option${d.engine === e.id ? ' selected' : ''}`}
                     onClick={() => v.setDraftSettings((s) => ({ ...s, engine: e.id }))}
+                    data-testid={`engine-${e.id}`}
                   >
                     <span className="radio-dot" />
                     <span>
@@ -349,12 +362,22 @@ export function ScreenSettings() {
                     </option>
                   ))}
                 </select>
-                <span className={`badge ${d.model === v.settings.model ? 'badge-ok' : 'badge-warn'}`}>
-                  {d.model === v.settings.model ? 'загружена' : 'загрузится при сохранении'}
+                <span className={`badge ${LOCAL_ENGINE_READY ? 'badge-ok' : 'badge-warn'}`} data-testid="model-state">
+                  {LOCAL_ENGINE_READY
+                    ? d.model === v.settings.model
+                      ? 'загружена'
+                      : 'загрузится при сохранении'
+                    : 'локальный движок не подключён'}
                 </span>
                 <span className="stat-line" style={{ marginTop: 0 }}>
-                  {draftModel.ram} ОЗУ · <b className="num">{draftModel.tokensPerSec} токенов/с</b>
+                  {draftModel.ram ?? NO_DATA} ОЗУ ·{' '}
+                  <b className="num">{draftModel.tokensPerSec ?? NO_DATA} токенов/с</b>
                 </span>
+              </div>
+
+              <div className="sec-note">
+                Требования и скорость появятся из настоящего локального движка. Пока его нет, эти
+                метрики показывают «{NO_DATA}»: у них нет источника.
               </div>
 
               {!draftEngine.offline && (
@@ -514,11 +537,33 @@ export function ScreenSettings() {
                   </div>
                 </div>
                 <span className="sec-meta label-mono">
-                  {stats.offline ? '0 утечек' : 'есть исходящие'}
+                  {v.engineView.isCloud ? 'есть исходящие' : 'исходящих нет'}
                 </span>
               </div>
 
               {rows(PRIVACY_TOGGLES)}
+
+              <div className="setting-row" data-testid="cloud-consent-row">
+                <div className="setting-row-text">
+                  <div className="setting-title">Согласие на облачные запросы</div>
+                  <div className="setting-note">
+                    {v.settings.cloudConsentAt
+                      ? `Дано ${new Date(v.settings.cloudConsentAt).toLocaleString('ru-RU')}. Каждый облачный ход пишется в ленту событий.`
+                      : 'Не дано: перед первым запросом во внешнюю модель спросим и покажем, что именно уйдёт.'}
+                  </div>
+                </div>
+                {v.settings.cloudConsentAt ? (
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    onClick={v.revokeCloudConsent}
+                    data-testid="revoke-consent"
+                  >
+                    Отозвать
+                  </button>
+                ) : (
+                  <span className="badge badge-ok">спросим заранее</span>
+                )}
+              </div>
 
               <div className="field-block">
                 <div className="mask-head">

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { IconCheck, IconChipAi, IconClose, IconExternal, IconPlus, IconRefresh, IconTrash } from '../icons'
 import { aiApi, type McpDto, type SkillDto } from '@/lib/ai-client'
+import { CLOUD_MODEL_LABEL } from '@/lib/data'
 
 type Tab = 'skills' | 'mcp' | 'prompt'
 
@@ -30,7 +31,7 @@ export function AiHub({ onClose }: { onClose: () => void }) {
           </span>
           <div>
             <h2 className="aihub-title">AI-центр</h2>
-            <p className="aihub-sub mono">файлы в папке ai/ · Claude Opus 5</p>
+            <p className="aihub-sub mono">файлы в папке ai/ · {CLOUD_MODEL_LABEL}</p>
           </div>
           <span className="grow" />
           <button type="button" className="icon-btn" onClick={onClose} aria-label="Закрыть AI-центр" data-testid="ai-hub-close">
@@ -286,7 +287,7 @@ function McpCard({ server }: { server: McpDto }) {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [busy, setBusy] = useState(false)
 
-  async function save(patch: Partial<Pick<McpDto, 'host' | 'port' | 'token' | 'enabled'>>) {
+  async function save(patch: Partial<Pick<McpDto, 'host' | 'port' | 'enabled'>>) {
     const next = await aiApi.putMcp(m.id, patch).catch(() => null)
     if (next) setM(next)
   }
@@ -333,15 +334,12 @@ function McpCard({ server }: { server: McpDto }) {
           />
         </label>
         <label className="mcp-field">
-          <span className="label-mono">токен (появится позже)</span>
-          <input
-            type="password"
-            value={m.token}
-            placeholder="ntn_… — пока не требуется"
-            onChange={(e) => setM({ ...m, token: e.target.value })}
-            onBlur={() => save({ token: m.token })}
-            data-testid={`mcp-token-${m.id}`}
-          />
+          <span className="label-mono">токен</span>
+          <span className="mcp-token-state mono" data-testid={`mcp-token-${m.id}`}>
+            {m.tokenSet
+              ? 'задан в окружении сервера'
+              : 'не задан · переменная MCP_NOTION_TOKEN на сервере'}
+          </span>
         </label>
       </div>
 

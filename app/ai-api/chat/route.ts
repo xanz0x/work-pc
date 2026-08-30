@@ -1,4 +1,4 @@
-import type { NextRequest } from 'next/server'
+import { NextResponse, type NextRequest } from 'next/server'
 import {
   getSession,
   saveSession,
@@ -10,11 +10,16 @@ import {
   type LlmToolCall,
   type SessionFile,
 } from '@/lib/ai-server'
+import { requestId, type AiErrorCode } from '@/lib/ai-errors'
+import { clientIp, limitChat } from '@/lib/rate-limit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-const MODEL = 'claude-opus-5'
+const MODEL = process.env.AI_MODEL || 'claude-sonnet-4-5-20250929'
+
+const UPSTREAM_TIMEOUT_MS = 60_000
+const MAX_RETRIES = 2
 
 /** Схемы встроенных инструментов (OpenAI function calling, кросс-провайдерно). */
 const TOOL_SCHEMAS: Record<string, { description: string; parameters: unknown }> = {
@@ -71,7 +76,26 @@ type Body = {
   toolResults?: { id: string; name: string; content: string }[]
   dropUsers?: number
   regenerate?: boolean
+  /** Заявленный клиентом движок — сервер проверяет его сам. */
+  engine?: string
+  /** Разрешён ли вынос индекса сейфа наружу. */
+  sendIndex?: boolean
   ctx?: Ctx
+}
+
+/** Ошибка с кодом каталога: наружу уходит код, детали — в лог сервера. */
+class AiFail extends Error {
+  code: AiErrorCode
+  detail: string
+  constructor(code: AiErrorCode, detail: string) {
+    super(code)
+    this.code = code
+    this.detail = detail
+  }
+}
+
+function fail(code: AiErrorCode, message: string, status: number, extra?: Record<string, unknown>) {
+  return NextResponse.json({ code, error: message, ...extra }, { status })
 }
 
 /** Пароль не должен лечь на диск в истории: в сохранённых аргументах — маска. */
@@ -86,7 +110,10 @@ function redactArgs(name: string, raw: string): string {
   }
 }
 
-async function buildSystem(ctx: Ctx | undefined): Promise<{ system: string; tools: unknown[] }> {
+async function buildSystem(
+  ctx: Ctx | undefined,
+  sendIndex: boolean,
+): Promise<{ system: string; tools: unknown[] }> {
   const skills = await listSkills()
   const enabled = skills.filter((s) => s.enabled)
   const notion = await getMcp('notion')
@@ -108,12 +135,14 @@ async function buildSystem(ctx: Ctx | undefined): Promise<{ system: string; tool
       : 'выключен'
   }\n`
 
-  if (ctx?.files?.length) {
+  if (sendIndex && ctx?.files?.length) {
     const rows = ctx.files
       .slice(0, 300)
       .map((f) => `${f.id} | ${f.name} | ${f.cat} | ${f.tags.join(', ')}`)
       .join('\n')
     sys += `\nИндекс файлов сейфа (id | имя | категория | теги):\n${rows}\n`
+  } else {
+    sys += '\nИндекс сейфа не передан: пользователь запретил вынос имён файлов наружу.\n'
   }
   if (ctx?.pinned?.length) {
     sys += `\nЗакреплённые пользователем файлы (важнее остальных): ${ctx.pinned.join(', ')}\n`
@@ -129,10 +158,77 @@ async function buildSystem(ctx: Ctx | undefined): Promise<{ system: string; tool
   return { system: sys, tools }
 }
 
-export async function POST(req: NextRequest) {
-  const body = (await req.json()) as Body
-  const id = safeId(body.sessionId)
+/** Запрос к провайдеру с таймаутом и повтором на 429/5xx (не больше двух). */
+async function callUpstream(
+  proxy: string,
+  key: string,
+  payload: unknown,
+  signal: AbortSignal,
+): Promise<Response> {
+  let last: AiFail | null = null
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt += 1) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 400 * 2 ** (attempt - 1)))
+    let res: Response
+    try {
+      res = await fetch(`${proxy}/chat/completions`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.any([signal, AbortSignal.timeout(UPSTREAM_TIMEOUT_MS)]),
+      })
+    } catch (e) {
+      if (signal.aborted) throw new AiFail('UPSTREAM_ERROR', 'клиент отменил запрос')
+      last = new AiFail('UPSTREAM_ERROR', e instanceof Error ? e.message : 'сетевой сбой')
+      continue
+    }
+    if (res.ok && res.body) return res
 
+    const text = await res.text().catch(() => '')
+    if (res.status === 429) last = new AiFail('UPSTREAM_BUSY', `429 ${text.slice(0, 400)}`)
+    else if (res.status >= 500) last = new AiFail('UPSTREAM_ERROR', `${res.status} ${text.slice(0, 400)}`)
+    else if (/context|token|too long|maximum/i.test(text))
+      throw new AiFail('CONTEXT_TOO_LONG', `${res.status} ${text.slice(0, 400)}`)
+    else throw new AiFail('UPSTREAM_ERROR', `${res.status} ${text.slice(0, 400)}`)
+
+    if (res.status !== 429 && res.status < 500) break
+  }
+  throw last ?? new AiFail('UPSTREAM_ERROR', 'провайдер недоступен')
+}
+
+export async function POST(req: NextRequest) {
+  const rid = requestId()
+  const ip = clientIp(req.headers)
+
+  const limit = limitChat(ip)
+  if (!limit.ok) {
+    const resp = fail(
+      'RATE_LIMITED',
+      limit.scope === 'minute'
+        ? 'Слишком много запросов за минуту. Подождите и повторите.'
+        : 'Исчерпан суточный бюджет запросов к модели.',
+      429,
+      { retryAfter: limit.retryAfter },
+    )
+    resp.headers.set('Retry-After', String(Math.max(1, Math.ceil(limit.retryAfter))))
+    return resp
+  }
+
+  const body = (await req.json()) as Body
+  const engine = body.engine === 'hybrid' || body.engine === 'cloud' ? body.engine : 'local'
+
+  /* Заявленный локальный режим проверяется здесь: ни одного внешнего запроса. */
+  if (engine === 'local') {
+    return fail('ENGINE_NOT_CONFIGURED', 'Локальный движок не подключён.', 409)
+  }
+
+  const proxy = process.env.AI_PROXY_URL
+  const key = process.env.EMERGENT_LLM_KEY
+  if (!proxy || !key) {
+    console.error(`[ai-chat ${rid}] облачный движок не настроен на сервере`)
+    return fail('CLOUD_NOT_CONFIGURED', 'Облачный движок не настроен.', 503)
+  }
+
+  const id = safeId(body.sessionId)
   let s: SessionFile | null = await getSession(id)
   if (!s) {
     s = {
@@ -164,9 +260,8 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const { system, tools } = await buildSystem(body.ctx)
-  const proxy = process.env.AI_PROXY_URL
-  const key = process.env.EMERGENT_LLM_KEY
+  const sendIndex = body.sendIndex !== false
+  const { system, tools } = await buildSystem(body.ctx, sendIndex)
   const session = s
 
   const enc = new TextEncoder()
@@ -174,25 +269,20 @@ export async function POST(req: NextRequest) {
     async start(controller) {
       const push = (o: unknown) => controller.enqueue(enc.encode(`data: ${JSON.stringify(o)}\n\n`))
       try {
-        if (!proxy || !key) throw new Error('AI_PROXY_URL / EMERGENT_LLM_KEY не заданы в .env')
-        const upstream = await fetch(`${proxy}/chat/completions`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+        const upstream = await callUpstream(
+          proxy,
+          key,
+          {
             model: MODEL,
             stream: true,
             max_tokens: 2048,
             messages: [{ role: 'system', content: system }, ...session.llm],
             ...(tools.length ? { tools, tool_choice: 'auto' } : {}),
-          }),
-          signal: req.signal,
-        })
-        if (!upstream.ok || !upstream.body) {
-          const errText = await upstream.text().catch(() => '')
-          throw new Error(`модель ответила ${upstream.status}: ${errText.slice(0, 200)}`)
-        }
+          },
+          req.signal,
+        )
 
-        const reader = upstream.body.getReader()
+        const reader = upstream.body!.getReader()
         const dec = new TextDecoder()
         let buf = ''
         let text = ''
@@ -275,8 +365,11 @@ export async function POST(req: NextRequest) {
         if (calls.length) push({ t: 'tool', calls })
         push({ t: 'end' })
       } catch (e) {
+        const f =
+          e instanceof AiFail ? e : new AiFail('UNKNOWN', e instanceof Error ? e.message : 'сбой потока')
+        console.error(`[ai-chat ${rid}] ${f.code}: ${f.detail}`)
         try {
-          push({ t: 'err', message: e instanceof Error ? e.message : 'сбой потока' })
+          push({ t: 'err', code: f.code, requestId: rid })
         } catch {
           /* поток уже закрыт клиентом */
         }
@@ -295,6 +388,7 @@ export async function POST(req: NextRequest) {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
       'X-Accel-Buffering': 'no',
+      'X-Request-Id': rid,
     },
   })
 }

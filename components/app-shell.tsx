@@ -148,14 +148,20 @@ export function AppShell({ children }: { children: ReactNode }) {
       : v.screen === 'map'
         ? `${stats.nodes} ${plural(stats.nodes, 'узел', 'узла', 'узлов')} · ${stats.links} связей`
         : v.screen === 'chat'
-          ? `${stats.model} · ${stats.offline ? 'офлайн' : 'облако'}`
+          ? `${v.engineView.model} · ${
+              v.engineView.isCloud
+                ? v.engineView.label
+                : v.engineView.ready
+                  ? 'на устройстве'
+                  : 'движок не подключён'
+            }`
           : v.screen === 'vault'
             ? v.lock.status === 'unlocked'
               ? `${v.secretIndex.length} ${plural(v.secretIndex.length, 'запись', 'записи', 'записей')} · AES-GCM`
               : 'Сейф секретов закрыт — нужен мастер-ключ'
             : v.dirty
               ? 'Есть несохранённые изменения'
-              : `${stats.engine} · AES-256`
+              : `${v.engineView.label} · AES-256`
 
   const inlineHits = v.hits.slice(0, 7)
 
@@ -322,16 +328,22 @@ export function AppShell({ children }: { children: ReactNode }) {
             <button
               className="engine-pill"
               onClick={() => v.openSetting('engine')}
-              title={`Движок ИИ: ${stats.engine}`}
+              title={`Движок ИИ: ${v.engineView.label} · ${v.engineView.model}`}
+              data-testid="engine-pill"
             >
               <IconChipAi />
               <span className="ep-text">
-                <span className="ep-name">{stats.engine}</span>
+                <span className="ep-name">{v.engineView.label}</span>
                 <span className="ep-sub num">
-                  {stats.model} · {stats.tokensPerSec} ток/с
+                  {v.engineView.model} ·{' '}
+                  {stats.tokensPerSec === null
+                    ? v.engineView.isCloud
+                      ? 'внешняя модель'
+                      : 'не подключён'
+                    : `${stats.tokensPerSec} ток/с`}
                 </span>
               </span>
-              <i className={`net-dot${stats.offline ? '' : ' warn'}`} />
+              <i className={`net-dot${v.engineView.isCloud ? ' warn' : ''}`} />
             </button>
 
             <div className="sidebar-storage">
@@ -476,11 +488,13 @@ export function AppShell({ children }: { children: ReactNode }) {
         <span className="sb-sep">·</span>
         <span>AES-256</span>
         <span className="sb-sep">·</span>
-        <span className="sb-ok">{stats.offline ? 'ЛОКАЛЬНЫЙ РЕЖИМ' : 'ГИБРИДНЫЙ РЕЖИМ'}</span>
+        <span className="sb-ok" data-testid="status-mode">
+          {v.engineView.statusLabel}
+        </span>
         <span className="grow" />
-        <span className="sb-net">
-          <i className={`net-dot${stats.offline ? '' : ' warn'}`} />
-          {stats.offline ? 'ONLINE · 0 УТЕЧЕК' : 'ВНИМАНИЕ · ЕСТЬ ИСХОДЯЩИЕ'}
+        <span className="sb-net" data-testid="status-net">
+          <i className={`net-dot${v.engineView.isCloud ? ' warn' : ''}`} />
+          {v.engineView.netLabel}
         </span>
       </footer>
 

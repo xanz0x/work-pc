@@ -14,7 +14,9 @@ import {
 import type { IconId } from '@/components/icons'
 import { usePersistedState } from '@/hooks/use-persisted-state'
 import {
+  CLOUD_MODEL_LABEL,
   CLUSTERS,
+  LOCAL_ENGINE_READY,
   VAULT_FILES,
   VAULT_QUOTA,
   classify,
@@ -92,6 +94,7 @@ export type ToggleId =
   | 'watch'
   | 'redact'
   | 'telemetry'
+  | 'sendIndex'
   | 'ntfPipeline'
   | 'ntfPrivacy'
   | 'ntfDigest'
@@ -101,6 +104,8 @@ export type Settings = {
   model: ModelId
   folder: string
   toggles: Record<ToggleId, boolean>
+  /** Когда пользователь согласился отправлять запросы во внешнюю модель. */
+  cloudConsentAt: number | null
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -113,10 +118,63 @@ export const DEFAULT_SETTINGS: Settings = {
     watch: true,
     redact: true,
     telemetry: false,
+    sendIndex: true,
     ntfPipeline: true,
     ntfPrivacy: true,
     ntfDigest: false,
   },
+  cloudConsentAt: null,
+}
+
+/** Профиль из localStorage мог быть записан старой сборкой — добираем поля. */
+function normalizeSettings(s: Settings): Settings {
+  return {
+    ...DEFAULT_SETTINGS,
+    ...s,
+    toggles: { ...DEFAULT_SETTINGS.toggles, ...s.toggles },
+  }
+}
+
+/**
+ * Единый срез режима (UX-1). Все подписи — статус-бар, топбар, автор ответа,
+ * футер композера — читают только его, поэтому расходиться им негде.
+ */
+export type EngineView = {
+  mode: EngineId
+  /** Короткое имя движка: «Локальный», «Гибридный», «Внешняя». */
+  label: string
+  /** Кто отвечает на ход: облачная модель или локальная. */
+  model: string
+  isCloud: boolean
+  /** Может ли движок ответить прямо сейчас. */
+  ready: boolean
+  /** Подпись статус-бара заглавными. */
+  statusLabel: string
+  /** Подпись сетевого индикатора. */
+  netLabel: string
+  /** Согласие на облачный ход уже дано. */
+  consented: boolean
+}
+
+function buildEngineView(s: Settings): EngineView {
+  const e = engineOf(s.engine)
+  const isCloud = !e.offline
+  return {
+    mode: s.engine,
+    label: e.short,
+    model: isCloud ? CLOUD_MODEL_LABEL : modelOf(s.model).short,
+    isCloud,
+    ready: isCloud || LOCAL_ENGINE_READY,
+    statusLabel: isCloud
+      ? s.engine === 'cloud'
+        ? 'ВНЕШНЯЯ МОДЕЛЬ'
+        : 'ГИБРИДНЫЙ РЕЖИМ'
+      : LOCAL_ENGINE_READY
+        ? 'ЛОКАЛЬНЫЙ РЕЖИМ'
+        : 'ЛОКАЛЬНЫЙ ДВИЖОК НЕ ПОДКЛЮЧЁН',
+    netLabel: isCloud ? 'ВНИМАНИЕ · ЕСТЬ ИСХОДЯЩИЕ' : 'НЕТ ИСХОДЯЩИХ ЗАПРОСОВ',
+    consented: s.cloudConsentAt !== null,
+  }
 }
 
 /* ---------- события ---------- */
@@ -147,6 +205,10 @@ export type Notif = {
   link?: NotifLink
   /** Сколько событий склеено в это (ежедневная сводка). */
   merged?: number
+  /** Склеенные события сводки: раскрываются по клику. */
+  items?: Notif[]
+  /** Отложено пользователем: не видно в ленте до этого времени. */
+  snoozedUntil?: number
 }
 
 const NOTIF_ACTIVE_CAP = 200
@@ -155,15 +217,21 @@ const NOTIF_ARCHIVE_TTL = 30 * 24 * 60 * 60_000
 
 /**
  * Retention ленты: активные события ограничены количеством, архив —
- * количеством и сроком. События безопасности (cat privacy) не удаляются
- * автоочисткой, пока лежат в активной части.
+ * количеством и сроком. События приватности и журнала безопасности из
+ * обрезки активной части исключены полностью (N-4): они не должны
+ * исчезать под потоком конвейера.
  */
 function pruneNotifs(all: Notif[]): Notif[] {
   const t = Date.now()
   const kept = all.filter((n) => !(n.archived && t - n.at > NOTIF_ARCHIVE_TTL))
-  const active = kept.filter((n) => !n.archived).slice(0, NOTIF_ACTIVE_CAP)
+  const active = kept.filter((n) => !n.archived)
+  const keepAlways = active.filter((n) => n.cat === 'privacy')
+  const trimmable = active.filter((n) => n.cat !== 'privacy').slice(0, NOTIF_ACTIVE_CAP)
   const arch = kept.filter((n) => n.archived).slice(0, NOTIF_ARCHIVE_CAP)
-  return [...active, ...arch]
+  return [
+    ...[...keepAlways, ...trimmable].sort((a, b) => b.at - a.at),
+    ...arch,
+  ]
 }
 
 let seq = 0
@@ -266,6 +334,10 @@ export type VaultCtx = {
   toggleRead: (id: string) => void
   /** Открыть источник события и снять unread одним действием. */
   openNotif: (id: string) => void
+  /** Отложить событие: скрыть из ленты на заданное время. */
+  snoozeNotif: (id: string, ms: number) => void
+  /** Выключить категорию событий прямо из уведомления. */
+  muteNotifCat: (cat: NotifCat) => void
   /** Убрать одно уведомление в архив (обратимо). */
   archiveNotif: (id: string) => void
   /** Вернуть из архива в ленту с прежним статусом. */
@@ -336,12 +408,20 @@ export type VaultCtx = {
     processing: number
     sessions: number
     model: string
-    modelRam: string
-    tokensPerSec: number
+    /** null — источника у метрики нет, интерфейс печатает «—». */
+    modelRam: string | null
+    tokensPerSec: number | null
     engine: string
     offline: boolean
     indexedAgo: string
   }
+  /** Единственный источник подписей режима и модели для всего интерфейса. */
+  engineView: EngineView
+  /** Согласие на облачные ходы: дано / отозвано. */
+  grantCloudConsent: () => void
+  revokeCloudConsent: () => void
+  /** Мгновенно переключить один тумблер (без черновика настроек). */
+  setToggle: (id: ToggleId, value: boolean) => void
 
   /* короткие сообщения */
   toast: string | null
@@ -403,10 +483,11 @@ export function VaultProvider({ children }: { children: ReactNode }) {
   )
   const [drafts, setDrafts] = usePersistedState<Record<string, string>>('wf.chat.drafts', {})
   const [scrolls, setScrolls] = usePersistedState<Record<string, number>>('wf.chat.scroll', {})
-  const [settings, setSettings, setReady] = usePersistedState<Settings>(
+  const [rawSettings, setSettings, setReady] = usePersistedState<Settings>(
     'wf.settings.v1',
     DEFAULT_SETTINGS,
   )
+  const settings = useMemo(() => normalizeSettings(rawSettings), [rawSettings])
   const [notifs, setNotifs, notifReady] = usePersistedState<Notif[]>('wf.notifs.v1', [])
   /** Демо-лента наливается один раз: очищенная лента больше не возрождается. */
   const [notifsSeeded, setNotifsSeeded, seededReady] = usePersistedState<boolean>(
@@ -549,15 +630,22 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       if (n.cat === 'pipeline' && t.ntfDigest) {
         setNotifs((all) => {
           const i = all.findIndex((x) => x.id.startsWith('digest'))
+          const item: Notif = { ...n, id: uid('n'), at: Date.now(), unread: true }
           if (i >= 0) {
             const cur = all[i]
+            const items = [item, ...(cur.items ?? [])].slice(0, 50)
             const next: Notif = {
               ...cur,
               at: Date.now(),
+              /* N-6: сводка не «сбрасывает» себя перезаписью — прочитанность
+                 снимается только приходом нового события. */
               unread: true,
               body: n.body,
-              merged: (cur.merged ?? 1) + 1,
-              title: `Сводка конвейера: ${(cur.merged ?? 1) + 1} события`,
+              merged: items.length,
+              items,
+              title: `Сводка конвейера: ${items.length} ${
+                items.length === 1 ? 'событие' : 'события'
+              }`,
             }
             return [next, ...all.filter((_, k) => k !== i)]
           }
@@ -572,6 +660,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
               at: Date.now(),
               unread: true,
               merged: 1,
+              items: [item],
             },
             ...all,
           ]
@@ -614,11 +703,11 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       },
       {
         id: 'seed-model',
-        kind: 'ok',
+        kind: 'info',
         cat: 'system',
         icon: 'chipAi',
-        title: `Модель ${m.short} загружена`,
-        body: `${m.ram} ОЗУ, ${m.tokensPerSec} токенов/с. Ни один запрос не покинул устройство.`,
+        title: `Модель ${m.short} выбрана в профиле`,
+        body: 'Локальный движок в этой сборке не подключён: скорость и требования к памяти покажем, когда он появится.',
         at: t0 - 3 * HOUR,
         unread: false,
       },
@@ -723,6 +812,36 @@ export function VaultProvider({ children }: { children: ReactNode }) {
   const deleteNotif = useCallback(
     (id: string) => setNotifs((all) => all.filter((n) => n.id !== id)),
     [setNotifs],
+  )
+
+  /** N-10: отложить событие — уходит из ленты и возвращается само. */
+  const snoozeNotif = useCallback(
+    (id: string, ms: number) => {
+      setNotifs((all) =>
+        all.map((n) => (n.id === id ? { ...n, snoozedUntil: Date.now() + ms, unread: true } : n)),
+      )
+      flash('Уведомление отложено на час.')
+    },
+    [flash, setNotifs],
+  )
+
+  /** N-10: выключить категорию прямо из уведомления. */
+  const muteNotifCat = useCallback(
+    (cat: NotifCat) => {
+      const key: ToggleId | null =
+        cat === 'pipeline' ? 'ntfPipeline' : cat === 'privacy' ? 'ntfPrivacy' : null
+      if (!key) {
+        flash('Системные события выключить нельзя — это журнал сейфа.')
+        return
+      }
+      setSettings((s) => {
+        const base = normalizeSettings(s)
+        return { ...base, toggles: { ...base.toggles, [key]: false } }
+      })
+      setDraftState((s) => ({ ...s, toggles: { ...s.toggles, [key]: false } }))
+      flash(`Категория «${cat === 'pipeline' ? 'Конвейер' : 'Приватность'}» выключена в настройках.`)
+    },
+    [flash, setSettings],
   )
 
   const clearRead = useCallback(() => {
@@ -1459,23 +1578,26 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     [],
   )
   const dirty = useMemo(
-    () => JSON.stringify(draftSettings) !== JSON.stringify(settings),
+    () =>
+      JSON.stringify({ ...draftSettings, cloudConsentAt: null }) !==
+      JSON.stringify({ ...settings, cloudConsentAt: null }),
     [draftSettings, settings],
   )
 
   const saveSettings = useCallback(() => {
     const before = settingsRef.current
-    setSettings(draftSettings)
-    settingsRef.current = draftSettings
+    const next: Settings = { ...draftSettings, cloudConsentAt: before.cloudConsentAt }
+    setSettings(next)
+    settingsRef.current = next
     flash('Конфигурация записана в локальный профиль. Конвейер перезапущен без потери индекса.')
     if (before.model !== draftSettings.model) {
       const m = modelOf(draftSettings.model)
       notify({
-        kind: 'ok',
+        kind: 'info',
         cat: 'system',
         icon: 'chipAi',
-        title: `Модель ${m.short} загружена`,
-        body: `${m.ram} ОЗУ, ${m.tokensPerSec} токенов/с. Контекст перенесён без переиндексации.`,
+        title: `Модель в профиле: ${m.short}`,
+        body: 'Локальный движок не подключён — модель выбрана на будущее, ответы идут через выбранный движок.',
       })
     }
     if (before.engine !== draftSettings.engine) {
@@ -1486,8 +1608,8 @@ export function VaultProvider({ children }: { children: ReactNode }) {
         icon: e.offline ? 'lockRound' : 'shield',
         title: `Движок переключён: ${e.short}`,
         body: e.offline
-          ? 'Всё считается на устройстве. Исходящих соединений нет.'
-          : 'Часть запросов уйдёт наружу. Содержимое файлов может покинуть диск.',
+          ? 'Внешних запросов больше нет. Локальный движок пока не подключён — чат ответит только после его появления.'
+          : 'Часть запросов уйдёт наружу. Перед первым облачным ходом спросим согласие.',
       })
     }
   }, [draftSettings, flash, notify, setSettings])
@@ -1528,6 +1650,29 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       indexedAgo: files.some((f) => f.processing) ? 'идёт сейчас' : '2 мин назад',
     }
   }, [files, graph, liveNotes.length, sessions.length, settings])
+
+  const engineView = useMemo(() => buildEngineView(settings), [settings])
+
+  /** Согласие на облачные ходы: пишется в профиль, видно в настройках. */
+  const grantCloudConsent = useCallback(() => {
+    setSettings((s) => ({ ...normalizeSettings(s), cloudConsentAt: Date.now() }))
+  }, [setSettings])
+
+  const revokeCloudConsent = useCallback(() => {
+    setSettings((s) => ({ ...normalizeSettings(s), cloudConsentAt: null }))
+    flash('Согласие на облачные запросы отозвано — спросим снова перед следующим ходом.')
+  }, [flash, setSettings])
+
+  const setToggle = useCallback(
+    (id: ToggleId, value: boolean) => {
+      setSettings((s) => {
+        const base = normalizeSettings(s)
+        return { ...base, toggles: { ...base.toggles, [id]: value } }
+      })
+      setDraftState((s) => ({ ...s, toggles: { ...s.toggles, [id]: value } }))
+    },
+    [setSettings],
+  )
 
   /* ---------- навигация ---------- */
 
@@ -1685,6 +1830,8 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     markAllRead,
     toggleRead,
     openNotif,
+    snoozeNotif,
+    muteNotifCat,
     archiveNotif,
     restoreNotif,
     deleteNotif,
@@ -1725,6 +1872,10 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     mix,
     neighbors,
     stats,
+    engineView,
+    grantCloudConsent,
+    revokeCloudConsent,
+    setToggle,
     toast,
     flash,
     /* замок */
