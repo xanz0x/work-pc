@@ -11415,7 +11415,7 @@ button.chip:hover {
    ============================================================ */
 
 /* --- P0-3: «не сохранилось» и «нет места» --- */
-.storage-bar {
+.storage-error-bar {
   position: fixed;
   left: 50%;
   bottom: 92px;
@@ -11432,7 +11432,7 @@ button.chip:hover {
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
   font-size: 12px;
 }
-.storage-bar-text {
+.storage-error-bar-text {
   color: var(--text-2, #c9cdd3);
 }
 .storage-full {

@@ -258,8 +258,6 @@ const useIsoLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : use
 
 export type VaultCtx = {
   hydrated: boolean
-  /** Общие часы: стикеры тают и подписи «5 мин назад» считаются от них. */
-  now: number
 
   /* корпус */
   files: VaultFile[]
@@ -444,10 +442,23 @@ export type VaultCtx = {
 
 const Ctx = createContext<VaultCtx | null>(null)
 
+/**
+ * Часы вынесены в отдельный контекст: они тикают раз в секунду, и держать их
+ * в основном сейфе значило заставлять перерисовываться каждый кадр всё, что
+ * читает useVault. Теперь секунды подписывают только те, кому нужен отсчёт
+ * (тающие стикеры, «5 мин назад»), — остальной интерфейс остаётся спокойным.
+ */
+const NowCtx = createContext<number>(0)
+
 export function useVault(): VaultCtx {
   const v = useContext(Ctx)
   if (!v) throw new Error('useVault вызван вне VaultProvider')
   return v
+}
+
+/** Общие часы приложения. 0 до первого клиентского тика (совпадает с SSR). */
+export function useNow(): number {
+  return useContext(NowCtx)
 }
 
 /* ============================================================
@@ -1064,7 +1075,17 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 
   /* ---------- стикеры ---------- */
 
-  const liveNotes = useMemo(() => notes.filter((n) => isAlive(n, now || Date.now())), [notes, now])
+  /* liveNotes держим референциально стабильным: часы тикают раз в секунду,
+     но пока состав живых стикеров не изменился, отдаём прежний массив —
+     иначе граф, поиск и статистика пересчитывались бы каждый кадр. */
+  const liveNotesRef = useRef<Note[]>([])
+  const liveNotes = useMemo(() => {
+    const next = notes.filter((n) => isAlive(n, now || Date.now()))
+    const prev = liveNotesRef.current
+    if (prev.length === next.length && prev.every((p, i) => p === next[i])) return prev
+    liveNotesRef.current = next
+    return next
+  }, [notes, now])
 
   const notesFor = useCallback(
     (fileId: string) => liveNotes.filter((n) => n.pinnedTo === fileId),
@@ -1716,9 +1737,12 @@ export function VaultProvider({ children }: { children: ReactNode }) {
   /* Красакт объектов под файловым ключом: поиск по их содержимому запрещён (п.10.2). */
   const { redactIds } = useRedacted()
 
+  /* now читаем нереактивно (Date.now при пересчёте): давность в ранжировании
+     поиска не обязана обновляться каждую секунду, зато hits перестают
+     churn'иться на каждый тик часов. */
   const searchInput = useMemo(
-    () => ({ files, notes: liveNotes, sessions, now: now || Date.now(), redactIds, secrets: secretIndex }),
-    [files, liveNotes, sessions, now, redactIds, secretIndex],
+    () => ({ files, notes: liveNotes, sessions, now: Date.now(), redactIds, secrets: secretIndex }),
+    [files, liveNotes, sessions, redactIds, secretIndex],
   )
 
   const hits = useMemo(() => searchAll(query, scope, searchInput), [query, scope, searchInput])
@@ -1769,9 +1793,14 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('keydown', onKey, true)
   }, [])
 
-  const value: VaultCtx = {
+  const unread = useMemo(
+    () => notifs.filter((n) => n.unread && !n.archived).length,
+    [notifs],
+  )
+
+  const value: VaultCtx = useMemo(
+    () => ({
     hydrated,
-    now: now || 0,
     files,
     views,
     fileById,
@@ -1806,7 +1835,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     saveSettings,
     revertSettings,
     notifs,
-    unread: notifs.filter((n) => n.unread && !n.archived).length,
+    unread,
     notify,
     markAllRead,
     toggleRead,
@@ -1871,9 +1900,29 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     completeUnlock,
     setAutoLock,
     resetLock,
-  }
+    }),
+    [
+      hydrated, files, views, fileById, viewById, addFiles, removeFile, retagFile,
+      reindexAll, clearIndex, wipeVault, notes, liveNotes, notesFor, addNote, patchNote,
+      burnNote, extendNote, sessions, activeSessionId, setActiveSessionId, addSession,
+      patchSession, removeSession, drafts, setDraft, scrolls, setScroll, settings,
+      draftSettings, setDraftSettings, dirty, saveSettings, revertSettings, notifs, unread,
+      notify, markAllRead, toggleRead, openNotif, snoozeNotif, muteNotifCat, archiveNotif,
+      restoreNotif, deleteNotif, clearRead, clearAllNotifs, purgeArchive, notifUndo,
+      undoNotifs, screen, go, fileFocus, noteFocus, clusterFocus, nodeFocus, settingFocus,
+      secretFocus, openSecret, secretIndex, setSecretIndex, openFile, openNote, openOnMap,
+      openCluster, openSetting, openSession, query, scope, hits, matchedFiles, palette,
+      runHit, graph, clusters, mix, neighbors, stats, engineView, grantCloudConsent,
+      revokeCloudConsent, setToggle, toast, flash, lock, lockEpoch, fileKeysCount, setupLock,
+      changeMaster, disableLock, lockNow, unlock, completeUnlock, setAutoLock, resetLock,
+    ],
+  )
 
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>
+  return (
+    <Ctx.Provider value={value}>
+      <NowCtx.Provider value={now || 0}>{children}</NowCtx.Provider>
+    </Ctx.Provider>
+  )
 }
 
 export { CLUSTERS }

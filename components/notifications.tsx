@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { IconBell, IconCheck, IconClose, IconRefresh, iconOf } from './icons'
-import { useVault, type Notif, type NotifCat, type NotifKind } from '@/lib/vault-store'
+import { useVault, useNow, type Notif, type NotifCat, type NotifKind } from '@/lib/vault-store'
 import { DAY } from '@/lib/notes'
 
 const KIND_LABEL: Record<NotifKind, string> = {
@@ -86,7 +86,7 @@ export function NotificationsBell() {
 
   const items = v.notifs
   const unread = v.unread
-  const now = v.now || Date.now()
+  const now = useNow() || Date.now()
   const undoLive = v.notifUndo !== null && now - v.notifUndo.at < UNDO_MS
 
   useEffect(() => {

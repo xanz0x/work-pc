@@ -24,7 +24,7 @@ import {
 import { CLUSTERS, clusterOf, fmtBytes, type ClusterId, type FileView } from '@/lib/data'
 import { DAY, HOUR, TTL_OPTIONS, fmtLeft, fmtWhen, type Note } from '@/lib/notes'
 import type { EdgeReason } from '@/lib/graph'
-import { useVault } from '@/lib/vault-store'
+import { useVault, useNow } from '@/lib/vault-store'
 import {
   DENSITY_LABEL,
   isCustom,
@@ -72,7 +72,8 @@ const REASON_LABEL: Record<EdgeReason, string> = {
 
 export function ScreenLibrary() {
   const v = useVault()
-  const { views, liveNotes, notes, now, stats } = v
+  const now = useNow()
+  const { views, liveNotes, notes, stats } = v
 
   const [view, setView] = useState<Layer>('all')
   const [cat, setCat] = useState<CatId>('all')
@@ -1736,7 +1737,7 @@ function NoteCardContent({
   isSelected?: boolean
 }) {
   const v = useVault()
-  const now = v.now
+  const now = useNow()
 
   /* Разблокировка — локальное состояние карточки: ключ не покидает её. */
   const [unlocked, setUnlocked] = useState<string[]>([])

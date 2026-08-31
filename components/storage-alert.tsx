@@ -81,8 +81,8 @@ export function StorageAlert() {
   if (fails.length === 0) return null
 
   return (
-    <div className="storage-bar" role="status" aria-live="polite" data-testid="storage-error-bar">
-      <span className="storage-bar-text">
+    <div className="storage-error-bar" role="status" aria-live="polite" data-testid="storage-error-bar">
+      <span className="storage-error-bar-text">
         Не сохранилось: {fails.length === 1 ? fails[0].key : `${fails.length} записей`}
       </span>
       <button

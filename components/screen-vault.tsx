@@ -8,7 +8,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { IconDatabase, IconPlus, IconShield, IconSparkText } from './icons'
-import { useVault } from '@/lib/vault-store'
+import { useVault, useNow } from '@/lib/vault-store'
 import { useSecrets } from '@/lib/secrets-store'
 import { filterEntries, isLive, parseQuery, type SecretType } from '@/lib/secrets'
 import { VaultNav, type VaultView } from './vault/vault-nav'
@@ -30,7 +30,7 @@ export function ScreenVault() {
   const [newType, setNewType] = useState<SecretType>('login')
   const [gen, setGen] = useState(false)
   const [io, setIo] = useState(false)
-  const now = v.now || Date.now()
+  const now = useNow() || Date.now()
 
   /* Замок закрылся — выбор и модалки сбрасываются (п.10.4 + Panic Lock+). */
   useEffect(() => {

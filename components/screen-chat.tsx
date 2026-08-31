@@ -23,7 +23,7 @@ import { CloudConsent } from './chat/cloud-consent'
 import type { AiMsg, ChatMsg, Session, UserMsg } from './chat/types'
 import { usePersistedState } from '@/hooks/use-persisted-state'
 import { useAiChat, type ExecResult, type TurnBody } from '@/hooks/use-ai-chat'
-import { useVault } from '@/lib/vault-store'
+import { useVault, useNow } from '@/lib/vault-store'
 import { useSecrets } from '@/lib/secrets-store'
 import { useRedacted } from '@/lib/redact-context'
 import { aiApi } from '@/lib/ai-client'
@@ -44,6 +44,7 @@ const uid = (p: string) => `${p}-${Date.now().toString(36)}-${seq++}`
  */
 export function ScreenChat() {
   const v = useVault()
+  const now = useNow()
   const secrets = useSecrets()
   const { redactIds } = useRedacted()
   const sessions = v.sessions
@@ -592,7 +593,7 @@ export function ScreenChat() {
           <SessionRail
             sessions={sessions}
             activeId={active?.id ?? null}
-            now={v.now || Date.now()}
+            now={now || Date.now()}
             onSelect={(id) => {
               v.setActiveSession(id)
               setPicked(null)
