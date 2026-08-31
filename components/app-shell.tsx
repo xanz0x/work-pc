@@ -15,6 +15,7 @@ import { CommandPalette } from './command-palette'
 import { NumTicker } from './ui/num-ticker'
 import { ScreenLock } from './screen-lock'
 import { useVault } from '@/lib/vault-store'
+import { useIndexActions } from '@/lib/indexer/context'
 import { fmtBytes } from '@/lib/data'
 import { SCOPES } from '@/lib/search'
 import { flushClientErrors } from '@/lib/telemetry-client'
@@ -76,6 +77,7 @@ const plural = (n: number, one: string, few: string, many: string) => {
  */
 export function AppShell({ children }: { children: ReactNode }) {
   const v = useVault()
+  const idxa = useIndexActions()
   const { stats, clusters } = v
 
   const [collapsed, setCollapsed] = useState(false)
@@ -227,7 +229,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             tabIndex={-1}
             onChange={(e) => {
               const list = Array.from(e.target.files ?? [])
-              if (list.length > 0) v.addFiles(list.map((f) => ({ name: f.name, size: f.size })))
+              /* NF-1: файлы читаются по-настоящему — метаданными не отделаться. */
+              if (list.length > 0) void idxa.indexFiles(list)
               e.target.value = ''
             }}
           />

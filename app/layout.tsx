@@ -2,6 +2,7 @@ import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { IBM_Plex_Mono, IBM_Plex_Sans } from 'next/font/google'
 import { StorageAlert } from '@/components/storage-alert'
+import { IndexerProvider } from '@/lib/indexer/context'
 import { RedactedProvider } from '@/lib/redact-context'
 import { SecretsProvider } from '@/lib/secrets-store'
 import { VaultProvider } from '@/lib/vault-store'
@@ -61,9 +62,13 @@ export default function RootLayout({
           {/* Единый сейф: корпус, стикеры, разговоры, настройки и события —
               одно состояние на все четыре экрана, поэтому числа не расходятся. */}
           <VaultProvider>
-            {/* Менеджер секретов живёт поверх сейфа: без открытого замка
-                он ничего не расшифровывает и ничего не пишет. */}
-            <SecretsProvider>{children}</SecretsProvider>
+            {/* Настоящий индексатор (NF-1): читает папку в Web Worker,
+                складывает содержимое, чанки и хеши в IndexedDB. */}
+            <IndexerProvider>
+              {/* Менеджер секретов живёт поверх сейфа: без открытого замка
+                  он ничего не расшифровывает и ничего не пишет. */}
+              <SecretsProvider>{children}</SecretsProvider>
+            </IndexerProvider>
           </VaultProvider>
         </RedactedProvider>
         {/* Ошибка записи хранилища видна пользователю (P0-3): «не сохранилось»

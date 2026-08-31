@@ -53,7 +53,16 @@ export type Graph = {
   degree: number[]
   byId: Map<string, GNode>
   links: number
+  /** Часть связей не построена из-за бюджета: интерфейс говорит «и ещё». */
+  capped: boolean
 }
+
+/**
+ * Бюджет связей на узел. Полный граф на большом корпусе даёт квадратичное
+ * число рёбер: и карта нечитаема, и главный поток занят. Восемь — столько,
+ * сколько инспектор узла всё равно показывает (neighborsOf: 6).
+ */
+export const MAX_DEGREE = 8
 
 function shared(a: string[], b: string[]): number {
   let n = 0
@@ -125,6 +134,7 @@ export function buildGraph(files: VaultFile[], notes: Note[], now: number): Grap
   /** Ключи уже созданных связей: без него дедупликация была бы O(n²·E). */
   const seen = new Set<number>()
   const keyOf = (a: number, b: number) => (a < b ? a : b) * nodes.length + (a < b ? b : a)
+  let capped = false
 
   function link(a: number, b: number, w: number, reason: EdgeReason) {
     const key = keyOf(a, b)
@@ -145,9 +155,22 @@ export function buildGraph(files: VaultFile[], notes: Note[], now: number): Grap
     if (j >= 0) link(i, j, 1, 'pin')
   })
 
-  // Всё остальное: общие метки крепче общего кластера.
+  /* Всё остальное: общие метки крепче общего кластера.
+     Бюджет связей на узел (MAX_DEGREE) — не «красота», а необходимость:
+     на папке из 1 000 файлов полный граф даёт полмиллиона рёбер, карта
+     превращается в кашу, а главный поток встаёт. Что не поместилось —
+     помечается флагом `capped`, чтобы интерфейс не выдумывал полноту. */
   for (let i = 0; i < nodes.length; i++) {
+    if (degree[i] >= MAX_DEGREE) continue
     for (let j = i + 1; j < nodes.length; j++) {
+      if (degree[i] >= MAX_DEGREE) {
+        capped = capped || j < nodes.length - 1
+        break
+      }
+      if (degree[j] >= MAX_DEGREE) {
+        capped = true
+        continue
+      }
       if (seen.has(keyOf(i, j))) continue
       const s = shared(nodes[i].tags, nodes[j].tags)
       const same = nodes[i].cluster === nodes[j].cluster
@@ -162,6 +185,7 @@ export function buildGraph(files: VaultFile[], notes: Note[], now: number): Grap
     degree,
     byId: new Map(nodes.map((n) => [n.id, n])),
     links: edges.length,
+    capped,
   }
 }
 

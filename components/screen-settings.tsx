@@ -18,6 +18,7 @@ import {
   IconTrash,
 } from './icons'
 import { useVault, type ToggleId } from '@/lib/vault-store'
+import { useIndexActions, useIndexSummary } from '@/lib/indexer/context'
 import { ENGINES, LOCAL_ENGINE_READY, MODELS, NO_DATA, engineOf, fmtBytes, modelOf } from '@/lib/data'
 import { NumTicker } from './ui/num-ticker'
 import { SecuritySection } from './security-section'
@@ -120,6 +121,8 @@ const plural = (n: number, one: string, few: string, many: string) => {
  */
 export function ScreenSettings() {
   const v = useVault()
+  const idxs = useIndexSummary()
+  const idxa = useIndexActions()
   const d = v.draftSettings
   const [active, setActive] = useState('engine')
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -478,17 +481,32 @@ export function ScreenSettings() {
                   />
                   <button
                     className="btn btn-ghost btn-sm"
+                    data-testid="set-pick-folder"
                     onClick={() =>
-                      v.flash('Выбор папки недоступен в прототипе — путь правится вручную.')
+                      idxs.fsaSupported
+                        ? void idxa.connectFolder()
+                        : v.flash(
+                            'Браузер не даёт доступ к папке: выберите файлы кнопкой «Добавить файл» — содержимое всё равно прочитается локально.',
+                          )
                     }
                   >
                     <IconFolder />
                     Выбрать
                   </button>
-                  <button className="btn btn-tertiary btn-sm" onClick={v.reindexAll}>
+                  <button
+                    className="btn btn-tertiary btn-sm"
+                    data-testid="set-reindex"
+                    disabled={idxs.busy}
+                    onClick={v.reindexAll}
+                  >
                     <IconRefresh />
                     Переиндексировать
                   </button>
+                </div>
+                <div className="sec-note">
+                  {idxs.indexedCount > 0
+                    ? `Индекс содержимого: ${idxs.indexedCount} файлов прочитано локально${idxs.folder ? ` из «${idxs.folder}»` : ''}. OCR в продукте нет: сканы помечаются «без текстового слоя».`
+                    : 'Индекса содержимого нет: подключите папку — файлы прочитаются в фоновом воркере, ни один байт не уйдёт наружу.'}
                 </div>
               </div>
 

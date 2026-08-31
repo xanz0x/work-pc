@@ -12467,3 +12467,72 @@ button.chip:hover {
     width: 100px;
   }
 }
+
+/* ============================================================
+   ===== INDEXER v1 · ПОЛОСА ИНДЕКСАЦИИ (NF-1) ================
+   Слой дописан в конец: палитра «Графит» не менялась, ни одного
+   blur/тени — только тон, рамка и один честный прогресс-бар.
+   ============================================================ */
+.idx-strip {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  margin-bottom: 14px;
+  border-left: 2px solid rgba(47, 190, 126, 0.5);
+}
+.idx-strip.warn {
+  border-left-color: rgba(176, 141, 87, 0.7);
+}
+.idx-strip.busy {
+  border-left-color: rgba(91, 124, 153, 0.8);
+}
+.idx-strip > svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  opacity: 0.7;
+}
+.idx-strip.busy > svg {
+  animation: idx-spin 1.6s linear infinite;
+}
+@keyframes idx-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.idx-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.idx-body > b {
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+.idx-current {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.idx-bar {
+  position: relative;
+  height: 3px;
+  margin-top: 5px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+.idx-bar > i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: rgba(47, 190, 126, 0.75);
+  transition: width 0.25s linear;
+}
+.lib-more {
+  display: flex;
+  justify-content: center;
+  padding: 6px 0 18px;
+}

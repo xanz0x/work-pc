@@ -9,9 +9,12 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type ReactNode,
 } from 'react'
 import type { IconId } from '@/components/icons'
+import { contentIndex, contentVersion, subscribeContent } from '@/lib/indexer/content'
+import type { IndexedRecord } from '@/lib/indexer/types'
 import { pruneNotifs } from '@/lib/notifs'
 import { usePersistedState } from '@/hooks/use-persisted-state'
 import {
@@ -21,6 +24,7 @@ import {
   VAULT_FILES,
   VAULT_QUOTA,
   classify,
+  dateLabel,
   clusterMix,
   clusterOf,
   engineOf,
@@ -89,134 +93,51 @@ export type { FileView }
 
 /* ---------- конфигурация ---------- */
 
-export type ToggleId =
-  | 'ocr'
-  | 'autotag'
-  | 'watch'
-  | 'redact'
-  | 'telemetry'
-  | 'sendIndex'
-  | 'ntfPipeline'
-  | 'ntfPrivacy'
-  | 'ntfDigest'
-
-export type Settings = {
-  engine: EngineId
-  model: ModelId
-  folder: string
-  toggles: Record<ToggleId, boolean>
-  /** Когда пользователь согласился отправлять запросы во внешнюю модель. */
-  cloudConsentAt: number | null
-}
-
-export const DEFAULT_SETTINGS: Settings = {
-  engine: 'local',
-  model: 'qwen-7b',
-  folder: '/Users/me/WorkfloW/vault',
-  toggles: {
-    ocr: true,
-    autotag: true,
-    watch: true,
-    redact: true,
-    telemetry: false,
-    sendIndex: true,
-    ntfPipeline: true,
-    ntfPrivacy: true,
-    ntfDigest: false,
-  },
-  cloudConsentAt: null,
-}
-
-/** Профиль из localStorage мог быть записан старой сборкой — добираем поля. */
-function normalizeSettings(s: Settings): Settings {
-  return {
-    ...DEFAULT_SETTINGS,
-    ...s,
-    toggles: { ...DEFAULT_SETTINGS.toggles, ...s.toggles },
-  }
-}
-
-/**
- * Единый срез режима (UX-1). Все подписи — статус-бар, топбар, автор ответа,
- * футер композера — читают только его, поэтому расходиться им негде.
- */
-export type EngineView = {
-  mode: EngineId
-  /** Короткое имя движка: «Локальный», «Гибридный», «Внешняя». */
-  label: string
-  /** Кто отвечает на ход: облачная модель или локальная. */
-  model: string
-  isCloud: boolean
-  /** Может ли движок ответить прямо сейчас. */
-  ready: boolean
-  /** Подпись статус-бара заглавными. */
-  statusLabel: string
-  /** Подпись сетевого индикатора. */
-  netLabel: string
-  /** Согласие на облачный ход уже дано. */
-  consented: boolean
-}
-
-function buildEngineView(s: Settings): EngineView {
-  const e = engineOf(s.engine)
-  const isCloud = !e.offline
-  return {
-    mode: s.engine,
-    label: e.short,
-    model: isCloud ? CLOUD_MODEL_LABEL : modelOf(s.model).short,
-    isCloud,
-    ready: isCloud || LOCAL_ENGINE_READY,
-    statusLabel: isCloud
-      ? s.engine === 'cloud'
-        ? 'ВНЕШНЯЯ МОДЕЛЬ'
-        : 'ГИБРИДНЫЙ РЕЖИМ'
-      : LOCAL_ENGINE_READY
-        ? 'ЛОКАЛЬНЫЙ РЕЖИМ'
-        : 'ЛОКАЛЬНЫЙ ДВИЖОК НЕ ПОДКЛЮЧЁН',
-    netLabel: isCloud ? 'ВНИМАНИЕ · ЕСТЬ ИСХОДЯЩИЕ' : 'НЕТ ИСХОДЯЩИХ ЗАПРОСОВ',
-    consented: s.cloudConsentAt !== null,
-  }
-}
+/* AR-1: домен настроек живёт в lib/store/settings.tsx. Здесь — только
+   реэкспорт, чтобы внешний контракт `useVault()`/типов не менялся. */
+export {
+  DEFAULT_SETTINGS,
+  buildEngineView,
+  normalizeSettings,
+  type EngineView,
+  type Settings,
+  type ToggleId,
+} from './store/settings'
+import { normalizeSettings, useSettingsStore, type Settings, type ToggleId, type EngineView } from './store/settings'
+import { useNotifsStore, type Notif, type NotifCat } from './store/notifs'
+import { ClockProvider, useCoarseTick } from './store/clock'
+import { ToastProvider, useToast } from './store/toast'
+import { NotifsProvider } from './store/notifs'
+import { SettingsProvider } from './store/settings'
 
 /* ---------- события ---------- */
 
-export type NotifKind = 'ok' | 'warn' | 'danger' | 'info'
-export type NotifCat = 'pipeline' | 'privacy' | 'system'
-
-/** Куда ведёт уведомление: клик по телу открывает источник события. */
-export type NotifLink =
-  | { kind: 'file'; id: string }
-  | { kind: 'note'; id: string }
-  | { kind: 'secret'; id: string }
-  | { kind: 'setting'; id: string }
-  | { kind: 'screen'; id: ScreenId }
-
-export type Notif = {
-  id: string
-  kind: NotifKind
-  cat: NotifCat
-  icon: IconId
-  title: string
-  body: string
-  at: number
-  unread: boolean
-  /** В архиве: не видно в основной ленте, но можно восстановить. */
-  archived?: boolean
-  /** Источник события — открывается кликом по телу уведомления. */
-  link?: NotifLink
-  /** Сколько событий склеено в это (ежедневная сводка). */
-  merged?: number
-  /** Склеенные события сводки: раскрываются по клику. */
-  items?: Notif[]
-  /** Отложено пользователем: не видно в ленте до этого времени. */
-  snoozedUntil?: number
-}
+/* AR-1: домен ленты событий — lib/store/notifs.tsx. */
+export type { Notif, NotifCat, NotifKind, NotifLink } from './store/notifs'
 
 /* Retention ленты вынесен в `lib/notifs.ts` (P0-4): чистые функции
    покрыты unit-тестами, стор только вызывает pruneNotifs. */
 
 let seq = 0
 const uid = (p: string) => `${p}-${Date.now().toString(36)}-${seq++}`
+
+/** Почему у файла нет текста — то же словами, что и в записи индекса. */
+const NO_TEXT_TEXT: Record<string, string> = {
+  binary: 'Бинарный формат: текстового слоя нет, OCR в продукте нет',
+  'pdf-no-text': 'PDF без текстового слоя (скан): текст не извлечён, OCR нет',
+  empty: 'Файл пустой',
+  'too-big': 'Файл больше лимита чтения — проиндексировано начало',
+  'read-error': 'Файл не удалось прочитать',
+}
+
+/** Описание файла из настоящего индекса: только то, что действительно есть. */
+function describeIndexed(r: IndexedRecord): string {
+  if (r.noText) return NO_TEXT_TEXT[r.noText] ?? 'Текстовый слой не найден'
+  if (r.keywords.length > 0) {
+    return `В тексте: ${r.keywords.slice(0, 6).join(', ')} · ${r.chunks} чанков`
+  }
+  return `Текст прочитан: ${r.textLen} символов, ${r.chunks} чанков`
+}
 
 /* ---------- контекст ---------- */
 
@@ -265,6 +186,16 @@ export type VaultCtx = {
   fileById: (id: string) => VaultFile | undefined
   viewById: (id: string) => FileView | undefined
   addFiles: (incoming: { name: string; size?: number }[]) => void
+  /** NF-1: результаты настоящего индексатора становятся файлами сейфа. */
+  applyIndexed: (records: IndexedRecord[]) => void
+  /** NF-1: честный статус «в обработке» — по реальному конвейеру. */
+  setIndexing: (ids: string[], on: boolean) => void
+  /** NF-1: файл исчез с диска — уходит и из сейфа. */
+  dropIndexed: (ids: string[]) => void
+  /** NF-1: подключённая папка-источник. */
+  setFolder: (path: string) => void
+  /** NF-1: провайдер индексатора подписывает сюда свою переиндексацию. */
+  setReindexHandler: (fn: (() => void) | null) => void
   removeFile: (id: string) => void
   retagFile: (id: string, cluster: ClusterId) => void
   /** Перестроить индекс: файлы снова проходят конвейер, связи считаются заново. */
@@ -442,30 +373,48 @@ export type VaultCtx = {
 
 const Ctx = createContext<VaultCtx | null>(null)
 
-/**
- * Часы вынесены в отдельный контекст: они тикают раз в секунду, и держать их
- * в основном сейфе значило заставлять перерисовываться каждый кадр всё, что
- * читает useVault. Теперь секунды подписывают только те, кому нужен отсчёт
- * (тающие стикеры, «5 мин назад»), — остальной интерфейс остаётся спокойным.
- */
-const NowCtx = createContext<number>(0)
-
 export function useVault(): VaultCtx {
   const v = useContext(Ctx)
   if (!v) throw new Error('useVault вызван вне VaultProvider')
   return v
 }
 
-/** Общие часы приложения. 0 до первого клиентского тика (совпадает с SSR). */
-export function useNow(): number {
-  return useContext(NowCtx)
-}
+/* AR-1: часы — отдельный провайдер (lib/store/clock.tsx). Реэкспорт нужен,
+   чтобы экраны продолжали писать `useNow()` из сейфа. */
+export { useNow } from './store/clock'
 
 /* ============================================================
    ПРОВАЙДЕР
    ============================================================ */
 
+/**
+ * Композиция доменов (AR-1, шаг 2): часы → тосты → настройки → лента → сейф.
+ * Внешний контракт не изменился: провайдер называется так же, а `useVault()`
+ * остаётся фасадом над всеми доменами.
+ */
 export function VaultProvider({ children }: { children: ReactNode }) {
+  return (
+    <ClockProvider>
+      <ToastProvider>
+        <SettingsProvider>
+          <NotifsProvider>
+            <VaultCore>{children}</VaultCore>
+          </NotifsProvider>
+        </SettingsProvider>
+      </ToastProvider>
+    </ClockProvider>
+  )
+}
+
+function VaultCore({ children }: { children: ReactNode }) {
+  const { toast, flash } = useToast()
+  const S = useSettingsStore()
+  const N = useNotifsStore()
+  const settings = S.settings
+  const notify = N.notify
+  /** Состав живых стикеров пересчитываем раз в пять секунд, а не каждую. */
+  const tick = useCoarseTick(5000)
+
   const [files, setFiles, filesReady] = usePersistedState<VaultFile[]>('wf.files.v1', VAULT_FILES)
   const [notes, setNotes, notesReady] = usePersistedState<Note[]>('wf.notes.v1', [])
   const [sessions, setSessions, chatReady] = usePersistedState<Session[]>('wf.chat.v1', [])
@@ -475,20 +424,6 @@ export function VaultProvider({ children }: { children: ReactNode }) {
   )
   const [drafts, setDrafts] = usePersistedState<Record<string, string>>('wf.chat.drafts', {})
   const [scrolls, setScrolls] = usePersistedState<Record<string, number>>('wf.chat.scroll', {})
-  const [rawSettings, setSettings, setReady] = usePersistedState<Settings>(
-    'wf.settings.v1',
-    DEFAULT_SETTINGS,
-  )
-  const settings = useMemo(() => normalizeSettings(rawSettings), [rawSettings])
-  const [notifs, setNotifs, notifReady] = usePersistedState<Notif[]>('wf.notifs.v1', [])
-  /** Демо-лента наливается один раз: очищенная лента больше не возрождается. */
-  const [notifsSeeded, setNotifsSeeded, seededReady] = usePersistedState<boolean>(
-    'wf.notifs.seeded.v1',
-    false,
-  )
-  const [notifUndo, setNotifUndo] = useState<{ label: string; at: number } | null>(null)
-
-  const [draftSettings, setDraftState] = useState<Settings>(DEFAULT_SETTINGS)
   const [screen, setScreen] = useState<ScreenId>('library')
   const [fileFocus, setFileFocus] = useState<Focus>(null)
   const [clusterFocus, setClusterFocus] = useState<Focus>(null)
@@ -500,8 +435,6 @@ export function VaultProvider({ children }: { children: ReactNode }) {
   const [query, setQuery] = useState('')
   const [scope, setScope] = useState<ScopeId>('all')
   const [palette, setPalette] = useState(false)
-  const [toast, setToast] = useState<string | null>(null)
-  const [now, setNow] = useState(0)
 
   /* ---------- замок: состояние ---------- */
 
@@ -515,42 +448,18 @@ export function VaultProvider({ children }: { children: ReactNode }) {
   /** Последняя активность для автоблокировки; живёт только в памяти вкладки. */
   const activityRef = useRef(Date.now())
 
-  const hydrated = filesReady && notesReady && chatReady && setReady && notifReady
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const hydrated = filesReady && notesReady && chatReady && S.ready && N.ready
   const settingsRef = useRef(settings)
   settingsRef.current = settings
   /** Стикеры для крипто-миграций (нужны при переупаковке под новый мастер). */
   const notesRef = useRef(notes)
   notesRef.current = notes
+  /** NF-1: сюда indexer-провайдер подписывает настоящую переиндексацию. */
+  const reindexRef = useRef<(() => void) | null>(null)
   const patchNoteSecret = useCallback(
     (id: string, secret: string) =>
       setNotes((all) => all.map((n) => (n.id === id ? { ...n, secret } : n))),
     [setNotes],
-  )
-
-  /** Общие часы. Один таймер на всё приложение вместо четырёх. */
-  useEffect(() => {
-    setNow(Date.now())
-    const t = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(t)
-  }, [])
-
-  useEffect(() => {
-    if (setReady) setDraftState(settings)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setReady])
-
-  const flash = useCallback((msg: string) => {
-    setToast(msg)
-    if (toastTimer.current) clearTimeout(toastTimer.current)
-    toastTimer.current = setTimeout(() => setToast(null), 4000)
-  }, [])
-
-  useEffect(
-    () => () => {
-      if (toastTimer.current) clearTimeout(toastTimer.current)
-    },
-    [],
   )
 
   /* ---------- замок: синхронный bootstrap (п.10.1 / п.10.11) ---------- */
@@ -606,91 +515,24 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 
   /* ---------- замок: действия ---------- */
 
-  /* ---------- события ---------- */
-
-  /**
-   * Уведомление проходит через настройки: выключенная категория не создаёт
-   * событие вообще, а включённая сводка склеивает поток конвейера в одну
-   * запись. Переключатели на экране настроек действительно работают.
-   */
-  const notify = useCallback(
-    (n: Omit<Notif, 'id' | 'at' | 'unread'>) => {
-      const t = settingsRef.current.toggles
-      if (n.cat === 'pipeline' && !t.ntfPipeline) return
-      if (n.cat === 'privacy' && !t.ntfPrivacy) return
-
-      if (n.cat === 'pipeline' && t.ntfDigest) {
-        setNotifs((all) => {
-          const i = all.findIndex((x) => x.id.startsWith('digest'))
-          const item: Notif = { ...n, id: uid('n'), at: Date.now(), unread: true }
-          if (i >= 0) {
-            const cur = all[i]
-            const items = [item, ...(cur.items ?? [])].slice(0, 50)
-            const next: Notif = {
-              ...cur,
-              at: Date.now(),
-              /* N-6: сводка не «сбрасывает» себя перезаписью — прочитанность
-                 снимается только приходом нового события. */
-              unread: true,
-              body: n.body,
-              merged: items.length,
-              items,
-              title: `Сводка конвейера: ${items.length} ${
-                items.length === 1 ? 'событие' : 'события'
-              }`,
-            }
-            return [next, ...all.filter((_, k) => k !== i)]
-          }
-          return [
-            {
-              id: `digest-${Date.now().toString(36)}`,
-              kind: 'info',
-              cat: 'pipeline',
-              icon: 'inbox',
-              title: 'Сводка конвейера: 1 событие',
-              body: n.body,
-              at: Date.now(),
-              unread: true,
-              merged: 1,
-              items: [item],
-            },
-            ...all,
-          ]
-        })
-        return
-      }
-
-      setNotifs((all) => pruneNotifs([{ ...n, id: uid('n'), at: Date.now(), unread: true }, ...all]))
-    },
-    [setNotifs],
-  )
+  /* ---------- события: то, что знает только сейф ---------- */
 
   /** Лента первого запуска собирается из настоящего состояния сейфа. */
   useEffect(() => {
-    if (!hydrated || !seededReady || notifsSeeded || notifs.length > 0) return
+    if (!hydrated || !N.seededReady || N.seeded || N.notifs.length > 0) return
     const t0 = Date.now()
     const bytes = totalBytes(files)
     const g = buildGraph(files, [], t0)
     const m = modelOf(settings.model)
-    setNotifs([
+    N.replaceNotifs([
       {
         id: 'seed-index',
         kind: 'ok',
         cat: 'pipeline',
         icon: 'check',
-        title: 'Индексация завершена',
-        body: `${files.length} файлов, ${g.links} связей на карте памяти. Конфликтов версий не найдено.`,
+        title: 'Демо-корпус загружен',
+        body: `${files.length} файлов, ${g.links} связей на карте памяти. Содержимое демо-файлов не читалось: подключите папку, чтобы построить настоящий индекс.`,
         at: t0 - 34 * 60_000,
-        unread: true,
-      },
-      {
-        id: 'seed-privacy',
-        kind: 'danger',
-        cat: 'privacy',
-        icon: 'shield',
-        title: 'Найдены чувствительные данные',
-        body: 'В «договор_аренды_2026.pdf» распознаны паспортные данные — превью замаскировано локально.',
-        at: t0 - 52 * 60_000,
         unread: true,
       },
       {
@@ -714,9 +556,9 @@ export function VaultProvider({ children }: { children: ReactNode }) {
         unread: false,
       },
     ])
-    setNotifsSeeded(true)
+    N.markSeeded()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hydrated, seededReady])
+  }, [hydrated, N.seededReady])
 
   /** Стикеры первого запуска. */
   useEffect(() => {
@@ -725,144 +567,14 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [notesReady])
 
-  /* ---------- события: действия и синхронизация ---------- */
-
-  const notifsRef = useRef(notifs)
-  notifsRef.current = notifs
-  /** Снимок для отмены последнего массового действия. */
-  const notifSnap = useRef<Notif[] | null>(null)
-  /** Пришло из другой вкладки — не отправлять обратно (иначе эхо). */
-  const notifFromChannel = useRef(false)
-  const notifChannel = useRef<BroadcastChannel | null>(null)
-
-  useEffect(() => {
-    if (typeof BroadcastChannel === 'undefined') return
-    const ch = new BroadcastChannel('workflow-notifs')
-    notifChannel.current = ch
-    ch.onmessage = (e: MessageEvent) => {
-      const list = (e.data as { notifs?: Notif[] } | null)?.notifs
-      if (!Array.isArray(list)) return
-      notifFromChannel.current = true
-      setNotifs(list)
-    }
-    return () => {
-      ch.close()
-      notifChannel.current = null
-    }
-  }, [setNotifs])
-
-  useEffect(() => {
-    if (!notifReady) return
-    if (notifFromChannel.current) {
-      notifFromChannel.current = false
-      return
-    }
-    notifChannel.current?.postMessage({ notifs })
-  }, [notifs, notifReady])
-
-  /** Запомнить состояние ленты перед обратимым действием. */
-  const rememberNotifs = useCallback((label: string) => {
-    notifSnap.current = notifsRef.current
-    setNotifUndo({ label, at: Date.now() })
-  }, [])
-
-  const undoNotifs = useCallback(() => {
-    const snap = notifSnap.current
-    if (!snap) return
-    notifSnap.current = null
-    setNotifUndo(null)
-    setNotifs(snap)
-    flash('Действие с уведомлениями отменено.')
-  }, [flash, setNotifs])
-
-  const markAllRead = useCallback(() => {
-    if (!notifsRef.current.some((n) => n.unread && !n.archived)) return
-    rememberNotifs('Все отмечены прочитанными')
-    setNotifs((all) => all.map((n) => (n.archived ? n : { ...n, unread: false })))
-  }, [rememberNotifs, setNotifs])
-
-  const toggleRead = useCallback(
-    (id: string) =>
-      setNotifs((all) => all.map((n) => (n.id === id ? { ...n, unread: !n.unread } : n))),
-    [setNotifs],
-  )
-
-  const archiveNotif = useCallback(
-    (id: string) => {
-      rememberNotifs('Уведомление убрано')
-      setNotifs((all) => all.map((n) => (n.id === id ? { ...n, archived: true } : n)))
-    },
-    [rememberNotifs, setNotifs],
-  )
-
-  const restoreNotif = useCallback(
-    (id: string) =>
-      setNotifs((all) => all.map((n) => (n.id === id ? { ...n, archived: false } : n))),
-    [setNotifs],
-  )
-
-  const deleteNotif = useCallback(
-    (id: string) => setNotifs((all) => all.filter((n) => n.id !== id)),
-    [setNotifs],
-  )
-
-  /** N-10: отложить событие — уходит из ленты и возвращается само. */
-  const snoozeNotif = useCallback(
-    (id: string, ms: number) => {
-      setNotifs((all) =>
-        all.map((n) => (n.id === id ? { ...n, snoozedUntil: Date.now() + ms, unread: true } : n)),
-      )
-      flash('Уведомление отложено на час.')
-    },
-    [flash, setNotifs],
-  )
-
-  /** N-10: выключить категорию прямо из уведомления. */
-  const muteNotifCat = useCallback(
-    (cat: NotifCat) => {
-      const key: ToggleId | null =
-        cat === 'pipeline' ? 'ntfPipeline' : cat === 'privacy' ? 'ntfPrivacy' : null
-      if (!key) {
-        flash('Системные события выключить нельзя — это журнал сейфа.')
-        return
-      }
-      setSettings((s) => {
-        const base = normalizeSettings(s)
-        return { ...base, toggles: { ...base.toggles, [key]: false } }
-      })
-      setDraftState((s) => ({ ...s, toggles: { ...s.toggles, [key]: false } }))
-      flash(`Категория «${cat === 'pipeline' ? 'Конвейер' : 'Приватность'}» выключена в настройках.`)
-    },
-    [flash, setSettings],
-  )
-
-  const clearRead = useCallback(() => {
-    if (!notifsRef.current.some((n) => !n.unread && !n.archived)) return
-    rememberNotifs('Прочитанные убраны в архив')
-    setNotifs((all) => all.map((n) => (!n.archived && !n.unread ? { ...n, archived: true } : n)))
-  }, [rememberNotifs, setNotifs])
-
-  const clearAllNotifs = useCallback(() => {
-    if (!notifsRef.current.some((n) => !n.archived)) return
-    rememberNotifs('Лента очищена в архив')
-    setNotifs((all) => all.map((n) => (n.archived ? n : { ...n, archived: true, unread: false })))
-  }, [rememberNotifs, setNotifs])
-
-  const purgeArchive = useCallback(() => {
-    if (!notifsRef.current.some((n) => n.archived)) return
-    rememberNotifs('Архив стёрт')
-    setNotifs((all) => all.filter((n) => !n.archived))
-  }, [rememberNotifs, setNotifs])
-
   /**
-   * Клик по телу уведомления: снимаем unread и открываем источник события.
-   * Если источник не указан, ведём в раздел, к которому относится событие.
+   * Клик по телу уведомления: домен ленты снимает unread, а куда вести —
+   * знает только сейф, потому что экраны и фокусы живут здесь.
    */
   const openNotif = useCallback(
     (id: string) => {
-      const n = notifsRef.current.find((x) => x.id === id)
+      const n = N.readNotif(id)
       if (!n) return
-      setNotifs((all) => all.map((x) => (x.id === id ? { ...x, unread: false } : x)))
       const at = Date.now()
       const link = n.link
       if (link?.kind === 'file') {
@@ -886,7 +598,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
         return
       }
       if (link?.kind === 'screen') {
-        setScreen(link.id)
+        setScreen(link.id as ScreenId)
         return
       }
       if (n.cat === 'pipeline') {
@@ -896,7 +608,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       setScreen('settings')
       setSettingFocus({ id: n.cat === 'privacy' ? 'privacy' : 'notifs', at })
     },
-    [setNotifs],
+    [N],
   )
 
   /* ---------- корпус ---------- */
@@ -909,13 +621,13 @@ export function VaultProvider({ children }: { children: ReactNode }) {
   const viewById = useCallback((id: string) => viewMap.get(id), [viewMap])
 
   /**
-   * Приём файлов. Конвейер честный: файл сначала в обработке, а сколько он
-   * там пробудет — зависит от того, включены ли OCR и автометки в настройках.
+   * Приём файлов «мимо конвейера»: только метаданные, содержимое не читалось.
+   * Настоящее чтение делает индексатор (NF-1, `useIndexer().indexFiles`),
+   * поэтому здесь ни таймеров, ни статуса «в обработке» — врать нечем.
    */
   const addFiles = useCallback(
     (incoming: { name: string; size?: number }[]) => {
       if (incoming.length === 0) return
-      const t = settingsRef.current.toggles
       const created = incoming.map((f) => {
         const { cluster, icon } = classify(f.name)
         return {
@@ -923,46 +635,28 @@ export function VaultProvider({ children }: { children: ReactNode }) {
           icon,
           cluster,
           name: f.name,
-          desc: t.autotag
-            ? `Определено автоматически: ${clusterOf(cluster).note.toLowerCase()}`
-            : 'Без описания — автометки выключены в настройках',
+          desc: 'Метаданные без содержимого — файл не читался индексатором',
           bytes: Math.max(1024, Math.round(f.size ?? 256 * 1024)),
           date: 'только что',
-          tags: t.autotag ? ['новое', clusterOf(cluster).label.toLowerCase()] : ['новое'],
-          processing: true,
+          tags: ['новое'],
+          processing: false,
         } satisfies VaultFile
       })
 
       setFiles((all) => [...created, ...all])
       flash(
         created.length === 1
-          ? `«${created[0].name}» принят в конвейер.`
-          : `${created.length} файлов приняты в конвейер.`,
+          ? `«${created[0].name}» добавлен как метаданные.`
+          : `${created.length} файлов добавлены как метаданные.`,
       )
       notify({
         kind: 'info',
         cat: 'pipeline',
         icon: 'inbox',
-        title: created.length === 1 ? 'Файл в конвейере' : `${created.length} файлов в конвейере`,
-        body: `Источник: ${settingsRef.current.folder}. Распознавание ${t.ocr ? 'включено' : 'выключено'}.`,
+        title: created.length === 1 ? 'Файл в сейфе' : `${created.length} файлов в сейфе`,
+        body: 'Содержимое не читалось: индексация запускается кнопкой «Подключить папку» в библиотеке.',
         link: { kind: 'file', id: created[0].id },
       })
-
-      const delay = t.ocr ? 4200 : 2200
-      const ids = created.map((c) => c.id)
-      setTimeout(() => {
-        setFiles((all) => all.map((f) => (ids.includes(f.id) ? { ...f, processing: false } : f)))
-        notify({
-          kind: 'ok',
-          cat: 'pipeline',
-          icon: 'check',
-          title: 'Индексация завершена',
-          body: `${created.length} ${created.length === 1 ? 'файл' : 'файлов'} разобран${
-            created.length === 1 ? '' : 'ы'
-          } и связан${created.length === 1 ? '' : 'ы'} с картой памяти.`,
-          link: { kind: 'file', id: created[0].id },
-        })
-      }, delay)
     },
     [flash, notify, setFiles],
   )
@@ -994,34 +688,87 @@ export function VaultProvider({ children }: { children: ReactNode }) {
   )
 
   /**
-   * Переиндексация. Всё, что делает конвейер при приёме, повторяется для
-   * всего корпуса: файлы уходят в обработку, статус-бар и карта это видят.
+   * Переиндексация. Настоящий конвейер живёт в indexer-провайдере (NF-1):
+   * стор только зовёт его. Папки нет — честно говорим об этом, а не крутим
+   * фальшивый прогресс таймерами.
    */
   const reindexAll = useCallback(() => {
-    const t = settingsRef.current.toggles
-    setFiles((all) => all.map((f) => ({ ...f, processing: true })))
-    flash('Переиндексация запущена. Файлы остаются на диске.')
-    notify({
-      kind: 'info',
-      cat: 'pipeline',
-      icon: 'refresh',
-      title: 'Переиндексация запущена',
-      body: `Источник: ${settingsRef.current.folder}. Распознавание ${t.ocr ? 'включено' : 'выключено'}.`,
-    })
-    setTimeout(
-      () => {
-        setFiles((all) => all.map((f) => ({ ...f, processing: false })))
-        notify({
-          kind: 'ok',
-          cat: 'pipeline',
-          icon: 'check',
-          title: 'Индексация завершена',
-          body: 'Корпус разобран заново, связи на карте памяти пересчитаны.',
-        })
-      },
-      t.ocr ? 4200 : 2200,
-    )
-  }, [flash, notify, setFiles])
+    const handler = reindexRef.current
+    if (!handler) {
+      flash('Папка не подключена: индексировать нечего. Подключите папку в библиотеке.')
+      notify({
+        kind: 'warn',
+        cat: 'pipeline',
+        icon: 'refresh',
+        title: 'Переиндексация невозможна',
+        body: 'Источник не выбран. В библиотеке есть кнопка «Подключить папку» — после неё индекс строится по настоящему содержимому.',
+        link: { kind: 'screen', id: 'library' },
+      })
+      return
+    }
+    handler()
+  }, [flash, notify])
+
+  /* ---------- NF-1: результаты настоящего индексатора ---------- */
+
+  const applyIndexed = useCallback(
+    (records: IndexedRecord[]) => {
+      if (records.length === 0) return
+      setFiles((all) => {
+        const known = new Map(all.map((f) => [f.id, f]))
+        const fresh: VaultFile[] = []
+        for (const r of records) {
+          const prev = known.get(r.id)
+          const auto = classify(r.name)
+          const next: VaultFile = {
+            id: r.id,
+            icon: auto.icon,
+            cluster: prev?.cluster ?? auto.cluster,
+            name: r.name,
+            desc: describeIndexed(r),
+            bytes: Math.max(1, r.size),
+            date: dateLabel(r.mtime),
+            tags: r.keywords.length > 0 ? r.keywords.slice(0, 3) : ['без текста'],
+            processing: false,
+            path: r.path,
+            indexed: true,
+            noText: r.noText,
+            keywords: r.keywords,
+            textLen: r.textLen,
+          }
+          if (prev) known.set(r.id, next)
+          else fresh.push(next)
+        }
+        return [...fresh, ...all.map((f) => known.get(f.id) ?? f)]
+      })
+    },
+    [setFiles],
+  )
+
+  const setIndexing = useCallback(
+    (ids: string[], on: boolean) => {
+      if (ids.length === 0) return
+      const set = new Set(ids)
+      setFiles((all) => all.map((f) => (set.has(f.id) ? { ...f, processing: on } : f)))
+    },
+    [setFiles],
+  )
+
+  const dropIndexed = useCallback(
+    (ids: string[]) => {
+      if (ids.length === 0) return
+      const set = new Set(ids)
+      setFiles((all) => all.filter((f) => !set.has(f.id)))
+    },
+    [setFiles],
+  )
+
+  const setFolder = S.setFolder
+
+  const setReindexHandler = useCallback((fn: (() => void) | null) => {
+    reindexRef.current = fn
+  }, [])
+
 
   /** Очистка индекса: метки и описания уходят, файлы остаются. */
   const clearIndex = useCallback(() => {
@@ -1080,12 +827,13 @@ export function VaultProvider({ children }: { children: ReactNode }) {
      иначе граф, поиск и статистика пересчитывались бы каждый кадр. */
   const liveNotesRef = useRef<Note[]>([])
   const liveNotes = useMemo(() => {
-    const next = notes.filter((n) => isAlive(n, now || Date.now()))
+    const next = notes.filter((n) => isAlive(n, Date.now()))
     const prev = liveNotesRef.current
     if (prev.length === next.length && prev.every((p, i) => p === next[i])) return prev
     liveNotesRef.current = next
     return next
-  }, [notes, now])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notes, tick])
 
   const notesFor = useCallback(
     (fileId: string) => liveNotes.filter((n) => n.pinnedTo === fileId),
@@ -1573,59 +1321,26 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     }
   }, [lockNow])
 
-  /* ---------- конфигурация ---------- */
+  /* ---------- конфигурация: фасад над доменом настроек ---------- */
 
-  const setDraftSettings = useCallback(
-    (fn: (s: Settings) => Settings) => setDraftState((s) => fn(s)),
-    [],
-  )
-  const dirty = useMemo(
-    () =>
-      JSON.stringify({ ...draftSettings, cloudConsentAt: null }) !==
-      JSON.stringify({ ...settings, cloudConsentAt: null }),
-    [draftSettings, settings],
-  )
-
-  const saveSettings = useCallback(() => {
-    const before = settingsRef.current
-    const next: Settings = { ...draftSettings, cloudConsentAt: before.cloudConsentAt }
-    setSettings(next)
-    settingsRef.current = next
-    flash('Конфигурация записана в локальный профиль. Конвейер перезапущен без потери индекса.')
-    if (before.model !== draftSettings.model) {
-      const m = modelOf(draftSettings.model)
-      notify({
-        kind: 'info',
-        cat: 'system',
-        icon: 'chipAi',
-        title: `Модель в профиле: ${m.short}`,
-        body: 'Локальный движок не подключён — модель выбрана на будущее, ответы идут через выбранный движок.',
-      })
-    }
-    if (before.engine !== draftSettings.engine) {
-      const e = engineOf(draftSettings.engine)
-      notify({
-        kind: e.offline ? 'ok' : 'danger',
-        cat: 'privacy',
-        icon: e.offline ? 'lockRound' : 'shield',
-        title: `Движок переключён: ${e.short}`,
-        body: e.offline
-          ? 'Внешних запросов больше нет. Локальный движок пока не подключён — чат ответит только после его появления.'
-          : 'Часть запросов уйдёт наружу. Перед первым облачным ходом спросим согласие.',
-      })
-    }
-  }, [draftSettings, flash, notify, setSettings])
-
-  const revertSettings = useCallback(() => setDraftState(settings), [settings])
+  const { setDraftSettings, draftSettings, dirty, saveSettings, revertSettings, setToggle } = S
 
   /* ---------- граф и производные ---------- */
 
   const aliveKey = useMemo(() => liveNotes.map((n) => n.id).join('|'), [liveNotes])
-  const graph = useMemo(
-    () => buildGraph(files, liveNotes, 0),
+  /**
+   * AR-1, шаг 3: производные считаются ВНЕ рендера. Граф на большом корпусе —
+   * самая дорогая производная, и раньше она пересчитывалась синхронно в
+   * useMemo прямо во время индексации: интерфейс замирал на каждой порции
+   * файлов. Теперь пересчёт отложен и склеен по времени, а рендер получает
+   * готовый снимок.
+   */
+  const [graph, setGraph] = useState<Graph>(() => buildGraph([], [], 0))
+  useEffect(() => {
+    const t = setTimeout(() => setGraph(buildGraph(files, liveNotesRef.current, 0)), 180)
+    return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [files, aliveKey],
-  )
+  }, [files, aliveKey])
   const clusters = useMemo(() => clusterLoad(graph), [graph])
   const mix = useMemo(() => clusterMix(files), [files])
   const neighbors = useCallback((id: string) => neighborsOf(graph, id), [graph])
@@ -1653,28 +1368,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     }
   }, [files, graph, liveNotes.length, sessions.length, settings])
 
-  const engineView = useMemo(() => buildEngineView(settings), [settings])
-
-  /** Согласие на облачные ходы: пишется в профиль, видно в настройках. */
-  const grantCloudConsent = useCallback(() => {
-    setSettings((s) => ({ ...normalizeSettings(s), cloudConsentAt: Date.now() }))
-  }, [setSettings])
-
-  const revokeCloudConsent = useCallback(() => {
-    setSettings((s) => ({ ...normalizeSettings(s), cloudConsentAt: null }))
-    flash('Согласие на облачные запросы отозвано — спросим снова перед следующим ходом.')
-  }, [flash, setSettings])
-
-  const setToggle = useCallback(
-    (id: ToggleId, value: boolean) => {
-      setSettings((s) => {
-        const base = normalizeSettings(s)
-        return { ...base, toggles: { ...base.toggles, [id]: value } }
-      })
-      setDraftState((s) => ({ ...s, toggles: { ...s.toggles, [id]: value } }))
-    },
-    [setSettings],
-  )
+  const { engineView, grantCloudConsent, revokeCloudConsent } = S
 
   /* ---------- навигация ---------- */
 
@@ -1737,12 +1431,29 @@ export function VaultProvider({ children }: { children: ReactNode }) {
   /* Красакт объектов под файловым ключом: поиск по их содержимому запрещён (п.10.2). */
   const { redactIds } = useRedacted()
 
+  /* NF-1: содержимое из индексатора живёт в модульном сторе — подписываемся
+     на его версию, чтобы поиск видел новый текст сразу после индексации. */
+  const contentV = useSyncExternalStore(
+    subscribeContent,
+    contentVersion,
+    () => 0,
+  )
+
   /* now читаем нереактивно (Date.now при пересчёте): давность в ранжировании
      поиска не обязана обновляться каждую секунду, зато hits перестают
      churn'иться на каждый тик часов. */
   const searchInput = useMemo(
-    () => ({ files, notes: liveNotes, sessions, now: Date.now(), redactIds, secrets: secretIndex }),
-    [files, liveNotes, sessions, redactIds, secretIndex],
+    () => ({
+      files,
+      notes: liveNotes,
+      sessions,
+      now: Date.now(),
+      redactIds,
+      secrets: secretIndex,
+      content: contentIndex(),
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [files, liveNotes, sessions, redactIds, secretIndex, contentV],
   )
 
   const hits = useMemo(() => searchAll(query, scope, searchInput), [query, scope, searchInput])
@@ -1793,10 +1504,11 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('keydown', onKey, true)
   }, [])
 
-  const unread = useMemo(
-    () => notifs.filter((n) => n.unread && !n.archived).length,
-    [notifs],
-  )
+  /* AR-1: лента приходит из своего домена — сейф её только пробрасывает. */
+  const {
+    notifs, unread, markAllRead, toggleRead, snoozeNotif, muteNotifCat, archiveNotif,
+    restoreNotif, deleteNotif, clearRead, clearAllNotifs, purgeArchive, notifUndo, undoNotifs,
+  } = N
 
   const value: VaultCtx = useMemo(
     () => ({
@@ -1806,6 +1518,11 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     fileById,
     viewById,
     addFiles,
+    applyIndexed,
+    setIndexing,
+    dropIndexed,
+    setFolder,
+    setReindexHandler,
     removeFile,
     retagFile,
     reindexAll,
@@ -1903,6 +1620,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     }),
     [
       hydrated, files, views, fileById, viewById, addFiles, removeFile, retagFile,
+      applyIndexed, setIndexing, dropIndexed, setFolder, setReindexHandler,
       reindexAll, clearIndex, wipeVault, notes, liveNotes, notesFor, addNote, patchNote,
       burnNote, extendNote, sessions, activeSessionId, setActiveSessionId, addSession,
       patchSession, removeSession, drafts, setDraft, scrolls, setScroll, settings,
@@ -1918,11 +1636,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     ],
   )
 
-  return (
-    <Ctx.Provider value={value}>
-      <NowCtx.Provider value={now || 0}>{children}</NowCtx.Provider>
-    </Ctx.Provider>
-  )
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
 
 export { CLUSTERS }

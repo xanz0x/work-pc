@@ -117,6 +117,12 @@ export type SearchInput = {
   redactIds?: Set<string>
   /** Записи сейфа секретов; пусто, когда замок закрыт (§2.4 ТЗ модуля). */
   secrets?: SecretIndexItem[]
+  /**
+   * NF-1: содержимое файлов из настоящего индексатора — id файла → текст
+   * и ключевые слова. Redact-слой уважается: файл под ключом ищется
+   * только по имени, его текст в ранжирование не попадает.
+   */
+  content?: Map<string, { text: string; keywords: string[] }>
 }
 
 /**
@@ -138,10 +144,19 @@ export function searchAll(query: string, scope: ScopeId, input: SearchInput): Hi
       /* п.10.2: под ключом — содержимое недоступно и поиску тоже. */
       const redacted = input.redactIds?.has(f.id) ?? false
       let score = hitScore(f.name, base, 60)
+      let inText = false
       if (!redacted && scope !== 'names') {
         score += hitScore(f.desc, base, 26)
         score += hitScore(fileTags(f).join(' '), base, 22)
         score += hitScore(fileCat(f), base, 18)
+        /* NF-1: поиск по настоящему содержимому файла. */
+        const c = input.content?.get(f.id)
+        if (c) {
+          const kw = hitScore(c.keywords.join(' '), base, 20)
+          const body = hitScore(c.text, base, 14)
+          if (kw + body > 0) inText = true
+          score += kw + body
+        }
       }
       const exact = score
       if (semantic) {
@@ -153,7 +168,11 @@ export function searchAll(query: string, scope: ScopeId, input: SearchInput): Hi
           kind: 'file',
           id: f.id,
           title: f.name,
-          sub: redacted ? 'Под ключом' : `${fileCat(f)} · ${fileMeta(f)}`,
+          sub: redacted
+            ? 'Под ключом'
+            : inText
+              ? `${fileCat(f)} · найдено в тексте`
+              : `${fileCat(f)} · ${fileMeta(f)}`,
           score,
           fuzzy: exact === 0,
           locked: redacted || undefined,

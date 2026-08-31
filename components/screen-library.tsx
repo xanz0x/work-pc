@@ -25,6 +25,7 @@ import { CLUSTERS, clusterOf, fmtBytes, type ClusterId, type FileView } from '@/
 import { DAY, HOUR, TTL_OPTIONS, fmtLeft, fmtWhen, type Note } from '@/lib/notes'
 import type { EdgeReason } from '@/lib/graph'
 import { useVault, useNow } from '@/lib/vault-store'
+import { useIndexActions, useIndexSummary } from '@/lib/indexer/context'
 import {
   DENSITY_LABEL,
   isCustom,
@@ -39,6 +40,7 @@ import {
   type TileKey,
 } from '@/lib/board-layout'
 import { LibraryBoard, type BoardItem } from '@/components/library-board'
+import { IndexStrip } from '@/components/index-strip'
 import {
   checkStickerSecret,
   looksEncrypted,
@@ -50,6 +52,9 @@ import { usePersistedState } from '@/hooks/use-persisted-state'
 
 /** Локальный алиас: короче в объявлении состояния доски. */
 const usePersisted = usePersistedState
+
+/** Сколько карточек файлов рисуется за раз (NF-1: тысяча — не сразу). */
+const FILE_PAGE = 150
 
 /* ============================================================
    КОНЦЕПЦИЯ «ДВА СЛОЯ ПАМЯТИ»
@@ -72,6 +77,8 @@ const REASON_LABEL: Record<EdgeReason, string> = {
 
 export function ScreenLibrary() {
   const v = useVault()
+  const idxs = useIndexSummary()
+  const idxa = useIndexActions()
   const now = useNow()
   const { views, liveNotes, notes, stats } = v
 
@@ -193,6 +200,18 @@ export function ScreenLibrary() {
     if (searching) list = list.filter((f) => v.matchedFiles.has(f.id))
     return list
   }, [views, cat, searching, v.matchedFiles])
+
+  /**
+   * NF-1: на папке из тысячи файлов рисовать всё сразу нельзя — каждая
+   * порция индексации перерисовывала бы тысячу карточек и роняла кадры.
+   * Показываем страницами, «Показать ещё» добавляет следующую.
+   */
+  const [fileLimit, setFileLimit] = useState(FILE_PAGE)
+  useEffect(() => setFileLimit(FILE_PAGE), [cat, searching, v.query, view])
+  const pagedFiles = useMemo(
+    () => (shownFiles.length > fileLimit ? shownFiles.slice(0, fileLimit) : shownFiles),
+    [shownFiles, fileLimit],
+  )
 
   const shownNotes = useMemo(() => {
     let list = tag === 'Все' ? liveNotes : liveNotes.filter((n) => n.tags.includes(tag))
@@ -613,8 +632,8 @@ export function ScreenLibrary() {
    */
   const noteItems = useMemo<BoardItem[]>(() => shownNotes.map(renderNoteTile), [shownNotes])
   const fileItems = useMemo<BoardItem[]>(
-    () => shownFiles.map(renderFileTile),
-    [shownFiles, fk.isProtected, fk.isOpen],
+    () => pagedFiles.map(renderFileTile),
+    [pagedFiles, fk.isProtected, fk.isOpen],
   )
   /** Единая доска «Всё»: файлы и стикеры в одном списке. */
   const allBoardItems = useMemo(() => [...fileItems, ...noteItems], [fileItems, noteItems])
@@ -726,6 +745,30 @@ export function ScreenLibrary() {
                 <IconSticker />
                 {composing ? 'Свернуть' : 'Новый стикер'}
               </button>
+              {idxs.fsaSupported ? (
+                <button
+                  className="btn btn-ghost"
+                  data-testid="idx-connect-folder"
+                  disabled={idxs.busy}
+                  onClick={() => void idxa.connectFolder()}
+                  title="Выбрать папку на диске и построить индекс по содержимому"
+                >
+                  <IconGraph />
+                  {idxs.folder ? 'Сменить папку' : 'Подключить папку'}
+                </button>
+              ) : null}
+              {idxs.folder && idxs.folderMode === 'fsa' ? (
+                <button
+                  className="btn btn-ghost"
+                  data-testid="idx-reindex"
+                  disabled={idxs.busy}
+                  onClick={() => void idxa.reindex(false)}
+                  title="Перечитать папку: изменённые файлы будут прочитаны заново"
+                >
+                  <IconRefresh />
+                  Переиндексировать
+                </button>
+              ) : null}
               <button className="btn btn-primary" onClick={() => fileInputRef.current?.click()}>
                 <IconPlus />
                 Добавить файл
@@ -740,13 +783,17 @@ export function ScreenLibrary() {
                   if (list.length > 0) {
                     setCat('all')
                     if (view === 'notes') setView('all')
-                    v.addFiles(list.map((f) => ({ name: f.name, size: f.size })))
+                    void idxa.indexFiles(list)
                   }
                   e.target.value = ''
                 }}
               />
             </div>
           </div>
+
+          {/* NF-1: настоящий прогресс индексации. Числа берутся из конвейера,
+              а не из таймера, поэтому «отмена» действительно отменяет. */}
+          <IndexStrip />
 
           {/* Числа читаются из сейфа: те же, что в сайдбаре и статус-баре.
               NumTicker докручивает значение, когда сейф меняется. */}
@@ -1056,6 +1103,7 @@ export function ScreenLibrary() {
                 <span className="sec-note mono num">
                   {shownFiles.length}{' '}
                   {cat === 'all' ? `файла · ${cats.length - 1} кластеров` : `в «${catLabel}»`}
+                  {shownFiles.length > pagedFiles.length ? ` · показано ${pagedFiles.length}` : ''}
                 </span>
               </div>
 
@@ -1070,6 +1118,20 @@ export function ScreenLibrary() {
                 onDropCluster={handleDropCluster}
                 labelOf={labelOfTile}
               />
+
+              {shownFiles.length > pagedFiles.length && (
+                <div className="lib-more">
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    data-testid="lib-show-more"
+                    onClick={() => setFileLimit((n) => n + FILE_PAGE)}
+                  >
+                    <IconPlus />
+                    Показать ещё {Math.min(FILE_PAGE, shownFiles.length - pagedFiles.length)} из{' '}
+                    {shownFiles.length - pagedFiles.length}
+                  </button>
+                </div>
+              )}
 
               {shownFiles.length === 0 && (
                 <div className="empty-state panel">

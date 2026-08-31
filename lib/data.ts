@@ -71,6 +71,31 @@ export type VaultFile = {
   tags?: string[]
   /** Файл ещё разбирается локальным движком. */
   processing?: boolean
+  /* ---- NF-1: поля настоящего индексатора ---- */
+  /** Относительный путь внутри подключённой папки. */
+  path?: string
+  /** Файл пришёл из реального индексатора, а не из демо-корпуса. */
+  indexed?: boolean
+  /** Почему у файла нет текстового слоя (скан PDF, бинарник). */
+  noText?: string
+  /** Частотные слова содержимого: подпись карточки и поиск. */
+  keywords?: string[]
+  /** Длина извлечённого текста в символах — источник для «есть текст». */
+  textLen?: number
+}
+
+/** Дата файла в подписи карточки: из времени изменения на диске. */
+export function dateLabel(ts: number, now = Date.now()): string {
+  if (!Number.isFinite(ts) || ts <= 0) return '—'
+  const d = new Date(ts)
+  const days = Math.floor((now - ts) / 86_400_000)
+  if (days <= 0) return 'сегодня'
+  if (days === 1) return 'вчера'
+  const month = [
+    'янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек',
+  ][d.getMonth()]
+  const year = d.getFullYear() === new Date(now).getFullYear() ? '' : ` ${d.getFullYear()}`
+  return `${d.getDate()} ${month}${year}`
 }
 
 const KB = 1024
@@ -204,11 +229,10 @@ export const VAULT_FILES: VaultFile[] = [
     icon: 'docCheck',
     cluster: 'misc',
     name: 'заметки_идеи.md',
-    desc: 'Черновик идей, индексируется прямо сейчас',
+    desc: 'Черновик идей: демо-запись без прочитанного содержимого',
     bytes: 12 * KB,
     date: 'только что',
     tags: ['новое', 'продукт'],
-    processing: true,
   },
   {
     id: 'demo-track',
