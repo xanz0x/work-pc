@@ -11586,3 +11586,884 @@ button.chip:hover {
     animation: none;
   }
 }
+
+/* ============================================================
+   REDESIGN v4 · перенос макетов (мастер-ключ, редактор записи)
+   Структура и компоновка — из присланных макетов, палитра и
+   радиусы — наши, «Графит»: тон вместо тени, один акцент,
+   волосяные границы, r=3px у элементов и 4px у карточек.
+   ============================================================ */
+
+/* ---------- Окно мастер-ключа ---------- */
+.mk-back {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--bg);
+}
+.mk-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 620px;
+  max-height: 92vh;
+  overflow: hidden auto;
+  border: 1px solid var(--border-2);
+  border-radius: var(--r-panel);
+  background: var(--panel);
+  animation: vt-rise 180ms ease-out;
+}
+.mk-card.is-danger {
+  border-color: rgba(229, 100, 92, 0.3);
+}
+.mk-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 15px 18px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-2);
+}
+.mk-head-ico {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border: 1px solid var(--border-2);
+  border-radius: var(--r);
+  background: var(--bg-2);
+  color: var(--accent);
+}
+.mk-head-ico svg {
+  width: 15px;
+  height: 15px;
+}
+.mk-card.is-danger .mk-head-ico {
+  color: var(--danger);
+}
+.mk-head-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+.mk-title {
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--text);
+}
+.mk-sub {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  color: var(--text-3r);
+}
+.mk-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: mk-pulse 2.4s ease-in-out infinite;
+}
+.mk-card.is-danger .mk-dot {
+  background: var(--danger);
+}
+@keyframes mk-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.mk-x {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border: 1px solid transparent;
+  border-radius: var(--r);
+  background: transparent;
+  color: var(--text-3r);
+  cursor: pointer;
+  transition-property: color, border-color, background-color;
+  transition-duration: 140ms;
+}
+.mk-x svg {
+  width: 13px;
+  height: 13px;
+}
+.mk-x:hover {
+  color: var(--text);
+  border-color: var(--border-2);
+  background: var(--raise-1);
+}
+.mk-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+}
+.mk-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  width: 100%;
+  max-width: 320px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--bg-input);
+}
+.mk-tab {
+  height: 30px;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--text-3r);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition-property: color, background-color, border-color;
+  transition-duration: 140ms;
+}
+.mk-tab:hover {
+  color: var(--text-2);
+}
+.mk-tab.active {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.mk-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.mk-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--text-3r);
+}
+.mk-hint {
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: none;
+  color: var(--text-3);
+  transition: color 160ms ease-out;
+}
+.mk-hint-ok {
+  color: var(--ok);
+}
+.mk-hint-bad {
+  color: var(--warn);
+}
+.mk-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.mk-input {
+  width: 100%;
+  padding-right: 40px;
+}
+.mk-eye {
+  position: absolute;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: var(--r);
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  transition: color 140ms ease-out;
+}
+.mk-eye svg {
+  width: 15px;
+  height: 15px;
+}
+.mk-eye:hover {
+  color: var(--accent);
+}
+.mk-field .lock-strength {
+  margin: 1px 0 0;
+}
+.mk-cells {
+  justify-content: flex-start;
+  margin-top: 0;
+}
+.mk-warn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 13px;
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--warn);
+  border-radius: var(--r);
+  background: var(--panel-2);
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+.mk-warn svg {
+  flex: none;
+  color: var(--warn);
+}
+.mk-warn.is-danger {
+  border-left-color: var(--danger);
+}
+.mk-warn.is-danger svg {
+  color: var(--danger);
+}
+.mk-err {
+  font-size: 11.5px;
+  color: var(--danger);
+}
+.mk-note {
+  font-size: 11.5px;
+  color: var(--text-3r);
+}
+.mk-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 18px;
+  border-top: 1px solid var(--border);
+  background: var(--panel-2);
+}
+.mk-cancel,
+.mk-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: var(--r);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition-property: color, background-color, border-color, transform;
+  transition-duration: 140ms;
+}
+.mk-cancel {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-2);
+}
+.mk-cancel:hover {
+  border-color: var(--border-2);
+  background: var(--raise-1);
+  color: var(--text);
+}
+.mk-submit {
+  min-width: 168px;
+  border: 1px solid transparent;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.mk-submit:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+.mk-submit:active:not(:disabled) {
+  transform: translateY(0.5px);
+}
+.mk-submit:disabled {
+  border-color: var(--border);
+  background: var(--bg-input);
+  color: var(--text-3);
+  cursor: default;
+}
+.mk-submit.is-danger {
+  border-color: rgba(229, 100, 92, 0.45);
+  background: transparent;
+  color: var(--danger);
+}
+.mk-submit.is-danger:hover:not(:disabled) {
+  background: var(--danger);
+  color: var(--bg);
+}
+
+/* ---------- Редактор записи ---------- */
+.vt-editor {
+  max-width: 760px;
+  gap: 0;
+  padding: 0;
+}
+.vt-ed-head {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-2);
+}
+.vt-ed-h {
+  flex: none;
+  font-size: 11px;
+  color: var(--text);
+}
+.vt-editor .vt-ed-type {
+  flex: none;
+  color: var(--accent);
+}
+.vt-editor .vt-form {
+  gap: 14px;
+  padding: 18px;
+}
+.vt-editor .vt-type-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+}
+.vt-editor .vt-type {
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 6px;
+  border-bottom: 2px solid transparent;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+}
+.vt-editor .vt-type svg {
+  width: 16px;
+  height: 16px;
+}
+.vt-editor .vt-type.on {
+  border-bottom-color: var(--accent);
+}
+.vt-ed-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+/* Теги-чипы в одном колодце с полем ввода */
+.vt-tag-box {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-height: 34px;
+  padding: 5px 7px;
+  border: 1px solid var(--border-2);
+  border-radius: var(--r);
+  background: var(--bg-input);
+  transition: border-color 150ms ease-out;
+}
+.vt-tag-box:focus-within {
+  border-color: var(--accent-line);
+}
+.vt-tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: var(--panel-2);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-2);
+}
+.vt-tag-chip button {
+  display: grid;
+  place-items: center;
+  width: 12px;
+  height: 12px;
+  border: 0;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  transition: color 140ms ease-out;
+}
+.vt-tag-chip button svg {
+  width: 9px;
+  height: 9px;
+}
+.vt-tag-chip button:hover {
+  color: var(--danger);
+}
+.vt-tag-input {
+  flex: 1 1 90px;
+  min-width: 70px;
+  height: 22px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 12.5px;
+}
+.vt-tag-input:focus {
+  outline: none;
+}
+
+/* Блоки «Поля записи» и «TOTP» — карточки с шапкой */
+.vt-det {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-panel);
+  background: var(--bg-2);
+}
+.vt-det-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.vt-det-head .label-mono {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.vt-det-act {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: transparent;
+  color: var(--text-3r);
+  cursor: pointer;
+  transition-property: color, border-color, background-color;
+  transition-duration: 140ms;
+}
+.vt-det-act:hover {
+  color: var(--accent);
+  border-color: var(--accent-line);
+}
+
+/* Строка поля: подпись+тип слева, значение и действия справа */
+.vt-det .vt-fe {
+  gap: 7px;
+  padding: 9px 0 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.vt-det .vt-fe + .vt-fe {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+.vt-fe-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.vt-fe-head .vt-fe-name {
+  flex: 1 1 auto;
+  min-width: 90px;
+  height: 28px;
+  border-color: transparent;
+  background: transparent;
+  padding-left: 0;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-3r);
+}
+.vt-fe-head .vt-fe-name:focus {
+  border-color: var(--border-2);
+  background: var(--bg-input);
+  padding-left: 8px;
+  color: var(--text);
+}
+.vt-fe-kind {
+  flex: 0 0 120px;
+}
+.vt-fe-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.vt-fe-main .vt-fe-value {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.vt-fe-acts {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+.vt-fe-str {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10.5px;
+  color: var(--text-3);
+}
+.vt-fe-str i {
+  display: block;
+  height: 2px;
+  width: 72px;
+  border-radius: 1px;
+  background: var(--border-2);
+}
+.vt-fe-str.s0 i,
+.vt-fe-str.s1 i {
+  width: 24px;
+  background: var(--danger);
+}
+.vt-fe-str.s2 i {
+  width: 48px;
+  background: var(--warn);
+}
+.vt-fe-str.s3 i {
+  width: 60px;
+  background: var(--accent);
+}
+.vt-fe-str.s4 i {
+  width: 72px;
+  background: var(--accent);
+}
+.vt-add-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  align-self: flex-start;
+  height: 28px;
+  margin-top: 2px;
+  padding: 0 9px;
+  border: 1px dashed var(--border-2);
+  border-radius: var(--r);
+  background: transparent;
+  color: var(--text-3r);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition-property: color, border-color, background-color;
+  transition-duration: 140ms;
+}
+.vt-add-field:hover {
+  color: var(--accent);
+  border-color: var(--accent-line);
+  background: var(--panel-2);
+}
+.vt-ed-foot {
+  padding: 13px 18px;
+  border-top: 1px solid var(--border);
+  background: var(--panel-2);
+}
+.vt-ed-seal {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-3);
+}
+.vt-ed-seal svg {
+  color: var(--accent);
+}
+
+@media (max-width: 900px) {
+  .vt-editor .vt-type-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .vt-ed-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .mk-cells {
+    gap: 6px;
+  }
+  .mk-cells .lock-cell {
+    width: 100%;
+    height: 44px;
+  }
+}
+
+/* ---------- Правки переноса: штрихи иконок и раскладка строк ---------- */
+
+/* Иконки окна ключа рисуются штрихом, как везде в сейфе */
+.mk-card svg,
+.mk-back svg {
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+.mk-card svg {
+  width: 14px;
+  height: 14px;
+}
+.mk-head-ico svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Шапка редактора: тип сразу за заголовком, а не по центру */
+.vt-ed-head .vt-ed-h,
+.vt-ed-head .vt-ed-type {
+  flex: none;
+}
+
+/* Окно редактора: шапка и футер закреплены, прокручивается только форма */
+.vt-editor {
+  overflow: hidden;
+}
+.vt-editor .vt-ed-head,
+.vt-editor .vt-ed-foot {
+  flex: none;
+}
+.vt-editor .vt-form {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Строка поля как в макете: подпись и тип слева, значение и действия справа */
+.vt-det .vt-fe {
+  display: grid;
+  grid-template-columns: 176px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+.vt-fe-head {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+.vt-fe-head .vt-fe-name {
+  width: 100%;
+}
+.vt-fe-kind {
+  flex: none;
+  width: 100%;
+}
+.vt-det .vt-fe.is-multi {
+  align-items: start;
+}
+.vt-fe-str {
+  grid-column: 2;
+}
+.vt-det .vt-fe .vt-fe-kind .vts-btn {
+  height: 26px;
+  font-size: 11px;
+}
+
+/* Многострочное поле: значение не выдавливает столбец действий за карточку.
+   Базис 0 обязателен: textarea иначе не сжимается ниже собственной ширины. */
+.vt-fe-main .vt-fe-value {
+  width: auto;
+  flex: 1 1 0%;
+  min-width: 0;
+}
+.vt-det .vt-fe.is-multi .vt-fe-main {
+  align-items: flex-start;
+}
+.vt-det .vt-fe.is-multi .vt-fe-acts {
+  flex-direction: column;
+}
+
+/* Перебиваем прежнее правило `.vt-fe textarea.vt-fe-value { width:100%; flex:none }`:
+   в блоке DETAILS значение делит строку со столбцом действий. */
+.vt-det .vt-fe textarea.vt-fe-value {
+  width: auto;
+  flex: 1 1 0%;
+  min-width: 0;
+}
+
+/* ============================================================
+   REDESIGN v4.1 · строки полей как в макете
+   Одна линия: подпись слева, колодец значения с встроенными
+   действиями справа, служебные кнопки — по ховеру, место под них
+   зарезервировано, поэтому строки не «прыгают».
+   ============================================================ */
+.vt-editor {
+  max-width: 920px;
+}
+.vt-editor .vt-form {
+  gap: 22px;
+}
+.vte-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.vte-row + .vte-row {
+  margin-top: 10px;
+}
+.vte-row.is-multi {
+  align-items: flex-start;
+}
+.vte-lbl {
+  flex: none;
+  width: 30%;
+  min-width: 118px;
+}
+.vte-name {
+  width: 100%;
+  height: 30px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--r);
+  background: transparent;
+  color: var(--text-3r);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transition-property: color, border-color, background-color, padding;
+  transition-duration: 140ms;
+}
+.vte-name:focus {
+  outline: none;
+  padding: 0 8px;
+  border-color: var(--border-2);
+  background: var(--bg-input);
+  color: var(--text);
+}
+.vte-val {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.vte-well {
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid var(--border-2);
+  border-radius: var(--r);
+  background: var(--bg-input);
+  transition: border-color 150ms ease-out;
+}
+.vte-well:hover {
+  border-color: var(--border-3);
+}
+.vte-well:focus-within {
+  border-color: var(--accent-line);
+}
+.vte-well input,
+.vte-well textarea {
+  flex: 1 1 0%;
+  min-width: 0;
+  height: 32px;
+  padding: 0 10px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 12.5px;
+  font-family: inherit;
+}
+.vte-well textarea {
+  height: auto;
+  min-height: 58px;
+  padding: 7px 10px;
+  resize: vertical;
+}
+.vte-well input:focus,
+.vte-well textarea:focus {
+  outline: none;
+}
+.vte-btn {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  flex: none;
+  border: 0;
+  border-left: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  transition-property: color, background-color;
+  transition-duration: 140ms;
+}
+.vte-btn svg {
+  width: 14px;
+  height: 14px;
+}
+.vte-btn:hover {
+  color: var(--accent);
+  background: var(--raise-1);
+}
+.vte-str {
+  height: 2px;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 1px;
+  background: var(--border-2);
+}
+.vte-str i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 180ms ease-out;
+}
+.vte-str.s0 i,
+.vte-str.s1 i {
+  background: var(--danger);
+}
+.vte-str.s2 i {
+  background: var(--warn);
+}
+.vte-acts {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex: none;
+  opacity: 0;
+  transition: opacity 140ms ease-out;
+}
+.vte-row:hover .vte-acts,
+.vte-row:focus-within .vte-acts,
+.vte-row.is-ct .vte-acts {
+  opacity: 1;
+}
+.vte-acts .vt-ct {
+  width: 28px;
+  height: 28px;
+}
+.vte-kind {
+  width: 116px;
+  flex: none;
+}
+.vte-kind .vts-btn {
+  height: 28px;
+  font-size: 11px;
+}
+.vt-det {
+  padding: 14px;
+}
+.vt-det-head {
+  padding-bottom: 10px;
+}
+@media (max-width: 900px) {
+  .vte-row {
+    flex-wrap: wrap;
+  }
+  .vte-lbl {
+    width: 100%;
+  }
+  .vte-kind {
+    width: 100px;
+  }
+}

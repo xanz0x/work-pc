@@ -5,10 +5,16 @@
    Создание мастер-ключа (PIN/пароль), автоблокировка,
    смена ключа и выключение замка. Вся криптография — в
    lib/crypto-vault.ts; здесь только форма и состояния.
+
+   v4 · перенос макета: формы ключа живут в модальном окне
+   «Безопасность · МАСТЕР-КЛЮЧ» — шапка с иконкой и статусной
+   точкой, сегмент PIN/пароль, поля с подсказкой справа и глазом,
+   баннер-предупреждение с кромкой, футер с действиями.
+   Палитра и радиусы — наши, «Графит».
    ============================================================ */
 
-import { useEffect, useRef, useState } from 'react'
-import { IconKey, IconLockRound } from './icons'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { IconAlertTri, IconClose, IconEye, IconEyeOff, IconKey, IconLockRound } from './icons'
 import { useVault } from '@/lib/vault-store'
 import type { LockMethod } from '@/lib/lock-store'
 
@@ -19,6 +25,204 @@ const AUTOLOCK_OPTIONS: { min: number; label: string }[] = [
   { min: 15, label: '15 мин' },
   { min: 30, label: '30 мин' },
 ]
+
+/** Окно ключа: шапка, тело формы и футер действий — один каркас на три формы. */
+function MkModal({
+  title,
+  sub,
+  danger,
+  onClose,
+  onSubmit,
+  children,
+  footer,
+  testId,
+}: {
+  title: string
+  sub: string
+  danger?: boolean
+  onClose: () => void
+  onSubmit: (e: React.FormEvent) => void
+  children: ReactNode
+  footer: ReactNode
+  testId: string
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  return (
+    <div className="mk-back" role="presentation" onPointerDown={onClose}>
+      <form
+        className={`mk-card panel${danger ? ' is-danger' : ''}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        onPointerDown={(e) => e.stopPropagation()}
+        onSubmit={onSubmit}
+        data-testid={testId}
+      >
+        <header className="mk-head">
+          <span className="mk-head-ico" aria-hidden="true">
+            <IconLockRound />
+          </span>
+          <div className="mk-head-text">
+            <h2 className="mk-title">{title}</h2>
+            <span className="mk-sub label-mono">
+              <i className="mk-dot" aria-hidden="true" />
+              {sub}
+            </span>
+          </div>
+          <button
+            className="mk-x"
+            type="button"
+            onClick={onClose}
+            aria-label="Закрыть"
+            data-testid="mk-close"
+          >
+            <IconClose />
+          </button>
+        </header>
+        <div className="mk-body">{children}</div>
+        <footer className="mk-foot">{footer}</footer>
+      </form>
+    </div>
+  )
+}
+
+/** Поле ключа: подпись со счётчиком справа, поле и глаз. */
+function MkPassField({
+  id,
+  label,
+  hint,
+  hintTone,
+  value,
+  onChange,
+  placeholder,
+  autoComplete,
+  inputRef,
+  testId,
+  incomplete,
+  children,
+}: {
+  id: string
+  label: string
+  hint?: string
+  hintTone?: 'ok' | 'bad'
+  value: string
+  onChange: (v: string) => void
+  placeholder?: string
+  autoComplete: string
+  inputRef?: React.Ref<HTMLInputElement>
+  testId: string
+  incomplete?: boolean
+  children?: ReactNode
+}) {
+  const [shown, setShown] = useState(false)
+  return (
+    <div className="mk-field">
+      <label className="label-mono mk-label" htmlFor={id}>
+        <span>{label}</span>
+        {hint ? (
+          <span className={`mk-hint num${hintTone ? ` mk-hint-${hintTone}` : ''}`}>{hint}</span>
+        ) : null}
+      </label>
+      <div className="mk-input-wrap">
+        <input
+          ref={inputRef}
+          id={id}
+          className={`lock-input mk-input num${incomplete ? ' is-incomplete' : ''}`}
+          type={shown ? 'text' : 'password'}
+          autoComplete={autoComplete}
+          placeholder={placeholder}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          data-testid={testId}
+        />
+        <button
+          className="mk-eye"
+          type="button"
+          onClick={() => setShown((x) => !x)}
+          aria-label={shown ? 'Скрыть ключ' : 'Показать ключ'}
+          aria-pressed={shown}
+          data-testid={`${testId}-eye`}
+        >
+          {shown ? <IconEye /> : <IconEyeOff />}
+        </button>
+      </div>
+      {children}
+    </div>
+  )
+}
+
+/** Шесть ячеек PIN: подпись со счётчиком, автоперевод фокуса. */
+function MkPinRow({
+  idBase,
+  label,
+  hint,
+  hintTone,
+  value,
+  onChange,
+  hasError,
+  firstRef,
+  testId,
+}: {
+  idBase: string
+  label: string
+  hint: string
+  hintTone?: 'ok' | 'bad'
+  value: string
+  onChange: (v: string) => void
+  hasError: boolean
+  firstRef?: React.Ref<HTMLInputElement>
+  testId: string
+}) {
+  return (
+    <div className="mk-field">
+      <label className="label-mono mk-label" htmlFor={idBase}>
+        <span>{label}</span>
+        <span className={`mk-hint num${hintTone ? ` mk-hint-${hintTone}` : ''}`}>{hint}</span>
+      </label>
+      <div className={`lock-cells mk-cells${hasError ? ' has-error' : ''}`}>
+        {Array.from({ length: 6 }).map((_, i) => (
+          <input
+            key={i}
+            id={i === 0 ? idBase : undefined}
+            ref={i === 0 ? firstRef : undefined}
+            className={`lock-cell num${value[i] ? ' filled' : ''}`}
+            inputMode="numeric"
+            autoComplete="off"
+            maxLength={1}
+            value={value[i] ?? ''}
+            onChange={(e) => {
+              const ch = e.target.value.replace(/\D/g, '').slice(-1)
+              onChange((value.slice(0, i) + ch + value.slice(i + 1)).slice(0, 6))
+              if (ch && i < 5) {
+                const el = e.currentTarget.parentElement?.children[i + 1] as
+                  | HTMLInputElement
+                  | undefined
+                el?.focus()
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Backspace' && !value[i] && i > 0) {
+                const el = e.currentTarget.parentElement?.children[i - 1] as
+                  | HTMLInputElement
+                  | undefined
+                el?.focus()
+              }
+            }}
+            aria-label={`${label} — цифра ${i + 1}`}
+            data-testid={`${testId}-${i}`}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
 
 export function SecuritySection() {
   const v = useVault()
@@ -48,7 +252,7 @@ export function SecuritySection() {
 
   useEffect(() => {
     if (creating || changing || disabling) firstFieldRef.current?.focus()
-  }, [creating, changing, disabling])
+  }, [creating, changing, disabling, method])
 
   function resetForms() {
     setCreating(false)
@@ -100,7 +304,9 @@ export function SecuritySection() {
     e.preventDefault()
     setErr(null)
     if (!curSecret || next1.length < (lock.method === 'password' ? 8 : 6)) {
-      setErr(lock.method === 'password' ? 'Новый пароль — минимум 8 символов' : 'Новый пин — ровно 6 цифр')
+      setErr(
+        lock.method === 'password' ? 'Новый пароль — минимум 8 символов' : 'Новый пин — ровно 6 цифр',
+      )
       return
     }
     if (lock.method === 'pin' && !/^\d{6}$/.test(next1)) {
@@ -137,6 +343,282 @@ export function SecuritySection() {
     setChanging(true)
   }
 
+  const warnBanner = (
+    <p className="mk-warn" data-testid="mk-warn">
+      <IconAlertTri width={14} height={14} aria-hidden="true" focusable="false" />
+      <span>Забытый мастер-ключ стирает файловые ключи</span>
+    </p>
+  )
+
+  const errLine = err ? (
+    <p className="mk-err" role="alert" data-testid="mk-error">
+      {err}
+    </p>
+  ) : null
+
+  /* ---------- Форма создания ключа (модальное окно макета) ---------- */
+
+  const createModal = creating ? (
+    <MkModal
+      title="Безопасность"
+      sub="МАСТЕР-КЛЮЧ"
+      onClose={resetForms}
+      onSubmit={onCreate}
+      testId="mk-modal"
+      footer={
+        <>
+          <button className="mk-cancel" type="button" onClick={resetForms} data-testid="mk-cancel">
+            Отмена
+          </button>
+          <button
+            className="mk-submit"
+            type="submit"
+            disabled={!s1LenOk || !s2 || s1 !== s2}
+            data-testid="mk-submit"
+          >
+            <IconKey width={13} height={13} aria-hidden="true" focusable="false" />
+            {s1LenOk
+              ? s2 && s1 === s2
+                ? 'Включить замок'
+                : method === 'pin'
+                  ? 'Повторите пин'
+                  : 'Повторите пароль'
+              : method === 'pin'
+                ? 'Введите 6 цифр'
+                : 'Минимум 8 символов'}
+          </button>
+        </>
+      }
+    >
+      <div className="mk-tabs" role="radiogroup" aria-label="Тип ключа">
+        <button
+          type="button"
+          role="radio"
+          aria-checked={method === 'pin'}
+          className={`mk-tab${method === 'pin' ? ' active' : ''}`}
+          onClick={() => {
+            setMethod('pin')
+            setS1('')
+            setS2('')
+            setErr(null)
+          }}
+          data-testid="mk-tab-pin"
+        >
+          PIN 6 цифр
+        </button>
+        <button
+          type="button"
+          role="radio"
+          aria-checked={method === 'password'}
+          className={`mk-tab${method === 'password' ? ' active' : ''}`}
+          onClick={() => {
+            setMethod('password')
+            setS1('')
+            setS2('')
+            setErr(null)
+          }}
+          data-testid="mk-tab-password"
+        >
+          Пароль
+        </button>
+      </div>
+
+      {method === 'pin' ? (
+        <>
+          <MkPinRow
+            idBase="sec-key-new"
+            label="Придумайте пин"
+            hint={`${s1.length}/6`}
+            hintTone={s1LenOk ? 'ok' : s1 ? 'bad' : undefined}
+            value={s1}
+            onChange={(next) => {
+              setS1(next)
+              setErr(null)
+            }}
+            hasError={Boolean(s1) && !s1LenOk}
+            firstRef={firstFieldRef}
+            testId="mk-pin1"
+          />
+          <MkPinRow
+            idBase="sec-key-rep"
+            label="Повторите пин"
+            hint={s2 && s1 === s2 ? 'совпадает' : `${s2.length}/6`}
+            hintTone={s2 && s1 === s2 ? 'ok' : undefined}
+            value={s2}
+            onChange={(next) => {
+              setS2(next)
+              setErr(null)
+            }}
+            hasError={Boolean(s2) && s1 !== s2}
+            testId="mk-pin2"
+          />
+        </>
+      ) : (
+        <>
+          <MkPassField
+            id="sec-key-new"
+            label="Мастер-пароль"
+            hint={s1 ? `${s1.length}/8+` : 'min 8 chars'}
+            hintTone={s1LenOk ? 'ok' : s1 ? 'bad' : undefined}
+            value={s1}
+            onChange={(next) => {
+              setS1(next)
+              setErr(null)
+            }}
+            placeholder="от 8 символов"
+            autoComplete="new-password"
+            inputRef={firstFieldRef}
+            incomplete={Boolean(s1) && !s1LenOk}
+            testId="mk-pass1"
+          >
+            {s1.length > 0 && (
+              <div className={`lock-strength s${strengthPw(s1)}`} aria-hidden="true">
+                <i />
+                <i />
+                <i />
+                <i />
+              </div>
+            )}
+          </MkPassField>
+          <MkPassField
+            id="sec-key-rep"
+            label="Подтверждение"
+            hint={s2 && s1 === s2 ? 'совпадает' : s2 ? `${s2.length}/${s1.length || '…'}` : undefined}
+            hintTone={s2 && s1 === s2 ? 'ok' : undefined}
+            value={s2}
+            onChange={(next) => {
+              setS2(next)
+              setErr(null)
+            }}
+            placeholder="Повторите"
+            autoComplete="new-password"
+            incomplete={Boolean(s2) && s1 !== s2}
+            testId="mk-pass2"
+          />
+        </>
+      )}
+
+      {warnBanner}
+      {errLine}
+    </MkModal>
+  ) : null
+
+  /* ---------- Смена ключа ---------- */
+
+  const changeModal = changing ? (
+    <MkModal
+      title="Смена ключа"
+      sub="МАСТЕР-КЛЮЧ"
+      onClose={resetForms}
+      onSubmit={onChangeMaster}
+      testId="mk-change-modal"
+      footer={
+        <>
+          <button className="mk-cancel" type="button" onClick={resetForms} data-testid="mk-cancel">
+            Отмена
+          </button>
+          <button
+            className="mk-submit"
+            type="submit"
+            disabled={!curSecret || !next1}
+            data-testid="mk-change-submit"
+          >
+            <IconKey width={13} height={13} aria-hidden="true" focusable="false" />
+            Сменить ключ
+          </button>
+        </>
+      }
+    >
+      <MkPassField
+        id="sec-key-cur"
+        label="Текущий ключ"
+        value={curSecret}
+        onChange={setCurSecret}
+        autoComplete="current-password"
+        inputRef={firstFieldRef}
+        testId="mk-cur"
+      />
+      <MkPassField
+        id="sec-key-next"
+        label="Новый ключ"
+        hint={lock.method === 'pin' ? '6 цифр' : 'min 8 chars'}
+        value={next1}
+        onChange={setNext1}
+        autoComplete="new-password"
+        testId="mk-next1"
+      >
+        {next1.length > 0 && (
+          <div className={`lock-strength s${strengthPw(next1)}`} aria-hidden="true">
+            <i />
+            <i />
+            <i />
+            <i />
+          </div>
+        )}
+      </MkPassField>
+      <MkPassField
+        id="sec-key-rep2"
+        label="Подтверждение"
+        hint={next2 && next1 === next2 ? 'совпадает' : undefined}
+        hintTone={next2 && next1 === next2 ? 'ok' : undefined}
+        value={next2}
+        onChange={setNext2}
+        placeholder="Повторите новый"
+        autoComplete="new-password"
+        testId="mk-next2"
+      />
+      <p className="mk-note">
+        Файловые ключи продолжат работать — они переупакуются автоматически.
+      </p>
+      {errLine}
+    </MkModal>
+  ) : null
+
+  /* ---------- Выключение замка ---------- */
+
+  const disableModal = disabling ? (
+    <MkModal
+      title="Выключить замок"
+      sub="МАСТЕР-КЛЮЧ"
+      danger
+      onClose={resetForms}
+      onSubmit={onDisable}
+      testId="mk-disable-modal"
+      footer={
+        <>
+          <button className="mk-cancel" type="button" onClick={resetForms} data-testid="mk-cancel">
+            Отмена
+          </button>
+          <button
+            className="mk-submit is-danger"
+            type="submit"
+            disabled={!disableSecret}
+            data-testid="mk-disable-submit"
+          >
+            <IconAlertTri width={13} height={13} aria-hidden="true" focusable="false" />
+            Выключить замок
+          </button>
+        </>
+      }
+    >
+      <p className="mk-warn is-danger">
+        <IconAlertTri width={14} height={14} aria-hidden="true" focusable="false" />
+        <span>С замком стираются файловые ключи</span>
+      </p>
+      <MkPassField
+        id="sec-key-disable"
+        label="Подтверждение"
+        value={disableSecret}
+        onChange={setDisableSecret}
+        placeholder="Текущим мастер-ключом"
+        autoComplete="current-password"
+        inputRef={firstFieldRef}
+        testId="mk-disable-secret"
+      />
+      {errLine}
+    </MkModal>
+  ) : null
+
   /* ---------- Статус: замок не настроен ---------- */
 
   if (lock.status === 'off') {
@@ -155,202 +637,16 @@ export function SecuritySection() {
           <span className="sec-meta label-mono num">замок выключен</span>
         </div>
 
-        {!creating ? (
-          <button className="lock-setup-btn" onClick={() => setCreating(true)}>
-            <IconLockRound width={13} height={13} aria-hidden="true" focusable="false" />
-            Настроить мастер-ключ
-          </button>
-        ) : (
-          <form className="lock-form lock-form-card" onSubmit={onCreate}>
-            <div className="autolock-seg lf-method" role="radiogroup" aria-label="Тип ключа">
-              <button
-                type="button"
-                role="radio"
-                aria-checked={method === 'pin'}
-                className={method === 'pin' ? 'active' : ''}
-                onClick={() => {
-                  setMethod('pin')
-                  setS1('')
-                  setS2('')
-                  setErr(null)
-                }}
-              >
-                PIN 6 цифр
-              </button>
-              <button
-                type="button"
-                role="radio"
-                aria-checked={method === 'password'}
-                className={method === 'password' ? 'active' : ''}
-                onClick={() => {
-                  setMethod('password')
-                  setS1('')
-                  setS2('')
-                  setErr(null)
-                }}
-              >
-                Пароль
-              </button>
-            </div>
+        <button
+          className="lock-setup-btn"
+          onClick={() => setCreating(true)}
+          data-testid="mk-setup-open"
+        >
+          <IconLockRound width={13} height={13} aria-hidden="true" focusable="false" />
+          Настроить мастер-ключ
+        </button>
 
-            {method === 'pin' ? (
-              /* PIN: шесть ячеек как на экране блокировки — единый ментальный
-                 образ «ввожу пин» в обоих местах, никаких текстовых полей. */
-              <div className="lf-pin-duo">
-                <div className="lf-field">
-                  <label className="label-mono" htmlFor="sec-key-new">
-                    Придумайте пин
-                    <span className={`lf-count num${s1LenOk ? ' lf-count-ok' : s1 ? ' lf-count-bad' : ''}`}>
-                      {s1.length}/6
-                    </span>
-                  </label>
-                  <div className={`lock-cells lf-cells${s1 && !s1LenOk ? ' has-error' : ''}`}>
-                    {Array.from({ length: 6 }).map((_, i) => (
-                      <input
-                        key={i}
-                        id={i === 0 ? 'sec-key-new' : undefined}
-                        ref={i === 0 ? firstFieldRef : undefined}
-                        className={`lock-cell num${s1[i] ? ' filled' : ''}`}
-                        inputMode="numeric"
-                        autoComplete="off"
-                        maxLength={1}
-                        value={s1[i] ?? ''}
-                        onChange={(e) => {
-                          const ch = e.target.value.replace(/\D/g, '').slice(-1)
-                          const next = (s1.slice(0, i) + ch + s1.slice(i + 1)).slice(0, 6)
-                          setS1(next)
-                          setErr(null)
-                          if (ch && i < 5) {
-                            const el = e.currentTarget.parentElement?.children[i + 1] as HTMLInputElement | undefined
-                            el?.focus()
-                          }
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Backspace' && !s1[i] && i > 0) {
-                            const el = e.currentTarget.parentElement?.children[i - 1] as HTMLInputElement | undefined
-                            el?.focus()
-                          }
-                        }}
-                        aria-label={`Цифра пина ${i + 1}`}
-                      />
-                    ))}
-                  </div>
-                </div>
-                <div className="lf-field">
-                  <label className="label-mono" htmlFor="sec-key-rep">
-                    Повторите пин
-                    <span className={`lf-count num${s2 && s1 === s2 ? ' lf-count-ok' : ''}`}>
-                      {s2 && s1 === s2 ? 'совпадает' : `${s2.length}/6`}
-                    </span>
-                  </label>
-                  <div className={`lock-cells lf-cells${s2 && s1 !== s2 ? ' has-error' : ''}`}>
-                    {Array.from({ length: 6 }).map((_, i) => (
-                      <input
-                        key={i}
-                        id={i === 0 ? 'sec-key-rep' : undefined}
-                        className={`lock-cell num${s2[i] ? ' filled' : ''}`}
-                        inputMode="numeric"
-                        autoComplete="off"
-                        maxLength={1}
-                        value={s2[i] ?? ''}
-                        onChange={(e) => {
-                          const ch = e.target.value.replace(/\D/g, '').slice(-1)
-                          const next = (s2.slice(0, i) + ch + s2.slice(i + 1)).slice(0, 6)
-                          setS2(next)
-                          setErr(null)
-                          if (ch && i < 5) {
-                            const el = e.currentTarget.parentElement?.children[i + 1] as HTMLInputElement | undefined
-                            el?.focus()
-                          }
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Backspace' && !s2[i] && i > 0) {
-                            const el = e.currentTarget.parentElement?.children[i - 1] as HTMLInputElement | undefined
-                            el?.focus()
-                          }
-                        }}
-                        aria-label={`Повтор цифры пина ${i + 1}`}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <>
-                <div className="lf-field">
-                  <label className="label-mono" htmlFor="sec-key-new">
-                    Мастер-пароль
-                    <span className={`lf-count num${s1LenOk ? ' lf-count-ok' : s1 ? ' lf-count-bad' : ''}`}>
-                      {s1.length}/8+
-                    </span>
-                  </label>
-                  <input
-                    ref={firstFieldRef}
-                    id="sec-key-new"
-                    className={`lock-input num${s1 && !s1LenOk ? ' is-incomplete' : ''}`}
-                    type="password"
-                    autoComplete="new-password"
-                    placeholder="от 8 символов"
-                    value={s1}
-                    onChange={(e) => {
-                      setS1(e.target.value)
-                      setErr(null)
-                    }}
-                  />
-                  {s1.length > 0 && (
-                    <div className={`lock-strength s${strengthPw(s1)}`} aria-hidden="true">
-                      <i />
-                      <i />
-                      <i />
-                      <i />
-                    </div>
-                  )}
-                </div>
-
-                <div className="lf-field">
-                  <label className="label-mono" htmlFor="sec-key-rep">
-                    Подтверждение
-                    <span className={`lf-count num${s2 && s1 === s2 ? ' lf-count-ok' : ''}`}>
-                      {s2 && s1 === s2 ? 'совпадает' : `${s2.length}/${s1.length || '…'}`}
-                    </span>
-                  </label>
-                  <input
-                    id="sec-key-rep"
-                    className={`lock-input num${s2 && s1 !== s2 ? ' is-incomplete' : ''}`}
-                    type="password"
-                    autoComplete="new-password"
-                    placeholder="Повторите"
-                    value={s2}
-                    onChange={(e) => {
-                      setS2(e.target.value)
-                      setErr(null)
-                    }}
-                  />
-                </div>
-              </>
-            )}
-
-            <p className="lock-warn">
-              <IconKey width={12} height={12} aria-hidden="true" focusable="false" />
-              <span title="Забытый мастер-ключ стирает доступ ко всем объектам под файловыми ключами. Это irreversible — запомните его.">
-                Забытый мастер-ключ стирает файловые ключи
-              </span>
-            </p>
-            {err && (
-              <p className="lock-status err" role="alert">
-                {err}
-              </p>
-            )}
-            <div className="lock-actions lf-actions">
-              <button className="lock-cancel" type="button" onClick={resetForms}>
-                Отмена
-              </button>
-              <button className="lock-submit lf-submit" type="submit" disabled={!s1LenOk || !s2 || s1 !== s2}>
-                {s1LenOk ? (s2 && s1 === s2 ? 'Включить замок' : method === 'pin' ? 'Повторите пин' : 'Повторите пароль') : method === 'pin' ? 'Введите 6 цифр' : 'Минимум 8 символов'}
-              </button>
-            </div>
-          </form>
-        )}
+        {createModal}
       </section>
     )
   }
@@ -376,7 +672,9 @@ export function SecuritySection() {
       <div className="field-block">
         <div className="mask-head">
           <span className="label-mono">Автоблокировка простоя</span>
-          <span className="mask-flag">{lock.autoLockMin === 0 ? 'выключена' : `${lock.autoLockMin} мин`}</span>
+          <span className="mask-flag">
+            {lock.autoLockMin === 0 ? 'выключена' : `${lock.autoLockMin} мин`}
+          </span>
         </div>
         <div className="autolock-seg" role="radiogroup" aria-label="Автоблокировка простоя">
           {AUTOLOCK_OPTIONS.map((o) => (
@@ -394,132 +692,24 @@ export function SecuritySection() {
       </div>
 
       {/* Управление ключом */}
-      {!changing && !disabling ? (
-        <div className="lock-actions row">
-          <button className="lock-setup-btn inline" onClick={toggleChangeForm}>
-            Изменить мастер-ключ
-          </button>
-          <button className="lock-cancel" onClick={() => setDisabling(true)}>
-            Выключить замок
-          </button>
-          <button
-            className="lock-setup-btn inline"
-            title="Заблокировать сейф сейчас (Ctrl+Shift+L)"
-            onClick={v.lockNow}
-          >
-            Заблокировать
-          </button>
-        </div>
-      ) : null}
+      <div className="lock-actions row">
+        <button className="lock-setup-btn inline" onClick={toggleChangeForm} data-testid="mk-change-open">
+          Изменить мастер-ключ
+        </button>
+        <button className="lock-cancel" onClick={() => setDisabling(true)} data-testid="mk-disable-open">
+          Выключить замок
+        </button>
+        <button
+          className="lock-setup-btn inline"
+          title="Заблокировать сейф сейчас (Ctrl+Shift+L)"
+          onClick={v.lockNow}
+        >
+          Заблокировать
+        </button>
+      </div>
 
-      {/* Смена мастера */}
-      {changing && (
-        <form className="lock-form lock-form-card" onSubmit={onChangeMaster}>
-          <div className="lf-field">
-            <label className="label-mono" htmlFor="sec-key-cur">
-              Текущий ключ
-            </label>
-            <input
-              ref={firstFieldRef}
-              id="sec-key-cur"
-              className="lock-input"
-              type="password"
-              autoComplete="current-password"
-              value={curSecret}
-              onChange={(e) => setCurSecret(e.target.value)}
-            />
-          </div>
-          <div className="lf-field">
-            <label className="label-mono" htmlFor="sec-key-next">
-              Новый ключ
-            </label>
-            <input
-              id="sec-key-next"
-              className="lock-input num"
-              type="password"
-              autoComplete="new-password"
-              value={next1}
-              onChange={(e) => setNext1(e.target.value)}
-            />
-            {next1.length > 0 && (
-              <div className={`lock-strength s${strengthPw(next1)}`} aria-hidden="true">
-                <i />
-                <i />
-                <i />
-                <i />
-              </div>
-            )}
-          </div>
-          <div className="lf-field">
-            <label className="label-mono" htmlFor="sec-key-rep2">
-              Подтверждение
-            </label>
-            <input
-              id="sec-key-rep2"
-              className="lock-input"
-              type="password"
-              autoComplete="new-password"
-              placeholder="Повторите новый"
-              value={next2}
-              onChange={(e) => setNext2(e.target.value)}
-            />
-          </div>
-          <p className="lock-hint-inline">Файловые ключи продолжат работать — они переупакуются автоматически.</p>
-          {err && (
-            <p className="lock-status err" role="alert">
-              {err}
-            </p>
-          )}
-          <div className="lock-actions lf-actions">
-            <button className="lock-cancel" type="button" onClick={resetForms}>
-              Отмена
-            </button>
-            <button className="lock-submit lf-submit" type="submit" disabled={!curSecret || !next1}>
-              Сменить ключ
-            </button>
-          </div>
-        </form>
-      )}
-
-      {/* Выключение замка */}
-      {disabling && (
-        <form className="lock-form lock-form-card is-danger" onSubmit={onDisable}>
-          <p className="lock-warn">
-            <IconKey width={12} height={12} aria-hidden="true" focusable="false" />
-            <span title="Вместе с замком будут стёрты все файловые ключи. Файлы останутся, но защита снимется.">
-              С замком стираются файловые ключи
-            </span>
-          </p>
-          <div className="lf-field">
-            <label className="label-mono" htmlFor="sec-key-disable">
-              Подтверждение
-            </label>
-            <input
-              ref={firstFieldRef}
-              id="sec-key-disable"
-              className="lock-input"
-              type="password"
-              autoComplete="current-password"
-              placeholder="Текущим мастер-ключом"
-              value={disableSecret}
-              onChange={(e) => setDisableSecret(e.target.value)}
-            />
-          </div>
-          {err && (
-            <p className="lock-status err" role="alert">
-              {err}
-            </p>
-          )}
-          <div className="lock-actions lf-actions">
-            <button className="lock-cancel" type="button" onClick={resetForms}>
-              Отмена
-            </button>
-            <button className="lock-danger-btn lf-danger" type="submit" disabled={!disableSecret}>
-              Выключить замок
-            </button>
-          </div>
-        </form>
-      )}
+      {changeModal}
+      {disableModal}
     </section>
   )
 }

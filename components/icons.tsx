@@ -590,6 +590,65 @@ export function IconGridBoard(p: P) {
   )
 }
 
+/* --- Иконки перенесённых макетов (мастер-ключ, редактор записи) --- */
+
+export function IconEye(p: P) {
+  return (
+    <svg {...base} {...p}>
+      <path d="M2.2 12S5.8 5.8 12 5.8 21.8 12 21.8 12 18.2 18.2 12 18.2 2.2 12 2.2 12z" />
+      <circle cx="12" cy="12" r="2.8" />
+    </svg>
+  )
+}
+
+export function IconEyeOff(p: P) {
+  return (
+    <svg {...base} {...p}>
+      <path d="M4.2 4.2 19.8 19.8" />
+      <path d="M9.6 5.2A9.7 9.7 0 0 1 12 5c6.2 0 9.8 6.2 9.8 6.2a17 17 0 0 1-2.9 3.6" />
+      <path d="M6.6 7.1A16.7 16.7 0 0 0 2.2 11.2S5.8 17.4 12 17.4a9.7 9.7 0 0 0 3-.46" />
+      <path d="M10.2 10.3a2.8 2.8 0 0 0 3.7 3.7" />
+    </svg>
+  )
+}
+
+export function IconCopy(p: P) {
+  return (
+    <svg {...base} {...p}>
+      <rect x="9" y="9" width="11" height="11" rx="1.5" />
+      <path d="M15 6.5V5.5A1.5 1.5 0 0 0 13.5 4h-8A1.5 1.5 0 0 0 4 5.5v8A1.5 1.5 0 0 0 5.5 15h1" />
+    </svg>
+  )
+}
+
+export function IconQrScan(p: P) {
+  return (
+    <svg {...base} {...p}>
+      <path d="M4 8.5V5.6A1.6 1.6 0 0 1 5.6 4h2.9M15.5 4h2.9A1.6 1.6 0 0 1 20 5.6v2.9M20 15.5v2.9a1.6 1.6 0 0 1-1.6 1.6h-2.9M8.5 20H5.6A1.6 1.6 0 0 1 4 18.4v-2.9" />
+      <path d="M4 12h16" />
+    </svg>
+  )
+}
+
+export function IconAlertTri(p: P) {
+  return (
+    <svg {...base} {...p}>
+      <path d="M12 4.2 21 19.4H3L12 4.2z" />
+      <path d="M12 9.6v4.2M12 16.4h.01" />
+    </svg>
+  )
+}
+
+export function IconDetails(p: P) {
+  return (
+    <svg {...base} {...p}>
+      <rect x="3.5" y="4.5" width="17" height="15" rx="1.5" />
+      <path d="M7.5 9h9M7.5 12.5h9M7.5 16h5" />
+    </svg>
+  )
+}
+
+
 /**
  * Знак WorkfloW: волосяная рамка сейфа, внутри — литера «W»,
  * собранная как граф из пяти узлов и четырёх связей. Центральный
