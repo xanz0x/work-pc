@@ -14,9 +14,11 @@ jobs:
       APP_SESSION_SECRET: ci-session-secret-0123456789abcdef0123456789abcdef
     steps:
       - uses: actions/checkout@v4
+      # §4.1: пакетный менеджер в проекте один — pnpm. yarn.lock удалён и
+      # занесён в .gitignore, чтобы случайный `yarn install` не вернул его.
       - uses: pnpm/action-setup@v4
         with:
-          version: 10
+          version: 10.11.0
       - uses: actions/setup-node@v4
         with:
           node-version: 22

@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { log, startRequest } from '@/lib/log'
 import { metricsSnapshot, trackError } from '@/lib/metrics'
+import { clientIp, limitTelemetry } from '@/lib/rate-limit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -10,9 +11,20 @@ export const dynamic = 'force-dynamic'
  * клиент присылает место и машинную причину, сервер кладёт запись рядом
  * с серверными ошибками. Содержимое запросов и имена файлов не принимаем:
  * поле reason обрезается, всё остальное игнорируется.
+ * Приём открыт без сессии (§3.5), но с жёстким лимитом на адрес.
  */
 export async function POST(req: NextRequest) {
   const r = startRequest('/ai-api/telemetry', 'POST')
+  const retryAfter = limitTelemetry(clientIp(req.headers))
+  if (retryAfter) {
+    r.done(429, { code: 'RATE_LIMITED' })
+    const resp = NextResponse.json(
+      { code: 'RATE_LIMITED', error: 'Слишком много записей телеметрии.' },
+      { status: 429 },
+    )
+    resp.headers.set('Retry-After', String(retryAfter))
+    return resp
+  }
   let body: { kind?: string; where?: string; message?: string }
   try {
     body = (await req.json()) as typeof body

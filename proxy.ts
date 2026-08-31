@@ -31,6 +31,10 @@ export async function proxy(req: NextRequest) {
   }
 
   if (route.startsWith('/ai-api/auth')) return pass()
+  /* §3.5: приём клиентской ошибки открыт без сессии — падение на экране
+     входа тоже должно доходить. Лимит стоит в самом маршруте; чтение
+     метрик (GET) остаётся закрытым. */
+  if (route === '/ai-api/telemetry' && method === 'POST') return pass()
 
   const secret = process.env.APP_SESSION_SECRET
   const password = process.env.APP_PASSWORD

@@ -26,8 +26,12 @@ export type Doc<T = unknown> = { key: string; value: T; updatedAt: number }
  * Ключи, которые остаются в localStorage.
  * — конфиг замка и состояние замка читаются синхронно в bootstrap
  *   (первый кадр обязан знать, стоит ли замок — иначе «мигнёт открытым»);
- * — обёртки файловых ключей и SEK нужны крипто-ядру синхронно;
+ * — SEK менеджера секретов нужен крипто-ядру синхронно;
  * — активный экран, черновики и позиции скролла — мелочь на пару КБ.
+ * Обёртки файловых ключей (`wf.vault.keys.<id>`) с волны 2 живут одним
+ * документом в IndexedDB (`wf.filekeys.map.v1`, см. lib/file-keys-store.ts);
+ * префикс остаётся местным, чтобы старые записи не переливались как документы,
+ * а честно удалялись после подтверждённого переноса.
  */
 const LOCAL_EXACT = new Set([
   'wf.lock.config',
@@ -35,6 +39,7 @@ const LOCAL_EXACT = new Set([
   'wf.lock.ping',
   'wf.vault.keys.migrated',
   'wf.secrets.sek.v1',
+  'wf.telemetry.queue',
   'wf.chat.active',
   'wf.chat.drafts',
   'wf.chat.scroll',

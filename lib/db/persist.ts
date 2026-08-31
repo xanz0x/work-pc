@@ -10,6 +10,7 @@ import { docs } from './repo'
 import { migrateLocalStorage } from './migrate'
 import { quotaExceeded, reportStorageError, storageOk } from './errors'
 import { ensurePersistent, QUOTA_WARN_RATIO, quotaInfo } from './quota'
+import { publishDocChange } from './sync'
 
 let ready: Promise<void> | null = null
 
@@ -80,6 +81,11 @@ export function savePersisted<T>(key: string, value: T): void {
     .catch(() => {})
     .then(() => storageReady())
     .then(() => docs.put(key, value))
+    .then((ok) => {
+      // Другие вкладки узнают об изменении: событий `storage` у IndexedDB нет.
+      if (ok) publishDocChange(key)
+      return ok
+    })
   queues.set(key, next)
   void next
 }

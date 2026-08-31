@@ -143,12 +143,15 @@ def test_mcp_put_notion_token_not_persisted(authed):
 
 # --- Rate limit: последний тест в файле, чтобы не тормозить остальные ---
 def test_rate_limit_11th_call_429(authed):
-    # fire up to 12 quick local-engine calls (they get 409 but count toward chat rate limit)
+    # Отдельный адрес: лимит считается по IP, и заливка не должна съедать
+    # бюджет остальных тестов (§3.4 хвоста волны 2).
+    headers = {"X-Forwarded-For": "203.0.113.11"}
     codes = []
     for i in range(12):
         r = authed.post(
             f"{BASE}/ai-api/chat",
             json={"engine": "local", "messages": [{"role": "user", "content": "x"}]},
+            headers=headers,
         )
         codes.append(r.status_code)
         if r.status_code == 429:

@@ -10,6 +10,8 @@ export default function NotFound() {
           сюда не ведёт.
         </p>
         <div className="app-error-acts">
+          {/* Как и в app/error.tsx: жёсткая ссылка, без зависимости от роутера. */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
           <a className="btn btn-primary" href="/" data-testid="not-found-home">
             Вернуться в библиотеку
           </a>

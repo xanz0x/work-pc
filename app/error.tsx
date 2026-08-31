@@ -30,6 +30,9 @@ export default function AppError({
           <button type="button" className="btn btn-primary" onClick={reset} data-testid="app-error-retry">
             Попробовать снова
           </button>
+          {/* Страница ошибки не должна зависеть от роутера: <Link> тянет его
+              контекст, а падение могло случиться именно в нём. */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
           <a className="btn" href="/" data-testid="app-error-home">
             Вернуться в библиотеку
           </a>

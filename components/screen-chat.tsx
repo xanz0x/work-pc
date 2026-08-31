@@ -689,7 +689,12 @@ export function ScreenChat() {
             <IconExternal aria-hidden="true" />
             Экспорт
           </button>
-          <button type="button" className="btn btn-tertiary btn-sm" onClick={newSession}>
+          <button
+            type="button"
+            className="btn btn-tertiary btn-sm"
+            onClick={newSession}
+            data-testid="chat-new"
+          >
             <IconPlus aria-hidden="true" />
             Новый
           </button>

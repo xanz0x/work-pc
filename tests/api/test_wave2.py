@@ -28,15 +28,11 @@ def anon():
 
 
 def post_chat(api, **kwargs):
-    """Лимит запросов общий на IP: если бюджет минуты выбрали прошлые тесты,
-    ждём окно один раз — иначе проверка валидации ловит 429 вместо 400."""
-    r = api.post(f"{BASE}/ai-api/chat", timeout=30, **kwargs)
-    if r.status_code == 429:
-        import time
-
-        time.sleep(min(70, int(r.headers.get("Retry-After", "61")) + 1))
-        r = api.post(f"{BASE}/ai-api/chat", timeout=30, **kwargs)
-    return r
+    """Свой адрес на модуль: лимит считается по IP, и заливка из другого
+    файла больше не заставляет ждать окно (§3.4 хвоста волны 2)."""
+    headers = {"X-Forwarded-For": "203.0.113.22"}
+    headers.update(kwargs.pop("headers", {}))
+    return api.post(f"{BASE}/ai-api/chat", timeout=30, headers=headers, **kwargs)
 
 
 class TestRequestId:

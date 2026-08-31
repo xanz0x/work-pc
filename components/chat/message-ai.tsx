@@ -67,7 +67,6 @@ function withFootnotes(
     const bullet = /^\s*[-•*]\s+/.test(ln)
     const clean = bullet ? ln.replace(/^\s*[-•*]\s+/, '') : ln
     return (
-      /* eslint-disable-next-line react/no-array-index-key -- строки статичны в рамках текста */
       <span key={`ln-${i}`} className={`m-line${bullet ? ' is-li' : ''}${clean.trim() ? '' : ' is-gap'}`}>
         {renderInline(clean, `ln-${i}`, onPick, onHover, active)}
       </span>

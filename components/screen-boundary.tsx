@@ -1,6 +1,7 @@
 'use client'
 
 import { Component, type ReactNode } from 'react'
+import { reportClientError } from '@/lib/telemetry-client'
 
 type Props = { name: string; children: ReactNode }
 type State = { error: Error | null }
@@ -18,16 +19,11 @@ export class ScreenBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error) {
     console.error(`[screen:${this.props.name}]`, error)
-    void fetch('/ai-api/telemetry', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        kind: 'client-error',
-        where: `screen:${this.props.name}`,
-        message: error.message,
-      }),
-    }).catch(() => {
-      /* трекер недоступен — ошибка уже в консоли */
+    /* Не ушло — ляжет в очередь и уедет при следующем запуске (§3.6). */
+    reportClientError({
+      kind: 'client-error',
+      where: `screen:${this.props.name}`,
+      message: error.message,
     })
   }
 

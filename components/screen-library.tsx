@@ -304,7 +304,6 @@ export function ScreenLibrary() {
     const id = v.clusterFocus.id as CatId
     setView(id === 'all' ? 'all' : 'files')
     setCat(id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [v.clusterFocus])
 
   const isOpen = useCallback((n: Note) => !n.locked || unlocked.includes(n.id), [unlocked])

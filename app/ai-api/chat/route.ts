@@ -209,6 +209,17 @@ export async function POST(req: NextRequest) {
   const t0 = Date.now()
   const ip = clientIp(req.headers)
 
+  let body: Body
+  try {
+    body = (await req.json()) as Body
+  } catch {
+    log('warn', 'chat.bad-json', { rid, route: '/ai-api/chat', status: 400 })
+    return fail('BAD_REQUEST', 'Тело запроса не является корректным JSON.', 400, { requestId: rid })
+  }
+
+  /* §3.4: бюджет не тратится на тела, отвергнутые разбором — проверки
+     валидации больше не ловят 429 вместо 400. Всё, что разобралось,
+     считается ходом, включая отказ гейта движка. */
   const limit = limitChat(ip)
   if (!limit.ok) {
     log('warn', 'chat.limited', { rid, route: '/ai-api/chat', status: 429, code: limit.scope })
@@ -224,13 +235,6 @@ export async function POST(req: NextRequest) {
     return resp
   }
 
-  let body: Body
-  try {
-    body = (await req.json()) as Body
-  } catch {
-    log('warn', 'chat.bad-json', { rid, route: '/ai-api/chat', status: 400 })
-    return fail('BAD_REQUEST', 'Тело запроса не является корректным JSON.', 400, { requestId: rid })
-  }
   /* Форма тела проверяется после гейтов движка: локальный движок отвечает
      409 независимо от полей (инвариант волны 1). */
   const engine = body.engine === 'hybrid' || body.engine === 'cloud' ? body.engine : 'local'

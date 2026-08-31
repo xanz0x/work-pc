@@ -11,7 +11,6 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  FILE_KEY_PREFIX,
   aesDecrypt,
   aesEncrypt,
   deriveMasterKey,
@@ -19,6 +18,15 @@ import {
   readLockState,
 } from '@/lib/crypto-vault'
 import { LOCK_MIGRATED_KEY } from '@/lib/lock-store'
+import {
+  listFileKeyIds,
+  loadFileKeys,
+  putFileKey,
+  readFileKey,
+  removeFileKey,
+  subscribeFileKeys,
+  type FileKeyBlob,
+} from '@/lib/file-keys-store'
 
 const FK_VERIFIER = 'wf-filekey-v1'
 /** Инвариант 10.6: шифртекст stored as `<ctB64>:<ivB64>`. */
@@ -95,7 +103,6 @@ async function decryptFromVault(packed: string): Promise<string | null> {
 }
 
 type MigratableNote = { id: string; locked: boolean; secret: string | null }
-/* eslint-disable-next-line @typescript-eslint/no-explicit-any */
 type PatchFn = (id: string, fn: (n: any) => any) => void
 
 export type PackResult =
@@ -139,21 +146,8 @@ export async function migrateLockedNotes(
 
 /* ---------- файловые ключи: wrapped-хранение ---------- */
 
-type FileKeyBlob = {
-  v: 1
-  /** обёртка мастера: AES-GCM(masterKey, fileKeyRaw-b64) — доступ только у открытого сеанса. */
-  wct: string
-  wiv: string
-  /** обёртка пароля файла: AES-GCM(PBKDF2(password, saltOf(fileId)), fileKeyRaw-b64) — «уровень B». */
-  pct: string
-  piv: string
-  /** верификатор под самим файловым ключом. */
-  kct: string
-  kiv: string
-  /** зашифрованное описание desc (файловым ключом). */
-  dct?: string
-  div?: string
-}
+/* Формат обёртки и её хранение живут в lib/file-keys-store.ts: один
+   документ-словарь в IndexedDB вместо записи localStorage на каждый файл. */
 
 /** Детерминированная соль пароля файла — как fileSalt() ядра ('wf.filekey.'+id). */
 async function fkSaltBytes(fileId: string): Promise<Uint8Array> {
@@ -184,28 +178,7 @@ export async function checkStickerSecret(packed: string, plain: string): Promise
 }
 
 function fkRead(fileId: string): FileKeyBlob | null {
-  try {
-    const raw = localStorage.getItem(FILE_KEY_PREFIX + fileId)
-    if (!raw) return null
-    const p: unknown = JSON.parse(raw)
-    if (
-      typeof p === 'object' && p !== null &&
-      (p as FileKeyBlob).v === 1 && typeof (p as FileKeyBlob).wct === 'string'
-    ) {
-      return p as FileKeyBlob
-    }
-    return null
-  } catch {
-    return null
-  }
-}
-
-function fkWrite(fileId: string, blob: FileKeyBlob): void {
-  try {
-    localStorage.setItem(FILE_KEY_PREFIX + fileId, JSON.stringify(blob))
-  } catch {
-    /* приватный режим — ключ проживёт сессию не дольше памяти */
-  }
+  return readFileKey(fileId)
 }
 
 export type FileKeyOpenResult =
@@ -235,19 +208,17 @@ export function useFileKeys(opts: {
   patchRef.current = opts.patchNote
 
   const rescan = useCallback(() => {
-    const ids = new Set<string>()
-    try {
-      for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i)
-        if (k?.startsWith(FILE_KEY_PREFIX)) ids.add(k.slice(FILE_KEY_PREFIX.length))
-      }
-    } catch {
-      /* нет доступа к storage */
-    }
-    setProtectedIds(ids)
+    setProtectedIds(new Set(listFileKeyIds()))
   }, [])
 
   useEffect(rescan, [rescan, opts.fileKeysCount])
+
+  /* Словарь обёрток читается из IndexedDB один раз; по готовности — пересчёт. */
+  useEffect(() => {
+    const off = subscribeFileKeys(rescan)
+    void loadFileKeys().then(rescan)
+    return off
+  }, [rescan])
 
   /* Блокировка/выключение замка: мастер обнуляется, открытия сбрасываются. */
   useEffect(() => {
@@ -322,7 +293,7 @@ export function useFileKeys(opts: {
         const pkWrap = await deriveMasterKey(password, await fkSaltBytes(fileId))
         const wrapPw = await aesEncrypt(pkWrap, rawB64)
         const descPack = currentDesc ? await aesEncrypt(fk, currentDesc) : null
-        fkWrite(fileId, {
+        await putFileKey(fileId, {
           v: 1,
           wct: wrapMaster.ctB64,
           wiv: wrapMaster.ivB64,
@@ -382,11 +353,7 @@ export function useFileKeys(opts: {
   /** Убрать файловый ключ при удалении файла из сейфа. */
   const forgetKey = useCallback(
     (fileId: string) => {
-      try {
-        localStorage.removeItem(FILE_KEY_PREFIX + fileId)
-      } catch {
-        /* игнорируем */
-      }
+      void removeFileKey(fileId)
       setOpenIds((s) => {
         if (!s.has(fileId)) return s
         const next = new Set(s)

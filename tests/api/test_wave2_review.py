@@ -32,15 +32,22 @@ def anon():
 
 
 class TestAuthGate:
-    def test_telemetry_post_requires_auth(self, anon):
+    def test_telemetry_post_is_open_but_limited(self, anon):
+        """§3.5: приём клиентской ошибки открыт без сессии (иначе падение на
+        экране входа никуда не доходит), но с собственным лимитом; чтение
+        метрик остаётся закрытым."""
         r = anon.post(
             f"{BASE}/ai-api/telemetry",
             json={"kind": "client-error", "where": "screen:map", "message": "x"},
+            headers={"X-Forwarded-For": "203.0.113.88"},
             timeout=30,
         )
-        assert r.status_code == 401, r.text[:200]
-        assert r.json()["code"] == "AUTH_REQUIRED"
+        assert r.status_code == 202, r.text[:200]
         assert r.headers.get("X-Request-Id")
+
+        g = anon.get(f"{BASE}/ai-api/telemetry", timeout=30)
+        assert g.status_code == 401
+        assert g.json()["code"] == "AUTH_REQUIRED"
 
     def test_chat_requires_auth(self, anon):
         r = anon.post(f"{BASE}/ai-api/chat", json={"sessionId": "x"}, timeout=30)

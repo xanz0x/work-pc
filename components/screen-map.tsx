@@ -1442,7 +1442,6 @@ export function ScreenMap() {
   const graphKey = `${graph.nodes.map((n) => n.id).join(',')}|${graph.links}`
   useEffect(() => {
     api.current?.rebuild()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [graphKey])
 
   /* Фильтр кластера прокидываем в движок */
@@ -1471,13 +1470,11 @@ export function ScreenMap() {
   useEffect(() => {
     if (!v.clusterFocus) return
     setCluster(v.clusterFocus.id as ClusterId | 'all')
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [v.clusterFocus])
 
   useEffect(() => {
     if (!v.nodeFocus) return
     api.current?.select(v.nodeFocus.id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [v.nodeFocus, graphKey])
 
   /* Горячие клавиши: + − 0 F, Esc — закрыть инспектор */

@@ -42,6 +42,15 @@ credentials.json
 *.key
 .credentials
 
+# Пакетный менеджер в проекте один — pnpm (§4.1 хвоста волны 2).
+# Платформа иногда запускает `yarn install` сама: лок-файл yarn в репозиторий
+# попадать не должен, иначе CI с --frozen-lockfile теряет смысл.
+yarn.lock
+
+# Артефакты тестов
+test-results/
+playwright-report/
+
 # Локальный store пакетного менеджера и кеши инструментов
 .pnpm-store/
 .ruff_cache/

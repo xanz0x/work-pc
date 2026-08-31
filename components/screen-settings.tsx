@@ -675,10 +675,20 @@ export function ScreenSettings() {
             {v.dirty ? 'Есть несохранённые изменения' : 'Все изменения сохранены локально'}
           </span>
           <div className="save-actions">
-            <button className="btn btn-ghost btn-sm" disabled={!v.dirty} onClick={v.revertSettings}>
+            <button
+              className="btn btn-ghost btn-sm"
+              disabled={!v.dirty}
+              onClick={v.revertSettings}
+              data-testid="settings-revert"
+            >
               Отменить
             </button>
-            <button className="btn btn-primary btn-sm" disabled={!v.dirty} onClick={v.saveSettings}>
+            <button
+              className="btn btn-primary btn-sm"
+              disabled={!v.dirty}
+              onClick={v.saveSettings}
+              data-testid="settings-save"
+            >
               Сохранить
             </button>
           </div>

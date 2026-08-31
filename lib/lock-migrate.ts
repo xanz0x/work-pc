@@ -4,7 +4,7 @@
    она ленивая (при первом успешном unlock), атомарная и с бэкапом.
 
    Что переупаковывается под новый мастер-ключ:
-   1. wf.vault.keys.<id> — обёртка мастера (wct/wiv) файловых ключей;
+   1. обёртки мастера (wct/wiv) файловых ключей — словарь wf.filekeys.map.v1;
    2. секреты locked-стикеров (`ct:iv`, зашифрованы мастером сеанса);
    3. wf.secrets.sek.v1 — ключ сейфа секретов.
    Пароль файла (pct/piv) и сами файловые ключи не меняются, поэтому
@@ -12,7 +12,6 @@
    ============================================================ */
 
 import {
-  FILE_KEY_PREFIX,
   LEGACY_LOCK_ITERATIONS,
   LOCK_ITERATIONS,
   SALT_BYTES,
@@ -27,25 +26,18 @@ import {
   writeLockState,
   type LockStateBlob,
 } from './crypto-vault'
+import {
+  fileKeysSnapshot,
+  loadFileKeys,
+  replaceFileKeys,
+  type FileKeyMap,
+} from './file-keys-store'
 import { SECRETS_SEK_KEY } from './secrets-crypto'
 
 export type MigratableNote = { id: string; locked: boolean; secret: string | null }
 export type NotePatch = (id: string, secret: string) => void
 
 const CT_IV_RE = /^[A-Za-z0-9+/]+=*:[A-Za-z0-9+/]+=*$/
-
-function lsKeys(prefix: string): string[] {
-  const out: string[] = []
-  try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i)
-      if (k?.startsWith(prefix)) out.push(k)
-    }
-  } catch {
-    /* нет доступа к storage */
-  }
-  return out
-}
 
 function lsGet(k: string): string | null {
   try {
@@ -90,23 +82,20 @@ export async function rewrapAll(
 ): Promise<RewrapReport> {
   const report: RewrapReport = { files: 0, notes: 0, sek: false, broken: 0 }
 
-  for (const k of lsKeys(FILE_KEY_PREFIX)) {
-    const raw = lsGet(k)
-    if (!raw) continue
-    try {
-      const blob = JSON.parse(raw) as Record<string, unknown>
-      if (typeof blob.wct !== 'string' || typeof blob.wiv !== 'string') continue
-      const next = await reWrap(oldKey, newKey, { ct: blob.wct, iv: blob.wiv })
-      if (!next) {
-        report.broken++
-        continue
-      }
-      lsSet(k, JSON.stringify({ ...blob, wct: next.ct, wiv: next.iv }))
-      report.files++
-    } catch {
+  await loadFileKeys()
+  const map: FileKeyMap = { ...fileKeysSnapshot() }
+  let changed = false
+  for (const [id, blob] of Object.entries(map)) {
+    const next = await reWrap(oldKey, newKey, { ct: blob.wct, iv: blob.wiv })
+    if (!next) {
       report.broken++
+      continue
     }
+    map[id] = { ...blob, wct: next.ct, wiv: next.iv }
+    changed = true
+    report.files++
   }
+  if (changed) await replaceFileKeys(map)
 
   for (const n of notes) {
     if (!n.locked || !n.secret || !CT_IV_RE.test(n.secret)) continue
@@ -173,7 +162,7 @@ export async function migrateKdfIterations(
     const backup = {
       at: Date.now(),
       state: st,
-      fileKeys: Object.fromEntries(lsKeys(FILE_KEY_PREFIX).map((k) => [k, lsGet(k)])),
+      fileKeys: (await loadFileKeys(), fileKeysSnapshot()),
       sek: lsGet(SECRETS_SEK_KEY),
       noteSecrets: notes.filter((n) => n.locked && n.secret).map((n) => ({ id: n.id, secret: n.secret })),
     }

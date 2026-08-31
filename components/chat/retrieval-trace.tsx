@@ -44,7 +44,6 @@ export function RetrievalTrace({
           )
         })}
         {Array.from({ length: lockedSources }, (_, i) => (
-          /* eslint-disable-next-line react/no-array-index-key -- источников несколько, содержимое у них одинаково засекречено */
           <li key={`redacted-${i}`} className="trace-row trace-redacted">
             <span className="trace-mark" aria-hidden="true" />
             <span className="trace-label">{REDACTED_LABEL}</span>
@@ -103,7 +102,6 @@ export function TraceSummary({
           ))}
           {lockedSources > 0 &&
             Array.from({ length: lockedSources }, (_, i) => (
-              /* eslint-disable-next-line react/no-array-index-key -- см. выше */
               <li key={`redacted-${i}`} className="trace-redacted">
                 <span className="trace-mark" aria-hidden="true" />
                 {REDACTED_LABEL}

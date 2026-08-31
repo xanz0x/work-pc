@@ -8,13 +8,16 @@ import {
   randomBytesOf,
 } from '@/lib/crypto-vault'
 import { rewrapAll } from '@/lib/lock-migrate'
+import { readFileKey, replaceFileKeys } from '@/lib/file-keys-store'
 import { SECRETS_SEK_KEY } from '@/lib/secrets-crypto'
 
 const IT = 1_000
 
 describe('переупаковка под новый мастер-ключ (rewrapAll)', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     localStorage.clear()
+    /* §1.1: обёртки живут словарём в IndexedDB — чистим и его. */
+    await replaceFileKeys({})
   })
 
   it('файловый ключ, секрет стикера и SEK открываются новым ключом', async () => {
@@ -45,9 +48,12 @@ describe('переупаковка под новый мастер-ключ (rewr
 
     // Инвариант: то, что переупаковано, читается новым ключом и только им.
     const { aesDecrypt } = await import('@/lib/crypto-vault')
-    const fk = JSON.parse(localStorage.getItem(`${FILE_KEY_PREFIX}f1`) as string)
-    expect(await aesDecrypt(newKey, fk.wct, fk.wiv)).toBe('file-key-material')
-    expect(await aesDecrypt(oldKey, fk.wct, fk.wiv)).toBeNull()
+    const fk = readFileKey('f1')
+    expect(fk).not.toBeNull()
+    expect(await aesDecrypt(newKey, fk!.wct, fk!.wiv)).toBe('file-key-material')
+    expect(await aesDecrypt(oldKey, fk!.wct, fk!.wiv)).toBeNull()
+    // Старая запись localStorage убрана после подтверждённого переноса.
+    expect(localStorage.getItem(`${FILE_KEY_PREFIX}f1`)).toBeNull()
 
     const [ct, iv] = patched.n1.split(':')
     expect(await aesDecrypt(newKey, ct, iv)).toBe('note-secret')

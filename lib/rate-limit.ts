@@ -11,6 +11,7 @@ type Win = { at: number; n: number }
 const minute = new Map<string, Win>()
 const day = new Map<string, Win>()
 const login = new Map<string, Win>()
+const telemetry = new Map<string, Win>()
 
 function bump(map: Map<string, Win>, key: string, windowMs: number, limit: number): number {
   const now = Date.now()
@@ -48,6 +49,14 @@ export function limitChat(ip: string): { ok: boolean; scope: 'minute' | 'day'; r
 /** Подбор пароля: 10 неудачных попыток на 15 минут с адреса. */
 export function limitLogin(ip: string): number {
   return bump(login, ip, 15 * MINUTE, 10)
+}
+
+/**
+ * Клиентская телеметрия открыта без сессии (§3.5): ошибка на экране входа
+ * тоже должна доходить. Поэтому жёсткий лимит — 30 записей за 5 минут с IP.
+ */
+export function limitTelemetry(ip: string): number {
+  return bump(telemetry, ip, 5 * MINUTE, 30)
 }
 
 /** Успешный вход обнуляет счётчик: лимит считает только промахи. */

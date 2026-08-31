@@ -17,6 +17,7 @@ import { ScreenLock } from './screen-lock'
 import { useVault } from '@/lib/vault-store'
 import { fmtBytes } from '@/lib/data'
 import { SCOPES } from '@/lib/search'
+import { flushClientErrors } from '@/lib/telemetry-client'
 import type { ScreenId } from '@/lib/vault-store'
 import {
   IconChat,
@@ -98,6 +99,11 @@ export function AppShell({ children }: { children: ReactNode }) {
     } catch {
       /* приватный режим — состояние просто не восстанавливаем */
     }
+  }, [])
+
+  /* Клиентские ошибки, не ушедшие в прошлый раз, догоняют трекер (§3.6). */
+  useEffect(() => {
+    void flushClientErrors()
   }, [])
 
   // Клик мимо панели результатов закрывает её, не трогая сам запрос.

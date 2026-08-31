@@ -18,7 +18,7 @@ const HOOKS_DEBT = [
   'react-hooks/preserve-manual-memoization',
 ]
 
-export default [
+const config = [
   {
     ignores: [
       '.next/**',
@@ -35,3 +35,5 @@ export default [
     rules: Object.fromEntries(HOOKS_DEBT.map((r) => [r, 'warn'])),
   },
 ]
+
+export default config

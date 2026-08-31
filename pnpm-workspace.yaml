@@ -1,1 +1,8 @@
 minimumReleaseAge: 0
+# Сборочные скрипты, которым разрешено выполняться: без них vitest (esbuild)
+# и eslint (unrs-resolver) остаются без нативных бинарников.
+onlyBuiltDependencies:
+  - esbuild
+  - unrs-resolver
+  - '@tailwindcss/oxide'
+  - sharp

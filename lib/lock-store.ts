@@ -10,12 +10,12 @@
 export { FILE_KEY_PREFIX, LOCK_PING_KEY, LOCK_STATE_KEY } from './crypto-vault'
 
 import {
-  FILE_KEY_PREFIX,
   LOCK_PING_KEY,
   LOCK_STATE_KEY,
   readLockState,
   removeLockState,
 } from './crypto-vault'
+import { clearFileKeysSync, countFileKeyIds } from './file-keys-store'
 
 export const LOCK_CONFIG_KEY = 'wf.lock.config'
 /** Маркер одноразовой миграции стикеров (этап 5); до него аудит не трогает демо-данные. */
@@ -120,30 +120,13 @@ export function wipeLockData(): void {
   clearFileKeys()
 }
 
-/** Сколько объектов лежит под файловым ключом (каркас этапа 5). */
+/** Сколько объектов лежит под файловым ключом (§1.1: словарь в IndexedDB). */
 export function countFileKeys(): number {
-  let n = 0
-  try {
-    for (let i = 0; i < localStorage.length; i++) {
-      if (localStorage.key(i)?.startsWith(FILE_KEY_PREFIX)) n++
-    }
-  } catch {
-    /* нет доступа — считаем нулём */
-  }
-  return n
+  return countFileKeyIds()
 }
 
 export function clearFileKeys(): void {
-  try {
-    const doomed: string[] = []
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i)
-      if (k?.startsWith(FILE_KEY_PREFIX)) doomed.push(k)
-    }
-    doomed.forEach((k) => rawRemove(k))
-  } catch {
-    /* игнорируем */
-  }
+  clearFileKeysSync()
 }
 
 /** Мгновенный сигнал другим вкладкам «закройтесь» (п.10.9). storage не срабатывает в своей вкладке. */
