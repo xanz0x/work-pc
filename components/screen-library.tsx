@@ -1478,6 +1478,7 @@ export function ScreenLibrary() {
               {/* Этап 5: файловый ключ — пароль ×2, wrapped мастер-ключом (п.4). */}
               <button
                 className="btn btn-ghost btn-sm btn-full pin-add"
+                data-testid="fk-set-open"
                 onClick={() => {
                   setFkSetFor(selFile?.id ?? null)
                   setFkNew1('')
@@ -1568,7 +1569,7 @@ export function ScreenLibrary() {
           const f = views.find((x) => x.id === fkAsk)
           const cooling = Date.now() < fkCooldownUntil
           return (
-            <div className="fk-modal" role="dialog" aria-modal="true" aria-label="Файловый ключ">
+            <div className="fk-modal" role="dialog" aria-modal="true" aria-label="Файловый ключ" data-testid="fk-ask-modal">
               <div className="lock-card">
                 <div className="lk-head mono">
                   <IconKey width={12} height={12} aria-hidden="true" focusable="false" />
@@ -1580,6 +1581,7 @@ export function ScreenLibrary() {
                     className={`lock-input mono${fkErr ? ' err' : ''}`}
                     type="password"
                     autoFocus
+                    data-testid="fk-ask-input"
                     value={fkVal}
                     disabled={cooling}
                     onChange={(e) => {
@@ -1596,6 +1598,7 @@ export function ScreenLibrary() {
                   <span
                     className={`key-hint mono${fkErr ? ' err' : ''}`}
                     role="status"
+                    data-testid="fk-ask-hint"
                   >
                     {fkErr ??
                       (cooling
@@ -1606,6 +1609,7 @@ export function ScreenLibrary() {
                 <div className="fk-modal-row">
                   <button
                     className="btn btn-primary btn-sm"
+                    data-testid="fk-ask-submit"
                     onClick={() => void submitFileKey()}
                     disabled={!fkVal.trim() || cooling}
                   >
@@ -1633,7 +1637,7 @@ export function ScreenLibrary() {
         (() => {
           const f = views.find((x) => x.id === fkSetFor)
           return (
-            <div className="fk-modal" role="dialog" aria-modal="true" aria-label="Новый файловый ключ">
+            <div className="fk-modal" role="dialog" aria-modal="true" aria-label="Новый файловый ключ" data-testid="fk-set-modal">
               <div className="lock-card">
                 <div className="lk-head mono">
                   <IconLockRound width={12} height={12} aria-hidden="true" focusable="false" />
@@ -1650,6 +1654,7 @@ export function ScreenLibrary() {
                     className={`lock-input mono${fkSetErr ? ' err' : ''}`}
                     type="password"
                     autoFocus
+                    data-testid="fk-set-pass1"
                     value={fkNew1}
                     onChange={(e) => {
                       setFkNew1(e.target.value)
@@ -1665,6 +1670,7 @@ export function ScreenLibrary() {
                   <input
                     className={`lock-input mono${fkSetErr ? ' err' : ''}`}
                     type="password"
+                    data-testid="fk-set-pass2"
                     value={fkNew2}
                     onChange={(e) => {
                       setFkNew2(e.target.value)
@@ -1679,12 +1685,13 @@ export function ScreenLibrary() {
                   <span
                     className={`key-hint mono${fkSetErr ? ' err' : ''}`}
                     role="status"
+                    data-testid="fk-set-hint"
                   >
                     {fkSetErr ?? 'описание файла будет зашифровано этим ключом'}
                   </span>
                 </div>
                 <div className="fk-modal-row">
-                  <button className="btn btn-primary btn-sm" onClick={() => void saveFileKeySetup()}>
+                  <button className="btn btn-primary btn-sm" data-testid="fk-set-save" onClick={() => void saveFileKeySetup()}>
                     <IconLockRound width={13} height={13} stroke="currentColor" strokeWidth={1.6} />
                     Запереть
                   </button>

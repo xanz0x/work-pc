@@ -57,6 +57,11 @@ PLAYWRIGHT_BROWSERS_PATH=/pw-browsers APP_URL=http://localhost:3000 \
   APP_PASSWORD=IceKrymTeam13@ npx playwright test
 APP_URL=http://localhost:3000 APP_PASSWORD=IceKrymTeam13@ node scripts/long-dialog.mjs
 ```
+Новые сценарии e2e (сессия 3): `09-file-key.spec.ts` (файловый ключ, пароль
+файла `e2e-file-pass-2026`), `10-first-frame-write.spec.ts` (архив из 20 файлов),
+второй тест в `06-storage-migration.spec.ts` (вход через `/login`).
+Хелпер чтения IndexedDB из тестов — `tests/e2e/idb.ts`.
+
 Браузеры Playwright после сброса пода ставятся заново:
 `PLAYWRIGHT_BROWSERS_PATH=/pw-browsers npx playwright install chromium`.
 Зависимости — pnpm: `npx -y pnpm@10.11.0 install --frozen-lockfile`.

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { readDoc } from './idb'
 
 /**
  * Сценарий 6 (§1.3 хвоста волны 2): переезд «старого» профиля.
@@ -30,9 +31,14 @@ const OLD_NOTE = {
   color: 'amber',
 }
 
-test('миграция: «старый» localStorage-профиль переезжает в IndexedDB', async ({ page }) => {
+/** Посев старого профиля. Init-script выполняется и при reload, поэтому
+ *  сеем один раз за сессию: иначе бэкап пересевался бы и «уборка на втором
+ *  запуске» давала ложный провал. */
+async function seedOldProfile(page: import('@playwright/test').Page) {
   await page.addInitScript(
     ({ file, note }) => {
+      if (sessionStorage.getItem('wf.e2e.seeded') === '1') return
+      sessionStorage.setItem('wf.e2e.seeded', '1')
       localStorage.setItem('wf.files.v1', JSON.stringify([file]))
       localStorage.setItem('wf.notes.v1', JSON.stringify([note]))
       localStorage.setItem('wf.chat.v1', JSON.stringify([]))
@@ -44,6 +50,10 @@ test('миграция: «старый» localStorage-профиль перее�
     },
     { file: OLD_FILE, note: OLD_NOTE },
   )
+}
+
+test('миграция: «старый» localStorage-профиль переезжает в IndexedDB', async ({ page }) => {
+  await seedOldProfile(page)
 
   await page.goto('/')
   await page.getByTestId('nav-library').click()
@@ -54,27 +64,15 @@ test('миграция: «старый» localStorage-профиль перее�
   })
 
   /* 2. Копия оказалась в IndexedDB. */
-  const inDb = await page.evaluate(async () => {
-    const read = () =>
-      new Promise<unknown>((resolve) => {
-        const open = indexedDB.open('workflow')
-        open.onsuccess = () => {
-          const db = open.result
-          const tx = db.transaction('docs', 'readonly')
-          const req = tx.objectStore('docs').get('wf.files.v1')
-          req.onsuccess = () => resolve(req.result ?? null)
-          req.onerror = () => resolve(null)
-        }
-        open.onerror = () => resolve(null)
-      })
-    for (let i = 0; i < 40; i += 1) {
-      const rec = (await read()) as { value?: { id: string }[] } | null
-      if (rec?.value?.some((f) => f.id === 'legacy-1')) return true
-      await new Promise((r) => setTimeout(r, 250))
-    }
-    return false
-  })
-  expect(inDb, 'копия файла обязана появиться в IndexedDB').toBe(true)
+  await expect
+    .poll(
+      async () => {
+        const files = await readDoc<{ id: string }[]>(page, 'wf.files.v1')
+        return files?.some((f) => f.id === 'legacy-1') ?? false
+      },
+      { timeout: 20_000 },
+    )
+    .toBe(true)
 
   /* 3. Первый запуск ничего не удаляет: localStorage остаётся бэкапом. */
   const backupAfterFirst = await page.evaluate(() => localStorage.getItem('wf.files.v1'))
@@ -93,5 +91,47 @@ test('миграция: «старый» localStorage-профиль перее�
     .toBeNull()
 
   /* Конфиг замка синхронный — он обязан остаться в localStorage. */
+  await expect(page.evaluate(() => localStorage.getItem('wf.lock.config'))).resolves.not.toBeNull()
+})
+
+/**
+ * Порядок миграции при входе через страницу входа (замечание QA к §1.3).
+ * `VaultProvider` живёт в корневом layout, поэтому storageReady() и
+ * migrateLocalStorage() выполняются и на `/login`. Это ожидаемое поведение:
+ * «первый запуск» — первая загрузка ЛЮБОЙ страницы приложения. Значит после
+ * входа страница `/` — уже второй запуск, и бэкап к этому моменту убран, а
+ * данные обязаны быть на экране и в базе.
+ */
+test('миграция при входе через /login: первый запуск — сама страница входа', async ({ page }) => {
+  test.skip(!process.env.APP_PASSWORD, 'нужен APP_PASSWORD для входа')
+  await seedOldProfile(page)
+
+  await page.goto('/login')
+  /* Первая загрузка (страница входа) — копия уже сделана, бэкап ещё на месте. */
+  await expect
+    .poll(
+      async () => {
+        const files = await readDoc<{ id: string }[]>(page, 'wf.files.v1')
+        return files?.some((f) => f.id === OLD_FILE.id) ?? false
+      },
+      { timeout: 20_000 },
+    )
+    .toBe(true)
+  expect(await page.evaluate(() => localStorage.getItem('wf.files.v1'))).not.toBeNull()
+
+  await page.getByTestId('login-password').fill(process.env.APP_PASSWORD as string)
+  await page.getByTestId('login-submit').click()
+  await expect(page).toHaveURL(/\/$/, { timeout: 30_000 })
+
+  /* Второй запуск (уже сама библиотека): данные на экране, бэкап убран. */
+  await page.getByTestId('nav-library').click()
+  await expect(page.getByText(OLD_FILE.name, { exact: false }).first()).toBeVisible({
+    timeout: 20_000,
+  })
+  await expect
+    .poll(async () => page.evaluate(() => localStorage.getItem('wf.files.v1')), {
+      timeout: 20_000,
+    })
+    .toBeNull()
   await expect(page.evaluate(() => localStorage.getItem('wf.lock.config'))).resolves.not.toBeNull()
 })
