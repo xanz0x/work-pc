@@ -74,13 +74,38 @@ def test_login_correct_and_session_and_logout():
 
 # --- Engine gating ---
 def test_chat_local_engine_409(authed):
+    """NF-2: локальный режим не уходит в облако. Пока Ollama на машине нет,
+    маршрут отвечает 409 и говорит, что именно сделать (движок/модель)."""
     r = authed.post(
         f"{BASE}/ai-api/chat",
         json={"engine": "local", "messages": [{"role": "user", "content": "hi"}]},
     )
     assert r.status_code == 409
     body = r.json()
-    assert body.get("code") == "ENGINE_NOT_CONFIGURED"
+    assert body.get("code") in {
+        "ENGINE_NOT_CONFIGURED",
+        "ENGINE_NOT_RUNNING",
+        "MODEL_NOT_PULLED",
+    }
+    # честная инструкция вместо общего «не работает»
+    assert "ollama" in body.get("error", "").lower()
+
+
+def test_engine_status(anon, authed):
+    """NF-2: статус движка закрыт сессией и отдаёт честную инструкцию."""
+    assert anon.get(f"{BASE}/ai-api/engine").status_code == 401
+
+    r = authed.get(f"{BASE}/ai-api/engine?model=qwen-7b")
+    assert r.status_code == 200
+    body = r.json()
+    local = body["local"]
+    assert local["model"] == "qwen2.5:7b"
+    assert local["pull"] == "ollama pull qwen2.5:7b"
+    assert isinstance(local["models"], list)
+    if not local["ok"]:
+        assert local["code"] in {"ENGINE_NOT_RUNNING", "MODEL_NOT_PULLED"}
+        assert local["hint"]
+    assert "ok" in body["cloud"]
 
 
 # --- Error hygiene: no env names / stack in errors ---

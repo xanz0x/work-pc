@@ -29,9 +29,12 @@ export type LogFields = {
   where?: string
   /** Короткое машинное описание причины; текст пользователя сюда не кладём. */
   reason?: string
+  /** Кто отвечал на ход: `ollama` или `cloud` (NF-2). */
+  engine?: string
 }
 
 const ALLOWED: (keyof LogFields)[] = [
+  'engine',
   'rid',
   'route',
   'method',

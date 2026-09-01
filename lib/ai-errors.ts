@@ -5,6 +5,8 @@
 
 export type AiErrorCode =
   | 'ENGINE_NOT_CONFIGURED'
+  | 'ENGINE_NOT_RUNNING'
+  | 'MODEL_NOT_PULLED'
   | 'CLOUD_NOT_CONFIGURED'
   | 'UPSTREAM_BUSY'
   | 'UPSTREAM_ERROR'
@@ -20,8 +22,18 @@ export type AiErrorView = { code: AiErrorCode; title: string; hint: string; retr
 export const AI_ERRORS: Record<AiErrorCode, { title: string; hint: string; retry: boolean }> = {
   ENGINE_NOT_CONFIGURED: {
     title: 'Локальный движок не подключён',
-    hint: 'Выбран локальный режим, а локальной модели на устройстве нет. Смените движок в настройках или дождитесь локального движка.',
+    hint: 'Выбран локальный режим, а движок на устройстве не настроен. Проверьте раздел «Движок ИИ» в настройках или смените режим.',
     retry: false,
+  },
+  ENGINE_NOT_RUNNING: {
+    title: 'Локальный движок не запущен',
+    hint: 'Ollama не отвечает на своём адресе. Установите её, выполните «ollama serve» и нажмите «Проверить снова» в настройках движка.',
+    retry: true,
+  },
+  MODEL_NOT_PULLED: {
+    title: 'Модель не скачана',
+    hint: 'Движок работает, но выбранной модели на устройстве нет. Выполните «ollama pull» для неё — команда показана в настройках движка.',
+    retry: true,
   },
   CLOUD_NOT_CONFIGURED: {
     title: 'Облачный движок не настроен',

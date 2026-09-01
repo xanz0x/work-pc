@@ -12536,3 +12536,79 @@ button.chip:hover {
   justify-content: center;
   padding: 6px 0 18px;
 }
+
+/* ============================================================
+   NF-2 · ПАНЕЛЬ ЛОКАЛЬНОГО ДВИЖКА
+   Одна плашка на два экрана (настройки и чат), поэтому она живёт в базе:
+   в чате не должно быть зависимости от того, открывали ли настройки.
+   ============================================================ */
+
+.engine-panel {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--line-2);
+  border-left: 2px solid var(--line-3);
+  border-radius: 10px;
+  background: var(--bg-2);
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-2);
+}
+
+.engine-panel[data-state='ok'] {
+  border-left-color: var(--ok);
+}
+
+.engine-panel[data-state='off'],
+.engine-panel[data-state='error'] {
+  border-left-color: var(--warn);
+  background: color-mix(in oklab, var(--warn) 6%, var(--bg-2));
+}
+
+.engine-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.engine-panel p {
+  margin-top: 8px;
+}
+
+.engine-panel ul {
+  margin-top: 6px;
+  padding-left: 18px;
+  list-style: disc;
+}
+
+.engine-panel-cmd {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.engine-panel-cmd code {
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--bg-3);
+  border: 1px solid var(--line-2);
+  font-size: 12px;
+}
+
+/* В чате панель стоит над композером: узкая, без верхнего отступа секции. */
+.chat-engine-warn {
+  margin: 0 20px 10px;
+}
+
+.chat-engine-warn .engine-panel {
+  margin-top: 0;
+}
+
+@media (max-width: 768px) {
+  .chat-engine-warn {
+    margin: 0 12px 8px;
+  }
+}

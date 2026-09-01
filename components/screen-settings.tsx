@@ -21,7 +21,9 @@ import {
 } from './icons'
 import { useVault, type ToggleId } from '@/lib/vault-store'
 import { useIndexActions, useIndexSummary } from '@/lib/indexer/context'
-import { ENGINES, LOCAL_ENGINE_READY, MODELS, NO_DATA, engineOf, fmtBytes, modelOf } from '@/lib/data'
+import { ENGINES, MODELS, NO_DATA, engineOf, fmtBytes, modelOf } from '@/lib/data'
+import { EnginePanel } from '@/components/engine-panel'
+import { useEngineStore } from '@/lib/store/engine'
 import { NumTicker } from './ui/num-ticker'
 import { SecuritySection } from './security-section'
 import { SecretsSection } from './secrets-section'
@@ -123,6 +125,7 @@ const plural = (n: number, one: string, few: string, many: string) => {
  */
 export function ScreenSettings() {
   const v = useVault()
+  const engine = useEngineStore()
   const idxs = useIndexSummary()
   const idxa = useIndexActions()
   const d = v.draftSettings
@@ -173,6 +176,8 @@ export function ScreenSettings() {
 
   const notifyOn = NOTIFY_TOGGLES.filter((t) => d.toggles[t.id]).length
   const draftEngine = engineOf(d.engine)
+  /* NF-2: готов ли локальный движок — знает домен движка, а не константа. */
+  const localReady = engine.local?.ok === true
   const draftModel = modelOf(d.model)
   const { stats, mix } = v
 
@@ -273,9 +278,19 @@ export function ScreenSettings() {
                     Движок ИИ, конвейер обработки и границы приватности. Всё применяется локально.
                   </p>
                 </div>
-                <span className={`badge set-hero-badge ${v.engineView.isCloud ? 'badge-warn' : 'badge-ok'}`}>
-                  <i className={`net-dot${v.engineView.isCloud ? ' warn' : ''}`} />
-                  {v.engineView.isCloud ? 'есть исходящие' : 'локальный режим'}
+                {/* NF-2: бейдж не обещает локальный режим, если движок молчит. */}
+                <span
+                  className={`badge set-hero-badge ${
+                    v.engineView.isCloud || !v.engineView.ready ? 'badge-warn' : 'badge-ok'
+                  }`}
+                  data-testid="settings-hero-badge"
+                >
+                  <i className={`net-dot${v.engineView.isCloud || !v.engineView.ready ? ' warn' : ''}`} />
+                  {v.engineView.isCloud
+                    ? 'есть исходящие'
+                    : v.engineView.ready
+                      ? 'локальный режим'
+                      : 'движок не запущен'}
                 </span>
               </div>
               <div className="set-hero-stats">
@@ -283,11 +298,12 @@ export function ScreenSettings() {
                   <span className="label-mono">Движок</span>
                   <b>{v.engineView.label}</b>
                   <span className="mono set-stat-sub num">
-                    {stats.tokensPerSec === null
-                      ? v.engineView.isCloud
-                        ? v.engineView.model
-                        : `${NO_DATA} токенов/с`
-                      : `${stats.tokensPerSec} токенов/с`}
+                    {/* NF-2: скорость только настоящая — из последнего локального ответа. */}
+                    {v.engineView.isCloud
+                      ? v.engineView.model
+                      : engine.metrics.tokensPerSec !== null
+                        ? `${engine.metrics.tokensPerSec} токенов/с`
+                        : `${NO_DATA} токенов/с`}
                   </span>
                 </div>
                 <div className="set-stat">
@@ -367,22 +383,33 @@ export function ScreenSettings() {
                     </option>
                   ))}
                 </select>
-                <span className={`badge ${LOCAL_ENGINE_READY ? 'badge-ok' : 'badge-warn'}`} data-testid="model-state">
-                  {LOCAL_ENGINE_READY
+                <span
+                  className={`badge ${localReady ? 'badge-ok' : 'badge-warn'}`}
+                  data-testid="model-state"
+                >
+                  {localReady
                     ? d.model === v.settings.model
-                      ? 'загружена'
-                      : 'загрузится при сохранении'
-                    : 'локальный движок не подключён'}
+                      ? `установлена · ${engine.local?.model ?? ''}`
+                      : 'применится после сохранения'
+                    : engine.local?.code === 'MODEL_NOT_PULLED'
+                      ? 'модели нет на устройстве'
+                      : 'локальный движок не запущен'}
                 </span>
                 <span className="stat-line" style={{ marginTop: 0 }}>
                   {draftModel.ram ?? NO_DATA} ОЗУ ·{' '}
-                  <b className="num">{draftModel.tokensPerSec ?? NO_DATA} токенов/с</b>
+                  <b className="num">
+                    {engine.metrics.tokensPerSec ?? draftModel.tokensPerSec ?? NO_DATA} токенов/с
+                  </b>
                 </span>
               </div>
 
+              {/* NF-2: настоящее состояние локального движка и что сделать, если он молчит. */}
+              <EnginePanel />
+
               <div className="sec-note">
-                Требования и скорость появятся из настоящего локального движка. Пока его нет, эти
-                метрики показывают «{NO_DATA}»: у них нет источника.
+                Скорость выше — из последнего локального ответа: её присылает сам движок
+                (eval_count / eval_duration). Пока локального ответа не было, стоит «{NO_DATA}»:
+                у метрики нет источника.
               </div>
 
               {!draftEngine.offline && (

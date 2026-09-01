@@ -1627,3 +1627,18 @@
     color: var(--text-3);
   }
 }
+
+@layer wf045 {
+
+
+  /* В чате панель стоит над композером: узкая, без верхнего отступа секции. */
+  .chat-engine-warn {
+    margin: 0 20px 10px;
+  }
+
+  @media (max-width: 768px) {
+    .chat-engine-warn {
+      margin: 0 12px 8px;
+    }
+  }
+}

@@ -20,6 +20,7 @@ import { ClockProvider, useNow } from '@/lib/store/clock'
 import { RedactedProvider } from '@/lib/redact-context'
 import { VaultProvider, useVault } from '@/lib/vault-store'
 import { useDataStore } from '@/lib/store/data'
+import { useNavStore } from '@/lib/store/nav'
 import { useToast } from '@/lib/store/toast'
 
 // React 19 в тестовой среде ждёт этот флаг — иначе act() ругается.
@@ -188,6 +189,70 @@ describe('AR-1 · действие перерисовывает свою обл�
 
     expect(toastC.renders - toastBefore).toBe(1)
     expect(dataC.renders - dataBefore).toBe(0)
+  })
+})
+
+describe('AR-1 · узкие подписки экранов', () => {
+  it('строка поиска не перерисовывает домен данных, а тост — навигацию', async () => {
+    vi.useFakeTimers()
+    const navC: Counter = { renders: 0 }
+    const dataC: Counter = { renders: 0 }
+    const api: { setQuery: ((q: string) => void) | null; flash: ((m: string) => void) | null } = {
+      setQuery: null,
+      flash: null,
+    }
+
+    function NavReader() {
+      useCount(navC)
+      const NAV = useNavStore()
+      const ref = useRef(NAV.setQuery)
+      ref.current = NAV.setQuery
+      useEffect(() => {
+        api.setQuery = (q: string) => ref.current(q)
+      }, [])
+      return <span>{NAV.query}</span>
+    }
+    function DataReader() {
+      useCount(dataC)
+      const D = useDataStore()
+      const { flash } = useToast()
+      const ref = useRef(flash)
+      ref.current = flash
+      useEffect(() => {
+        api.flash = (m: string) => ref.current(m)
+      }, [])
+      return <span>{D.files.length}</span>
+    }
+
+    await mount(
+      <RedactedProvider>
+        <VaultProvider>
+          <NavReader />
+          <DataReader />
+        </VaultProvider>
+      </RedactedProvider>,
+    )
+    await act(async () => {
+      vi.advanceTimersByTime(500)
+    })
+
+    let navBefore = navC.renders
+    let dataBefore = dataC.renders
+    await act(async () => {
+      api.setQuery?.('аренда')
+    })
+    // Поиск — дело навигации: корпус о нём не знает.
+    expect(navC.renders - navBefore).toBe(1)
+    expect(dataC.renders - dataBefore).toBe(0)
+
+    navBefore = navC.renders
+    dataBefore = dataC.renders
+    await act(async () => {
+      api.flash?.('Готово')
+    })
+    // Тост — свой домен: навигация не дёргается.
+    expect(navC.renders - navBefore).toBe(0)
+    expect(dataC.renders - dataBefore).toBe(1)
   })
 })
 

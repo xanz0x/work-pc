@@ -16,6 +16,7 @@ import { NumTicker } from './ui/num-ticker'
 import { StatusClock } from './ui/status-clock'
 import { ScreenLock } from './screen-lock'
 import { prefetchScreen } from './screens'
+import { useEngineStore } from '@/lib/store/engine'
 import { useVault } from '@/lib/vault-store'
 import { useIndexActions } from '@/lib/indexer/context'
 import { fmtBytes } from '@/lib/data'
@@ -79,6 +80,8 @@ const plural = (n: number, one: string, few: string, many: string) => {
  */
 export function AppShell({ children }: { children: ReactNode }) {
   const v = useVault()
+  /* NF-2: скорость движка — из его же ответа, а не из выдуманной метрики. */
+  const engine = useEngineStore()
   const idxa = useIndexActions()
   const { stats, clusters } = v
 
@@ -350,11 +353,14 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <span className="ep-name">{v.engineView.label}</span>
                 <span className="ep-sub num">
                   {v.engineView.model} ·{' '}
-                  {stats.tokensPerSec === null
-                    ? v.engineView.isCloud
+                  {/* NF-2: скорость — только настоящая, из последнего ответа движка. */}
+                  {engine.metrics.tokensPerSec !== null
+                    ? `${engine.metrics.tokensPerSec} ток/с`
+                    : v.engineView.isCloud
                       ? 'внешняя модель'
-                      : 'не подключён'
-                    : `${stats.tokensPerSec} ток/с`}
+                      : v.engineView.ready
+                        ? 'на устройстве'
+                        : 'не подключён'}
                 </span>
               </span>
               <i className={`net-dot${v.engineView.isCloud ? ' warn' : ''}`} />

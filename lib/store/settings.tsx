@@ -90,20 +90,34 @@ export type EngineView = {
   consented: boolean
 }
 
-export function buildEngineView(s: Settings): EngineView {
+/**
+ * NF-2: готовность локального движка приходит снаружи — от домена движка,
+ * который спросил сервер, запущена ли Ollama и стоит ли модель. Без этих
+ * данных (второй аргумент не передан) продукт по-прежнему честно пишет
+ * «локальный движок не подключён», а не выдумывает готовность.
+ */
+export function buildEngineView(
+  s: Settings,
+  local?: { ok: boolean; model: string | null } | null,
+): EngineView {
   const e = engineOf(s.engine)
   const isCloud = !e.offline
+  const localReady = local?.ok ?? LOCAL_ENGINE_READY
   return {
     mode: s.engine,
     label: e.short,
-    model: isCloud ? CLOUD_MODEL_LABEL : modelOf(s.model).short,
+    model: isCloud
+      ? CLOUD_MODEL_LABEL
+      : localReady && local?.model
+        ? local.model
+        : modelOf(s.model).short,
     isCloud,
-    ready: isCloud || LOCAL_ENGINE_READY,
+    ready: isCloud || localReady,
     statusLabel: isCloud
       ? s.engine === 'cloud'
         ? 'ВНЕШНЯЯ МОДЕЛЬ'
         : 'ГИБРИДНЫЙ РЕЖИМ'
-      : LOCAL_ENGINE_READY
+      : localReady
         ? 'ЛОКАЛЬНЫЙ РЕЖИМ'
         : 'ЛОКАЛЬНЫЙ ДВИЖОК НЕ ПОДКЛЮЧЁН',
     netLabel: isCloud ? 'ВНИМАНИЕ · ЕСТЬ ИСХОДЯЩИЕ' : 'НЕТ ИСХОДЯЩИХ ЗАПРОСОВ',
@@ -124,7 +138,6 @@ export type SettingsCtx = {
   revokeCloudConsent: () => void
   /** Источник индексации: пишет indexer-провайдер после выбора папки. */
   setFolder: (path: string) => void
-  engineView: EngineView
 }
 
 const Ctx = createContext<SettingsCtx | null>(null)
@@ -191,8 +204,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     [setRaw],
   )
 
-  const engineView = useMemo(() => buildEngineView(settings), [settings])
-
   const value = useMemo<SettingsCtx>(
     () => ({
       settings,
@@ -206,10 +217,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       grantCloudConsent,
       revokeCloudConsent,
       setFolder,
-      engineView,
     }),
     [
-      dirty, draftSettings, engineView, grantCloudConsent, ready, revertSettings,
+      dirty, draftSettings, grantCloudConsent, ready, revertSettings,
       revokeCloudConsent, saveSettings, setDraftSettings, setFolder, setToggle, settings,
     ],
   )

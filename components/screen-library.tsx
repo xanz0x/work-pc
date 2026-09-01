@@ -26,7 +26,15 @@ import {
 import { CLUSTERS, clusterOf, fmtBytes, type ClusterId, type FileView } from '@/lib/data'
 import { DAY, HOUR, TTL_OPTIONS, fmtLeft, fmtWhen, type Note } from '@/lib/notes'
 import type { EdgeReason } from '@/lib/graph'
-import { useVault, useNow } from '@/lib/vault-store'
+import {
+  useDataStore,
+  useLockStore,
+  useNavStore,
+  useNotifsStore,
+  useNow,
+  useSettingsStore,
+  useToast,
+} from '@/lib/vault-store'
 import { useIndexActions, useIndexSummary } from '@/lib/indexer/context'
 import {
   DENSITY_LABEL,
@@ -61,9 +69,13 @@ const FILE_PAGE = 150
 /* ============================================================
    КОНЦЕПЦИЯ «ДВА СЛОЯ ПАМЯТИ»
    Файл — это то, что вам прислали. Стикер — то, что вы подумали.
-   Оба слоя лежат в одном сейфе (useVault): тот же корпус видят
+   Оба слоя лежат в одном сейфе: тот же корпус видят
    карта, чат и настройки. Поэтому «14 файлов» здесь и «14 файлов»
    в сайдбаре — это одно и то же число, а не две картинки.
+
+   AR-1: экран подписан точечно — `useDataStore` (корпус и стикеры),
+   `useNavStore` (фокусы и поиск), `useLockStore` (замок), `useToast`.
+   Чужой тост или уведомление его больше не перерисовывают.
    ============================================================ */
 
 type Sel = { kind: 'file' | 'note'; id: string }
@@ -78,11 +90,14 @@ const REASON_LABEL: Record<EdgeReason, string> = {
 }
 
 export function ScreenLibrary() {
-  const v = useVault()
+  const D = useDataStore()
+  const NAV = useNavStore()
+  const LK = useLockStore()
+  const { flash } = useToast()
   const idxs = useIndexSummary()
   const idxa = useIndexActions()
   const now = useNow()
-  const { views, liveNotes, notes, stats } = v
+  const { views, liveNotes, notes, stats } = D
 
   const [view, setView] = useState<Layer>('all')
   const [cat, setCat] = useState<CatId>('all')
@@ -134,15 +149,13 @@ export function ScreenLibrary() {
     return () => mo.disconnect()
   }, [])
 
-  const flash = v.flash
-
   /* ---------- Файловые ключи (этап 5) ---------- */
 
   const fk = useFileKeys({
-    status: v.lock.status,
-    fileKeysCount: v.fileKeysCount,
+    status: LK.lock.status,
+    fileKeysCount: LK.fileKeysCount,
     notes,
-    patchNote: v.patchNote,
+    patchNote: D.patchNote,
   })
 
   const [fkAsk, setFkAsk] = useState<string | null>(null) // ввод ключа к файлу
@@ -158,13 +171,13 @@ export function ScreenLibrary() {
 
   /* ---------- поиск из шапки ---------- */
 
-  const searching = v.query.trim() !== ''
+  const searching = NAV.query.trim() !== ''
   /** Стикеры, попавшие в тот же поиск: «найдено» в шапке и здесь совпадает. */
   const matchedNotes = useMemo(() => {
     const ids = new Set<string>()
-    for (const h of v.hits) if (h.kind === 'note') ids.add(h.id)
+    for (const h of NAV.hits) if (h.kind === 'note') ids.add(h.id)
     return ids
-  }, [v.hits])
+  }, [NAV.hits])
 
   /* ---------- слои ---------- */
 
@@ -199,9 +212,9 @@ export function ScreenLibrary() {
 
   const shownFiles = useMemo(() => {
     let list = cat === 'all' ? views : views.filter((f) => f.cluster === cat)
-    if (searching) list = list.filter((f) => v.matchedFiles.has(f.id))
+    if (searching) list = list.filter((f) => NAV.matchedFiles.has(f.id))
     return list
-  }, [views, cat, searching, v.matchedFiles])
+  }, [views, cat, searching, NAV.matchedFiles])
 
   /**
    * NF-1: на папке из тысячи файлов рисовать всё сразу нельзя — каждая
@@ -209,7 +222,7 @@ export function ScreenLibrary() {
    * Показываем страницами, «Показать ещё» добавляет следующую.
    */
   const [fileLimit, setFileLimit] = useState(FILE_PAGE)
-  useEffect(() => setFileLimit(FILE_PAGE), [cat, searching, v.query, view])
+  useEffect(() => setFileLimit(FILE_PAGE), [cat, searching, NAV.query, view])
   const pagedFiles = useMemo(
     () => (shownFiles.length > fileLimit ? shownFiles.slice(0, fileLimit) : shownFiles),
     [shownFiles, fileLimit],
@@ -236,19 +249,19 @@ export function ScreenLibrary() {
   const handleDropCluster = useCallback(
     (fileId: string, clusterRaw: string) => {
       if (!(CLUSTERS.some((c) => c.id === clusterRaw))) return
-      v.retagFile(fileId, clusterRaw as ClusterId)
+      D.retagFile(fileId, clusterRaw as ClusterId)
     },
-    [v],
+    [D],
   )
 
   /** Стикер бросили на карточку файла — с тостом и отменой. */
   const handlePinNote = useCallback(
     (noteId: string, fileId: string) => {
       const note = liveNotes.find((n) => n.id === noteId)
-      const file = v.fileById(fileId)
+      const file = D.fileById(fileId)
       if (!note || !file || note.pinnedTo === fileId) return
       lastPinRef.current = { noteId, pinnedTo: note.pinnedTo }
-      v.patchNote(noteId, (n) => ({ ...n, pinnedTo: fileId }))
+      D.patchNote(noteId, (n) => ({ ...n, pinnedTo: fileId }))
       flash(`Стикер приколот к «${file.name}»`)
       /* Отмена живёт прямо в тосте: пока сообщение не сменилось,
          повторное нажатие возвращает прежнее состояние. */
@@ -262,7 +275,7 @@ export function ScreenLibrary() {
           btn.addEventListener('click', () => {
             const prev = lastPinRef.current
             if (prev && prev.noteId === noteId) {
-              v.patchNote(noteId, (n) => ({ ...n, pinnedTo: prev.pinnedTo }))
+              D.patchNote(noteId, (n) => ({ ...n, pinnedTo: prev.pinnedTo }))
             }
             btn.remove()
           })
@@ -270,7 +283,7 @@ export function ScreenLibrary() {
         }
       }, 0)
     },
-    [liveNotes, v, flash],
+    [liveNotes, D, NAV, flash],
   )
 
   /* Фильтр мог отрезать сам себя: сбрасываем, если выбранного больше нет. */
@@ -305,28 +318,28 @@ export function ScreenLibrary() {
 
   /* «Открыть файл» из чата, карты или палитры Ctrl+K. */
   useEffect(() => {
-    if (!v.fileFocus) return
-    if (!views.some((f) => f.id === v.fileFocus!.id)) return
+    if (!NAV.fileFocus) return
+    if (!views.some((f) => f.id === NAV.fileFocus!.id)) return
     setView('all')
     setCat('all')
-    setSel({ kind: 'file', id: v.fileFocus.id })
+    setSel({ kind: 'file', id: NAV.fileFocus.id })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [v.fileFocus])
+  }, [NAV.fileFocus])
 
   /* Стикер открыли с другого места — инспектор показывает его. */
   useEffect(() => {
-    if (!v.noteFocus) return
-    if (liveNotes.some((n) => n.id === v.noteFocus!.id)) setSel({ kind: 'note', id: v.noteFocus.id })
+    if (!NAV.noteFocus) return
+    if (liveNotes.some((n) => n.id === NAV.noteFocus!.id)) setSel({ kind: 'note', id: NAV.noteFocus.id })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [v.noteFocus])
+  }, [NAV.noteFocus])
 
   /* Клик по кластеру в сайдбаре или в палитре — фильтр библиотеки. */
   useEffect(() => {
-    if (!v.clusterFocus) return
-    const id = v.clusterFocus.id as CatId
+    if (!NAV.clusterFocus) return
+    const id = NAV.clusterFocus.id as CatId
     setView(id === 'all' ? 'all' : 'files')
     setCat(id)
-  }, [v.clusterFocus])
+  }, [NAV.clusterFocus])
 
   const isOpen = useCallback((n: Note) => !n.locked || unlocked.includes(n.id), [unlocked])
 
@@ -378,7 +391,7 @@ export function ScreenLibrary() {
   }
 
   function removeLock(id: string) {
-    v.patchNote(id, (n) => ({ ...n, locked: false, secret: null }))
+    D.patchNote(id, (n) => ({ ...n, locked: false, secret: null }))
     setUnlocked((u) => u.filter((x) => x !== id))
     setSettingKeyFor(null)
     setNewKey('')
@@ -394,7 +407,7 @@ export function ScreenLibrary() {
       flash('Разблокируйте сейф заново, чтобы задать ключ')
       return
     }
-    v.patchNote(id, (n) => ({ ...n, locked: true, secret: packed.kind === 'ct' ? packed.value : val }))
+    D.patchNote(id, (n) => ({ ...n, locked: true, secret: packed.kind === 'ct' ? packed.value : val }))
     setUnlocked((u) => u.filter((x) => x !== id))
     setSettingKeyFor(null)
     setNewKey('')
@@ -413,15 +426,15 @@ export function ScreenLibrary() {
         setFkCooldownUntil(0)
         return
       }
-      v.openFile(id)
+      NAV.openFile(id)
     },
-    [fk, v],
+    [fk, NAV],
   )
 
   async function submitFileKey() {
     const id = fkAsk
     const val = fkVal.trim()
-    if (!id || !val || Date.now() < fkCooldownUntil || v.lock.busy) return
+    if (!id || !val || Date.now() < fkCooldownUntil || LK.lock.busy) return
     const r = await fk.openWithFileKey(id, val)
     if (r.ok) {
       setFkErr(null)
@@ -429,7 +442,7 @@ export function ScreenLibrary() {
       setFkCooldownUntil(0)
       setFkAsk(null)
       flash('Файл открыт — до блокировки сейфа или конца сеанса')
-      v.openFile(id)
+      NAV.openFile(id)
       return
     }
     if (r.reason === 'needUnlock') {
@@ -438,7 +451,7 @@ export function ScreenLibrary() {
       setFkErr(null)
       setFkVal('')
       setFkAsk(null)
-      v.openFile(id)
+      NAV.openFile(id)
     } else {
       if (r.delayMs > 0) setFkCooldownUntil(Date.now() + r.delayMs)
       setFkErr(
@@ -476,12 +489,12 @@ export function ScreenLibrary() {
   /* ---------- Жизнь стикера ---------- */
 
   function makePermanent(id: string) {
-    v.patchNote(id, (n) => ({ ...n, expiresAt: null, lifeSpan: null }))
+    D.patchNote(id, (n) => ({ ...n, expiresAt: null, lifeSpan: null }))
     flash('Стикер закреплён навсегда')
   }
 
   function burnNow(id: string) {
-    v.burnNote(id)
+    D.burnNote(id)
     setUnlocked((u) => u.filter((x) => x !== id))
   }
 
@@ -557,7 +570,7 @@ export function ScreenLibrary() {
 
     if (editing) {
       const id = editing
-      v.patchNote(id, (n) => ({
+      D.patchNote(id, (n) => ({
         ...n,
         title,
         body: text,
@@ -575,7 +588,7 @@ export function ScreenLibrary() {
     }
 
     /* Стикер уходит в общий сейф: карта памяти получает новый узел сразу. */
-    const id = v.addNote({
+    const id = D.addNote({
       title,
       body: text,
       tags: ['новое'],
@@ -648,10 +661,10 @@ export function ScreenLibrary() {
         const n = notes.find((x) => x.id === id)
         return `стикер «${n?.title ?? id}»`
       }
-      const f = v.fileById(id)
+      const f = D.fileById(id)
       return `файл «${f?.name ?? id}»`
     },
-    [notes, v],
+    [notes, D],
   )
 
   /**
@@ -665,7 +678,7 @@ export function ScreenLibrary() {
         <NoteCardContent
           note={n}
           isSelected={sel?.kind === 'note' && sel.id === n.id}
-          onSelect={(id) => v.openNote(id)}
+          onSelect={(id) => NAV.openNote(id)}
           onTag={(t) => {
             setView('notes')
             setTag(t)
@@ -717,9 +730,9 @@ export function ScreenLibrary() {
 
   /* Соседи выбранного файла считаются по настоящему графу связей. */
   const related = useMemo(
-    () => (selFile ? v.neighbors(selFile.id) : []),
+    () => (selFile ? D.neighbors(selFile.id) : []),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selFile?.id, v.graph],
+    [selFile?.id, D.graph],
   )
   const pinnedToSel = useMemo(
     () => (selFile ? liveNotes.filter((n) => n.pinnedTo === selFile.id) : []),
@@ -915,10 +928,10 @@ export function ScreenLibrary() {
             <div className="lib-filter-note panel">
               <span className="label-mono">Поиск</span>
               <span className="mono num">
-                «{v.query}» · {shownFiles.length} файлов, {shownNotes.length} стикеров
+                «{NAV.query}» · {shownFiles.length} файлов, {shownNotes.length} стикеров
               </span>
               <span className="grow" />
-              <button className="btn btn-ghost btn-sm" onClick={() => v.setQuery('')}>
+              <button className="btn btn-ghost btn-sm" onClick={() => NAV.setQuery('')}>
                 <IconClose />
                 Сбросить
               </button>
@@ -942,7 +955,7 @@ export function ScreenLibrary() {
                 <div className="comp-pin mono">
                   <IconPin width={12} height={12} stroke="currentColor" strokeWidth={1.5} />
                   <span className="ellipsis">
-                    приколоть к {v.fileById(pinTarget)?.name ?? 'файлу'}
+                    приколоть к {D.fileById(pinTarget)?.name ?? 'файлу'}
                   </span>
                   <button
                     className="pin-off"
@@ -1075,11 +1088,11 @@ export function ScreenLibrary() {
                 <div className="empty-state panel">
                   <IconSticker width={20} height={20} stroke="currentColor" strokeWidth={1.4} />
                   <span className="label-mono">
-                    {searching ? `Нет стикеров по «${v.query}»` : `Нет стикеров с тегом «${tag}»`}
+                    {searching ? `Нет стикеров по «${NAV.query}»` : `Нет стикеров с тегом «${tag}»`}
                   </span>
                   <button
                     className="btn btn-ghost btn-sm"
-                    onClick={() => (searching ? v.setQuery('') : setTag('Все'))}
+                    onClick={() => (searching ? NAV.setQuery('') : setTag('Все'))}
                   >
                     <IconRefresh />
                     Показать все
@@ -1139,11 +1152,11 @@ export function ScreenLibrary() {
                 <div className="empty-state panel">
                   <IconDoc width={20} height={20} stroke="currentColor" strokeWidth={1.4} />
                   <span className="label-mono">
-                    {searching ? `Нет файлов по «${v.query}»` : `В кластере «${catLabel}» пусто`}
+                    {searching ? `Нет файлов по «${NAV.query}»` : `В кластере «${catLabel}» пусто`}
                   </span>
                   <button
                     className="btn btn-ghost btn-sm"
-                    onClick={() => (searching ? v.setQuery('') : setCat('all'))}
+                    onClick={() => (searching ? NAV.setQuery('') : setCat('all'))}
                   >
                     <IconRefresh />
                     Показать все файлы
@@ -1265,7 +1278,7 @@ export function ScreenLibrary() {
                   <>
                     <button
                       className="btn btn-ghost btn-sm"
-                      onClick={() => v.extendNote(selNote.id, DAY)}
+                      onClick={() => D.extendNote(selNote.id, DAY)}
                     >
                       <IconRefresh />
                       +24 часа
@@ -1348,7 +1361,7 @@ export function ScreenLibrary() {
                 <button
                   className="rel-item pin-item"
                   onClick={() => {
-                    const f = selNote.pinnedTo ? v.fileById(selNote.pinnedTo) : undefined
+                    const f = selNote.pinnedTo ? D.fileById(selNote.pinnedTo) : undefined
                     if (f) {
                       if (view === 'notes') setView('all')
                       setSel({ kind: 'file', id: f.id })
@@ -1357,7 +1370,7 @@ export function ScreenLibrary() {
                 >
                   <IconDoc width={14} height={14} stroke="currentColor" strokeWidth={1.5} />
                   <span className="rn mono ellipsis">
-                    {v.fileById(selNote.pinnedTo)?.name ?? 'файл удалён'}
+                    {D.fileById(selNote.pinnedTo)?.name ?? 'файл удалён'}
                   </span>
                   <span className="rp mono num">открыть</span>
                 </button>
@@ -1378,7 +1391,7 @@ export function ScreenLibrary() {
                 {selNote.locked && !noteOpen
                   ? 'Закрытый стикер индексируется только по вашим тегам: модель не читает тело, пока не введён ключ.'
                   : `Текст разобран на смыслы и добавлен в карту памяти: ${
-                      v.neighbors(selNote.id).length
+                      D.neighbors(selNote.id).length
                     } связей в сейфе.`}
               </p>
             </div>
@@ -1393,7 +1406,7 @@ export function ScreenLibrary() {
               </button>
               <button
                 className="btn btn-ghost btn-full"
-                onClick={() => v.openOnMap(selNote.pinnedTo ?? selNote.id)}
+                onClick={() => NAV.openOnMap(selNote.pinnedTo ?? selNote.id)}
               >
                 <IconGraph />
                 Показать на карте
@@ -1443,7 +1456,7 @@ export function ScreenLibrary() {
                   <div className="badges-row">
                     <button
                       className="chip chip-cat chip-btn"
-                      onClick={() => selFile && v.openCluster(selFile.cluster)}
+                      onClick={() => selFile && NAV.openCluster(selFile.cluster)}
                       disabled={!selFile}
                     >
                       {selFile?.cat ?? '—'}
@@ -1605,7 +1618,7 @@ export function ScreenLibrary() {
               </button>
               <button
                 className="btn btn-ghost btn-full"
-                onClick={() => selFile && v.openOnMap(selFile.id)}
+                onClick={() => selFile && NAV.openOnMap(selFile.id)}
                 disabled={!selFile}
               >
                 <IconGraph />
@@ -1616,7 +1629,7 @@ export function ScreenLibrary() {
                 onClick={() => {
                   if (!selFile) return
                   fk.forgetKey(selFile.id)
-                  v.removeFile(selFile.id)
+                  D.removeFile(selFile.id)
                 }}
                 disabled={!selFile}
               >
@@ -1800,7 +1813,9 @@ function NoteCardContent({
   onTag: (tag: string) => void
   isSelected?: boolean
 }) {
-  const v = useVault()
+  const D = useDataStore()
+  const NAV = useNavStore()
+  const { flash } = useToast()
   const now = useNow()
 
   /* Разблокировка — локальное состояние карточки: ключ не покидает её. */
@@ -1815,7 +1830,7 @@ function NoteCardContent({
     left === null || !note.lifeSpan ? 100 : Math.max(2, Math.min(100, (left / note.lifeSpan) * 100))
   const soon = left !== null && left < HOUR
   const open = !note.locked || unlocked.includes(note.id)
-  const pinnedFile = note.pinnedTo ? v.fileById(note.pinnedTo) : undefined
+  const pinnedFile = note.pinnedTo ? D.fileById(note.pinnedTo) : undefined
   const keyApplies = askKey === note.id
 
   async function submitKey() {
@@ -1857,7 +1872,7 @@ function NoteCardContent({
     setAskKey(null)
     setKeyValue('')
     setKeyError(null)
-    v.flash('Стикер расшифрован на этом устройстве')
+    flash('Стикер расшифрован на этом устройстве')
   }
 
   return (
@@ -1972,8 +1987,8 @@ function NoteCardContent({
           className="pin-row mono pin-jump"
           onClick={(e) => {
             e.stopPropagation()
-            if (pinnedFile) v.openFile(pinnedFile.id)
-            else v.flash('Файл больше не в сейфе')
+            if (pinnedFile) NAV.openFile(pinnedFile.id)
+            else flash('Файл больше не в сейфе')
           }}
         >
           <IconPin width={12} height={12} stroke="currentColor" strokeWidth={1.5} />
@@ -2002,8 +2017,9 @@ function FileCardContent({
   /** Файл под ключом: содержимое скрыто, видно имя и бейдж (этап 5). */
   fkHidden?: boolean
 }) {
-  const v = useVault()
-  const pinned = v.liveNotes.filter((n) => n.pinnedTo === file.id).length
+  const D = useDataStore()
+  const NAV = useNavStore()
+  const pinned = D.liveNotes.filter((n) => n.pinnedTo === file.id).length
 
   return (
     <article
@@ -2030,7 +2046,7 @@ function FileCardContent({
           className="chip chip-cat chip-btn"
           onClick={(e) => {
             e.stopPropagation()
-            v.openCluster(file.cluster)
+            NAV.openCluster(file.cluster)
           }}
           aria-label={`Показать кластер ${file.cat}`}
         >

@@ -12,7 +12,7 @@
    scripts/check-css-split.py).
    ============================================================ */
 
-@layer wf001, wf002, wf003, wf004, wf005, wf006, wf007, wf008, wf009, wf010, wf011, wf012, wf013, wf014, wf015, wf016, wf017, wf018, wf019, wf020, wf021, wf022, wf023, wf024, wf025, wf026, wf027, wf028, wf029, wf030, wf031, wf032, wf033, wf034, wf035, wf036, wf037, wf038, wf039, wf040, wf041, wf042, wf043, wf044;
+@layer wf001, wf002, wf003, wf004, wf005, wf006, wf007, wf008, wf009, wf010, wf011, wf012, wf013, wf014, wf015, wf016, wf017, wf018, wf019, wf020, wf021, wf022, wf023, wf024, wf025, wf026, wf027, wf028, wf029, wf030, wf031, wf032, wf033, wf034, wf035, wf036, wf037, wf038, wf039, wf040, wf041, wf042, wf043, wf044, wf045;
 
 @theme inline {
   --color-background: var(--bg);
@@ -5929,5 +5929,74 @@
     to {
       transform: rotate(360deg);
     }
+  }
+}
+
+@layer wf045 {
+
+
+  /* ============================================================
+     NF-2 · ПАНЕЛЬ ЛОКАЛЬНОГО ДВИЖКА
+     Одна плашка на два экрана (настройки и чат), поэтому она живёт в базе:
+     в чате не должно быть зависимости от того, открывали ли настройки.
+     ============================================================ */
+
+  .engine-panel {
+    margin-top: 14px;
+    padding: 12px 14px;
+    border: 1px solid var(--line-2);
+    border-left: 2px solid var(--line-3);
+    border-radius: 10px;
+    background: var(--bg-2);
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: var(--text-2);
+  }
+
+  .engine-panel[data-state='ok'] {
+    border-left-color: var(--ok);
+  }
+
+  .engine-panel[data-state='off'],
+  .engine-panel[data-state='error'] {
+    border-left-color: var(--warn);
+    background: color-mix(in oklab, var(--warn) 6%, var(--bg-2));
+  }
+
+  .engine-panel-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .engine-panel p {
+    margin-top: 8px;
+  }
+
+  .engine-panel ul {
+    margin-top: 6px;
+    padding-left: 18px;
+    list-style: disc;
+  }
+
+  .engine-panel-cmd {
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .engine-panel-cmd code {
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: var(--bg-3);
+    border: 1px solid var(--line-2);
+    font-size: 12px;
+  }
+
+  .chat-engine-warn .engine-panel {
+    margin-top: 0;
   }
 }

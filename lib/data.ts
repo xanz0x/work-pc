@@ -290,6 +290,11 @@ export const LOCAL_ENGINE_READY = false
  */
 export const CLOUD_MODEL_LABEL = process.env.NEXT_PUBLIC_AI_MODEL_LABEL || 'Claude Sonnet 4.5'
 
+/** Пришло ли из клиента настоящее имя модели профиля (проверка на границе). */
+export function isModelId(v: unknown): v is ModelId {
+  return typeof v === 'string' && MODELS.some((m) => m.id === v)
+}
+
 export function modelOf(id: ModelId): Model {
   return MODELS.find((m) => m.id === id) ?? MODELS[0]
 }

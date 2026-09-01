@@ -1,17 +1,6 @@
 'use client'
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  useSyncExternalStore,
-  type ReactNode,
-} from 'react'
-import { contentIndex, contentVersion, subscribeContent } from '@/lib/indexer/content'
+import { createContext, useContext, useEffect, useMemo, type ReactNode } from 'react'
 import type { IndexedRecord } from '@/lib/indexer/types'
 import {
   CLUSTERS,
@@ -23,10 +12,10 @@ import {
   type FileView,
   type VaultFile,
 } from './data'
+import type { Focus, ScreenId } from './store/nav'
 import { buildGraph, clusterLoad, neighborsOf, type Graph } from './graph'
 import { DAY, HOUR, type Note } from './notes'
-import { searchAll, type Hit, type ScopeId, type SecretIndexItem } from './search'
-import { useRedacted } from './redact-context'
+import type { Hit, ScopeId, SecretIndexItem } from './search'
 import type { Session } from '@/components/chat/types'
 import type { clusterMix } from './data'
 
@@ -49,7 +38,8 @@ import type { clusterMix } from './data'
    а не разом. Обратная совместимость важнее красоты.
    ============================================================ */
 
-export type ScreenId = 'library' | 'map' | 'chat' | 'vault' | 'settings'
+export type { Focus, ScreenId } from './store/nav'
+export { useNavStore } from './store/nav'
 
 /** Вид файла живёт в data.ts — здесь он только переиспользуется. */
 export { viewOf }
@@ -72,6 +62,7 @@ export { useDataStore } from './store/data'
 export { useLockStore } from './store/lock'
 export { useSettingsStore } from './store/settings'
 export { useNotifsStore } from './store/notifs'
+export { useEngineStore } from './store/engine'
 export { useToast } from './store/toast'
 
 import { ClockProvider } from './store/clock'
@@ -80,9 +71,9 @@ import { SettingsProvider, useSettingsStore, type EngineView, type Settings, typ
 import { NotifsProvider, useNotifsStore, type Notif, type NotifCat } from './store/notifs'
 import { DataProvider, useDataStore, type VaultStats } from './store/data'
 import { LockProvider, useLockStore, type LockView } from './store/lock'
+import { EngineProvider, useEngineStore } from './store/engine'
+import { NavProvider, useNavStore } from './store/nav'
 import type { LockMethod } from './lock-store'
-
-export type Focus = { id: string; at: number } | null
 
 export type VaultCtx = {
   hydrated: boolean
@@ -246,22 +237,26 @@ export function useVault(): VaultCtx {
    ============================================================ */
 
 /**
- * Композиция доменов: часы → тосты → настройки → лента → данные → замок →
- * навигация и поиск. Порядок не декоративный: каждый следующий домен читает
- * предыдущие, обратных связей нет.
+ * Композиция доменов: часы → тосты → настройки → движок → лента → данные →
+ * замок → навигация и поиск. Порядок не декоративный: каждый следующий домен
+ * читает предыдущие, обратных связей нет.
  */
 export function VaultProvider({ children }: { children: ReactNode }) {
   return (
     <ClockProvider>
       <ToastProvider>
         <SettingsProvider>
-          <NotifsProvider>
+          <EngineProvider>
+           <NotifsProvider>
             <DataProvider>
               <LockProvider>
-                <VaultFacade>{children}</VaultFacade>
+                <NavProvider>
+                  <VaultFacade>{children}</VaultFacade>
+                </NavProvider>
               </LockProvider>
             </DataProvider>
-          </NotifsProvider>
+           </NotifsProvider>
+          </EngineProvider>
         </SettingsProvider>
       </ToastProvider>
     </ClockProvider>
@@ -274,33 +269,9 @@ function VaultFacade({ children }: { children: ReactNode }) {
   const N = useNotifsStore()
   const D = useDataStore()
   const L = useLockStore()
-
-  const [screen, setScreen] = useState<ScreenId>('library')
-  const [fileFocus, setFileFocus] = useState<Focus>(null)
-  const [clusterFocus, setClusterFocus] = useState<Focus>(null)
-  const [nodeFocus, setNodeFocus] = useState<Focus>(null)
-  const [settingFocus, setSettingFocus] = useState<Focus>(null)
-  const [noteFocus, setNoteFocus] = useState<Focus>(null)
-  const [secretFocus, setSecretFocus] = useState<Focus>(null)
-  const [secretIndex, setSecretIndexState] = useState<SecretIndexItem[]>([])
-  const [query, setQuery] = useState('')
-  const [scope, setScope] = useState<ScopeId>('all')
-  const [palette, setPalette] = useState(false)
+  const E = useEngineStore()
 
   const hydrated = D.ready && S.ready && N.ready
-
-  /* п.10.4: замок закрылся — навигация забывает всё выбранное, чтобы чужой
-     фокус (файл, стикер, узел карты) не достался новому человеку. */
-  const epochRef = useRef(L.lockEpoch)
-  useEffect(() => {
-    if (epochRef.current === L.lockEpoch) return
-    epochRef.current = L.lockEpoch
-    setFileFocus(null)
-    setNoteFocus(null)
-    setNodeFocus(null)
-    setClusterFocus(null)
-    setSecretFocus(null)
-  }, [L.lockEpoch])
 
   /** Лента первого запуска собирается из настоящего состояния сейфа. */
   useEffect(() => {
@@ -327,7 +298,7 @@ function VaultFacade({ children }: { children: ReactNode }) {
         cat: 'system',
         icon: 'chipAi',
         title: `Модель ${m.short} выбрана в профиле`,
-        body: 'Локальный движок в этой сборке не подключён: скорость и требования к памяти покажем, когда он появится.',
+        body: 'Локальный движок работает через Ollama на этом устройстве. В настройках видно, запущен ли он и стоит ли выбранная модель.',
         at: t0 - 3 * HOUR,
         unread: false,
       },
@@ -346,185 +317,9 @@ function VaultFacade({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated, N.seededReady])
 
-  /* ---------- навигация ---------- */
-
-  const go = useCallback((next: ScreenId) => setScreen(next), [])
-
-  const openFile = useCallback((fileId: string) => {
-    setFileFocus({ id: fileId, at: Date.now() })
-    setScreen('library')
-  }, [])
-
-  const openNote = useCallback((noteId: string) => {
-    setNoteFocus({ id: noteId, at: Date.now() })
-    setScreen('library')
-  }, [])
-
-  const openOnMap = useCallback(
-    (fileId: string) => {
-      const f = D.fileById(fileId)
-      setNodeFocus({ id: fileId, at: Date.now() })
-      setClusterFocus({ id: f?.cluster ?? 'all', at: Date.now() })
-      setScreen('map')
-    },
-    [D],
-  )
-
-  const openCluster = useCallback((cluster: ClusterId | 'all') => {
-    setClusterFocus({ id: cluster, at: Date.now() })
-    setScreen('library')
-  }, [])
-
-  const openSetting = useCallback((id: string) => {
-    setSettingFocus({ id, at: Date.now() })
-    setScreen('settings')
-  }, [])
-
-  const openSecret = useCallback((id: string) => {
-    setSecretFocus({ id, at: Date.now() })
-    setScreen('vault')
-  }, [])
-
-  const setSecretIndex = useCallback((list: SecretIndexItem[]) => {
-    setSecretIndexState((prev) => {
-      if (
-        prev.length === list.length &&
-        prev.every((p, i) => p.id === list[i].id && p.title === list[i].title)
-      ) {
-        return prev
-      }
-      return list
-    })
-  }, [])
-
-  const setActiveSession = D.setActiveSession
-  const openSession = useCallback(
-    (id: string) => {
-      setActiveSession(id)
-      setScreen('chat')
-    },
-    [setActiveSession],
-  )
-
-  /**
-   * Клик по телу уведомления: домен ленты снимает unread, а куда вести —
-   * знает только навигация.
-   */
-  const openNotif = useCallback(
-    (id: string) => {
-      const n = N.readNotif(id)
-      if (!n) return
-      const at = Date.now()
-      const link = n.link
-      if (link?.kind === 'file') {
-        setScreen('library')
-        setFileFocus({ id: link.id, at })
-        return
-      }
-      if (link?.kind === 'note') {
-        setScreen('library')
-        setNoteFocus({ id: link.id, at })
-        return
-      }
-      if (link?.kind === 'secret') {
-        setScreen('vault')
-        setSecretFocus({ id: link.id, at })
-        return
-      }
-      if (link?.kind === 'setting') {
-        setScreen('settings')
-        setSettingFocus({ id: link.id, at })
-        return
-      }
-      if (link?.kind === 'screen') {
-        setScreen(link.id as ScreenId)
-        return
-      }
-      if (n.cat === 'pipeline') {
-        setScreen('library')
-        return
-      }
-      setScreen('settings')
-      setSettingFocus({ id: n.cat === 'privacy' ? 'privacy' : 'notifs', at })
-    },
-    [N],
-  )
-
-  /* ---------- поиск ---------- */
-
-  /* Красакт объектов под файловым ключом: поиск по их содержимому запрещён (п.10.2). */
-  const { redactIds } = useRedacted()
-
-  /* NF-1: содержимое из индексатора живёт в модульном сторе — подписываемся
-     на его версию, чтобы поиск видел новый текст сразу после индексации. */
-  const contentV = useSyncExternalStore(subscribeContent, contentVersion, () => 0)
-
-  /* now читаем нереактивно (Date.now при пересчёте): давность в ранжировании
-     поиска не обязана обновляться каждую секунду, зато hits перестают
-     churn'иться на каждый тик часов. */
-  const searchInput = useMemo(
-    () => ({
-      files: D.files,
-      notes: D.liveNotes,
-      sessions: D.sessions,
-      now: Date.now(),
-      redactIds,
-      secrets: secretIndex,
-      content: contentIndex(),
-    }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [D.files, D.liveNotes, D.sessions, redactIds, secretIndex, contentV],
-  )
-
-  const hits = useMemo(() => searchAll(query, scope, searchInput), [query, scope, searchInput])
-
-  const matchedFiles = useMemo(() => {
-    const ids = new Set<string>()
-    for (const h of hits) {
-      if (h.kind === 'file') ids.add(h.id)
-      if (h.kind === 'cluster') {
-        D.files.filter((f) => f.cluster === h.id).forEach((f) => ids.add(f.id))
-      }
-      if (h.kind === 'note') {
-        const n = D.liveNotes.find((x) => x.id === h.id)
-        if (n?.pinnedTo) ids.add(n.pinnedTo)
-      }
-    }
-    return ids
-  }, [hits, D.files, D.liveNotes])
-
-  /** Один переход на все виды результатов — палитра и топбар зовут его же. */
-  const runHit = useCallback(
-    (h: Hit) => {
-      setPalette(false)
-      if (h.kind === 'file') openFile(h.id)
-      else if (h.kind === 'cluster') openCluster(h.id as ClusterId)
-      else if (h.kind === 'chat') openSession(h.id)
-      else if (h.kind === 'setting') openSetting(h.id)
-      else if (h.kind === 'secret') openSecret(h.id)
-      else if (h.kind === 'note') {
-        const n = D.liveNotes.find((x) => x.id === h.id)
-        if (n?.pinnedTo) openFile(n.pinnedTo)
-        else {
-          setNodeFocus({ id: h.id, at: Date.now() })
-          setScreen('map')
-        }
-      }
-    },
-    [D.liveNotes, openCluster, openFile, openSecret, openSession, openSetting],
-  )
-
-  /** Ctrl/Cmd+K — палитра. Работает на любом экране, кроме поля ввода чата. */
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault()
-        setPalette((v) => !v)
-      }
-    }
-    window.addEventListener('keydown', onKey, true)
-    return () => window.removeEventListener('keydown', onKey, true)
-  }, [])
+  /* Навигация, поиск и палитра живут в отдельном домене (lib/store/nav.tsx):
+     тяжёлые экраны подписываются на него точечно, минуя фасад. */
+  const NAV = useNavStore()
 
   const value = useMemo<VaultCtx>(
     () => ({
@@ -576,7 +371,7 @@ function VaultFacade({ children }: { children: ReactNode }) {
       dirty: S.dirty,
       saveSettings: S.saveSettings,
       revertSettings: S.revertSettings,
-      engineView: S.engineView,
+      engineView: E.engineView,
       grantCloudConsent: S.grantCloudConsent,
       revokeCloudConsent: S.revokeCloudConsent,
       setToggle: S.setToggle,
@@ -587,7 +382,6 @@ function VaultFacade({ children }: { children: ReactNode }) {
       notify: N.notify,
       markAllRead: N.markAllRead,
       toggleRead: N.toggleRead,
-      openNotif,
       snoozeNotif: N.snoozeNotif,
       muteNotifCat: N.muteNotifCat,
       archiveNotif: N.archiveNotif,
@@ -600,35 +394,35 @@ function VaultFacade({ children }: { children: ReactNode }) {
       undoNotifs: N.undoNotifs,
       dismissNotif: N.archiveNotif,
 
-      /* навигация */
-      screen,
-      go,
-      fileFocus,
-      noteFocus,
-      clusterFocus,
-      nodeFocus,
-      settingFocus,
-      secretFocus,
-      openSecret,
-      secretIndex,
-      setSecretIndex,
-      openFile,
-      openNote,
-      openOnMap,
-      openCluster,
-      openSetting,
-      openSession,
+      /* навигация и поиск — домен nav */
+      screen: NAV.screen,
+      go: NAV.go,
+      fileFocus: NAV.fileFocus,
+      noteFocus: NAV.noteFocus,
+      clusterFocus: NAV.clusterFocus,
+      nodeFocus: NAV.nodeFocus,
+      settingFocus: NAV.settingFocus,
+      secretFocus: NAV.secretFocus,
+      openSecret: NAV.openSecret,
+      secretIndex: NAV.secretIndex,
+      setSecretIndex: NAV.setSecretIndex,
+      openFile: NAV.openFile,
+      openNote: NAV.openNote,
+      openOnMap: NAV.openOnMap,
+      openCluster: NAV.openCluster,
+      openSetting: NAV.openSetting,
+      openSession: NAV.openSession,
+      openNotif: NAV.openNotif,
+      query: NAV.query,
+      setQuery: NAV.setQuery,
+      scope: NAV.scope,
+      setScope: NAV.setScope,
+      hits: NAV.hits,
+      matchedFiles: NAV.matchedFiles,
+      palette: NAV.palette,
+      setPalette: NAV.setPalette,
+      runHit: NAV.runHit,
 
-      /* поиск */
-      query,
-      setQuery,
-      scope,
-      setScope,
-      hits,
-      matchedFiles,
-      palette,
-      setPalette,
-      runHit,
 
       /* короткие сообщения */
       toast,
@@ -647,12 +441,7 @@ function VaultFacade({ children }: { children: ReactNode }) {
       setAutoLock: L.setAutoLock,
       resetLock: L.resetLock,
     }),
-    [
-      hydrated, D, S, N, L, screen, go, fileFocus, noteFocus, clusterFocus, nodeFocus,
-      settingFocus, secretFocus, openSecret, secretIndex, setSecretIndex, openFile, openNote,
-      openOnMap, openCluster, openSetting, openSession, openNotif, query, scope, hits,
-      matchedFiles, palette, runHit, toast, flash,
-    ],
+    [hydrated, D, S, N, L, E, NAV, toast, flash],
   )
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

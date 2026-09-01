@@ -5,7 +5,8 @@ import type { ToolRun, TraceStage } from '@/components/chat/types'
 import { isAiErrorCode, type AiErrorCode } from '@/lib/ai-errors'
 
 /**
- * Живой разговор с облачной моделью через /ai-api/chat (SSE). Цикл агента:
+ * Живой разговор с моделью через /ai-api/chat (SSE) — локальной (Ollama)
+ * или облачной: клиент не знает, кто отвечает, это решает сервер. Цикл агента:
  * поток текста → вызовы скиллов → выполнение на устройстве → продолжение.
  * Скилл save_password не выполняется без явного разрешения пользователя.
  * Наружу отдаётся код ошибки из каталога, а не текст провайдера.
@@ -27,6 +28,10 @@ export type TurnResult = {
   stages: TraceStage[]
   stopped: boolean
   errorCode?: AiErrorCode
+  /** NF-2: кто ответил и с какой скоростью — цифры от самого движка. */
+  provider?: 'ollama' | 'cloud'
+  engineModel?: string
+  tokensPerSec?: number | null
 }
 
 export type TurnBody = {
@@ -41,6 +46,8 @@ export type TurnBody = {
   sendIndex: boolean
   /** Подпись источника хода — она же попадает в трассировку. */
   modelLabel: string
+  /** Модель профиля: для локального движка из неё берётся тег Ollama. */
+  model: string
   ctx: {
     files: { id: string; name: string; cat: string; tags: string[] }[]
     pinned: string[]
@@ -89,6 +96,9 @@ export function useAiChat(
     stages: [] as TraceStage[],
     t0: 0,
     wrote: false,
+    provider: undefined as 'ollama' | 'cloud' | undefined,
+    engineModel: undefined as string | undefined,
+    tokensPerSec: null as number | null,
   })
 
   const pushStage = useCallback((label: string) => {
@@ -143,6 +153,9 @@ export function useAiChat(
             used?: number
             limit?: number
             fill?: number
+            provider?: string
+            model?: string
+            tps?: number | null
           }
           try {
             ev = JSON.parse(line.slice(5))
@@ -162,6 +175,11 @@ export function useAiChat(
             errCode = isAiErrorCode(ev.code) ? ev.code : 'UNKNOWN'
           } else if (ev.t === 'ctx' && typeof ev.fill === 'number') {
             setUsage({ used: ev.used ?? 0, limit: ev.limit ?? 0, fill: ev.fill })
+          } else if (ev.t === 'stats') {
+            /* NF-2: подпись движка и скорость приходят из ответа адаптера. */
+            if (ev.provider === 'ollama' || ev.provider === 'cloud') s.provider = ev.provider
+            if (typeof ev.model === 'string') s.engineModel = ev.model
+            s.tokensPerSec = typeof ev.tps === 'number' ? ev.tps : null
           }
         }
       }
@@ -236,6 +254,7 @@ export function useAiChat(
           toolResults: results,
           ctx: body.ctx,
           engine: body.engine,
+          model: body.model,
           sendIndex: body.sendIndex,
         },
         signal,
@@ -248,7 +267,18 @@ export function useAiChat(
     (body: TurnBody, onDone: (r: TurnResult) => void) => {
       const ctrl = new AbortController()
       abortRef.current = ctrl
-      st.current = { text: '', tools: [], found: [], findRan: false, stages: [], t0: performance.now(), wrote: false }
+      st.current = {
+        text: '',
+        tools: [],
+        found: [],
+        findRan: false,
+        stages: [],
+        t0: performance.now(),
+        wrote: false,
+        provider: undefined,
+        engineModel: undefined,
+        tokensPerSec: null,
+      }
       setText('')
       setStages([])
       setTools([])
@@ -270,6 +300,9 @@ export function useAiChat(
           stages: s.stages,
           stopped: ctrl.signal.aborted,
           errorCode,
+          provider: s.provider,
+          engineModel: s.engineModel,
+          tokensPerSec: s.tokensPerSec,
         })
       }
 

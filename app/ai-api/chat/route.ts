@@ -20,14 +20,13 @@ import {
   trimLlm,
 } from '@/lib/context-window'
 import { clientIp, limitChat } from '@/lib/rate-limit'
+import { resolveProvider } from '@/lib/llm'
+import { LlmFail } from '@/lib/llm/fail'
+import type { LlmCall, LlmTool } from '@/lib/llm/types'
+import { isModelId, type ModelId } from '@/lib/data'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-
-const MODEL = process.env.AI_MODEL || 'claude-sonnet-4-5-20250929'
-
-const UPSTREAM_TIMEOUT_MS = 60_000
-const MAX_RETRIES = 2
 
 /** Схемы встроенных инструментов (OpenAI function calling, кросс-провайдерно). */
 const TOOL_SCHEMAS: Record<string, { description: string; parameters: unknown }> = {
@@ -86,20 +85,11 @@ type Body = {
   regenerate?: boolean
   /** Заявленный клиентом движок — сервер проверяет его сам. */
   engine?: string
+  /** Модель профиля: для локального движка из неё берётся тег Ollama. */
+  model?: string
   /** Разрешён ли вынос индекса сейфа наружу. */
   sendIndex?: boolean
   ctx?: Ctx
-}
-
-/** Ошибка с кодом каталога: наружу уходит код, детали — в лог сервера. */
-class AiFail extends Error {
-  code: AiErrorCode
-  detail: string
-  constructor(code: AiErrorCode, detail: string) {
-    super(code)
-    this.code = code
-    this.detail = detail
-  }
 }
 
 function fail(code: AiErrorCode, message: string, status: number, extra?: Record<string, unknown>) {
@@ -166,43 +156,6 @@ async function buildSystem(
   return { system: sys, tools }
 }
 
-/** Запрос к провайдеру с таймаутом и повтором на 429/5xx (не больше двух). */
-async function callUpstream(
-  proxy: string,
-  key: string,
-  payload: unknown,
-  signal: AbortSignal,
-): Promise<Response> {
-  let last: AiFail | null = null
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt += 1) {
-    if (attempt > 0) await new Promise((r) => setTimeout(r, 400 * 2 ** (attempt - 1)))
-    let res: Response
-    try {
-      res = await fetch(`${proxy}/chat/completions`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-        signal: AbortSignal.any([signal, AbortSignal.timeout(UPSTREAM_TIMEOUT_MS)]),
-      })
-    } catch (e) {
-      if (signal.aborted) throw new AiFail('UPSTREAM_ERROR', 'клиент отменил запрос')
-      last = new AiFail('UPSTREAM_ERROR', e instanceof Error ? e.message : 'сетевой сбой')
-      continue
-    }
-    if (res.ok && res.body) return res
-
-    const text = await res.text().catch(() => '')
-    if (res.status === 429) last = new AiFail('UPSTREAM_BUSY', `429 ${text.slice(0, 400)}`)
-    else if (res.status >= 500) last = new AiFail('UPSTREAM_ERROR', `${res.status} ${text.slice(0, 400)}`)
-    else if (/context|token|too long|maximum/i.test(text))
-      throw new AiFail('CONTEXT_TOO_LONG', `${res.status} ${text.slice(0, 400)}`)
-    else throw new AiFail('UPSTREAM_ERROR', `${res.status} ${text.slice(0, 400)}`)
-
-    if (res.status !== 429 && res.status < 500) break
-  }
-  throw last ?? new AiFail('UPSTREAM_ERROR', 'провайдер недоступен')
-}
-
 export async function POST(req: NextRequest) {
   /* request-id рождается в proxy.ts и связывает лог, метрики и ответ (AR-5). */
   const rid = req.headers.get('x-request-id') ?? requestId()
@@ -238,18 +191,31 @@ export async function POST(req: NextRequest) {
   /* Форма тела проверяется после гейтов движка: локальный движок отвечает
      409 независимо от полей (инвариант волны 1). */
   const engine = body.engine === 'hybrid' || body.engine === 'cloud' ? body.engine : 'local'
+  const model: ModelId = isModelId(body.model) ? body.model : 'qwen-7b'
 
-  /* Заявленный локальный режим проверяется здесь: ни одного внешнего запроса. */
-  if (engine === 'local') {
-    return fail('ENGINE_NOT_CONFIGURED', 'Локальный движок не подключён.', 409)
+  /* NF-2: провайдера выбирает настройка движка, и его живость проверяется
+     до первого токена. Локальный режим никогда не подменяется облаком:
+     если Ollama не запущена или модели нет — честный код и инструкция. */
+  const resolved = await resolveProvider(engine, model)
+  if (!resolved.ok) {
+    const st = resolved.status
+    const local = st.provider === 'ollama'
+    log(local ? 'warn' : 'error', local ? 'chat.local-off' : 'chat.cloud-off', {
+      rid,
+      route: '/ai-api/chat',
+      status: local ? 409 : 503,
+      code: st.code ?? undefined,
+    })
+    return fail(
+      st.code ?? 'ENGINE_NOT_CONFIGURED',
+      local
+        ? (st.hint ?? 'Локальный движок не подключён.')
+        : 'Облачный движок не настроен.',
+      local ? 409 : 503,
+      local ? { engine: 'local', base: st.base, model: st.model, models: st.models } : undefined,
+    )
   }
-
-  const proxy = process.env.AI_PROXY_URL
-  const key = process.env.EMERGENT_LLM_KEY
-  if (!proxy || !key) {
-    log('error', 'chat.cloud-off', { rid, route: '/ai-api/chat', status: 503 })
-    return fail('CLOUD_NOT_CONFIGURED', 'Облачный движок не настроен.', 503)
-  }
+  const provider = resolved.provider
 
   if (typeof body.sessionId !== 'string' || !body.sessionId) {
     log('warn', 'chat.bad-body', { rid, route: '/ai-api/chat', status: 400 })
@@ -315,97 +281,61 @@ export async function POST(req: NextRequest) {
           dropped: win.dropped,
         })
 
-        const upstream = await callUpstream(
-          proxy,
-          key,
-          {
-            model: MODEL,
-            stream: true,
-            stream_options: { include_usage: true },
-            max_tokens: 2048,
-            messages: [{ role: 'system', content: sys }, ...win.msgs],
-            ...(tools.length ? { tools, tool_choice: 'auto' } : {}),
-          },
-          req.signal,
-        )
         countTurn()
 
-        const reader = upstream.body!.getReader()
-        const dec = new TextDecoder()
-        let buf = ''
+        /* Поток дельт от провайдера: текст, готовые вызовы скиллов и расход.
+           Маршрут не знает, кто отвечает — Ollama на устройстве или облако. */
         let text = ''
-        /* Токены пишем только если провайдер их прислал: выдуманных цифр нет. */
-        let usage: { prompt_tokens?: number; completion_tokens?: number } | null = null
-        const acc: { id: string; name: string; args: string }[] = []
+        let usage: { prompt: number | null; completion: number | null; tps: number | null } | null =
+          null
+        let calls: { id: string; name: string; args: Record<string, unknown> }[] = []
+        let rawCalls: LlmCall[] = []
 
-        for (;;) {
-          const { done, value } = await reader.read()
-          if (done) break
-          buf += dec.decode(value, { stream: true })
-          const lines = buf.split('\n')
-          buf = lines.pop() ?? ''
-          for (const line of lines) {
-            const l = line.trim()
-            if (!l.startsWith('data:')) continue
-            const payload = l.slice(5).trim()
-            if (!payload || payload === '[DONE]') continue
-            let j: {
-              usage?: { prompt_tokens?: number; completion_tokens?: number }
-              choices?: {
-                delta?: {
-                  content?: string
-                  tool_calls?: {
-                    index?: number
-                    id?: string
-                    function?: { name?: string; arguments?: string }
-                  }[]
-                }
-              }[]
-            }
-            try {
-              j = JSON.parse(payload)
-            } catch {
-              continue
-            }
-            if (j.usage) usage = j.usage
-            const d = j.choices?.[0]?.delta
-            if (!d) continue
-            if (typeof d.content === 'string' && d.content) {
-              text += d.content
-              push({ t: 'd', x: d.content })
-            }
-            if (Array.isArray(d.tool_calls)) {
-              for (const tc of d.tool_calls) {
-                const i = tc.index ?? 0
-                if (!acc[i]) acc[i] = { id: tc.id ?? `call_${i}`, name: '', args: '' }
-                if (tc.id) acc[i].id = tc.id
-                if (tc.function?.name) acc[i].name = tc.function.name
-                if (tc.function?.arguments) acc[i].args += tc.function.arguments
+        for await (const d of provider.stream({
+          system: sys,
+          messages: win.msgs,
+          tools: tools as LlmTool[],
+          signal: req.signal,
+        })) {
+          if (d.k === 'text') {
+            text += d.text
+            push({ t: 'd', x: d.text })
+          } else if (d.k === 'calls') {
+            rawCalls = d.calls
+            calls = d.calls.map((c) => {
+              let args: Record<string, unknown> = {}
+              try {
+                args = JSON.parse(c.args || '{}') as Record<string, unknown>
+              } catch {
+                /* модель отдала битый JSON — скилл получит пустые аргументы */
               }
+              return { id: c.id, name: c.name, args }
+            })
+          } else {
+            usage = {
+              prompt: d.promptTokens,
+              completion: d.completionTokens,
+              tps: d.tokensPerSec,
             }
           }
         }
 
-        const calls = acc
-          .filter((c) => c && c.name)
-          .map((c) => {
-            let args: Record<string, unknown> = {}
-            try {
-              args = JSON.parse(c.args || '{}') as Record<string, unknown>
-            } catch {
-              /* модель отдала битый JSON — скилл получит пустые аргументы */
-            }
-            return { id: c.id, name: c.name, args }
-          })
+        /* RM-2: подпись движка и скорость — из настоящего ответа адаптера. */
+        push({
+          t: 'stats',
+          provider: provider.id,
+          model: provider.label,
+          tps: usage?.tps ?? null,
+          promptTokens: usage?.prompt ?? null,
+          completionTokens: usage?.completion ?? null,
+        })
 
-        const toolCalls: LlmToolCall[] | undefined = calls.length
-          ? acc
-              .filter((c) => c && c.name)
-              .map((c) => ({
-                id: c.id,
-                type: 'function' as const,
-                function: { name: c.name, arguments: redactArgs(c.name, c.args || '{}') },
-              }))
+        const toolCalls: LlmToolCall[] | undefined = rawCalls.length
+          ? rawCalls.map((c) => ({
+              id: c.id,
+              type: 'function' as const,
+              function: { name: c.name, arguments: redactArgs(c.name, c.args || '{}') },
+            }))
           : undefined
 
         const assistant: LlmMsg = { role: 'assistant', content: text || null }
@@ -416,7 +346,7 @@ export async function POST(req: NextRequest) {
 
         if (calls.length) push({ t: 'tool', calls })
         push({ t: 'end' })
-        countTokens(usage?.prompt_tokens ?? null, usage?.completion_tokens ?? null)
+        countTokens(usage?.prompt ?? null, usage?.completion ?? null)
         const ms = Date.now() - t0
         countLatency(ms)
         log('info', 'chat.done', {
@@ -426,11 +356,12 @@ export async function POST(req: NextRequest) {
           ms,
           count: calls.length,
           chars: win.used,
-          tokens: (usage?.prompt_tokens ?? 0) + (usage?.completion_tokens ?? 0) || undefined,
+          engine: provider.id,
+          tokens: (usage?.prompt ?? 0) + (usage?.completion ?? 0) || undefined,
         })
       } catch (e) {
         const f =
-          e instanceof AiFail ? e : new AiFail('UNKNOWN', e instanceof Error ? e.message : 'сбой потока')
+          e instanceof LlmFail ? e : new LlmFail('UNKNOWN', e instanceof Error ? e.message : 'сбой потока')
         countLatency(Date.now() - t0)
         trackError({ rid, where: '/ai-api/chat', code: f.code, reason: f.detail })
         try {

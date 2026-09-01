@@ -25,7 +25,8 @@ import { CloudConsent } from './chat/cloud-consent'
 import type { AiMsg, ChatMsg, Session, UserMsg } from './chat/types'
 import { usePersistedState } from '@/hooks/use-persisted-state'
 import { useAiChat, type ExecResult, type TurnBody } from '@/hooks/use-ai-chat'
-import { useVault, useNow } from '@/lib/vault-store'
+import { EnginePanel } from '@/components/engine-panel'
+import { useEngineStore, useNow, useVault } from '@/lib/vault-store'
 import { useSecrets } from '@/lib/secrets-store'
 import { useRedacted } from '@/lib/redact-context'
 import { aiApi } from '@/lib/ai-client'
@@ -47,6 +48,8 @@ const uid = (p: string) => `${p}-${Date.now().toString(36)}-${seq++}`
 export function ScreenChat() {
   const v = useVault()
   const now = useNow()
+  /* NF-2: состояние локального движка — отдельный домен, чат читает его напрямую. */
+  const engine = useEngineStore()
   const secrets = useSecrets()
   const { redactIds } = useRedacted()
   const sessions = v.sessions
@@ -253,6 +256,7 @@ export function ScreenChat() {
           sessionId,
           ...opts,
           engine: view.mode,
+          model: v.settings.model,
           sendIndex: v.settings.toggles.sendIndex,
           modelLabel: view.model,
           ctx,
@@ -322,11 +326,18 @@ export function ScreenChat() {
             createdAt: done.createdAt,
           })
         }
+        /* NF-2 (шаг 4): цифры движка — из ответа адаптера, а не из часов. */
+        if (r.provider === 'ollama' && !r.errorCode && !r.stopped) {
+          engine.setMetrics({
+            tokensPerSec: r.tokensPerSec ?? null,
+            model: r.engineModel ?? null,
+          })
+        }
         setSay(r.errorCode ? 'Сбой запроса к модели.' : r.stopped ? 'Ответ остановлен.' : 'Ответ готов.')
         },
       )
     },
-    [ai, buildCtx, patch, sessions, v],
+    [ai, buildCtx, engine, patch, sessions, v],
   )
 
   const send = useCallback(
@@ -757,7 +768,9 @@ export function ScreenChat() {
                 <p className="chat-empty-note">
                   {v.engineView.isCloud
                     ? `Отвечает ${v.engineView.model} со скиллами: находит файлы в сейфе, сохраняет пароли в секретницу (с вашего разрешения) и вытягивает документы из Notion через MCP.`
-                    : 'Выбран локальный движок, а локальной модели в этой сборке ещё нет: чат ответит после её появления. Переключить движок можно в настройках.'}
+                    : v.engineView.ready
+                      ? `Отвечает ${v.engineView.model} на этом устройстве через Ollama: ни один байт запроса не уходит в сеть. Скиллы работают так же, как в облаке.`
+                      : 'Выбран локальный движок, но он не отвечает. Ниже — что запустить; или переключите режим в настройках.'}
                 </p>
                 <ul className="chat-sugs">
                   {CHAT_SUGGESTIONS.map((s) => (
@@ -820,6 +833,14 @@ export function ScreenChat() {
             </button>
           ) : null}
         </div>
+
+        {/* NF-2: локальный режим выбран, а движка нет — говорим об этом до
+            отправки, вместе с командами. В облако молча не уходим. */}
+        {!v.engineView.isCloud && !v.engineView.ready ? (
+          <div className="chat-engine-warn" data-testid="chat-engine-warn">
+            <EnginePanel compact />
+          </div>
+        ) : null}
 
         <Composer
           onSend={send}

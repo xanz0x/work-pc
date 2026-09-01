@@ -16,7 +16,14 @@ import {
 } from './icons'
 import { CLUSTERS, clusterIndex, fmtBytes, kindOf, type ClusterId } from '@/lib/data'
 import { neighborsOf, type Graph } from '@/lib/graph'
-import { useVault } from '@/lib/vault-store'
+import {
+  useDataStore,
+  useLockStore,
+  useNavStore,
+  useNotifsStore,
+  useSettingsStore,
+  useToast,
+} from '@/lib/vault-store'
 import { Beam } from '@/components/ui/beam'
 
 /* ============================================================
@@ -130,8 +137,12 @@ type Seed = { targetId: string | null; query: string; clusterLabel: string; raw:
 type WaveMeta = { seq: number; query: string; clusterLabel: string; target: string }
 
 export function ScreenMap() {
-  const v = useVault()
-  const { graph, stats } = v
+  /* AR-1: карта — самый дорогой экран, поэтому подписки узкие:
+     корпус и граф из домена данных, фокусы и поиск — из навигации. */
+  const D = useDataStore()
+  const NAV = useNavStore()
+  const LK = useLockStore()
+  const { graph, stats } = D
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const headRef = useRef<HTMLDivElement>(null)
@@ -147,13 +158,13 @@ export function ScreenMap() {
      иначе анимация перезапускалась бы на каждое изменение сейфа. */
   const graphRef = useRef<Graph>(graph)
   graphRef.current = graph
-  const matchedRef = useRef<Set<string>>(v.matchedFiles)
-  matchedRef.current = v.matchedFiles
+  const matchedRef = useRef<Set<string>>(NAV.matchedFiles)
+  matchedRef.current = NAV.matchedFiles
 
   /* п.10.4: закрытие замка стирает и локальный фильтр кластера — после разблокировки
      карта начинается с «Всё», а не с того, что выбрал предыдущий пользователь.
      Отклик канваса обеспечивает useEffect([cluster]) ниже: он зовёт api.filter(). */
-  const lockEpoch = v.lockEpoch
+  const lockEpoch = LK.lockEpoch
   useEffect(() => {
     if (lockEpoch > 0) {
       setCluster('all')
@@ -163,7 +174,7 @@ export function ScreenMap() {
 
   /** Цель проигрывания: верхний результат живого поиска или самый связный узел. */
   const seed = useMemo<Seed>(() => {
-    const hit = v.hits.find((h) => h.kind === 'file' || h.kind === 'note')
+    const hit = NAV.hits.find((h) => h.kind === 'file' || h.kind === 'note')
     const target = hit && graph.byId.has(hit.id) ? graph.byId.get(hit.id)! : null
     const fallback = graph.nodes.length
       ? graph.nodes.reduce((a, b) => (graph.degree[b.idx] > graph.degree[a.idx] ? b : a))
@@ -171,11 +182,11 @@ export function ScreenMap() {
     const pick = target ?? fallback
     return {
       targetId: pick?.id ?? null,
-      query: v.query.trim() || (pick ? pick.label : 'связи сейфа'),
+      query: NAV.query.trim() || (pick ? pick.label : 'связи сейфа'),
       clusterLabel: pick ? CLUSTERS[clusterIndex(pick.cluster)].label : '—',
-      raw: v.query.trim(),
+      raw: NAV.query.trim(),
     }
-  }, [v.hits, v.query, graph])
+  }, [NAV.hits, NAV.query, graph])
   const seedRef = useRef<Seed>(seed)
   seedRef.current = seed
 
@@ -1470,14 +1481,14 @@ export function ScreenMap() {
 
   /* Переход «показать на карте» из библиотеки, чата или палитры Ctrl+K. */
   useEffect(() => {
-    if (!v.clusterFocus) return
-    setCluster(v.clusterFocus.id as ClusterId | 'all')
-  }, [v.clusterFocus])
+    if (!NAV.clusterFocus) return
+    setCluster(NAV.clusterFocus.id as ClusterId | 'all')
+  }, [NAV.clusterFocus])
 
   useEffect(() => {
-    if (!v.nodeFocus) return
-    api.current?.select(v.nodeFocus.id)
-  }, [v.nodeFocus, graphKey])
+    if (!NAV.nodeFocus) return
+    api.current?.select(NAV.nodeFocus.id)
+  }, [NAV.nodeFocus, graphKey])
 
   /* Горячие клавиши: + − 0 F, Esc — закрыть инспектор */
   useEffect(() => {
@@ -1502,7 +1513,7 @@ export function ScreenMap() {
 
   /* Фильтр кластеров: подписи и счётчики — из живого графа. */
   const clusterOptions = useMemo<DropdownOption[]>(() => {
-    const live = v.clusters.filter((c) => c.count > 0)
+    const live = D.clusters.filter((c) => c.count > 0)
     return [
       {
         value: 'all',
@@ -1517,7 +1528,7 @@ export function ScreenMap() {
         meta: String(c.count),
       })),
     ]
-  }, [v.clusters, graph.nodes.length])
+  }, [D.clusters, graph.nodes.length])
 
   /* Кластер мог опустеть (файл удалён) — фильтр не должен показывать пустоту. */
   useEffect(() => {
@@ -1560,13 +1571,13 @@ export function ScreenMap() {
   }
 
   const topClusters = useMemo(
-    () => v.clusters.filter((c) => c.count > 0).sort((a, b) => b.count - a.count).slice(0, 4),
-    [v.clusters],
+    () => D.clusters.filter((c) => c.count > 0).sort((a, b) => b.count - a.count).slice(0, 4),
+    [D.clusters],
   )
 
   const processingIds = useMemo(
-    () => v.files.filter((f) => f.processing).map((f) => f.id),
-    [v.files],
+    () => D.files.filter((f) => f.processing).map((f) => f.id),
+    [D.files],
   )
 
   return (
@@ -1769,8 +1780,8 @@ export function ScreenMap() {
               <button
                 className="btn btn-primary btn-sm"
                 onClick={() => {
-                  if (info.kind === 'file') v.openFile(info.id)
-                  else v.go('library')
+                  if (info.kind === 'file') NAV.openFile(info.id)
+                  else NAV.go('library')
                 }}
                 disabled={info.core}
                 data-testid="map-open-node"
@@ -1779,7 +1790,7 @@ export function ScreenMap() {
               </button>
               <button
                 className="btn btn-ghost btn-sm"
-                onClick={() => v.openCluster(info.clusterId ?? 'all')}
+                onClick={() => NAV.openCluster(info.clusterId ?? 'all')}
                 data-testid="map-open-cluster"
               >
                 Кластер
