@@ -1,0 +1,869 @@
+/* AR-2 · слой экрана «map»: приезжает вместе с чанком экрана.
+   Сгенерирован scripts/split-css.py из app/styles/_monolith.css —
+   правки вносим в монолит, а не здесь. */
+
+@layer wf003 {
+
+
+  /* ============================================================
+     ЭКРАН 02 · КАРТА ПАМЯТИ (раскладка)
+     ============================================================ */
+  .map-stage {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .float-panel {
+    position: absolute;
+    z-index: 5;
+    max-width: calc(100% - 40px);
+  }
+  /* Верх-слева: один стек — контролы и статус всегда идут друг за другом,
+     без завязки на магический top. */
+  .map-topleft {
+    top: 20px;
+    left: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .map-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px;
+    flex-wrap: wrap;
+  }
+  /* Зум — одна группа, фильтр — другая: разделяет волосяная линия. */
+  .map-zoom {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding-right: 8px;
+    border-right: 1px solid var(--border);
+  }
+  /* Цифра зума — интерактивная: клик 100%, двойной клик — вписать.
+     tabular-nums, иначе панель дёргается по ширине на 9% → 100%. */
+  .map-zoom-val {
+    min-width: 52px;
+    height: 28px;
+    padding: 0 6px;
+    border: 1px solid transparent;
+    border-radius: var(--r);
+    background: transparent;
+    color: var(--text-3r);
+    font-size: 10.5px;
+    letter-spacing: 0.04em;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    cursor: pointer;
+    transition:
+      color 0.12s ease,
+      border-color 0.12s ease;
+  }
+  .map-zoom-val:hover {
+    color: var(--text);
+    border-color: var(--border-2);
+  }
+  .map-zoom-val:focus-visible,
+  .map-status:focus-visible {
+    outline: none;
+    border-color: var(--accent);
+    color: var(--text);
+  }
+
+  /* Чип анализа: живой прогресс по нижней кромке, клик — подсветить
+     новые узлы. Тот же левый рейл и ритм, что у панели управления. */
+  .map-status {
+    position: relative;
+    max-width: 100%;
+    overflow: hidden;
+    cursor: pointer;
+    text-align: left;
+    transition:
+      opacity 0.3s ease,
+      border-color 0.12s ease;
+  }
+  .map-status:hover {
+    border-color: var(--accent);
+  }
+  .map-status.is-done {
+    animation: chip-done 0.35s ease-out both;
+  }
+  .chip-progress {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 34%;
+    height: 1px;
+    background: var(--accent);
+    animation: chip-scan 1.4s ease-in-out infinite;
+  }
+
+  /* Низ: одна рейка вместо двух панелей по углам — легенда слева,
+     подсказка справа. Углы больше не конфликтуют. */
+  .map-footer {
+    left: 20px;
+    right: 20px;
+    bottom: 20px;
+    max-width: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px 20px;
+    flex-wrap: wrap;
+    padding: 8px 14px;
+    background: var(--panel);
+    font-size: 11.5px;
+    color: var(--text-2);
+  }
+  .map-legend {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+    min-width: 0;
+  }
+  .lg {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    white-space: nowrap;
+  }
+  .lg i {
+    width: 8px;
+    height: 8px;
+    display: block;
+  }
+  .lg-hint {
+    font-size: 11px;
+    color: var(--text-3r);
+    white-space: nowrap;
+  }
+  /* Инспектор — главный элемент экрана: плотнее фон, своя тень
+     и акцентная линия сверху, чтобы он не читался как легенда. */
+  .node-inspector {
+    top: 20px;
+    right: 20px;
+    width: min(324px, calc(100% - 40px));
+    max-height: calc(100% - 96px);
+    padding: 0 18px 0;
+    display: flex;
+    flex-direction: column;
+    animation: ni-in 0.2s ease-out both;
+    background: var(--panel-2, var(--panel));
+    border-color: var(--border-2);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.04),
+      0 18px 40px -12px rgba(0, 0, 0, 0.6);
+  }
+  /* Прокрутка переехала внутрь .ni-scroll: панель остаётся неподвижной,
+     поэтому луч «найдено» на кромке не уезжает вместе с содержимым. */
+  .node-inspector > * {
+    flex-shrink: 0;
+  }
+  .ni-head:focus-visible {
+    outline: none;
+  }
+  /* Крестик — полноценная цель 40×40, а не 28×28. */
+  .ni-close {
+    width: 40px;
+    height: 40px;
+    margin-right: -4px;
+  }
+  .ni-head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 0 -18px 14px;
+    padding: 12px 14px 12px 18px;
+    background: inherit;
+    border-bottom: 1px solid var(--border);
+  }
+  /* Акцентный рейл рисуем на самой панели, а не в sticky-шапке:
+     внутри скроллящегося контейнера absolute-элемент вылезал
+     за скруглённую кромку и висел отдельной чёрточкой сверху. */
+  .node-inspector::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 18px;
+    width: 28px;
+    height: 1px;
+    background: var(--accent);
+    z-index: 2;
+  }
+  .ni-file {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    min-width: 0;
+  }
+  .ni-icon {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-2);
+  }
+  .ni-icon svg {
+    width: 18px;
+    height: 18px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 1.5;
+  }
+  .ni-file-text {
+    min-width: 0;
+  }
+  /* Имя + тип в одну строку: тип читается сразу, без второй строки. */
+  .ni-title-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
+  }
+  .ni-file h3 {
+    word-break: break-all;
+    line-height: 1.45;
+    font-weight: 500;
+    font-size: 13px;
+    min-width: 0;
+  }
+  .ni-badge {
+    flex-shrink: 0;
+    padding: 2px 6px;
+    border: 1px solid var(--border-2);
+    border-radius: var(--r);
+    font-size: 9.5px;
+    letter-spacing: 0.08em;
+    color: var(--text-3);
+    white-space: nowrap;
+  }
+  .ni-found {
+    color: var(--accent);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    font-weight: 500;
+  }
+  .ni-file p {
+    margin-top: 5px;
+    font-size: 12.5px;
+    color: var(--text-3r);
+  }
+  .ni-cluster {
+    margin-top: 12px;
+    display: inline-flex;
+    align-self: flex-start;
+    align-items: center;
+    gap: 7px;
+    font-size: 11px;
+    color: var(--text-3r);
+  }
+
+  /* Метрики — пара «подпись / значение», а не строка-простыня.
+     Цифра крупная, потому что это главное, что читают в инспекторе. */
+  .ni-metrics {
+    display: flex;
+    margin-top: 18px;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    overflow: hidden;
+  }
+  .ni-metric {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 10px 12px;
+  }
+  .ni-metric + .ni-metric {
+    border-left: 1px solid var(--border);
+  }
+  .ni-m-label {
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .ni-m-val {
+    font-size: 17px;
+    font-weight: 500;
+    line-height: 1;
+    color: var(--text);
+  }
+  .ni-m-unit {
+    margin-left: 2px;
+    font-size: 10.5px;
+    color: var(--text-3);
+  }
+  .ni-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 18px;
+  }
+  .ni-section {
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+  }
+  .wave-log {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    margin: 10px 0 12px;
+    font-size: 11.5px;
+    color: var(--text-2);
+  }
+  .wave-log b {
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  /* Полоса силы связи под числом: «12» само по себе абстрактно. */
+  .ni-m-bar {
+    display: block;
+    height: 2px;
+    margin-top: 2px;
+    background: var(--border);
+    overflow: hidden;
+  }
+  .ni-m-bar i {
+    display: block;
+    height: 100%;
+    opacity: 0.65;
+  }
+
+  /* Лог волны — настоящий таймлайн: направляющая, маркеры,
+     активная строка подсвечивается синхронно с канвасом. */
+  .wave-tl {
+    position: relative;
+    gap: 10px;
+  }
+  .wave-tl::before {
+    content: '';
+    position: absolute;
+    left: 43px;
+    top: 7px;
+    bottom: 7px;
+    width: 1px;
+    background: var(--border);
+  }
+  .wave-text {
+    min-width: 0;
+  }
+
+  /* Пустое состояние вместо пустой панели. */
+  .ni-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 8px 0 4px;
+    font-size: 12.5px;
+    color: var(--text-3r);
+  }
+}
+
+@layer wf006 {
+
+  @media (max-width: 480px) {
+
+    /* На узких экранах прячем подсказку, а не саму легенду:
+       цветовой ключ нужнее, чем текст про колесо мыши. */
+    .lg-hint {
+      display: none;
+    }
+    .map-footer {
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+      padding: 8px 12px;
+    }
+    /* На узких экранах инспектор — нижний лист на всю ширину,
+       чтобы он не накрывал граф сбоку. */
+    .node-inspector {
+      top: auto;
+      left: 12px;
+      right: 12px;
+      bottom: 56px;
+      width: auto;
+      max-height: min(42%, 320px);
+    }
+    .map-topleft {
+      top: 12px;
+      left: 12px;
+    }
+  }
+
+}
+
+@layer wf012 {
+
+
+  /* ---------- Карта памяти ---------- */
+
+  /* Панели HUD появляются с лёгким ходом; статус анализа — когда родился. */
+  .map-controls,
+  .map-footer {
+    animation: rise-in 0.3s var(--ease-quart) both;
+  }
+  .map-status {
+    animation: rise-in 0.24s var(--ease-quart) both;
+  }
+  .map-footer {
+    animation-delay: 60ms;
+  }
+  /* Внутренний скролл инспектора: контент едет — кромка с лучом стоит.
+     background:inherit протягивает панели фон вниз, чтобы липкая шапка
+     (.ni-head с background:inherit) оставалась непрозрачной над контентом. */
+  .ni-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: inherit;
+  }
+  .ni-m-bar i {
+    transition: width 0.55s var(--ease-quart);
+  }
+  /* Ядро в легенде пульсирует — тот же ритм, что рисует канвас. */
+  .map-legend .lg:first-child i {
+    animation: pulse 2.6s ease-in-out infinite;
+  }
+}
+
+@layer wf022 {
+
+
+  /* ============================================================
+     ≤1100 · КАРТА: КОМПАКТНЫЙ HUD
+     Панели остаются на своих местах, но меньше давят на канвас:
+     короче отступы, уже инспектор и статус-чип.
+     ============================================================ */
+  @media (max-width: 1100px) {
+    .map-topleft {
+      top: 14px;
+      left: 14px;
+      gap: 8px;
+    }
+    .map-controls {
+      padding: 4px;
+      gap: 6px;
+    }
+    .map-status {
+      max-width: min(300px, 56vw);
+      min-width: 0;
+    }
+    .node-inspector {
+      top: 14px;
+      right: 14px;
+      width: min(300px, calc(100% - 28px));
+      max-height: calc(100% - 88px);
+    }
+    .map-footer {
+      left: 14px;
+      right: 14px;
+      bottom: 14px;
+    }
+  }
+}
+
+@layer wf023 {
+
+
+  /* ============================================================
+     ≤1024 · КАРТА: ЧИПЫ СТАТУСА НЕ НАКРЫВАЮТ ГРАФ
+     ============================================================ */
+  @media (max-width: 1024px) {
+    .map-status {
+      max-width: min(260px, 58vw);
+    }
+    .map-status:focus-visible {
+      outline-offset: 1px;
+    }
+  }
+}
+
+@layer wf025 {
+
+
+  /* ============================================================
+     ≤768 · БИБЛИОТЕКА: ФИЛЬТРЫ ГОРИЗОНТАЛЬНОЙ ЛЕНТОЙ
+     Чипы перестают переноситься и скроллятся с тонким скроллбаром —
+     тулбар больше не занимает три строки на телефоне.
+     ============================================================ */
+  @media (max-width: 768px) {
+
+
+    /* ---------- КАРТА: легенда уходит вниз строкой с прокруткой ---------- */
+    .map-footer {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 6px;
+    }
+    .map-legend {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      overscroll-behavior-x: contain;
+      scrollbar-width: thin;
+      gap: 16px;
+      padding-bottom: 3px;
+    }
+    .map-legend::-webkit-scrollbar {
+      height: 6px;
+    }
+    .map-legend::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .map-legend::-webkit-scrollbar-thumb {
+      background: var(--border-2);
+      border-radius: 3px;
+    }
+    .lg-hint {
+      display: none;
+    }
+
+    /* ---------- КАРТА: HUD прижат к краям ещё плотнее ---------- */
+    .map-topleft {
+      top: 10px;
+      left: 10px;
+    }
+    .map-footer {
+      left: 10px;
+      right: 10px;
+      bottom: 10px;
+    }
+  }
+
+}
+
+@layer wf028 {
+
+
+  /* ============================================================
+     ТАЧ (hover:none): HOVER-СОСТОЯНИЯ ДЕГРАДИРУЮТ В ПОСТОЯННЫЕ
+     Паттерн плиток библиотеки, повторённый для замка и мелких чипов:
+     липкий hover отключён, зоны касания растут до ≥34–40px.
+     ============================================================ */
+  @media (hover: none) {
+
+    .map-zoom-val {
+      height: 34px;
+    }
+
+    /* Липкая подсветка чипов/строк на таче возвращается к базовому виду */
+    .map-zoom-val:hover {
+      color: var(--text-3r);
+      border-color: transparent;
+      background: transparent;
+    }
+  }
+
+}
+
+@layer wf033 {
+
+  .vt-mini-strength.s3,
+  .vt-mini-strength.s4 {
+    color: var(--accent);
+  }
+}
+
+@layer wf038 {
+
+
+  /* ============================================================
+     MAP v2 · КОСМОС · автоматический поток активации
+     Сетка заменена на глубокое небо: слой туманностей, млечная
+     полоса, три параллаксных звёздных слоя и виньетка. Слой только
+     дописывает — прежние правила карты не переопределяются силой.
+     ============================================================ */
+
+  .map-space { background: #06090f; }
+
+  .cosmos {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .cosmos > i {
+    position: absolute;
+    display: block;
+  }
+
+  /* Глубина: холодный синий низ, чуть теплее к центру */
+  .cos-deep {
+    inset: -10%;
+    background:
+      radial-gradient(120% 90% at 22% 12%, rgba(30, 52, 84, 0.5), transparent 62%),
+      radial-gradient(90% 80% at 82% 88%, rgba(18, 46, 44, 0.42), transparent 60%),
+      linear-gradient(180deg, #070b13 0%, #05070d 58%, #04060a 100%);
+  }
+
+  /* Туманности: три размытых пятна, дышат в разном темпе */
+  .cos-neb {
+    border-radius: 50%;
+    filter: blur(60px);
+    opacity: 0.5;
+    mix-blend-mode: screen;
+    will-change: transform, opacity;
+  }
+  .cos-neb.n1 {
+    width: 46vw;
+    height: 46vw;
+    left: -6vw;
+    top: -10vw;
+    background: radial-gradient(circle, rgba(47, 190, 126, 0.3), rgba(47, 190, 126, 0) 68%);
+    animation: cos-drift-a 44s ease-in-out infinite;
+  }
+  .cos-neb.n2 {
+    width: 54vw;
+    height: 40vw;
+    right: -10vw;
+    top: 18%;
+    background: radial-gradient(circle, rgba(84, 124, 214, 0.28), rgba(84, 124, 214, 0) 66%);
+    animation: cos-drift-b 58s ease-in-out infinite;
+  }
+  .cos-neb.n3 {
+    width: 38vw;
+    height: 30vw;
+    left: 26%;
+    bottom: -12vw;
+    background: radial-gradient(circle, rgba(176, 141, 87, 0.22), rgba(176, 141, 87, 0) 70%);
+    animation: cos-drift-a 66s ease-in-out infinite reverse;
+  }
+
+  /* Млечная полоса: диагональная дымка с зернистой маской */
+  .cos-way {
+    inset: -20%;
+    background: linear-gradient(
+      116deg,
+      transparent 34%,
+      rgba(150, 178, 220, 0.09) 44%,
+      rgba(198, 216, 245, 0.14) 50%,
+      rgba(150, 178, 220, 0.08) 56%,
+      transparent 66%
+    );
+    filter: blur(14px);
+    opacity: 0.7;
+    animation: cos-way 90s linear infinite;
+  }
+
+  /* Три звёздных слоя: разный размер, скорость и мерцание */
+  .cos-stars {
+    inset: -50%;
+    background-repeat: repeat;
+    will-change: transform;
+  }
+  .cos-stars.s3 {
+    background-image:
+      radial-gradient(2px 2px at 60px 80px, rgba(255, 255, 255, 0.95), transparent),
+      radial-gradient(1.8px 1.8px at 240px 200px, rgba(180, 226, 255, 0.75), transparent);
+    background-size: 460px 380px;
+    opacity: 0.42;
+    animation: cos-pan-3 110s linear infinite, cos-tw 13s ease-in-out infinite;
+  }
+
+  /* Виньетка: держит внимание на графе, гасит края */
+  .cos-vig {
+    inset: 0;
+    background:
+      radial-gradient(120% 100% at 42% 46%, transparent 34%, rgba(4, 6, 11, 0.72) 100%),
+      linear-gradient(180deg, rgba(4, 6, 11, 0.5), transparent 22%, transparent 76%, rgba(4, 6, 11, 0.62));
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cos-neb, .cos-way, .cos-stars { animation: none !important; }
+  }
+
+  /* ---------- пилюля потока активации ---------- */
+  .map-flow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    max-width: min(420px, 52vw);
+    padding: 6px 10px 6px 9px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: 11.5px;
+    color: var(--text-2);
+    transition: border-color 0.25s ease, color 0.25s ease;
+  }
+  .flow-dot {
+    flex: none;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(120, 132, 150, 0.9);
+    box-shadow: 0 0 0 0 rgba(47, 190, 126, 0.4);
+  }
+  .flow-text {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .flow-seq {
+    flex: none;
+    padding-left: 8px;
+    border-left: 1px solid var(--border);
+    color: var(--text-3);
+  }
+
+  /* ---------- инспектор: живой индикатор, связи, журнал ---------- */
+  .ni-live {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    margin-right: 6px;
+    color: var(--text-3);
+  }
+  .ni-live i {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: rgba(120, 132, 150, 0.85);
+  }
+
+  .ni-links {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 6px;
+  }
+  .ni-link {
+    display: grid;
+    grid-template-columns: 16px minmax(0, 1fr) auto 44px 12px;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.014);
+    color: var(--text-2);
+    font-size: 12px;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+  }
+  .ni-link:hover {
+    border-color: rgba(47, 190, 126, 0.35);
+    background: rgba(47, 190, 126, 0.07);
+    color: var(--text);
+    transform: translateX(2px);
+  }
+  .ni-link-ico { display: inline-flex; color: var(--text-3); }
+  .ni-link-ico svg { width: 12px; height: 12px; }
+  .ni-link-reason { color: var(--text-3); font-size: 10px; white-space: nowrap; }
+  .ni-link-bar {
+    display: block;
+    height: 2px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .ni-link-bar i { display: block; height: 100%; background: var(--accent); opacity: 0.8; }
+  .ni-link-go { width: 11px; height: 11px; color: var(--text-3); }
+  .ni-link:hover .ni-link-go { color: var(--accent); }
+
+  .ni-auto { color: var(--accent); font-weight: 600; letter-spacing: 0.04em; }
+
+  .ni-trace {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+  }
+  .ni-trace-row {
+    display: grid;
+    grid-template-columns: 6px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 2px;
+    background: none;
+    border: 0;
+    color: var(--text-2);
+    font-size: 11.5px;
+    text-align: left;
+    cursor: pointer;
+    transition: color 0.16s ease;
+  }
+  .ni-trace-row i {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: rgba(47, 190, 126, 0.65);
+  }
+  .ni-trace-row:hover { color: var(--accent); }
+
+  .ni-empty-flow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 10px 0;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 11.5px;
+    color: var(--text-2);
+  }
+  .map-space .node-inspector { background: rgba(8, 11, 18, 0.82); }
+
+  @media (max-width: 640px) {
+    .map-flow { max-width: calc(100vw - 56px); }
+    .ni-link { grid-template-columns: 16px minmax(0, 1fr) auto 12px; }
+    .ni-link-bar { display: none; }
+  }
+
+  /* ---------- MAP v2.1 · космос читается, строки связей не режутся ---------- */
+  .cos-deep {
+    background:
+      radial-gradient(120% 90% at 20% 8%, rgba(42, 74, 118, 0.62), transparent 64%),
+      radial-gradient(96% 84% at 84% 92%, rgba(22, 64, 62, 0.5), transparent 62%),
+      radial-gradient(60% 50% at 62% 34%, rgba(58, 44, 96, 0.34), transparent 70%),
+      linear-gradient(180deg, #0a1120 0%, #070b14 56%, #05080e 100%);
+  }
+  .cos-neb { opacity: 0.72; filter: blur(48px); }
+  .cos-neb.n1 { background: radial-gradient(circle, rgba(47, 190, 126, 0.42), rgba(47, 190, 126, 0) 68%); }
+  .cos-neb.n2 { background: radial-gradient(circle, rgba(96, 140, 230, 0.4), rgba(96, 140, 230, 0) 66%); }
+  .cos-neb.n3 { background: radial-gradient(circle, rgba(198, 152, 92, 0.3), rgba(198, 152, 92, 0) 70%); }
+  .cos-way { opacity: 0.9; }
+  .cos-stars.s3 { opacity: 0.66; }
+  .cos-vig {
+    background:
+      radial-gradient(130% 110% at 42% 46%, transparent 42%, rgba(4, 6, 11, 0.6) 100%),
+      linear-gradient(180deg, rgba(4, 6, 11, 0.42), transparent 24%, transparent 78%, rgba(4, 6, 11, 0.5));
+  }
+
+  .ni-link { grid-template-columns: 14px minmax(84px, 1fr) auto 30px 11px; gap: 7px; }
+  .ni-link-name { font-size: 11.5px; }
+  .ni-link-reason { font-size: 9.5px; letter-spacing: 0.02em; }
+  @media (max-width: 640px) {
+    .ni-link { grid-template-columns: 14px minmax(0, 1fr) auto 11px; }
+  }
+}
+
+@layer wf042 {
+
+  .vt-fe-str.s3 i {
+    width: 60px;
+    background: var(--accent);
+  }
+}

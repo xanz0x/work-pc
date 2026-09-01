@@ -5,7 +5,6 @@
    кадра: медленнее, но приложение не врёт про «индексируется».
    ============================================================ */
 
-import { processFile } from './pipeline'
 import { getDoc, putDoc } from './store'
 import {
   MAX_READ_BYTES,
@@ -99,6 +98,9 @@ const frame = () =>
 function mainJob(jobId: string, input: JobInput, hooks: JobHooks): Job {
   let stop = false
   const run = async (): Promise<{ cancelled: boolean; error?: string }> => {
+    /* AR-2: конвейер (с PDF-парсером внутри) в первом бандле не нужен —
+       это резервный путь. Грузим его в момент, когда воркера не дали. */
+    const { processFile } = await import('./pipeline')
     let done = 0
     for (const item of input.items) {
       if (stop) break

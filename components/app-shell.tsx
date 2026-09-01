@@ -13,7 +13,9 @@ import { Dropdown } from './dropdown'
 import { NotificationsBell } from './notifications'
 import { CommandPalette } from './command-palette'
 import { NumTicker } from './ui/num-ticker'
+import { StatusClock } from './ui/status-clock'
 import { ScreenLock } from './screen-lock'
+import { prefetchScreen } from './screens'
 import { useVault } from '@/lib/vault-store'
 import { useIndexActions } from '@/lib/indexer/context'
 import { fmtBytes } from '@/lib/data'
@@ -82,18 +84,10 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const [collapsed, setCollapsed] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
-  /* Часы статус-бара: пустая строка до монтирования, чтобы сервер и клиент
-     не спорили о текущей секунде при гидрации. */
-  const [clock, setClock] = useState('')
+  /* AR-1: часы статус-бара живут в своём компоненте (StatusClock) и тикают
+     из ClockContext — каркас больше не перерисовывается раз в секунду. */
   const searchWrap = useRef<HTMLDivElement>(null)
   const picker = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    const tick = () => setClock(new Date().toLocaleTimeString('ru-RU', { hour12: false }))
-    tick()
-    const id = window.setInterval(tick, 1000)
-    return () => window.clearInterval(id)
-  }, [])
 
   useEffect(() => {
     try {
@@ -253,6 +247,8 @@ export function AppShell({ children }: { children: ReactNode }) {
                     <button
                       className={`nav-item${v.screen === id ? ' active' : ''}`}
                       onClick={() => v.go(id)}
+                      onPointerEnter={() => prefetchScreen(id)}
+                      onFocus={() => prefetchScreen(id)}
                       aria-current={v.screen === id ? 'page' : undefined}
                       title={label}
                       data-testid="nav-library"
@@ -278,6 +274,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                         key={c.id}
                         className="nav-item nav-sub"
                         onClick={() => v.openCluster(c.id)}
+                        onPointerEnter={() => prefetchScreen('library')}
                         title={`${c.label} · ${c.count} ${plural(c.count, 'файл', 'файла', 'файлов')}`}
                         data-testid={`nav-cluster-${c.id}`}
                       >
@@ -292,6 +289,8 @@ export function AppShell({ children }: { children: ReactNode }) {
                   key={id}
                   className={`nav-item${v.screen === id ? ' active' : ''}`}
                   onClick={() => v.go(id)}
+                  onPointerEnter={() => prefetchScreen(id)}
+                  onFocus={() => prefetchScreen(id)}
                   aria-current={v.screen === id ? 'page' : undefined}
                   title={label}
                   data-testid={`nav-${id}`}
@@ -309,6 +308,8 @@ export function AppShell({ children }: { children: ReactNode }) {
                 key={id}
                 className={`nav-item${v.screen === id ? ' active' : ''}`}
                 onClick={() => v.go(id)}
+                onPointerEnter={() => prefetchScreen(id)}
+                onFocus={() => prefetchScreen(id)}
                 aria-current={v.screen === id ? 'page' : undefined}
                 title={label}
                 data-testid="nav-vault"
@@ -325,6 +326,8 @@ export function AppShell({ children }: { children: ReactNode }) {
                 key={id}
                 className={`nav-item${v.screen === id ? ' active' : ''}`}
                 onClick={() => v.go(id)}
+                onPointerEnter={() => prefetchScreen(id)}
+                onFocus={() => prefetchScreen(id)}
                 aria-current={v.screen === id ? 'page' : undefined}
                 title={label}
                 data-testid={`nav-${id}`}
@@ -495,7 +498,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <footer className="statusbar">
         <span>SESSION 7F3A</span>
         <span className="sb-sep">·</span>
-        <span className="sb-clock num">{clock}</span>
+        <StatusClock />
         <span className="sb-sep">·</span>
         <span>AES-256</span>
         <span className="sb-sep">·</span>

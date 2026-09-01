@@ -1,0 +1,1467 @@
+/* AR-2 · слой экрана «library»: приезжает вместе с чанком экрана.
+   Сгенерирован scripts/split-css.py из app/styles/_monolith.css —
+   правки вносим в монолит, а не здесь. */
+
+@layer wf001 {
+
+  .card-hover {
+    transition: background-color 0.12s ease, border-color 0.12s ease;
+  }
+  .card-hover:hover {
+    background: var(--panel-2);
+    border-color: var(--border-2);
+  }
+  .fade-in {
+    animation: fade-in 0.15s ease-out both;
+  }
+}
+
+@layer wf002 {
+
+  .lib-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 22px;
+    padding: 26px 28px;
+    align-items: start;
+  }
+  .page-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 22px;
+  }
+  .page-head p {
+    color: var(--text-3r);
+    font-size: 13px;
+    margin-top: 4px;
+  }
+  .filters {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+  .fcard {
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    cursor: pointer;
+    min-width: 0;
+    text-align: left;
+  }
+  .fcard-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .ficon {
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: var(--text-2);
+  }
+  .fname {
+    line-height: 1.35;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 13px;
+  }
+  .fname b {
+    font-weight: 500;
+    color: var(--text);
+  }
+  .desc {
+    line-height: 1.5;
+    min-height: 38px;
+    font-size: 12.5px;
+    color: var(--text-3r);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .fcard footer {
+    padding-top: 10px;
+    margin-top: auto;
+    font-size: 11px;
+    color: var(--text-3r);
+  }
+  .proc {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-height: 38px;
+    font-size: 12.5px;
+    color: var(--text-3r);
+  }
+
+  .inspector {
+    padding: 16px;
+    position: sticky;
+    top: 0;
+    min-width: 0;
+  }
+  .insp-tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .page-badge {
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+  }
+  .file-name {
+    word-break: break-all;
+    margin-bottom: 14px;
+    font-size: 12.5px;
+    color: var(--text);
+  }
+  .meta-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .badges-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+  }
+  .insp-block {
+    padding: 13px 14px;
+    margin-bottom: 12px;
+  }
+  .insp-block p {
+    font-size: 12.5px;
+    line-height: 1.55;
+  }
+  .blk-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+    color: var(--text-3);
+  }
+  .rel-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 6px;
+    cursor: pointer;
+    min-width: 0;
+    color: var(--text-2);
+    font-size: 12px;
+  }
+  .rel-item svg {
+    flex-shrink: 0;
+  }
+  .rel-item .rn {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .rel-item .rp {
+    margin-left: auto;
+    flex-shrink: 0;
+    color: var(--text-3r);
+  }
+  .insp-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 16px;
+  }
+}
+
+@layer wf006 {
+
+
+  /* ============================================================
+     Адаптивность: 1280 / 1100 / 1024 / 980 / 768 / 480
+     ============================================================ */
+  @media (max-width: 1280px) {
+
+    .lib-layout {
+      grid-template-columns: minmax(0, 1fr) 280px;
+    }
+  }
+
+  @media (max-width: 1100px) {
+    .lib-layout {
+      grid-template-columns: minmax(0, 1fr);
+      padding: 22px 18px;
+    }
+    .inspector {
+      position: static;
+    }
+  }
+  @media (max-width: 480px) {
+
+    .lib-layout {
+      padding: 18px 12px;
+    }
+    .page-head {
+      flex-wrap: wrap;
+    }
+  }
+
+}
+
+@layer wf007 {
+
+
+  /* ============================================================
+     ЭКРАН 01 · СЛОЙ СТИКЕРОВ
+     Файл — то, что пришло. Стикер — то, что вы подумали.
+     Временная жизнь читается линией распада 2px внизу карточки,
+     защита — маской из блоков вместо текста. Без теней и блюра.
+     ============================================================ */
+
+  .head-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+
+  /* ---------- Полоса состояния сейфа ---------- */
+  .stat-strip {
+    display: flex;
+    align-items: stretch;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+  }
+  .stat-strip .st-warn {
+    color: var(--warn);
+  }
+  .stat-strip .st-wide {
+    margin-left: auto;
+    text-align: right;
+  }
+  .stat-strip .st-wide b {
+    font-size: 12.5px;
+    color: var(--text-2);
+  }
+
+  /* ---------- Тулбар: слой + фильтры ---------- */
+  .lib-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-bottom: 22px;
+  }
+  .lib-toolbar .filters {
+    margin-bottom: 0;
+  }
+  .seg {
+    display: inline-flex;
+    border: 1px solid var(--border-2);
+    border-radius: var(--r);
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .seg-btn {
+    height: 28px;
+    padding: 0 13px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-family: var(--font-plex-mono), 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-3r);
+    transition: background-color 0.12s ease, color 0.12s ease;
+  }
+  .seg-btn + .seg-btn {
+    border-left: 1px solid var(--border);
+  }
+  .seg-btn:hover {
+    color: var(--text);
+    background: var(--raise-1);
+  }
+  .seg-btn:focus-visible {
+    outline: 1px solid var(--accent);
+    outline-offset: -2px;
+  }
+  .sec-rule {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+  .comp-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    padding: 9px 0;
+    border-top: 1px solid var(--border);
+  }
+  .comp-lbl {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    width: 92px;
+    flex-shrink: 0;
+  }
+  .comp-chips {
+    margin-bottom: 0;
+  }
+  .comp-lock {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 180px;
+  }
+  .comp-hint {
+    font-size: 11.5px;
+    color: var(--text-3);
+  }
+  .comp-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding-top: 11px;
+    border-top: 1px solid var(--border);
+  }
+  .comp-btns {
+    display: flex;
+    gap: 8px;
+  }
+  .input-sm {
+    height: 30px;
+    font-size: 12px;
+  }
+
+  /* ---------- Карточка стикера ---------- */
+  .ncard {
+    position: relative;
+    background: var(--panel-2);
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    cursor: pointer;
+    min-width: 0;
+    text-align: left;
+    overflow: hidden;
+  }
+  .ncard.card-hover:hover {
+    background: #141922;
+    border-color: var(--border-2);
+  }
+  .ncard:focus-visible {
+    outline: 1px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .ncard-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .ntitle {
+    font-size: 13.5px;
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--text);
+  }
+  .nbody {
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: var(--text-2);
+    min-height: 40px;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  /* Обёртка тела стикера: клиппит размытие, чтобы оно не выходило за скруглённые углы */
+  .nbody-shell {
+    position: relative;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .nbody-shell .nbody {
+    transition: filter 0.4s ease, opacity 0.4s ease;
+  }
+  .nbody-shell.shut .nbody {
+    filter: blur(5px);
+    opacity: 0.55;
+    user-select: none;
+    pointer-events: none;
+  }
+  .ncard.shut .ntitle {
+    color: var(--text-2);
+  }
+  .ncard footer {
+    padding-top: 10px;
+    margin-top: auto;
+    font-size: 11px;
+    color: var(--text-3r);
+  }
+  .nunlock {
+    align-self: flex-start;
+  }
+  .unlock-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .unlock-insp {
+    margin-top: -4px;
+  }
+  /* Подсказка под полем ключа: одно место и для правил, и для ошибки */
+  .key-hint {
+    font-size: 10.5px;
+    letter-spacing: 0.02em;
+    color: var(--text-3r);
+  }
+  /* Ввод нового ключа при включении пароля из инспектора */
+  .key-setup {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 11px;
+  }
+  .pin-row {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+    padding-top: 2px;
+    font-size: 11px;
+    color: var(--text-3);
+  }
+  .pin-row svg {
+    flex-shrink: 0;
+  }
+  /* Привязка как кнопка: клик уводит к самому файлу */
+  .pin-jump {
+    width: 100%;
+    background: transparent;
+    border: none;
+    font-family: inherit;
+    font-size: 11px;
+    text-align: left;
+    cursor: pointer;
+    transition: color 0.14s ease;
+  }
+  .pin-jump:hover {
+    color: var(--accent);
+  }
+  /* Т��г и категория тоже кликаются — это самый быстрый фильтр */
+  .chip-btn {
+    border: none;
+    font-family: inherit;
+    cursor: pointer;
+    transition: filter 0.14s ease, transform 0.14s ease;
+  }
+  .chip-btn:hover {
+    filter: brightness(1.28);
+  }
+  .chip-btn:active {
+    transform: scale(0.96);
+  }
+  /* Крестик на следе стёртого стикера */
+  .burn-x {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    border: 1px solid var(--border-2);
+    border-radius: 7px;
+    background: var(--panel);
+    color: var(--text-3);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.16s ease, color 0.16s ease, border-color 0.16s ease;
+  }
+  .ncard.burned:hover .burn-x,
+  .burn-x:focus-visible {
+    opacity: 1;
+  }
+  .burn-x:hover {
+    color: var(--text-1);
+    border-color: var(--border-3);
+  }
+  /* Пустой результат фильтра — с выходом обратно */
+  .empty-state {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 11px;
+    padding: 34px 20px;
+    border-style: dashed;
+    color: var(--text-3);
+    text-align: center;
+  }
+  /* Цель прикола в композере */
+  .comp-pin {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+    margin-bottom: 10px;
+    padding: 7px 10px;
+    border: 1px solid var(--border-2);
+    border-radius: 9px;
+    background: var(--raise-1);
+    font-size: 11px;
+    color: var(--text-2);
+  }
+  .comp-pin svg {
+    flex-shrink: 0;
+  }
+  .pin-off {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    margin-left: auto;
+    width: 18px;
+    height: 18px;
+    border: none;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--text-3);
+    cursor: pointer;
+    transition: color 0.14s ease, background 0.14s ease;
+  }
+  .pin-off:hover {
+    color: var(--text-1);
+    background: var(--raise-2);
+  }
+
+  /* Линия распада: сколько жизни осталось у временного стикера */
+  .decay {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 2px;
+    background: var(--border);
+  }
+  .decay i {
+    display: block;
+    height: 100%;
+    background: var(--accent);
+    transition: width 1s linear;
+  }
+  .ttl {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    color: var(--text-3);
+    white-space: nowrap;
+  }
+  .chip-note {
+    border-color: var(--border-3);
+    color: var(--text-2);
+  }
+  .chip-warn {
+    border-color: rgba(217, 161, 59, 0.4);
+    color: var(--warn);
+  }
+  .chip-gone {
+    border-color: rgba(229, 100, 92, 0.35);
+    color: var(--danger);
+  }
+
+  /* Сгоревший стикер: остаётся только надгробие */
+  .ncard.burned {
+    background: var(--bg-2);
+    border-style: dashed;
+    border-color: rgba(229, 100, 92, 0.28);
+    cursor: default;
+  }
+  .ncard.burned .ntitle {
+    color: var(--text-3r);
+    text-decoration: line-through;
+    text-decoration-color: var(--text-3);
+  }
+  .ncard.burned .nbody {
+    color: var(--text-3);
+  }
+
+  /* Карточка-приглашение */
+  .add-note {
+    align-items: flex-start;
+    justify-content: center;
+    gap: 8px;
+    min-height: 152px;
+    border-style: dashed;
+    border-color: var(--border-2);
+    background: transparent;
+    color: var(--text-3);
+    font-family: inherit;
+    transition: border-color 0.12s ease, color 0.12s ease;
+  }
+  .add-note:hover {
+    border-color: var(--accent-line);
+    color: var(--text-2);
+  }
+
+  /* Счётчик приколотых стикеров в карточке файла */
+  .fcard footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .fnotes {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--text-3);
+  }
+
+  /* ---------- Инспектор стикера ---------- */
+  .note-preview {
+    height: auto;
+    min-height: 116px;
+    align-items: flex-start;
+    padding: 13px 14px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: var(--r-panel);
+    overflow: hidden;
+  }
+  .note-preview p {
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--text-2);
+    text-align: left;
+    transition: filter 0.4s ease, opacity 0.4s ease;
+  }
+  .note-preview.shut p {
+    filter: blur(6px);
+    opacity: 0.55;
+    user-select: none;
+    pointer-events: none;
+  }
+  .life-btns {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 11px;
+  }
+  .pin-item {
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-radius: var(--r);
+    font-family: inherit;
+    font-size: 12.5px;
+    text-align: left;
+  }
+  .pin-item:hover {
+    background: var(--raise-1);
+  }
+  .pin-item .rn {
+    color: var(--text-2);
+  }
+  .pin-add {
+    margin-top: 8px;
+  }
+
+  @media (max-width: 1180px) {
+    .stat-strip .st-wide {
+      margin-left: 0;
+      text-align: left;
+    }
+  }
+  @media (max-width: 720px) {
+
+    .head-actions {
+      width: 100%;
+    }
+    .comp-lbl {
+      width: auto;
+    }
+  }
+
+}
+
+@layer wf008 {
+
+
+  /* ---------- Плашка активного поиска в библиотеке ---------- */
+  /* Запрос из шапки сужает сетку библиотеки. Плашка говорит об этом прямо
+     и даёт выход, чтобы пустой экран не выглядел поломкой. */
+  .lib-filter-note {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 10px 8px 14px;
+    margin-bottom: 18px;
+  }
+}
+
+@layer wf010 {
+
+
+  /* ============================================================
+     ДОСКА БИБЛИОТЕКИ
+     Мозаика на CSS-grid: число колонок приходит из ResizeObserver
+     (--board-cols), размеры плиток — span-ы. Только токены «Графит»:
+     глубина — слоями тона, границы — волосяные, единственный акцент —
+     на активных состояниях.
+     ============================================================ */
+
+  .board {
+    --board-gap: 14px;
+    min-width: 0;
+  }
+
+  /* Сетка доски. auto-rows задаёт строку-ячейку; плитки растягиваются
+     на N строк через span. */
+  .board .board-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--board-cols, 3), minmax(0, 1fr));
+    /* Минимум ячейки, но строка растягивается под содержимое плитки:
+       карточки физически не могут налезать друг на друга. */
+    grid-auto-rows: minmax(96px, auto);
+    grid-auto-flow: row dense;
+    gap: var(--board-gap);
+  }
+
+  /* Плитка — колонка: карточка занимает всю выделенную область,
+     фон не обрывается на полпути у широких плиток. */
+  .tile {
+    display: flex;
+    flex-direction: column;
+  }
+  .tile > article {
+    flex: 1;
+  }
+
+  /* Плитка: прежняя карточка внутри новой обёртки. */
+  .tile {
+    position: relative;
+    min-width: 0;
+    min-height: 0;
+    border-radius: var(--r-panel);
+    transition: opacity 0.16s ease, transform 0.16s ease;
+  }
+  .tile.fade-in,
+  .tile > .fade-in {
+    animation-delay: inherit;
+  }
+
+  /* Плитка перетаскивается: приподнята и полупрозрачна, место под неё
+     показывает призрак. */
+  .tile.dragging {
+    opacity: 0.35;
+    transform: scale(0.985);
+  }
+
+  /* Клавиатурный перенос: та же логика видимости, другая рамка. */
+  .tile.kb-dragging {
+    outline: 1px solid var(--accent-line);
+    outline-offset: 2px;
+    border-radius: var(--r-panel);
+  }
+
+  /* Призрак посадки: пунктир по габаритам будущей плитки. */
+  .tile-slot {
+    border: 1px dashed var(--border-3);
+    border-radius: var(--r-panel);
+    background: var(--raise-1);
+    pointer-events: none;
+  }
+
+  /* Плавающая копия под курсором. */
+  .tile-ghost {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 80;
+    pointer-events: none;
+    will-change: transform;
+  }
+  .ghost-tile {
+    max-height: 70vh;
+    overflow: hidden;
+    box-shadow: none;
+    outline: 1px solid var(--border-3);
+    background: var(--panel-2);
+    animation: none;
+  }
+  .ghost-tile.alt-target {
+    outline-color: var(--accent-line);
+  }
+
+  /* Панель управления плиткой: одна вертикальная планка в правом
+     верхнем углу. Собственный фон и волосяная рамка — она перекрывает
+     контент карточки цельно, как оверлей, а не россыпью поверх текста. */
+  .tile-tools {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    z-index: 4;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 3px;
+    border: 1px solid var(--border-2);
+    border-radius: var(--r);
+    background: var(--panel);
+    opacity: 0;
+    transform: translateX(4px);
+    transition: opacity 0.14s ease, transform 0.14s ease;
+  }
+  .tile:hover .tile-tools,
+  .tile:focus-within .tile-tools {
+    opacity: 1;
+    transform: none;
+  }
+  /* Пока плитку тащат — панель не нужна. */
+  .tile.dragging .tile-tools {
+    opacity: 0;
+  }
+  .tile-grip {
+    display: grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    color: var(--text-3);
+    cursor: grab;
+    touch-action: none;
+  }
+  body.board-dragging .tile-grip {
+    cursor: grabbing;
+  }
+
+  .tile-size,
+  .tile-pin {
+    position: absolute;
+    z-index: 3;
+    display: grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    border: 1px solid transparent;
+    border-radius: var(--r);
+    background: transparent;
+    color: var(--text-3);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  }
+  .tile-size {
+    top: 28px;
+    right: 6px;
+  }
+  .tile-pin {
+    top: 50px;
+    right: 6px;
+  }
+  .tile:hover .tile-size,
+  .tile:hover .tile-pin,
+  .tile-size:focus-visible,
+  .tile-pin:focus-visible {
+    opacity: 1;
+  }
+  .tile-size:hover,
+  .tile-pin:hover {
+    color: var(--text);
+    border-color: var(--border-2);
+    background: var(--raise-1);
+  }
+  .tile-size:focus-visible,
+  .tile-pin:focus-visible {
+    outline: 1px solid var(--accent);
+    outline-offset: -2px;
+  }
+
+  /* Тач: контролы всегда видимы, зона касания с запасом под палец. */
+  @media (hover: none) {
+    .tile-grip,
+    .tile-tools {
+      opacity: 1;
+      transform: none;
+      pointer-events: auto;
+    }
+    .tile-grip {
+      background: color-mix(in srgb, var(--panel) 82%, transparent);
+      touch-action: none;
+    }
+    .tile-tools {
+      border-color: var(--border);
+    }
+    .tile-size,
+    .tile-pin {
+      width: 26px;
+      height: 26px;
+    }
+  }
+
+  /* Подвал доски: приглашение «Быстрый стикер» вне сетки мозаики. */
+  .board-footnote {
+    margin-top: 14px;
+    display: grid;
+    grid-template-columns: repeat(var(--board-cols, 3), minmax(0, 1fr));
+    gap: var(--board-gap);
+  }
+  .board-footnote .add-note {
+    grid-column: 1 / -1;
+  }
+
+  /* Узкие экраны: одна колонка, горизонтальные размеры свёрнуты
+     движком (data-cx=1), строка-ячейка пониже. */
+  @media (max-width: 560px) {
+
+    .board .board-grid {
+      grid-auto-rows: minmax(88px, auto);
+      gap: 10px;
+    }
+  }
+
+
+  /* Инспектор на узком экране остаётся поверх контента — как раньше. */
+  @media (max-width: 1100px) {
+    .board .inspector,
+    .inspector {
+      position: static;
+    }
+  }
+
+  /* Движение — только по согласию системы. */
+  @media (prefers-reduced-motion: reduce) {
+    .tile,
+    .tile-ghost,
+    .ghost-tile {
+      transition: none !important;
+      animation: none !important;
+    }
+  }
+}
+
+@layer wf011 {
+
+
+  /* ============================================================
+     ПОЛИШ ПОСЛЕ АУДИТА
+     ============================================================ */
+
+  /* Мёртвые токены --text-1/--border-1 из старых прототипов не существуют
+     в «Графит» v3 — заменяем на канонические. */
+  .burn-x:hover,
+  .pin-off:hover,
+  .lib-toast {
+    color: var(--text);
+  }
+
+  /* Клавиатурный фокус по самой плитке — виден и без наведения. */
+  .tile:focus-visible {
+    outline: 1px solid var(--accent-line);
+    outline-offset: 2px;
+  }
+  .tile:focus-visible .tile-grip,
+  .tile:focus-visible .tile-size,
+  .tile:focus-visible .tile-pin {
+    opacity: 1;
+  }
+
+  /* Тач-устройства: у мелких целей должен быть запас под палец (44px),
+     сами значки остаются прежними — растёт только зона касания. */
+  @media (hover: none) {
+    .tile-size,
+    .tile-pin,
+    .tile-grip {
+      width: 28px;
+      height: 28px;
+    }
+    .tile-size::before,
+    .tile-pin::before,
+    .tile-grip::before {
+      content: '';
+      position: absolute;
+      inset: -8px;
+    }
+  }
+  .tile.kb-dragging {
+    animation: kb-hold 1.6s ease-in-out infinite;
+  }
+  .tile-slot {
+    animation: slot-breathe 1.4s ease-in-out infinite;
+  }
+}
+
+@layer wf012 {
+
+
+  /* ---------- Библиотека ---------- */
+
+  /* Пустые состояния: точечная сетка тоном — воздух вместо пустоты. */
+  .empty-state {
+    background-image: radial-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1.4px);
+    background-size: 20px 20px;
+    background-position: 2px 2px;
+    animation: rise-in 0.22s var(--ease-quart) both;
+  }
+
+  /* Карточки: подъём на 1px при hover — тактильный отклик без теней. */
+  .card-hover {
+    transition:
+      background-color 0.12s ease,
+      border-color 0.12s ease,
+      transform 0.18s var(--ease-quart);
+  }
+  .card-hover:hover {
+    transform: translateY(-1px);
+  }
+  .card-hover:active {
+    transform: none;
+    transition-duration: 0.05s;
+  }
+  .card-hover:hover .ficon {
+    border-color: var(--border-2);
+    color: var(--text);
+  }
+
+  /* Файл в обработке: волосяная кромка подсвечена, по ней идёт луч. */
+  .fcard.proc-live {
+    position: relative;
+    border-color: var(--accent-line);
+  }
+
+  /* Связанные объекты в инспекторе: строка отзывается сдвигом на 2px. */
+  .rel-item {
+    border-radius: var(--r);
+    transition:
+      color 0.12s ease,
+      background-color 0.12s ease,
+      transform 0.16s var(--ease-quart);
+  }
+  .rel-item:hover {
+    color: var(--text);
+    background: var(--raise-1);
+    transform: translateX(2px);
+  }
+  .rel-item:hover .rp {
+    color: var(--accent);
+  }
+
+  /* Управление плиткой всплывает с микрохода, а не проступает на месте. */
+  .tile-grip,
+  .tile-size,
+  .tile-pin {
+    transform: translateY(2px);
+    transition:
+      opacity 0.14s ease,
+      color 0.12s ease,
+      border-color 0.12s ease,
+      transform 0.16s var(--ease-quart),
+      background-color 0.12s ease;
+  }
+  .tile:hover .tile-grip,
+  .tile-grip:focus-visible,
+  .tile:hover .tile-size,
+  .tile-size:focus-visible,
+  .tile:hover .tile-pin,
+  .tile-pin:focus-visible {
+    transform: none;
+  }
+}
+
+@layer wf013 {
+
+
+  /* ============================================================
+     ДОСКА · ДИЗАЙН-ПОЛИШ
+     Управление одним кластером, призрак с подъёмом и мягкой тенью,
+     слот-подсветка по намерению, выровненное приглашение.
+     ============================================================ */
+
+  /* Кластер управления плиткой: ручка сверху, под ней — размер и
+     закрепление. Панель всплывает с микроходом, как все элементы
+     «Графита». */
+  .tile-tools {
+    position: absolute;
+    top: 32px;
+    right: 5px;
+    z-index: 4;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 2px;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    background: color-mix(in srgb, var(--panel) 90%, transparent);
+    opacity: 0;
+    transform: translateY(-2px);
+    pointer-events: none;
+    transition:
+      opacity 0.14s ease,
+      transform 0.16s var(--ease-quart),
+      border-color 0.14s ease;
+  }
+  .tile:hover .tile-grip,
+  .tile:hover .tile-tools,
+  .tile:focus-within .tile-grip,
+  .tile:focus-within .tile-tools {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+
+  /* Ручка переноса — первая среди равных, но заметная на фоне панели. */
+  .tile:hover .tile-grip {
+    color: var(--text-2);
+    background: var(--raise-1);
+  }
+
+  /* Призрак: плитка «взята в руку» — приподнята, с мягкой глубокой
+     тенью и волосяной кромкой. Никаких полупрозрачных фантомов:
+     копия читается как сама плитка, только над всеми слоями. */
+  .tile-ghost {
+    filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.42));
+  }
+  .ghost-tile {
+    outline: 1px solid var(--border-3);
+    animation: ghost-lift 0.18s var(--ease-snap) both;
+  }
+  .ghost-tile.alt-target {
+    outline-color: var(--accent-line);
+  }
+  .tile-ghost[data-ghost='cluster'] .ghost-tile,
+  .tile-ghost[data-ghost='pin'] .ghost-tile {
+    outline: 1px solid var(--accent-line);
+  }
+
+  /* Слот посадки говорит, ЧТО произойдёт: перестановка — пунктир,
+     перенос в кластер или прикол — акцентная заливка-маячок. */
+  .tile-slot[data-slot='move'] {
+    animation: slot-breathe 1.4s ease-in-out infinite;
+  }
+  .tile-slot[data-slot='cluster'],
+  .tile-slot[data-slot='pin'] {
+    border: 1px dashed var(--accent-line);
+    background:
+      repeating-linear-gradient(
+        -45deg,
+        rgba(47, 190, 126, 0.07) 0 6px,
+        transparent 6px 12px
+      );
+    animation: none;
+  }
+
+  /* Приглашение внизу доски: та же ширина колонок, что у сетки,
+     карточка по высоте строки — низ страницы не «плывёт». */
+  .board-footnote {
+    margin-top: 4px;
+  }
+  .board-footnote .add-note {
+    min-height: 96px;
+    align-items: center;
+    text-align: center;
+    padding-top: 14px;
+  }
+  .board-footnote .add-note svg {
+    margin: 0 auto;
+  }
+
+  /* Перетаскиваемая плитка на своём месте почти растворяется —
+     место занимает призрак, а не «призрак + полупрозрачный дубль». */
+  .tile.dragging > article {
+    opacity: 0.25;
+  }
+}
+
+@layer wf014 {
+
+
+  /* Формы замка в настройках */
+  .lock-form {
+    margin-top: 14px;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+@layer wf015 {
+
+
+  /* ===== FILE-KEYS v3.2b =====
+     Файловые ключи (этап 5): бейдж плитки, модалки поверх.
+     Дисциплина та же, что в LOCK LAYER v3.2: тон и волосяные
+     границы (--border*, --bg-input, --r), акцент --accent,
+     никаких теней. Классы lock-card / lock-input переиспользуются. */
+
+  /* ---------- Бейдж «под ключом» на плитке файла ---------- */
+  .fk-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 7px;
+    border: 1px solid var(--border-2);
+    border-radius: var(--r);
+    background: var(--bg-input);
+    color: var(--text-2);
+    font-size: 10.5px;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+  .fk-badge svg {
+    flex-shrink: 0;
+    color: var(--accent);
+  }
+  .fcard .fk-badge,
+  .insp-block .fk-badge {
+    color: var(--text-2);
+  }
+
+  /* Инспектор под ключом: содержимое скрыто честнее, чем blur. */
+  .badges-row .fk-badge {
+    font-size: 11px;
+  }
+
+  /* ---------- Модалки файловых ключей ---------- */
+  .fk-modal {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-lock, 900);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(6, 10, 9, 0.55);
+  }
+  .fk-modal .lk-head {
+    text-align: center;
+    margin-bottom: 8px;
+    color: var(--text-1);
+  }
+  .fk-modal .file-name {
+    text-align: center;
+    margin-bottom: 12px;
+    overflow-wrap: anywhere;
+  }
+  .fk-modal .lock-form {
+    display: grid;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .fk-modal .key-hint {
+    font-size: 11.5px;
+    line-height: 1.45;
+    color: var(--text-2);
+  }
+  .fk-modal .fk-note {
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--text-2);
+    border-left: 2px solid var(--border-2);
+    padding-left: 9px;
+    margin-bottom: 12px;
+  }
+  .fk-modal-row {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+}
+
+@layer wf016 {
+
+  .fk-modal .lk-head {
+    justify-content: center;
+    gap: 7px;
+    margin-bottom: 12px;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    color: var(--text-3r);
+  }
+  .fk-modal .lk-head svg {
+    flex: 0 0 auto;
+    width: 12px;
+    height: 12px;
+    color: var(--accent);
+  }
+  .fk-modal .file-name {
+    padding-bottom: 10px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    font-size: 13px;
+  }
+  .fk-modal .fk-note {
+    margin-bottom: 12px;
+    color: var(--text-3r);
+  }
+  .fk-modal .key-hint {
+    min-height: 1.45em;
+    color: var(--text-3r);
+  }
+  .fk-modal-row {
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 2px;
+  }
+}
+
+@layer wf025 {
+
+
+  /* ============================================================
+     ≤768 · БИБЛИОТЕКА: ФИЛЬТРЫ ГОРИЗОНТАЛЬНОЙ ЛЕНТОЙ
+     Чипы перестают переноситься и скроллятся с тонким скроллбаром —
+     тулбар больше не занимает три строки на телефоне.
+     ============================================================ */
+  @media (max-width: 768px) {
+
+    .lib-toolbar {
+      align-items: center;
+    }
+    .lib-toolbar .filters {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      overscroll-behavior-x: contain;
+      scrollbar-width: thin;
+      padding-bottom: 3px;
+    }
+    .lib-toolbar .filters::-webkit-scrollbar {
+      height: 6px;
+    }
+    .lib-toolbar .filters::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .lib-toolbar .filters::-webkit-scrollbar-thumb {
+      background: var(--border-2);
+      border-radius: 3px;
+    }
+  }
+
+}
+
+@layer wf026 {
+
+
+  /* ============================================================
+     ≤480 · МОДАЛКИ И ЗАМОК
+     fk-modal: ширина calc(100vw − 24px) вместо −40, паддинги ниже.
+     Замок: статусная строка остаётся SESSION ⟷ ПОПЫТКИ.
+     ============================================================ */
+  @media (max-width: 480px) {
+
+    .fk-modal .lk-head {
+      margin-bottom: 6px;
+    }
+    .fk-modal .file-name {
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      font-size: 12.5px;
+    }
+    .fk-modal .fk-note {
+      margin-bottom: 10px;
+    }
+    .fk-modal .lf-actions {
+      gap: 8px;
+    }
+  }
+
+}
+
+@layer wf028 {
+
+
+  /* ============================================================
+     ТАЧ (hover:none): HOVER-СОСТОЯНИЯ ДЕГРАДИРУЮТ В ПОСТОЯННЫЕ
+     Паттерн плиток библиотеки, повторённый для замка и мелких чипов:
+     липкий hover отключён, зоны касания растут до ≥34–40px.
+     ============================================================ */
+  @media (hover: none) {
+
+
+    /* Мелкие текстовые кнопки — полноценные цели под палец.
+       Зона растёт самим элементом, без псевдоэлементов-наложений,
+       чтобы hit-зоны соседних кнопок не перекрывались. */
+    .seg-btn {
+      height: 40px;
+      padding: 0 16px;
+    }
+  }
+
+}
+
+@layer wf044 {
+
+
+  /* ============================================================
+     ===== INDEXER v1 · ПОЛОСА ИНДЕКСАЦИИ (NF-1) ================
+     Слой дописан в конец: палитра «Графит» не менялась, ни одного
+     blur/тени — только тон, рамка и один честный прогресс-бар.
+     ============================================================ */
+  .idx-strip {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 16px;
+    margin-bottom: 14px;
+    border-left: 2px solid rgba(47, 190, 126, 0.5);
+  }
+  .idx-strip > svg {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+    opacity: 0.7;
+  }
+  .idx-body {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+  .idx-body > b {
+    font-size: 12.5px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+  .idx-current {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .idx-bar {
+    position: relative;
+    height: 3px;
+    margin-top: 5px;
+    background: rgba(255, 255, 255, 0.06);
+    overflow: hidden;
+  }
+  .idx-bar > i {
+    position: absolute;
+    inset: 0 auto 0 0;
+    background: rgba(47, 190, 126, 0.75);
+    transition: width 0.25s linear;
+  }
+  .lib-more {
+    display: flex;
+    justify-content: center;
+    padding: 6px 0 18px;
+  }
+}

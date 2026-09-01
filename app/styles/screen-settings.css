@@ -1,0 +1,1278 @@
+/* AR-2 · слой экрана «settings»: приезжает вместе с чанком экрана.
+   Сгенерирован scripts/split-css.py из app/styles/_monolith.css —
+   правки вносим в монолит, а не здесь. */
+
+@layer wf001 {
+
+
+  /* ---------- Редакционная плашка ---------- */
+  .redact {
+    display: inline-block;
+    font-family: var(--font-plex-mono), 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    color: var(--text-3);
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 1px 7px;
+    vertical-align: middle;
+    user-select: none;
+  }
+
+  /* ---------- Пример скрытия (маска поля) ---------- */
+  .mask-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+  /* Флаг набирает свой шрифт сам и не носит .label-mono:
+     иначе `.field-block .label-mono { display: block }` перебивает flex и текст падает под иконку. */
+  .mask-head .mask-flag {
+    display: inline-flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+    white-space: nowrap;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    font-family: var(--font-plex-mono), 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    line-height: 1;
+    color: var(--text-3);
+  }
+  .mask-head .mask-flag::before {
+    content: '';
+    flex: 0 0 auto;
+    width: 1px;
+    height: 11px;
+    background: var(--border-2);
+    margin-right: 2px;
+  }
+  .mask-head .mask-flag > svg {
+    display: block;
+    flex: 0 0 auto;
+    width: 11px;
+    height: 11px;
+    color: var(--info);
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 1.5;
+  }
+  .mask-head .mask-flag-text {
+    display: inline-block;
+    flex: 0 0 auto;
+    white-space: nowrap;
+    line-height: 1;
+  }
+  .mask-demo {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    padding: 12px 14px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-left: 2px solid var(--accent-line);
+    border-radius: var(--r-panel);
+  }
+  .mask-key {
+    font-size: 10.5px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-2);
+    padding: 3px 8px;
+    border: 1px solid var(--border-2);
+    border-radius: var(--r);
+    background: var(--panel-2);
+    flex-shrink: 0;
+  }
+  .mask-value {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    user-select: none;
+  }
+  .mask-group {
+    display: inline-flex;
+    gap: 3px;
+  }
+  .mask-group i {
+    display: block;
+    width: 9px;
+    height: 15px;
+    border-radius: 1px;
+    background: repeating-linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.14) 0 1px,
+      transparent 1px 3px
+    );
+    box-shadow: inset 0 0 0 1px var(--border-2);
+  }
+  .mask-hint {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--text-3r);
+    white-space: nowrap;
+  }
+  @media (max-width: 560px) {
+    .mask-hint {
+      margin-left: 0;
+      width: 100%;
+    }
+  }
+}
+
+@layer wf005 {
+
+
+  /* ============================================================
+     ЭКРАН 04 · НАСТРОЙКИ (раскладка)
+     ============================================================ */
+  /* Рельс разделов слева + колонка контента: длинная страница перестаёт
+     быть свитком и получает адресную навигацию. */
+  /* Страница настроек: скролл только у контента, панель сохранения — подвал. */
+  .set-page {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+  }
+  .set-shell {
+    display: grid;
+    grid-template-columns: 208px minmax(0, 1fr);
+    gap: 28px;
+    max-width: 1060px;
+    margin: 0 auto;
+    padding: 28px 36px 32px;
+    align-items: start;
+  }
+  .set-rail {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    z-index: 5;
+  }
+  .set-rail-inner {
+    position: sticky;
+    top: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .set-rail-head {
+    padding: 0 10px 8px;
+  }
+  .set-rail-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .set-rail-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    height: 32px;
+    padding: 0 10px;
+    border: none;
+    border-left: 2px solid transparent;
+    border-radius: 0 var(--r) var(--r) 0;
+    background: transparent;
+    color: var(--text-3r);
+    font-family: inherit;
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+    transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease;
+  }
+  .set-rail-item svg {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 1.5;
+  }
+  .set-rail-item:hover {
+    color: var(--text);
+    background: var(--raise-1);
+  }
+  .set-rail-item:focus-visible {
+    outline: 1px solid var(--accent);
+    outline-offset: -1px;
+  }
+  .set-rail-foot {
+    margin-top: 14px;
+    padding: 12px 10px 0;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .set-rail-meta {
+    font-size: 11px;
+    color: var(--text-3);
+  }
+  .set-main {
+    min-width: 0;
+  }
+
+  /* Шапка-сводка: четыре факта о сейфе до первого решения. */
+  .set-hero {
+    padding: 20px 22px 0;
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+  .set-hero-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    padding-bottom: 18px;
+  }
+  .set-hero-badge {
+    flex-shrink: 0;
+    margin-top: 4px;
+  }
+  .set-hero-stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    border-top: 1px solid var(--border);
+    margin: 0 -22px;
+  }
+  .set-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 14px 18px 16px;
+    min-width: 0;
+    border-left: 1px solid var(--border);
+  }
+  .set-stat:first-child {
+    border-left: none;
+    padding-left: 22px;
+  }
+  .set-stat b {
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .set-stat-sub {
+    font-size: 11px;
+    color: var(--text-3);
+  }
+  .sec-head-text {
+    flex: 1;
+    min-width: 0;
+  }
+  .sec-meta {
+    flex-shrink: 0;
+    align-self: flex-start;
+    margin-top: 3px;
+    padding: 3px 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    color: var(--text-3r);
+  }
+  .danger-zone .sec-meta {
+    color: var(--danger);
+    border-color: rgba(229, 100, 92, 0.3);
+  }
+  .sec-split {
+    height: 1px;
+    background: var(--border);
+    margin: 20px 0 4px;
+  }
+  .setting-row-text {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* Состав хранилища: одна полоса-стопка вместо четырёх отдельных метров. */
+  .mix-bar {
+    display: flex;
+    height: 8px;
+    gap: 2px;
+    overflow: hidden;
+  }
+  .mix-bar i {
+    display: block;
+    height: 100%;
+    border-radius: 1px;
+  }
+  .mix-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+    margin-top: 12px;
+  }
+  .mix-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12.5px;
+    color: var(--text-2);
+  }
+  .mix-item i {
+    width: 7px;
+    height: 7px;
+    border-radius: 1px;
+    flex-shrink: 0;
+  }
+  .mix-label {
+    color: var(--text-2);
+  }
+  .mix-item b {
+    font-family: var(--font-plex-mono), 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-3);
+  }
+  .page-sub {
+    color: var(--text-3r);
+    font-size: 13px;
+    margin-top: 4px;
+  }
+  .sec {
+    padding: 20px 22px 22px;
+    margin-bottom: 16px;
+    scroll-margin-top: 18px;
+  }
+  .sec-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--r);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--panel-2);
+    border: 1px solid var(--border-2);
+  }
+  .sec-icon svg {
+    width: 17px;
+    height: 17px;
+    stroke: var(--text-2);
+    fill: none;
+    stroke-width: 1.5;
+  }
+  .danger-zone {
+    border-color: rgba(229, 100, 92, 0.3);
+  }
+  .danger-zone .sec-icon {
+    background: transparent;
+    border-color: rgba(229, 100, 92, 0.35);
+  }
+  .danger-zone .sec-icon svg {
+    stroke: var(--danger);
+  }
+  .engine-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .engine-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 13px;
+    padding: 13px 15px;
+    border-radius: var(--r);
+    border: 1px solid var(--border);
+    background: var(--bg-input);
+    cursor: pointer;
+    text-align: left;
+    width: 100%;
+    transition: border-color 0.12s ease, background-color 0.12s ease;
+  }
+  .engine-option:hover {
+    border-color: var(--border-2);
+    background: var(--panel);
+  }
+  .radio-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 2px;
+    border: 1.5px solid var(--border-3);
+    position: relative;
+    transition: border-color 0.12s ease;
+  }
+  .engine-name {
+    font-size: 13.5px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    flex-wrap: wrap;
+    color: var(--text);
+  }
+  .engine-sub {
+    font-size: 12.5px;
+    color: var(--text-3r);
+    margin-top: 3px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .field-block {
+    margin-top: 18px;
+  }
+  .model-row {
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .step-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--r);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+  }
+  .step-icon svg {
+    width: 19px;
+    height: 19px;
+    stroke: var(--text-2);
+    fill: none;
+    stroke-width: 1.5;
+  }
+  .step-name {
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--text);
+  }
+  .step-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-plex-mono), 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-3r);
+  }
+  .step-status i {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--ok);
+  }
+  .flow-sep {
+    flex: 0 0 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-top: 14px;
+  }
+  .flow-sep svg {
+    width: 20px;
+    height: 12px;
+    stroke: var(--border-3);
+    fill: none;
+    stroke-width: 1.2;
+  }
+  .folder-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .stat-line {
+    margin-top: 15px;
+    font-family: var(--font-plex-mono), 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--text-2);
+    font-variant-numeric: tabular-nums;
+  }
+  .stat-line b {
+    color: var(--ok);
+    font-weight: 500;
+  }
+  .setting-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .setting-row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+  .setting-row:first-child {
+    padding-top: 0;
+  }
+  .rows-list {
+    margin-top: 4px;
+  }
+  .setting-title {
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--text);
+  }
+  .setting-note {
+    font-size: 12.5px;
+    color: var(--text-3r);
+    margin-top: 2px;
+  }
+  /* Подвал вне области прокрутки: пан��ль сохранения не накрывает разделы. */
+  .set-footer {
+    flex-shrink: 0;
+    padding: 10px 36px 14px;
+    border-top: 1px solid var(--border);
+    background: var(--bg);
+  }
+  .set-footer .save-bar {
+    max-width: 1060px;
+    margin: 0 auto;
+  }
+  .save-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 11px 12px 11px 16px;
+    background: var(--panel-2);
+    border-color: var(--border-2);
+  }
+  .save-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    font-family: var(--font-plex-mono), 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-3r);
+  }
+  .save-hint i {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--text-3);
+  }
+  .save-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+}
+
+@layer wf006 {
+
+  @media (max-width: 1100px) {
+
+    /* Рельс уходит в горизонтальную ленту над контентом. */
+    .set-shell {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 16px;
+      padding: 22px 22px 28px;
+    }
+    .set-footer {
+      padding: 10px 22px 14px;
+    }
+    .set-rail,
+    .set-rail-inner {
+      position: static;
+    }
+    .set-rail-head,
+    .set-rail-foot {
+      display: none;
+    }
+    .set-rail-nav {
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .set-rail-item {
+      width: auto;
+      border-left: none;
+      border-bottom: 2px solid transparent;
+      border-radius: var(--r);
+      background: var(--bg-input);
+      padding: 0 12px;
+    }
+  }
+
+  @media (max-width: 980px) {
+
+    .flow-sep {
+      display: none;
+    }
+    .set-hero-stats {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .set-stat:nth-child(3) {
+      border-left: none;
+      padding-left: 22px;
+    }
+    .set-stat:nth-child(n + 3) {
+      border-top: 1px solid var(--border);
+    }
+  }
+
+  @media (max-width: 768px) {
+
+    .set-shell {
+      padding: 20px 18px 24px;
+    }
+    .set-footer {
+      padding: 10px 18px 12px;
+    }
+    .set-hero {
+      padding: 18px 18px 0;
+    }
+    .set-hero-stats {
+      margin: 0 -18px;
+    }
+    .set-stat:first-child,
+    .set-stat:nth-child(3) {
+      padding-left: 18px;
+    }
+  }
+
+  @media (max-width: 480px) {
+
+    .set-shell {
+      padding: 18px 12px 20px;
+    }
+    .set-footer {
+      padding: 10px 12px 12px;
+    }
+    .save-bar {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 10px;
+    }
+    .save-actions {
+      justify-content: flex-end;
+    }
+    .set-hero-stats {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .set-stat {
+      border-left: none;
+      padding-left: 18px;
+    }
+    .set-stat:nth-child(n + 2) {
+      border-top: 1px solid var(--border);
+    }
+  }
+
+}
+
+@layer wf009 {
+
+
+  /* ============================================================
+     ПОДСВЕТКА РАЗДЕЛА НАСТРОЕК
+     Переход из поиска, палитры или колокольчика должен быть заметен:
+     раздел, к которому нас привели, на секунду обводится акцентом.
+     ============================================================ */
+  .sec-flash {
+    animation: sec-flash 1.2s ease both;
+  }
+}
+
+@layer wf012 {
+
+
+  /* Состав сейфа: сегменты вырастают слева волной. */
+  .mix-bar i {
+    transform-origin: 0 50%;
+    animation: grow-x 0.5s var(--ease-quart) backwards;
+  }
+  .mix-bar i:nth-child(2) {
+    animation-delay: 40ms;
+  }
+  .mix-bar i:nth-child(3) {
+    animation-delay: 80ms;
+  }
+  .mix-bar i:nth-child(4) {
+    animation-delay: 120ms;
+  }
+  .mix-bar i:nth-child(n + 5) {
+    animation-delay: 160ms;
+  }
+  .mix-item {
+    transition: color 0.12s ease;
+  }
+  .mix-item:hover {
+    color: var(--text);
+  }
+  .set-stat b {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer wf014 {
+
+  .ok-text {
+    color: var(--ok);
+  }
+  .lock-setup-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 34px;
+    padding: 0 14px;
+    margin-top: 12px;
+    border: 1px solid var(--border-2);
+    border-radius: var(--r);
+    background: transparent;
+    color: var(--text-2);
+    font-size: 12.5px;
+    cursor: pointer;
+    transition:
+      border-color 0.15s ease,
+      color 0.15s ease,
+      background 0.15s ease;
+  }
+  .lock-setup-btn:hover {
+    border-color: var(--accent-line);
+    color: var(--text);
+    background: var(--raise-1);
+  }
+  .lock-setup-btn.inline {
+    margin-top: 0;
+  }
+  .lock-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .lock-cancel {
+    height: 34px;
+    padding: 0 12px;
+    border: 1px solid transparent;
+    border-radius: var(--r);
+    background: transparent;
+    color: var(--text-3r);
+    font-size: 12.5px;
+    cursor: pointer;
+  }
+  .lock-cancel:hover {
+    color: var(--text-2);
+  }
+
+  /* Индикатор силы пароля: сегменты линией 2px */
+  .lock-strength {
+    display: flex;
+    gap: 5px;
+    margin: -2px 0 10px;
+  }
+  .lock-strength i {
+    height: 2px;
+    flex: 1;
+    background: var(--border-2);
+    transition: background 0.2s ease;
+  }
+
+  /* Сегмент-контрол автоблокировки */
+  .autolock-seg {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    overflow: hidden;
+  }
+  .autolock-seg button {
+    flex: 1;
+    height: 32px;
+    border-right: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-3r);
+    font-size: 12px;
+    cursor: pointer;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease;
+  }
+  .autolock-seg button:last-child {
+    border-right: 0;
+  }
+  .autolock-seg button:hover {
+    background: var(--raise-1);
+    color: var(--text-2);
+  }
+}
+
+@layer wf016 {
+
+
+  /* ============================================================
+     POLISH v3.3 · Премиум-полиш слоя замка
+     Применён make-interfaces-feel-better: концентрические радиусы
+     (карточка --r-panel над полями --r), глубина лестницей тонов
+     (--panel-2 / --panel / --bg-input), волосяные границы,
+     tabular-nums на живых числах, transition-property указан
+     точечно (никакого all). Blur запрещён системой: «дефокус»
+     появления карточки имитирует стартовый letter-spacing логотипа.
+     Reduced-motion накрыт глобальным правилом v3 (duration 0.01ms).
+     ============================================================ */
+
+  /* ---------- 1 · Секция «Безопасность»: заголовок-строка ---------- */
+  /* Язык пипа статуса — тот же вертикальный штрих, что у mask-flag */
+  #set-security .sec-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+  }
+  #set-security .sec-meta::before {
+    content: '';
+    flex: 0 0 auto;
+    width: 1px;
+    height: 11px;
+    background: var(--border-2);
+  }
+  #set-security .sec-meta.ok-text::before {
+    background: var(--accent);
+  }
+  #set-security .setting-title {
+    text-wrap: balance;
+  }
+  #set-security .setting-note {
+    text-wrap: pretty;
+  }
+  .lock-form-card.is-danger {
+    border-color: rgba(229, 100, 92, 0.25);
+  }
+  .lf-field .lock-strength {
+    margin: 2px 0 0;
+  }
+
+  /* Отмена — честный ghost: тише всех на кнопочной строке */
+  .lf-actions .lock-cancel:hover {
+    background: var(--raise-1);
+    color: var(--text-2);
+  }
+
+  /* В danger-карточке иконка предупреждения говорит тем же голосом,
+     что кромка формы — danger вместо warn */
+  .lock-form-card.is-danger .lock-warn svg {
+    color: var(--danger);
+  }
+}
+
+@layer wf021 {
+
+  /* Живые числа настроек не дёргают ширину колонки */
+  .set-stat b {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer wf027 {
+
+
+  /* ============================================================
+     ≤380 · ЗАМОК: PIN ВЛЕЗАЕТ; НАСТРОЙКИ: СЕГМЕНТЫ ВЕРТИКАЛЬНО
+     Ячейки не падают ниже 40px — минимальный размер под палец;
+     при 320px ряд (6×40 + 5×8 = 280) умещается в карточку.
+     ============================================================ */
+  @media (max-width: 380px) {
+
+
+    /* Автоблокировка / тип ключа: сегменты стеком, если строка узкая */
+    .autolock-seg {
+      flex-direction: column;
+    }
+    .autolock-seg button {
+      width: 100%;
+      height: 40px;
+      border-right: none;
+    }
+    .autolock-seg button + button {
+      border-top: 1px solid var(--border);
+    }
+  }
+
+}
+
+@layer wf030 {
+
+
+  /* ============================================================
+     SETTINGS-WIDE v4.0 · настройки на всю ширину + дизайнерские поля
+     (1) Пустая колонка слева от контента: .set-shell был ограничен
+     max-width 1060px с margin auto — на широких экранах справа и слева
+     симметрично пустовало, а у пользователя рельс слева прижат, поэтому
+     «дыра» читалась между рельсом и контентом. Расширяем до 1320px
+     и центрируем относительно доступной ширины.
+     (2) Поля ввода замка: выше (48px), больше паддинг, крупнее шрифт —
+     «дизайнерский» простор как у премиум-форм.
+     ============================================================ */
+
+  /* 1 · Шире каркас настроек */
+  .set-shell {
+    max-width: 1320px;
+    grid-template-columns: 224px minmax(0, 1fr);
+    gap: 36px;
+    padding: 30px 40px 36px;
+  }
+  /* Контентные секции не растягиваются на весь простор без нужды:
+     комфортная длина строки для чтения форм */
+  #set-security .lock-form-card,
+  #set-privacy .mask-demo {
+    max-width: 760px;
+  }
+  /* Сила пароля и счётчики дышат от нового поля */
+  .lf-field .lock-strength {
+    margin-top: 8px;
+  }
+}
+
+@layer wf042 {
+
+
+  /* ============================================================
+     REDESIGN v4 · перенос макетов (мастер-ключ, редактор записи)
+     Структура и компоновка — из присланных макетов, палитра и
+     радиусы — наши, «Графит»: тон вместо тени, один акцент,
+     волосяные границы, r=3px у элементов и 4px у карточек.
+     ============================================================ */
+
+  /* ---------- Окно мастер-ключа ---------- */
+  .mk-back {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: var(--bg);
+  }
+  .mk-card {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 620px;
+    max-height: 92vh;
+    overflow: hidden auto;
+    border: 1px solid var(--border-2);
+    border-radius: var(--r-panel);
+    background: var(--panel);
+    animation: vt-rise 180ms ease-out;
+  }
+  .mk-card.is-danger {
+    border-color: rgba(229, 100, 92, 0.3);
+  }
+  .mk-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 15px 18px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel-2);
+  }
+  .mk-head-ico {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    flex: none;
+    border: 1px solid var(--border-2);
+    border-radius: var(--r);
+    background: var(--bg-2);
+    color: var(--accent);
+  }
+  .mk-head-ico svg {
+    width: 15px;
+    height: 15px;
+  }
+  .mk-card.is-danger .mk-head-ico {
+    color: var(--danger);
+  }
+  .mk-head-text {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+    flex: 1;
+  }
+  .mk-title {
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 1.2;
+    color: var(--text);
+  }
+  .mk-sub {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 10px;
+    color: var(--text-3r);
+  }
+  .mk-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: mk-pulse 2.4s ease-in-out infinite;
+  }
+  .mk-card.is-danger .mk-dot {
+    background: var(--danger);
+  }
+  .mk-x {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    flex: none;
+    border: 1px solid transparent;
+    border-radius: var(--r);
+    background: transparent;
+    color: var(--text-3r);
+    cursor: pointer;
+    transition-property: color, border-color, background-color;
+    transition-duration: 140ms;
+  }
+  .mk-x svg {
+    width: 13px;
+    height: 13px;
+  }
+  .mk-x:hover {
+    color: var(--text);
+    border-color: var(--border-2);
+    background: var(--raise-1);
+  }
+  .mk-body {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 18px;
+  }
+  .mk-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    width: 100%;
+    max-width: 320px;
+    padding: 3px;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    background: var(--bg-input);
+  }
+  .mk-tab {
+    height: 30px;
+    border: 1px solid transparent;
+    border-radius: 2px;
+    background: transparent;
+    color: var(--text-3r);
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition-property: color, background-color, border-color;
+    transition-duration: 140ms;
+  }
+  .mk-tab:hover {
+    color: var(--text-2);
+  }
+  .mk-field {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+  .mk-label {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 0;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    color: var(--text-3r);
+  }
+  .mk-hint {
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: none;
+    color: var(--text-3);
+    transition: color 160ms ease-out;
+  }
+  .mk-input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .mk-input {
+    width: 100%;
+    padding-right: 40px;
+  }
+  .mk-eye {
+    position: absolute;
+    right: 6px;
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border: 0;
+    border-radius: var(--r);
+    background: transparent;
+    color: var(--text-3);
+    cursor: pointer;
+    transition: color 140ms ease-out;
+  }
+  .mk-eye svg {
+    width: 15px;
+    height: 15px;
+  }
+  .mk-eye:hover {
+    color: var(--accent);
+  }
+  .mk-field .lock-strength {
+    margin: 1px 0 0;
+  }
+  .mk-cells {
+    justify-content: flex-start;
+    margin-top: 0;
+  }
+  .mk-warn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 13px;
+    border: 1px solid var(--border);
+    border-left: 2px solid var(--warn);
+    border-radius: var(--r);
+    background: var(--panel-2);
+    font-size: 12.5px;
+    color: var(--text-2);
+  }
+  .mk-warn svg {
+    flex: none;
+    color: var(--warn);
+  }
+  .mk-warn.is-danger {
+    border-left-color: var(--danger);
+  }
+  .mk-warn.is-danger svg {
+    color: var(--danger);
+  }
+  .mk-err {
+    font-size: 11.5px;
+    color: var(--danger);
+  }
+  .mk-note {
+    font-size: 11.5px;
+    color: var(--text-3r);
+  }
+  .mk-foot {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 14px 18px;
+    border-top: 1px solid var(--border);
+    background: var(--panel-2);
+  }
+  .mk-cancel,
+  .mk-submit {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    height: 36px;
+    padding: 0 16px;
+    border-radius: var(--r);
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition-property: color, background-color, border-color, transform;
+    transition-duration: 140ms;
+  }
+  .mk-cancel {
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-2);
+  }
+  .mk-cancel:hover {
+    border-color: var(--border-2);
+    background: var(--raise-1);
+    color: var(--text);
+  }
+  .mk-submit {
+    min-width: 168px;
+    border: 1px solid transparent;
+    background: var(--accent);
+    color: var(--on-accent);
+  }
+  .mk-submit:hover:not(:disabled) {
+    background: var(--accent-hover);
+  }
+  .mk-submit:active:not(:disabled) {
+    transform: translateY(0.5px);
+  }
+  .mk-submit:disabled {
+    border-color: var(--border);
+    background: var(--bg-input);
+    color: var(--text-3);
+    cursor: default;
+  }
+  .mk-submit.is-danger {
+    border-color: rgba(229, 100, 92, 0.45);
+    background: transparent;
+    color: var(--danger);
+  }
+  .mk-submit.is-danger:hover:not(:disabled) {
+    background: var(--danger);
+    color: var(--bg);
+  }
+
+  @media (max-width: 900px) {
+
+    .mk-cells {
+      gap: 6px;
+    }
+  }
+
+
+  /* ---------- Правки переноса: штрихи иконок и раскладка строк ---------- */
+
+  /* Иконки окна ключа рисуются штрихом, как везде в сейфе */
+  .mk-card svg,
+  .mk-back svg {
+    stroke: currentColor;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    fill: none;
+  }
+  .mk-card svg {
+    width: 14px;
+    height: 14px;
+  }
+  .mk-head-ico svg {
+    width: 16px;
+    height: 16px;
+  }
+}

@@ -7,6 +7,8 @@
    ============================================================ */
 
 import { useEffect, useMemo, useState } from 'react'
+/* AR-2: слой стилей менеджера секретов приезжает вместе с чанком экрана. */
+import '@/app/styles/screen-vault.css'
 import { IconDatabase, IconPlus, IconShield, IconSparkText } from './icons'
 import { useVault, useNow } from '@/lib/vault-store'
 import { useSecrets } from '@/lib/secrets-store'

@@ -1,5 +1,7 @@
 'use client'
 
+/* AR-2: слой стилей карты приезжает вместе с чанком экрана. */
+import '@/app/styles/screen-map.css'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Dropdown, type DropdownOption } from './dropdown'
 import {

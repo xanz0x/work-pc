@@ -1,5 +1,7 @@
 'use client'
 
+/* AR-2: слой стилей настроек приезжает вместе с чанком экрана. */
+import '@/app/styles/screen-settings.css'
 import { useEffect, useMemo, useRef, useState, type ComponentType, type SVGProps } from 'react'
 import {
   IconArrowRight,

@@ -1,4 +1,6 @@
 /** @type {import('next').NextConfig} */
+import withBundleAnalyzer from '@next/bundle-analyzer'
+
 const nextConfig = {
   // P0-4: сборка обязана падать на ошибке типов — гейт, а не пожелание.
   images: {
@@ -18,4 +20,9 @@ const nextConfig = {
   ],
 }
 
-export default nextConfig
+export default withBundleAnalyzer({
+  // AR-2: карта бандла снимается по требованию — `ANALYZE=true pnpm build`.
+  // Замер, который попадает в PRD, делает scripts/bundle-report.mjs: он
+  // считает то, что реально грузит браузер на маршруте.
+  enabled: process.env.ANALYZE === 'true',
+})(nextConfig)

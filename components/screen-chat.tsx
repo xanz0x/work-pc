@@ -1,5 +1,7 @@
 'use client'
 
+/* AR-2: слой стилей чата приезжает вместе с чанком экрана. */
+import '@/app/styles/screen-chat.css'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   IconChat,

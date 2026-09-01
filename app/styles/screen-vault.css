@@ -1,0 +1,1943 @@
+/* AR-2 · слой экрана «vault»: приезжает вместе с чанком экрана.
+   Сгенерирован scripts/split-css.py из app/styles/_monolith.css —
+   правки вносим в монолит, а не здесь. */
+
+@layer wf001 {
+
+  .badge-danger {
+    color: var(--danger);
+    border-color: rgba(229, 100, 92, 0.35);
+  }
+}
+
+@layer wf033 {
+
+
+  /* ============================================================
+     ===== VAULT v1 · МЕНЕДЖЕР СЕКРЕТОВ =========================
+     Отдельный слой в конце файла: старое не рефакторится.
+     Законы «Графит»: без blur/теней/полупрозрачных пятен, глубина
+     тонами и волосяными границами, один акцент, числа .num,
+     transition точечно, prefers-reduced-motion уважается.
+     ============================================================ */
+
+  .vt {
+    display: grid;
+    grid-template-columns: 232px minmax(0, 1fr) 344px;
+    gap: 1px;
+    background: var(--border);
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* --- левая колонка --- */
+  .vt-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 14px 10px;
+    background: var(--bg);
+    overflow-y: auto;
+  }
+  .vt-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 10px;
+    height: 34px;
+    margin-bottom: 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    background: var(--bg-input);
+    color: var(--text-3);
+    transition-property: border-color, color;
+    transition-duration: 140ms;
+  }
+  .vt-search:focus-within {
+    border-color: var(--accent-line);
+    color: var(--text-2);
+  }
+  .vt-search input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    outline: none;
+    background: transparent;
+    color: var(--text);
+    font-size: 12.5px;
+    font-family: var(--font-mono);
+  }
+  .vt-nav-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 14px 0 4px;
+    padding: 0 8px;
+    color: var(--text-3);
+  }
+  .vt-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    padding: 7px 9px;
+    border: 1px solid transparent;
+    border-radius: var(--r);
+    background: transparent;
+    color: var(--text-2);
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+    transition-property: background-color, color, border-color;
+    transition-duration: 130ms;
+  }
+  .vt-nav-item svg {
+    width: 15px;
+    height: 15px;
+    flex: none;
+    opacity: 0.75;
+  }
+  .vt-nav-item > span:nth-child(2) {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .vt-nav-item:hover {
+    background: var(--panel);
+    color: var(--text);
+  }
+  .vt-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-3);
+    flex: none;
+    margin: 0 4px;
+  }
+  .vt-star {
+    color: var(--accent);
+    font-size: 12px;
+    line-height: 1;
+  }
+  .vt-folder-form {
+    padding: 0 4px 6px;
+  }
+
+  /* --- центральная колонка --- */
+  .vt-center {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    background: var(--bg);
+    overflow: hidden;
+  }
+  .vt-toolbar {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    padding: 18px 20px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .vt-toolbar-text {
+    min-width: 0;
+  }
+  .vt-h1 {
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--text);
+  }
+  .vt-sub {
+    margin-top: 3px;
+    color: var(--text-3);
+  }
+  .vt-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 14px 20px 24px;
+  }
+  .vt-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .vt-card {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--r-panel);
+    background: var(--panel);
+    color: var(--text-2);
+    text-align: left;
+    cursor: pointer;
+    transition-property: border-color, background-color, transform;
+    transition-duration: 130ms;
+  }
+  .vt-card:hover {
+    border-color: var(--border-2);
+    background: var(--panel-2);
+    transform: translateX(2px);
+  }
+  .vt-card-icon {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    flex: none;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    background: var(--bg-2);
+  }
+  .vt-card-icon img {
+    border-radius: 2px;
+  }
+  .vt-card-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+  }
+  .vt-card-title {
+    font-size: 13.5px;
+    color: var(--text);
+  }
+  .vt-card-sub {
+    font-size: 11.5px;
+    color: var(--text-3);
+  }
+  .vt-card-meta {
+    color: var(--text-3);
+    flex: none;
+  }
+  .vt-card-kind {
+    display: grid;
+    place-items: center;
+    flex: none;
+    color: var(--text-3);
+  }
+  .vt-card-kind svg {
+    width: 14px;
+    height: 14px;
+  }
+  .vt-list-empty {
+    padding: 26px;
+    text-align: left;
+  }
+  .vt-empty-title {
+    font-size: 14px;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+
+  /* --- правая колонка --- */
+  .vt-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 18px;
+    background: var(--bg);
+    border-radius: 0;
+    border: 0;
+    border-left: 1px solid var(--border);
+    overflow-y: auto;
+  }
+  .vt-detail-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .vt-detail-titles {
+    flex: 1;
+    min-width: 0;
+  }
+  .vt-detail-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .vt-detail-sub {
+    margin-top: 3px;
+    font-size: 11.5px;
+    color: var(--text-3);
+  }
+  .vt-detail-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .vt-row {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .vt-row-name {
+    color: var(--text-3);
+  }
+  .vt-val {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+  .vt-val-text {
+    flex: 1;
+    min-width: 0;
+    font-size: 12.5px;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .vt-val-text.masked {
+    color: var(--text-3);
+    letter-spacing: 0.06em;
+  }
+  .vt-val-text.multi {
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 96px;
+    overflow-y: auto;
+  }
+  .vt-val-left {
+    font-size: 10.5px;
+    color: var(--accent);
+    flex: none;
+  }
+  .vt-link {
+    flex: 1;
+    min-width: 0;
+    color: var(--text-2);
+    font-size: 12.5px;
+    text-decoration: none;
+    border-bottom: 1px solid var(--border-2);
+    transition-property: color, border-color;
+    transition-duration: 130ms;
+  }
+  .vt-link:hover {
+    color: var(--accent);
+    border-color: var(--accent-line);
+  }
+  .vt-icon-btn {
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    flex: none;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    background: transparent;
+    color: var(--text-3);
+    cursor: pointer;
+    transition-property: color, border-color, background-color;
+    transition-duration: 130ms;
+  }
+  .vt-icon-btn svg {
+    width: 13px;
+    height: 13px;
+  }
+  .vt-icon-btn:hover:not(:disabled) {
+    color: var(--text);
+    border-color: var(--border-2);
+    background: var(--panel);
+  }
+  .vt-icon-btn.tiny {
+    width: 20px;
+    height: 20px;
+  }
+  .vt-icon-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  .vt-detail-foot {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .vt-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+  .vt-meta-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 4px 12px;
+    color: var(--text-3);
+  }
+  .vt-meta-grid b {
+    color: var(--text-2);
+    font-weight: 500;
+  }
+  .vt-note {
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--text-3r);
+  }
+  .vt-warn {
+    padding: 8px 10px;
+    border: 1px solid var(--warn);
+    border-radius: var(--r);
+    color: var(--warn);
+    font-size: 11.5px;
+  }
+  .vt-error {
+    color: var(--danger);
+    font-size: 12px;
+  }
+  .vt-ok {
+    color: var(--accent);
+    font-size: 12px;
+  }
+
+  /* --- TOTP --- */
+  .vt-totp {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .vt-totp-code {
+    font-size: 16px;
+    letter-spacing: 0.08em;
+    color: var(--text);
+  }
+  .vt-totp-bar {
+    flex: 1;
+    min-width: 40px;
+    height: 2px;
+    background: var(--border-2);
+    overflow: hidden;
+  }
+  .vt-totp-bar i {
+    display: block;
+    height: 100%;
+    background: var(--accent);
+    transition-property: width;
+    transition-duration: 900ms;
+    transition-timing-function: linear;
+  }
+  .vt-totp-left {
+    font-size: 11px;
+    color: var(--text-3);
+  }
+  .vt-totp-empty {
+    color: var(--text-3);
+  }
+  .vt-modal-back {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: var(--bg);
+  }
+  .vt-modal {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: 100%;
+    max-width: 520px;
+    max-height: 88vh;
+    padding: 18px;
+    overflow-y: auto;
+    animation: vt-rise 180ms ease-out;
+  }
+  .vt-modal-wide {
+    max-width: 760px;
+  }
+  .vt-modal-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .vt-modal-foot {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .vt-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .vt-form-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .vt-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .vt-inline-input {
+    width: 240px;
+    height: 30px;
+    font-size: 12px;
+  }
+
+  /* --- генератор --- */
+  .vt-gen-out {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    background: var(--bg-input);
+  }
+  .vt-gen-value {
+    flex: 1;
+    min-width: 0;
+    font-size: 14px;
+    color: var(--text);
+    word-break: break-all;
+  }
+  .vt-strength {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    font-size: 11.5px;
+    color: var(--text-2);
+  }
+  .vt-strength-bar {
+    display: inline-flex;
+    gap: 3px;
+  }
+  .vt-strength-bar i {
+    width: 26px;
+    height: 3px;
+    background: var(--border-2);
+    transition-property: background-color;
+    transition-duration: 160ms;
+  }
+  .vt-strength-hint {
+    color: var(--text-3);
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+  }
+
+  /* --- импорт/экспорт --- */
+  .vt-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    border: 1px solid var(--accent-line);
+    border-radius: var(--r);
+    background: var(--panel);
+  }
+  .vt-preview-head {
+    font-size: 13px;
+    color: var(--text);
+  }
+  .vt-preview-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+    list-style: none;
+    font-size: 11.5px;
+    color: var(--text-2);
+    font-family: var(--font-mono);
+  }
+  .vt-danger-box {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px;
+    border: 1px solid var(--danger);
+    border-radius: var(--r);
+  }
+  .vt-danger-title {
+    color: var(--danger);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .vt-backups {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .vt-backup-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    font-size: 12px;
+    color: var(--text-2);
+  }
+
+  /* --- тост буфера обмена --- */
+  .vt-clip {
+    position: fixed;
+    left: 50%;
+    bottom: 46px;
+    transform: translateX(-50%);
+    z-index: 70;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 12px;
+    border: 1px solid var(--accent-line);
+    border-radius: var(--r-panel);
+    background: var(--panel-2);
+    font-size: 12.5px;
+    color: var(--text);
+  }
+
+  /* --- онбординг/шлюз --- */
+  .vt-gate {
+    display: grid;
+    place-items: center;
+    padding: 40px;
+    background: var(--bg);
+  }
+  .vt-gate-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+    max-width: 520px;
+    padding: 26px;
+  }
+  .vt-gate-icon {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border: 1px solid var(--accent-line);
+    border-radius: var(--r);
+    color: var(--accent);
+  }
+  .vt-gate-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  /* --- адаптивность --- */
+  @media (max-width: 1280px) {
+    .vt {
+      grid-template-columns: 208px minmax(0, 1fr) 300px;
+    }
+  }
+  @media (max-width: 1100px) {
+    .vt {
+      grid-template-columns: 190px minmax(0, 1fr);
+    }
+    .vt-detail {
+      display: none;
+    }
+  }
+  @media (max-width: 768px) {
+
+    .vt {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .vt-nav {
+      display: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .vt-card:hover {
+      transform: none;
+    }
+    .vt-modal {
+      animation: none;
+    }
+    .vt-totp-bar i {
+      transition-duration: 0ms;
+    }
+  }
+  .vt-gate-icon svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  /* Иконки слоя VAULT: набор icons.tsx не задаёт stroke — это делает CSS. */
+  .vt svg,
+  .vt-modal svg,
+  .vt-modal-back svg,
+  .vt-clip svg,
+  .vt-gate-icon svg,
+  #set-secrets svg {
+    stroke: currentColor;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    fill: none;
+  }
+  .vt-gate-icon svg,
+  .vt-modal svg {
+    width: 15px;
+    height: 15px;
+  }
+  .vt-val svg,
+  .vt-row svg,
+  .vt-backup-row svg {
+    width: 13px;
+    height: 13px;
+    flex: none;
+  }
+}
+
+@layer wf034 {
+
+
+  /* --- Папки сейфа: удаление по ховеру, подтверждение вторым кликом --- */
+  .vt-folder-row {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .vt-folder-row .vt-nav-item {
+    flex: 1;
+    min-width: 0;
+  }
+  .vt-folder-del {
+    opacity: 0;
+    transition-property: opacity, color, border-color;
+    transition-duration: 120ms;
+  }
+  .vt-folder-row:hover .vt-folder-del,
+  .vt-folder-del:focus-visible,
+  .vt-folder-del.ask {
+    opacity: 1;
+  }
+  .vt-folder-del:hover {
+    color: var(--danger);
+    border-color: var(--danger);
+  }
+  .vt-folder-del.ask {
+    color: var(--danger);
+    border-color: var(--danger);
+    background: var(--panel-2);
+  }
+
+  /* --- Генератор: компактная панель параметров --- */
+  .vt-gen {
+    max-width: 480px;
+  }
+  .vt-gen-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    background: var(--panel);
+  }
+  .vt-len {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .vt-len input[type='range'] {
+    flex: 1;
+    accent-color: var(--accent);
+  }
+  .vt-len-num {
+    min-width: 26px;
+    text-align: right;
+    color: var(--accent);
+    font-size: 13px;
+  }
+  .vt-opts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .vt-opt {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    background: var(--bg-input);
+    color: var(--text-3);
+    text-align: left;
+    cursor: pointer;
+    transition-property: border-color, color, background-color;
+    transition-duration: 130ms;
+  }
+  .vt-opt:hover {
+    border-color: var(--border-2);
+    color: var(--text-2);
+  }
+  .vt-opt-box {
+    display: grid;
+    place-items: center;
+    width: 16px;
+    height: 16px;
+    flex: none;
+    border: 1px solid var(--border-2);
+    border-radius: 3px;
+    background: transparent;
+    color: transparent;
+    transition-property: background-color, border-color, color;
+    transition-duration: 130ms;
+  }
+  .vt-opt-box svg {
+    width: 10px;
+    height: 10px;
+    stroke-width: 2.4;
+  }
+  .vt-opt-text {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+  }
+  .vt-opt-text b {
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .vt-opt-text em {
+    font-style: normal;
+    font-size: 10px;
+    color: var(--text-3);
+  }
+
+  /* --- Редактор записи: компактная сетка, явные состояния --- */
+  .vt-editor {
+    max-width: 680px;
+  }
+  .vt-ed-type {
+    color: var(--text-3);
+    flex: none;
+  }
+  .vt-type-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 5px;
+  }
+  .vt-type {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 9px;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    background: var(--bg-input);
+    color: var(--text-3);
+    font-size: 11.5px;
+    text-align: left;
+    cursor: pointer;
+    transition-property: border-color, color, background-color;
+    transition-duration: 130ms;
+  }
+  .vt-type svg {
+    width: 13px;
+    height: 13px;
+    flex: none;
+    opacity: 0.85;
+  }
+  .vt-type span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .vt-type:hover {
+    color: var(--text-2);
+    border-color: var(--border-2);
+  }
+  .vt-ed-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .vt-ed-ico {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    flex: none;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    background: var(--bg-2);
+    color: var(--text-2);
+  }
+  .vt-ed-ico svg {
+    width: 15px;
+    height: 15px;
+  }
+  .vt-fav {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    flex: none;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    background: transparent;
+    color: var(--text-3);
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    transition-property: color, border-color, background-color;
+    transition-duration: 130ms;
+  }
+  .vt-fav:hover {
+    color: var(--text);
+    border-color: var(--border-2);
+  }
+  .vt-ed-legend {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--text-3);
+  }
+  .vt-ed-legend svg {
+    width: 10px;
+    height: 10px;
+  }
+  .vt-fe.is-ct {
+    border-left-color: var(--accent-line);
+  }
+  .vt-ct {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    height: 30px;
+    width: 30px;
+    padding: 0;
+    flex: none;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    background: transparent;
+    color: var(--text-3);
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition-property: color, border-color, background-color;
+    transition-duration: 130ms;
+  }
+  .vt-ct svg {
+    width: 13px;
+    height: 13px;
+  }
+  .vt-ct:hover {
+    color: var(--text-2);
+    border-color: var(--border-2);
+  }
+  .vt-bad {
+    color: var(--danger);
+  }
+  .vt-input-bad {
+    border-color: var(--danger);
+  }
+
+  /* --- Иконки типов в списке и детали --- */
+  .vt-card-icon svg {
+    width: 15px;
+    height: 15px;
+  }
+  .vt-detail-ico {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    flex: none;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    background: var(--bg-2);
+  }
+  .vt-detail-ico svg {
+    width: 16px;
+    height: 16px;
+  }
+  .vt-detail-ico img {
+    border-radius: 2px;
+  }
+
+  /* --- адаптив правок --- */
+  @media (max-width: 900px) {
+    .vt-type-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+  @media (max-width: 640px) {
+    .vt-opts {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .vt-type-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+}
+
+@layer wf035 {
+
+
+  /* ============================================================
+     ===== VAULT v1.2 · HEALTH, BIP39, ИСТОРИЯ =================
+     ============================================================ */
+
+  /* --- Здоровье паролей --- */
+  .vt-health {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 860px;
+  }
+  .vt-health-summary {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 14px 16px;
+  }
+  .vt-health-score {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-width: 74px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    background: var(--bg-2);
+  }
+  .vt-health-score b {
+    font-size: 24px;
+    line-height: 1;
+  }
+  .vt-health-score.s4 b { color: var(--accent); }
+  .vt-health-score span { color: var(--text-3); }
+  .vt-health-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 22px;
+    color: var(--text-2);
+    font-size: 12.5px;
+  }
+  .vt-health-stats b { font-size: 14px; margin-right: 3px; }
+  .vt-health-ok {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    color: var(--text-2);
+  }
+  .vt-health-ok svg {
+    width: 16px;
+    height: 16px;
+    stroke: var(--accent);
+    fill: none;
+    stroke-width: 2;
+    flex: none;
+  }
+  .vt-health-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .vt-health-group-head {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding: 4px 2px;
+    color: var(--text-3);
+  }
+  .vt-health-note {
+    font-size: 11px;
+    color: var(--text-3);
+  }
+  .vt-health-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    background: var(--panel);
+    color: var(--text-2);
+    text-align: left;
+    cursor: pointer;
+    transition-property: border-color, background-color, color;
+    transition-duration: 130ms;
+  }
+  .vt-health-row:hover {
+    border-color: var(--border-2);
+    background: var(--raise-1);
+    color: var(--text);
+  }
+  .vt-health-ico {
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    flex: none;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    background: var(--bg-2);
+  }
+  .vt-health-ico svg { width: 13px; height: 13px; }
+  .vt-health-title { flex: 1; min-width: 0; font-size: 13px; }
+  .vt-health-field { color: var(--text-3); flex: none; }
+  .vt-health-meta { color: var(--text-3); flex: none; }
+  .vt-health-go {
+    width: 12px;
+    height: 12px;
+    flex: none;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 1.6;
+    transform: rotate(-90deg);
+    opacity: 0.6;
+  }
+
+  /* --- Seed BIP39 в генераторе --- */
+  .vt-seed-head { display: flex; align-items: center; gap: 6px; }
+  .vt-seg-mini { flex: none; }
+  .vt-seed-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+    margin: 0;
+    padding: 10px;
+    list-style: none;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    background: var(--bg-input);
+  }
+  .vt-seed-grid li {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 4px 7px;
+    border-radius: var(--r);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    min-width: 0;
+  }
+  .vt-seed-grid li b {
+    min-width: 16px;
+    text-align: right;
+    color: var(--text-3);
+    font-size: 10px;
+  }
+  .vt-seed-grid li span {
+    font-size: 12.5px;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .vt-seed-ok {
+    margin: 0;
+    padding: 7px 10px;
+    border: 1px solid var(--accent-line);
+    border-radius: var(--r);
+    background: var(--panel-2);
+    color: var(--accent);
+    font-size: 12px;
+  }
+
+  /* --- История изменений в детали --- */
+  .vt-hist {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+  }
+  .vt-hist-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 4px 2px;
+    border: 0;
+    background: transparent;
+    color: var(--text-3);
+    cursor: pointer;
+    text-align: left;
+    transition: color 120ms;
+  }
+  .vt-hist-toggle:hover { color: var(--text); }
+  .vt-hist-toggle svg {
+    width: 11px;
+    height: 11px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 1.6;
+    transform: rotate(-90deg);
+    transition: transform 160ms var(--ease-quart);
+  }
+  .vt-hist-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    background: var(--panel);
+  }
+  .vt-hist-name { flex: 0 1 auto; min-width: 0; max-width: 92px; color: var(--text-2); }
+  .vt-hist-at { flex: none; color: var(--text-3); }
+  .vt-hist-val {
+    flex: 1;
+    min-width: 0;
+    font-size: 12px;
+    color: var(--text-3);
+  }
+  .vt-hist-restore { color: var(--accent); }
+
+  @media (max-width: 640px) {
+    .vt-seed-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+}
+
+@layer wf036 {
+
+
+  /* ============================================================
+     ===== VAULT v1.3 · КОМПАКТНЫЙ РЕДАКТОР, VtSelect, ПАПКИ ====
+     ============================================================ */
+
+  /* --- Папки: явное красное подтверждение удаления --- */
+  .vt-folder-row .vt-nav-item { width: auto; }
+  .vt-folder-del-ask {
+    flex: none;
+    padding: 3px 8px;
+    border: 1px solid var(--danger);
+    border-radius: var(--r);
+    background: color-mix(in srgb, var(--danger) 12%, transparent);
+    color: var(--danger);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    cursor: pointer;
+    animation: vt-rise 140ms ease-out;
+  }
+  .vt-folder-del-ask:hover {
+    background: var(--danger);
+    color: #0b0f0d;
+  }
+
+  /* --- VtSelect · кастомный выпадающий список --- */
+  .vts {
+    position: relative;
+    min-width: 0;
+  }
+  .vts-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    height: 32px;
+    padding: 0 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    background: var(--bg-input);
+    color: var(--text);
+    font-size: 12.5px;
+    text-align: left;
+    cursor: pointer;
+    transition-property: border-color, background-color;
+    transition-duration: 130ms;
+  }
+  .vts-btn > span { flex: 1; min-width: 0; }
+  .vts-btn svg {
+    width: 11px;
+    height: 11px;
+    flex: none;
+    stroke: var(--text-3);
+    fill: none;
+    stroke-width: 1.7;
+    transition: transform 160ms var(--ease-quart);
+  }
+  .vts-btn:hover { border-color: var(--border-2); }
+  .vts-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    z-index: 80;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    max-height: 232px;
+    padding: 4px;
+    overflow-y: auto;
+    border: 1px solid var(--border-2);
+    border-radius: var(--r);
+    background: var(--panel);
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.5);
+    animation: vt-rise 140ms ease-out;
+  }
+  .vts-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border: 0;
+    border-radius: calc(var(--r) - 2px);
+    background: transparent;
+    color: var(--text-2);
+    font-size: 12.5px;
+    text-align: left;
+    cursor: pointer;
+    transition-property: background-color, color;
+    transition-duration: 100ms;
+  }
+  .vts-item > span { flex: 1; min-width: 0; }
+  .vts-item svg {
+    width: 11px;
+    height: 11px;
+    flex: none;
+    stroke: var(--accent);
+    fill: none;
+    stroke-width: 2;
+  }
+  .vts-item:hover { background: var(--raise-1); color: var(--text); }
+
+  /* --- Редактор: всё в один экран --- */
+  .vt-modal.vt-editor {
+    max-width: 780px;
+    max-height: calc(100vh - 32px);
+    padding: 16px 18px;
+    gap: 10px;
+    overflow: hidden;
+  }
+  .vt-editor .vt-form {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    gap: 10px;
+    padding-right: 4px;
+    margin-right: -4px;
+  }
+  .vt-editor .vt-modal-head,
+  .vt-editor .vt-modal-foot { flex: none; }
+  .vt-editor .vt-field-row { gap: 8px; }
+  .vt-editor .vt-field { gap: 4px; }
+  .vt-ed-ico, .vt-fav { width: 32px; height: 32px; }
+
+  /* Сетка типов: 6 колонок, компактные чипы */
+  .vt-type-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 4px;
+  }
+  .vt-type {
+    gap: 6px;
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+  .vt-type svg { width: 12px; height: 12px; }
+  .vt-fe .vts-btn { height: 30px; font-size: 12px; }
+
+  @media (max-width: 900px) {
+    .vt-type-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  }
+  @media (max-width: 640px) {
+
+    .vt-type-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+
+}
+
+@layer wf037 {
+
+
+  /* ---------- вид «Истекающие» ---------- */
+  .vt-exp {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 2px 2px 18px;
+  }
+  .vt-exp-summary {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    padding: 16px 18px;
+  }
+  .vt-exp-score {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-width: 104px;
+    padding-right: 20px;
+    border-right: 1px solid var(--line);
+  }
+  .vt-exp-score b {
+    font-size: 30px;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+  }
+  .vt-exp-score.s4 b { color: var(--accent); }
+  .vt-exp-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 22px;
+    font-size: 12.5px;
+    color: var(--text-2);
+  }
+
+  .vt-exp-badge {
+    flex: none;
+    padding: 2px 7px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-family: var(--font-mono, ui-monospace), monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.04em;
+    color: var(--text-2);
+    background: var(--panel-2);
+  }
+  .vt-exp-badge.b-expired {
+    color: rgba(240, 150, 138, 0.98);
+    border-color: rgba(226, 128, 116, 0.4);
+    background: rgba(226, 128, 116, 0.1);
+  }
+  .vt-exp-badge.b-d1,
+  .vt-exp-badge.b-d7 {
+    color: rgba(232, 194, 132, 0.98);
+    border-color: rgba(226, 184, 120, 0.36);
+    background: rgba(226, 184, 120, 0.08);
+  }
+  .vt-exp-badge.b-d30 { color: var(--text-2); }
+  .vt-health-meta svg { width: 11px; height: 11px; margin-right: 4px; vertical-align: -1px; }
+
+  /* ---------- вложения ---------- */
+  .vt-att {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--line);
+  }
+  .vt-att-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .vt-att-used { color: var(--text-3); }
+  .vt-att-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .vt-att-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 8px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--panel-2);
+    transition: border-color 0.16s ease, background-color 0.16s ease;
+  }
+  .vt-att-row:hover {
+    border-color: var(--accent-line);
+    background: color-mix(in oklab, var(--panel-2) 84%, var(--accent) 16%);
+  }
+  .vt-att-ico { display: inline-flex; color: var(--text-3); }
+  .vt-att-ico svg { width: 13px; height: 13px; }
+  .vt-att-name { flex: 1 1 auto; min-width: 0; font-size: 12.5px; }
+  .vt-att-size { flex: none; color: var(--text-3); }
+
+  /* ---------- Wi-Fi QR ---------- */
+  .vt-qr {
+    width: min(400px, 94vw);
+    gap: 12px;
+    align-items: stretch;
+  }
+  .vt-qr-head-ico { display: inline-flex; color: var(--accent); }
+  .vt-qr-head-ico svg { width: 14px; height: 14px; }
+  .vt-qr-frame {
+    display: flex;
+    justify-content: center;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--panel-2);
+  }
+  .vt-qr-svg {
+    width: min(256px, 68vw);
+    height: auto;
+    border-radius: 4px;
+    animation: vt-qr-in 0.22s ease both;
+  }
+  .vt-qr-ssid {
+    text-align: center;
+    font-size: 12.5px;
+    color: var(--text-2);
+  }
+
+  /* ---------- генератор: разделитель фразы ---------- */
+  .vt-gen-sep {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .vt-gen-sep-select { flex: 0 0 168px; }
+}
+
+@layer wf042 {
+
+
+  /* ---------- Редактор записи ---------- */
+  .vt-editor {
+    max-width: 760px;
+    gap: 0;
+    padding: 0;
+  }
+  .vt-ed-head {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel-2);
+  }
+  .vt-ed-h {
+    flex: none;
+    font-size: 11px;
+    color: var(--text);
+  }
+  .vt-editor .vt-ed-type {
+    flex: none;
+    color: var(--accent);
+  }
+  .vt-editor .vt-form {
+    gap: 14px;
+    padding: 18px;
+  }
+  .vt-editor .vt-type-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .vt-editor .vt-type {
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 6px;
+    border-bottom: 2px solid transparent;
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.04em;
+  }
+  .vt-editor .vt-type svg {
+    width: 16px;
+    height: 16px;
+  }
+  .vt-ed-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  /* Теги-чипы в одном колодце с полем ввода */
+  .vt-tag-box {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 5px;
+    min-height: 34px;
+    padding: 5px 7px;
+    border: 1px solid var(--border-2);
+    border-radius: var(--r);
+    background: var(--bg-input);
+    transition: border-color 150ms ease-out;
+  }
+  .vt-tag-box:focus-within {
+    border-color: var(--accent-line);
+  }
+  .vt-tag-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 22px;
+    padding: 0 6px;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    background: var(--panel-2);
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--text-2);
+  }
+  .vt-tag-chip button {
+    display: grid;
+    place-items: center;
+    width: 12px;
+    height: 12px;
+    border: 0;
+    background: transparent;
+    color: var(--text-3);
+    cursor: pointer;
+    transition: color 140ms ease-out;
+  }
+  .vt-tag-chip button svg {
+    width: 9px;
+    height: 9px;
+  }
+  .vt-tag-chip button:hover {
+    color: var(--danger);
+  }
+  .vt-tag-input {
+    flex: 1 1 90px;
+    min-width: 70px;
+    height: 22px;
+    border: 0;
+    background: transparent;
+    color: var(--text);
+    font-size: 12.5px;
+  }
+  .vt-tag-input:focus {
+    outline: none;
+  }
+
+  /* Блоки «Поля записи» и «TOTP» — карточки с шапкой */
+  .vt-det {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--r-panel);
+    background: var(--bg-2);
+  }
+  .vt-det-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .vt-det-act {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 24px;
+    padding: 0 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    background: transparent;
+    color: var(--text-3r);
+    cursor: pointer;
+    transition-property: color, border-color, background-color;
+    transition-duration: 140ms;
+  }
+  .vt-det-act:hover {
+    color: var(--accent);
+    border-color: var(--accent-line);
+  }
+
+  /* Строка поля: подпись+тип слева, значение и действия справа */
+  .vt-det .vt-fe {
+    gap: 7px;
+    padding: 9px 0 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+  .vt-det .vt-fe + .vt-fe {
+    border-top: 1px solid var(--border);
+    padding-top: 10px;
+  }
+  .vt-add-field {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    align-self: flex-start;
+    height: 28px;
+    margin-top: 2px;
+    padding: 0 9px;
+    border: 1px dashed var(--border-2);
+    border-radius: var(--r);
+    background: transparent;
+    color: var(--text-3r);
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition-property: color, border-color, background-color;
+    transition-duration: 140ms;
+  }
+  .vt-add-field:hover {
+    color: var(--accent);
+    border-color: var(--accent-line);
+    background: var(--panel-2);
+  }
+  .vt-ed-foot {
+    padding: 13px 18px;
+    border-top: 1px solid var(--border);
+    background: var(--panel-2);
+  }
+  .vt-ed-seal {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--text-3);
+  }
+  .vt-ed-seal svg {
+    color: var(--accent);
+  }
+
+  @media (max-width: 900px) {
+
+    .vt-editor .vt-type-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .vt-ed-row {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+
+  /* Шапка редактора: тип сразу за заголовком, а не по центру */
+  .vt-ed-head .vt-ed-h,
+  .vt-ed-head .vt-ed-type {
+    flex: none;
+  }
+
+  /* Окно редактора: шапка и футер закреплены, прокручивается только форма */
+  .vt-editor {
+    overflow: hidden;
+  }
+  .vt-editor .vt-ed-head,
+  .vt-editor .vt-ed-foot {
+    flex: none;
+  }
+  .vt-editor .vt-form {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  /* Строка поля как в макете: подпись и тип слева, значение и действия справа */
+  .vt-det .vt-fe {
+    display: grid;
+    grid-template-columns: 176px minmax(0, 1fr);
+    gap: 10px;
+    align-items: center;
+  }
+  .vt-det .vt-fe.is-multi {
+    align-items: start;
+  }
+  .vt-det .vt-fe .vt-fe-kind .vts-btn {
+    height: 26px;
+    font-size: 11px;
+  }
+  .vt-det .vt-fe.is-multi .vt-fe-main {
+    align-items: flex-start;
+  }
+  .vt-det .vt-fe.is-multi .vt-fe-acts {
+    flex-direction: column;
+  }
+
+  /* Перебиваем прежнее правило `.vt-fe textarea.vt-fe-value { width:100%; flex:none }`:
+     в блоке DETAILS значение делит строку со столбцом действий. */
+  .vt-det .vt-fe textarea.vt-fe-value {
+    width: auto;
+    flex: 1 1 0%;
+    min-width: 0;
+  }
+}
+
+@layer wf043 {
+
+
+  /* ============================================================
+     REDESIGN v4.1 · строки полей как в макете
+     Одна линия: подпись слева, колодец значения с встроенными
+     действиями справа, служебные кнопки — по ховеру, место под них
+     зарезервировано, поэтому строки не «прыгают».
+     ============================================================ */
+  .vt-editor {
+    max-width: 920px;
+  }
+  .vt-editor .vt-form {
+    gap: 22px;
+  }
+  .vte-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .vte-row + .vte-row {
+    margin-top: 10px;
+  }
+  .vte-row.is-multi {
+    align-items: flex-start;
+  }
+  .vte-lbl {
+    flex: none;
+    width: 30%;
+    min-width: 118px;
+  }
+  .vte-name {
+    width: 100%;
+    height: 30px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: var(--r);
+    background: transparent;
+    color: var(--text-3r);
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    transition-property: color, border-color, background-color, padding;
+    transition-duration: 140ms;
+  }
+  .vte-name:focus {
+    outline: none;
+    padding: 0 8px;
+    border-color: var(--border-2);
+    background: var(--bg-input);
+    color: var(--text);
+  }
+  .vte-val {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .vte-well {
+    display: flex;
+    align-items: stretch;
+    overflow: hidden;
+    border: 1px solid var(--border-2);
+    border-radius: var(--r);
+    background: var(--bg-input);
+    transition: border-color 150ms ease-out;
+  }
+  .vte-well:hover {
+    border-color: var(--border-3);
+  }
+  .vte-well:focus-within {
+    border-color: var(--accent-line);
+  }
+  .vte-well input,
+  .vte-well textarea {
+    flex: 1 1 0%;
+    min-width: 0;
+    height: 32px;
+    padding: 0 10px;
+    border: 0;
+    background: transparent;
+    color: var(--text);
+    font-size: 12.5px;
+    font-family: inherit;
+  }
+  .vte-well textarea {
+    height: auto;
+    min-height: 58px;
+    padding: 7px 10px;
+    resize: vertical;
+  }
+  .vte-well input:focus,
+  .vte-well textarea:focus {
+    outline: none;
+  }
+  .vte-btn {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    flex: none;
+    border: 0;
+    border-left: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-3);
+    cursor: pointer;
+    transition-property: color, background-color;
+    transition-duration: 140ms;
+  }
+  .vte-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+  .vte-btn:hover {
+    color: var(--accent);
+    background: var(--raise-1);
+  }
+  .vte-str {
+    height: 2px;
+    width: 100%;
+    overflow: hidden;
+    border-radius: 1px;
+    background: var(--border-2);
+  }
+  .vte-str i {
+    display: block;
+    height: 100%;
+    background: var(--accent);
+    transition: width 180ms ease-out;
+  }
+  .vte-acts {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    flex: none;
+    opacity: 0;
+    transition: opacity 140ms ease-out;
+  }
+  .vte-row:hover .vte-acts,
+  .vte-row:focus-within .vte-acts,
+  .vte-row.is-ct .vte-acts {
+    opacity: 1;
+  }
+  .vte-acts .vt-ct {
+    width: 28px;
+    height: 28px;
+  }
+  .vte-kind {
+    width: 116px;
+    flex: none;
+  }
+  .vte-kind .vts-btn {
+    height: 28px;
+    font-size: 11px;
+  }
+  .vt-det {
+    padding: 14px;
+  }
+  .vt-det-head {
+    padding-bottom: 10px;
+  }
+  @media (max-width: 900px) {
+    .vte-row {
+      flex-wrap: wrap;
+    }
+    .vte-lbl {
+      width: 100%;
+    }
+    .vte-kind {
+      width: 100px;
+    }
+  }
+}
