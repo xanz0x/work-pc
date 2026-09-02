@@ -49,6 +49,8 @@ const LOADERS: Record<ScreenId, Loader> = {
   vault: () => import('@/components/screen-vault').then((m) => ({ default: m.ScreenVault })),
   settings: () =>
     import('@/components/screen-settings').then((m) => ({ default: m.ScreenSettings })),
+  activity: () =>
+    import('@/components/screen-activity').then((m) => ({ default: m.ScreenActivity })),
 }
 
 /** Заглушка на время загрузки чанка: тон и ритм статус-бара, без прыжка вёрстки. */
@@ -71,6 +73,7 @@ export const SCREENS: Record<ScreenId, ComponentType> = {
   chat: dynamic(withRetry(LOADERS.chat), { ssr: false, loading: ScreenLoading }),
   vault: dynamic(withRetry(LOADERS.vault), { ssr: false, loading: ScreenLoading }),
   settings: dynamic(withRetry(LOADERS.settings), { ssr: false, loading: ScreenLoading }),
+  activity: dynamic(withRetry(LOADERS.activity), { ssr: false, loading: ScreenLoading }),
 }
 
 const warmed = new Set<ScreenId>()

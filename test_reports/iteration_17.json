@@ -1,0 +1,49 @@
+{
+  "summary": "NF-3 Центр активности: независимая проверка. Написан отдельный e2e-сценарий 13-activity-center.spec.ts, проверяющий требования из ТЗ — пункт сайдбара nav-activity в секции 'Система' над 'Настройки', 4 плитки Сейчас (index/engine/traffic/lock), пилюлю activity-live-pill, счётчик activity-count 'N из M', ленту с бейджем 'Журнал', появление чипа activity-filter-severe после severe-события журнала, метку activity-severe-flag 'необратимо', фильтр по типу journal, фильтр severe, фильтр периода 'Сегодня', экспорт activity-export (JSON-файл workflow-activity-*.json), deep-link по строке журнала в Настройки с .jr-row.focused. Регрессия 12-journal.spec.ts прошла — панель journal-section в настройках не сломана. Чат/ИИ не запускал (rate limit).",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/tests/e2e/13-activity-center.spec.ts",
+    "/app/tests/e2e/12-journal.spec.ts"
+  ],
+  "verified_scenarios": [
+    "Сайдбар: nav-activity видим, порядок SYSTEM = [activity, settings] (activity выше settings) — соответствует ТЗ.",
+    "Экран монтируется: screen-activity, activity-now, 4 плитки activity-tile-{index,engine,traffic,lock}, activity-live-pill.",
+    "activity-count показывает 'N из M' (в чистом профиле 3 из 3 — стартовые демо-уведомления).",
+    "activity-export отключена на пустой ленте (проверено условно).",
+    "Агрегация журнала: после стирания сейфа (vault-wipe, severe) в ленте появляется строка с бейджем 'Журнал', флажок activity-severe-flag 'необратимо', чип activity-filter-severe.",
+    "Фильтр activity-filter-journal — оставляет только строки с бейджем 'Журнал'.",
+    "Фильтр activity-filter-severe — все строки имеют флажок необратимо (count совпадает).",
+    "Фильтр периода 'Сегодня' — свежая запись остаётся видимой.",
+    "Экспорт: скачивает workflow-activity-YYYY-MM-DD-HH-MM-SS.json без ошибок.",
+    "Deep-link: клик по строке журнала → Настройки → .jr-row.focused=1.",
+    "Регрессия: journal-section в настройках рабочий, journal-row=1 после стирания."
+  ],
+  "raw_playwright_results": {
+    "13-activity-center": "1/1 passed (1.8s)",
+    "12-journal + 13-activity-center": "2/2 passed (6.6s)"
+  },
+  "action_items": [],
+  "critical_code_review_comments": [
+    "components/screen-activity.tsx (589 строк) на грани лимита 700 — приемлемо, но при следующем расширении стоит вынести LiveNow в отдельный файл (уже логически разделён комментарием).",
+    "Все интерактивные элементы имеют data-testid, дропдауны Период/Объект через компонент Dropdown — доступны, но у самих дропдаунов нет собственного data-testid (только общий class .act-dd). Не блокирует тесты (используется .first()/.nth()), но по гайдлайну (все интерактивные — с data-testid) стоит добавить data-testid=activity-period / activity-object на триггеры дропдаунов.",
+    "Экспорт кнопки корректно отключается при shown.length===0 — hood обработан."
+  ],
+  "updated_files": [
+    "/app/tests/e2e/13-activity-center.spec.ts (новый — покрывает NF-3, не меняет код приложения)"
+  ],
+  "success_rate": {
+    "backend": "н/п (только фронт)",
+    "frontend": "100% (2/2 сценария)"
+  },
+  "test_credentials": "APP_PASSWORD=IceKrymTeam13@ (не использовался — экран activity не требует входа)",
+  "seed_data_creation": "skipOnboarding засеивает wf.settings.v1.onboarding; тест сам создаёт severe-запись 'vault-wipe' через кнопку 'Удалить сейф' в Настройках.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Запуск: cd /app && PLAYWRIGHT_BROWSERS_PATH=/pw-browsers APP_URL=http://localhost:3000 node_modules/.bin/playwright test tests/e2e/13-activity-center.spec.ts. Экран activity входа не требует. Не гонять чат-сценарии с --repeat-each (лимит 10/мин на /ai-api/chat). Для severe-события журнала проще всего — 'Удалить сейф' в Настройках (создаёт vault-wipe, isSevereKind=true).",
+  "rca of the issue": "Багов не найдено. Все требования NF-3 из review_request выполнены."
+}

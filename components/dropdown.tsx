@@ -43,6 +43,7 @@ export function Dropdown({
   icon: Icon,
   menuWidth,
   className,
+  testId,
 }: {
   value: string
   options: DropdownOption[]
@@ -57,6 +58,8 @@ export function Dropdown({
   icon?: ComponentType<SVGProps<SVGSVGElement>>
   menuWidth?: number
   className?: string
+  /** data-testid на триггер списка (все интерактивные элементы адресуемы). */
+  testId?: string
 }) {
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(0)
@@ -161,6 +164,7 @@ export function Dropdown({
         aria-label={label}
         onClick={() => (open ? setOpen(false) : openMenu())}
         onKeyDown={onKeyDown}
+        data-testid={testId}
       >
         {Icon && <Icon className="dd-lead" />}
         {prefix && <span className="dd-prefix">{prefix}</span>}

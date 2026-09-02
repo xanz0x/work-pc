@@ -36,6 +36,7 @@ import {
   IconLockRound,
   IconLogoMark,
   IconPlus,
+  IconPipeline,
   IconSearch,
   IconUser,
 } from './icons'
@@ -53,6 +54,7 @@ const SECRETS_NAV: { id: ScreenId; label: string; Icon: Ico }[] = [
 ]
 
 const SYSTEM: { id: ScreenId; label: string; Icon: Ico }[] = [
+  { id: 'activity', label: 'Центр активности', Icon: IconPipeline },
   { id: 'settings', label: 'Настройки', Icon: IconGear },
 ]
 
@@ -63,6 +65,7 @@ const PLACEHOLDER: Record<ScreenId, string> = {
   chat: 'Поиск по истории разговоров',
   vault: 'Поиск по секретам: type: tag: favorite:',
   settings: 'Поиск по настройкам',
+  activity: 'Поиск по событиям сейфа',
 }
 
 const plural = (n: number, one: string, few: string, many: string) => {
@@ -147,6 +150,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     chat: stats.sessions,
     vault: v.secretIndex.length,
     settings: 0,
+    activity: 0,
   }
 
   const liveClusters = clusters.filter((c) => c.count > 0)
@@ -174,6 +178,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             ? v.lock.status === 'unlocked'
               ? `${v.secretIndex.length} ${plural(v.secretIndex.length, 'запись', 'записи', 'записей')} · AES-GCM`
               : 'Сейф секретов закрыт — нужен мастер-ключ'
+            : v.screen === 'activity'
+              ? `Лента событий · ${v.unread} ${plural(v.unread, 'новое', 'новых', 'новых')}`
             : v.dirty
               ? 'Есть несохранённые изменения'
               : `${v.engineView.label} · AES-256`
