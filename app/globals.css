@@ -1892,6 +1892,35 @@
     gap: 7px;
   }
 
+  /* LG-3: метка тревожных записей журнала — быстрый переход из статус-бара. */
+  .sb-alert {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-right: 14px;
+    padding: 1px 8px;
+    font: inherit;
+    letter-spacing: 0.14em;
+    color: var(--danger);
+    background: rgba(229, 100, 92, 0.08);
+    border: 1px solid rgba(229, 100, 92, 0.35);
+    border-radius: 2px;
+    cursor: pointer;
+    transition:
+      background-color 160ms ease,
+      border-color 160ms ease;
+  }
+  .sb-alert:hover {
+    background: rgba(229, 100, 92, 0.16);
+    border-color: rgba(229, 100, 92, 0.6);
+  }
+  .sb-alert svg {
+    stroke: currentColor;
+    stroke-width: 1.5;
+    fill: none;
+  }
+
+
   /* ---------- Анимации ---------- */
   @keyframes pulse {
     0%,

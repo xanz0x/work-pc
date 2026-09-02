@@ -17,6 +17,30 @@ import type { ScreenId } from '@/lib/vault-store'
 
 type Loader = () => Promise<{ default: ComponentType }>
 
+/**
+ * Чанк экрана может не доехать: сеть моргнула, прокси отдал ошибку, вкладка
+ * ушла в сон посреди запроса. Раньше это выглядело как «экран не открылся и
+ * ничего не сказал». Теперь загрузка повторяется дважды с паузой, а если
+ * чанк так и не приехал — ошибка доходит до boundary и человек видит
+ * карточку «Экран не открылся» с кнопкой «Открыть заново».
+ */
+function withRetry(load: Loader): Loader {
+  return async () => {
+    const delays = [400, 1200]
+    let last: unknown
+    for (let attempt = 0; attempt <= delays.length; attempt++) {
+      try {
+        return await load()
+      } catch (e) {
+        last = e
+        const wait = delays[attempt]
+        if (wait === undefined) break
+        await new Promise((r) => setTimeout(r, wait))
+      }
+    }
+    throw last instanceof Error ? last : new Error('Чанк экрана не загрузился')
+  }
+}
 const LOADERS: Record<ScreenId, Loader> = {
   library: () =>
     import('@/components/screen-library').then((m) => ({ default: m.ScreenLibrary })),
@@ -42,11 +66,11 @@ function ScreenLoading() {
 }
 
 export const SCREENS: Record<ScreenId, ComponentType> = {
-  library: dynamic(LOADERS.library, { ssr: false, loading: ScreenLoading }),
-  map: dynamic(LOADERS.map, { ssr: false, loading: ScreenLoading }),
-  chat: dynamic(LOADERS.chat, { ssr: false, loading: ScreenLoading }),
-  vault: dynamic(LOADERS.vault, { ssr: false, loading: ScreenLoading }),
-  settings: dynamic(LOADERS.settings, { ssr: false, loading: ScreenLoading }),
+  library: dynamic(withRetry(LOADERS.library), { ssr: false, loading: ScreenLoading }),
+  map: dynamic(withRetry(LOADERS.map), { ssr: false, loading: ScreenLoading }),
+  chat: dynamic(withRetry(LOADERS.chat), { ssr: false, loading: ScreenLoading }),
+  vault: dynamic(withRetry(LOADERS.vault), { ssr: false, loading: ScreenLoading }),
+  settings: dynamic(withRetry(LOADERS.settings), { ssr: false, loading: ScreenLoading }),
 }
 
 const warmed = new Set<ScreenId>()

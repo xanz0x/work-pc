@@ -1429,3 +1429,25 @@
     }
   }
 }
+
+/* Пометка «необратимо» у тревожных записей журнала (LG-3). */
+@layer wf031 {
+  .jr-kind {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    align-items: flex-start;
+  }
+
+  .jr-flag {
+    font-family: var(--font-plex-mono), 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-style: normal;
+    color: var(--danger);
+    border: 1px solid rgba(229, 100, 92, 0.45);
+    border-radius: 2px;
+    padding: 1px 4px;
+  }
+}

@@ -26,7 +26,15 @@ import type { AiMsg, ChatMsg, Session, UserMsg } from './chat/types'
 import { usePersistedState } from '@/hooks/use-persisted-state'
 import { useAiChat, type ExecResult, type TurnBody } from '@/hooks/use-ai-chat'
 import { EnginePanel } from '@/components/engine-panel'
-import { useEngineStore, useNow, useVault } from '@/lib/vault-store'
+import {
+  useDataStore,
+  useEngineStore,
+  useNavStore,
+  useNotifsStore,
+  useNow,
+  useSettingsStore,
+  useToast,
+} from '@/lib/vault-store'
 import { useSecrets } from '@/lib/secrets-store'
 import { useRedacted } from '@/lib/redact-context'
 import { aiApi } from '@/lib/ai-client'
@@ -47,7 +55,19 @@ const uid = (p: string) => `${p}-${Date.now().toString(36)}-${seq++}`
  * метаданные файлов. Сессии зеркалятся файлами в ai/sessions репозитория.
  */
 export function ScreenChat() {
-  const v = useVault()
+  /* Узкие подписки вместо общего фасада (AR-1): чат держится на данных,
+     настройках и навигации. Изменения замка, ленты уведомлений и тика часов
+     каркаса его больше не перерисовывают. `v` собран из этих трёх домёнов
+     плюс два действия — так внутренние обработчики остались нетронутыми. */
+  const D = useDataStore()
+  const S = useSettingsStore()
+  const NAV = useNavStore()
+  const { notify } = useNotifsStore()
+  const { flash } = useToast()
+  const v = useMemo(
+    () => ({ ...D, ...S, ...NAV, notify, flash, hydrated: D.ready && S.ready }),
+    [D, S, NAV, notify, flash],
+  )
   const now = useNow()
   /* NF-2: состояние локального движка — отдельный домен, чат читает его напрямую. */
   const engine = useEngineStore()
@@ -256,7 +276,7 @@ export function ScreenChat() {
       setSay('Модель думает.')
       const pinned = sessions.find((s) => s.id === sessionId)?.pinned ?? []
       const ctx = buildCtx(pinned)
-      const view = v.engineView
+      const view = engine.engineView
       ai.start(
         {
           sessionId,
@@ -372,7 +392,7 @@ export function ScreenChat() {
       }
 
       /* P0-1: первый облачный ход в профиле — только после согласия. */
-      if (v.engineView.isCloud && !v.engineView.consented) {
+      if (engine.engineView.isCloud && !engine.engineView.consented) {
         pendingRun.current = fire
         setConsentOpen(true)
         return
@@ -643,7 +663,7 @@ export function ScreenChat() {
           <div className="chat-titles">
             <h1 className="chat-title ellipsis">{active?.title ?? 'Новый диалог'}</h1>
             <p className="chat-sub mono ellipsis" data-testid="chat-engine-sub">
-              {v.engineView.model} · {v.engineView.label} · {v.stats.files} файлов
+              {engine.engineView.model} · {engine.engineView.label} · {v.stats.files} файлов
               {active?.pinned.length ? ` · закреплено ${active.pinned.length}` : ''}
             </p>
           </div>
@@ -665,19 +685,19 @@ export function ScreenChat() {
           ) : null}
           <button
             type="button"
-            className={`badge ${v.engineView.isCloud ? 'badge-warn' : 'badge-ok'} chat-offline`}
+            className={`badge ${engine.engineView.isCloud ? 'badge-warn' : 'badge-ok'} chat-offline`}
             onClick={() => v.openSetting('engine')}
             title={
-              v.engineView.isCloud
+              engine.engineView.isCloud
                 ? 'Запросы идут во внешнюю модель — файлы остаются на устройстве'
                 : 'Локальный режим: внешних запросов нет'
             }
             data-testid="chat-cloud-badge"
           >
             <IconShield aria-hidden="true" />
-            {v.engineView.isCloud
-              ? `облако · ${v.engineView.model}`
-              : v.engineView.ready
+            {engine.engineView.isCloud
+              ? `облако · ${engine.engineView.model}`
+              : engine.engineView.ready
                 ? 'локально'
                 : 'локальный движок не подключён'}
           </button>
@@ -772,10 +792,10 @@ export function ScreenChat() {
                 </span>
                 <h2 className="chat-empty-title">Спросите свой архив</h2>
                 <p className="chat-empty-note">
-                  {v.engineView.isCloud
-                    ? `Отвечает ${v.engineView.model} со скиллами: находит файлы в сейфе, сохраняет пароли в секретницу (с вашего разрешения) и вытягивает документы из Notion через MCP.`
-                    : v.engineView.ready
-                      ? `Отвечает ${v.engineView.model} на этом устройстве через Ollama: ни один байт запроса не уходит в сеть. Скиллы работают так же, как в облаке.`
+                  {engine.engineView.isCloud
+                    ? `Отвечает ${engine.engineView.model} со скиллами: находит файлы в сейфе, сохраняет пароли в секретницу (с вашего разрешения) и вытягивает документы из Notion через MCP.`
+                    : engine.engineView.ready
+                      ? `Отвечает ${engine.engineView.model} на этом устройстве через Ollama: ни один байт запроса не уходит в сеть. Скиллы работают так же, как в облаке.`
                       : 'Выбран локальный движок, но он не отвечает. Ниже — что запустить; или переключите режим в настройках.'}
                 </p>
                 <ul className="chat-sugs">
@@ -842,7 +862,7 @@ export function ScreenChat() {
 
         {/* NF-2: локальный режим выбран, а движка нет — говорим об этом до
             отправки, вместе с командами. В облако молча не уходим. */}
-        {!v.engineView.isCloud && !v.engineView.ready ? (
+        {!engine.engineView.isCloud && !engine.engineView.ready ? (
           <div className="chat-engine-warn" data-testid="chat-engine-warn">
             <EnginePanel compact />
           </div>
@@ -877,7 +897,7 @@ export function ScreenChat() {
 
       {consentOpen ? (
         <CloudConsent
-          model={v.engineView.model}
+          model={engine.engineView.model}
           fileNames={v.settings.toggles.sendIndex ? v.views.length : 0}
           sendIndex={v.settings.toggles.sendIndex}
           onAccept={() => {

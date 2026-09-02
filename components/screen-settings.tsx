@@ -20,7 +20,14 @@ import {
   IconTag,
   IconTrash,
 } from './icons'
-import { useVault, type ToggleId } from '@/lib/vault-store'
+import {
+  useDataStore,
+  useNavStore,
+  useNotifsStore,
+  useSettingsStore,
+  useToast,
+  type ToggleId,
+} from '@/lib/vault-store'
 import { useIndexActions, useIndexSummary } from '@/lib/indexer/context'
 import { ENGINES, MODELS, NO_DATA, engineOf, fmtBytes, modelOf } from '@/lib/data'
 import { EnginePanel } from '@/components/engine-panel'
@@ -128,11 +135,17 @@ const plural = (n: number, one: string, few: string, many: string) => {
  * и статус-бар каркаса говорит о несохранённых изменениях тем же словом.
  */
 export function ScreenSettings() {
-  const v = useVault()
+  /* Узкие подписки вместо общего фасада: экран настроек живёт на домене
+     настроек, а из остальных берёт ровно то, что показывает. */
+  const S = useSettingsStore()
+  const D = useDataStore()
+  const N = useNotifsStore()
+  const NAV = useNavStore()
+  const { flash } = useToast()
   const engine = useEngineStore()
   const idxs = useIndexSummary()
   const idxa = useIndexActions()
-  const d = v.draftSettings
+  const d = S.draftSettings
   const [active, setActive] = useState('engine')
   const scrollRef = useRef<HTMLDivElement>(null)
   const [confirmWipe, setConfirmWipe] = useState(false)
@@ -159,9 +172,9 @@ export function ScreenSettings() {
 
   /** Переход из поиска, палитры или колокольчика ведёт в нужный раздел. */
   useEffect(() => {
-    if (!v.settingFocus) return
+    if (!NAV.settingFocus) return
     /* LG-3: ссылка из уведомления приходит как `journal:<id записи>`. */
-    const raw = v.settingFocus.id.split(':')[0]
+    const raw = NAV.settingFocus.id.split(':')[0]
     const id = FOCUS_ALIAS[raw] ?? 'engine'
     const el = document.getElementById(`set-${id}`)
     el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -169,7 +182,7 @@ export function ScreenSettings() {
     const t = setTimeout(() => el?.classList.remove('sec-flash'), 1200)
     setActive(id)
     return () => clearTimeout(t)
-  }, [v.settingFocus])
+  }, [NAV.settingFocus])
 
   function goTo(id: string) {
     document.getElementById(`set-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -177,7 +190,7 @@ export function ScreenSettings() {
   }
 
   function flip(id: ToggleId) {
-    v.setDraftSettings((s) => ({ ...s, toggles: { ...s.toggles, [id]: !s.toggles[id] } }))
+    S.setDraftSettings((s) => ({ ...s, toggles: { ...s.toggles, [id]: !s.toggles[id] } }))
   }
 
   const notifyOn = NOTIFY_TOGGLES.filter((t) => d.toggles[t.id]).length
@@ -185,7 +198,7 @@ export function ScreenSettings() {
   /* NF-2: готов ли локальный движок — знает домен движка, а не константа. */
   const localReady = engine.local?.ok === true
   const draftModel = modelOf(d.model)
-  const { stats, mix } = v
+  const { stats, mix } = D
 
   /** Шаги конвейера — снимок настоящего состояния корпуса. */
   const steps = useMemo(
@@ -199,18 +212,18 @@ export function ScreenSettings() {
       {
         Icon: IconSparkText,
         name: 'Распознавание',
-        status: v.settings.toggles.ocr ? 'OCR активен' : 'OCR выключен',
-        warn: !v.settings.toggles.ocr,
+        status: S.settings.toggles.ocr ? 'OCR активен' : 'OCR выключен',
+        warn: !S.settings.toggles.ocr,
       },
       {
         Icon: IconTag,
         name: 'Автотеги',
-        status: v.settings.toggles.autotag
+        status: S.settings.toggles.autotag
           ? stats.processing > 0
             ? `${stats.processing} в очереди`
             : 'очередь пуста'
           : 'выключены',
-        warn: !v.settings.toggles.autotag || stats.processing > 0,
+        warn: !S.settings.toggles.autotag || stats.processing > 0,
       },
       {
         Icon: IconMemory,
@@ -219,7 +232,7 @@ export function ScreenSettings() {
         warn: stats.links === 0,
       },
     ],
-    [stats.files, stats.links, stats.processing, v.settings.toggles.autotag, v.settings.toggles.ocr],
+    [stats.files, stats.links, stats.processing, S.settings.toggles.autotag, S.settings.toggles.ocr],
   )
 
   function rows(list: { id: ToggleId; title: string; note: string }[]) {
@@ -287,14 +300,14 @@ export function ScreenSettings() {
                 {/* NF-2: бейдж не обещает локальный режим, если движок молчит. */}
                 <span
                   className={`badge set-hero-badge ${
-                    v.engineView.isCloud || !v.engineView.ready ? 'badge-warn' : 'badge-ok'
+                    engine.engineView.isCloud || !engine.engineView.ready ? 'badge-warn' : 'badge-ok'
                   }`}
                   data-testid="settings-hero-badge"
                 >
-                  <i className={`net-dot${v.engineView.isCloud || !v.engineView.ready ? ' warn' : ''}`} />
-                  {v.engineView.isCloud
+                  <i className={`net-dot${engine.engineView.isCloud || !engine.engineView.ready ? ' warn' : ''}`} />
+                  {engine.engineView.isCloud
                     ? 'есть исходящие'
-                    : v.engineView.ready
+                    : engine.engineView.ready
                       ? 'локальный режим'
                       : 'движок не запущен'}
                 </span>
@@ -302,11 +315,11 @@ export function ScreenSettings() {
               <div className="set-hero-stats">
                 <div className="set-stat">
                   <span className="label-mono">Движок</span>
-                  <b>{v.engineView.label}</b>
+                  <b>{engine.engineView.label}</b>
                   <span className="mono set-stat-sub num">
                     {/* NF-2: скорость только настоящая — из последнего локального ответа. */}
-                    {v.engineView.isCloud
-                      ? v.engineView.model
+                    {engine.engineView.isCloud
+                      ? engine.engineView.model
                       : engine.metrics.tokensPerSec !== null
                         ? `${engine.metrics.tokensPerSec} токенов/с`
                         : `${NO_DATA} токенов/с`}
@@ -357,7 +370,7 @@ export function ScreenSettings() {
                     role="radio"
                     aria-checked={d.engine === e.id}
                     className={`engine-option${d.engine === e.id ? ' selected' : ''}`}
-                    onClick={() => v.setDraftSettings((s) => ({ ...s, engine: e.id }))}
+                    onClick={() => S.setDraftSettings((s) => ({ ...s, engine: e.id }))}
                     data-testid={`engine-${e.id}`}
                   >
                     <span className="radio-dot" />
@@ -378,7 +391,7 @@ export function ScreenSettings() {
                   className="select"
                   value={d.model}
                   onChange={(e) =>
-                    v.setDraftSettings((s) => ({ ...s, model: e.target.value as typeof s.model }))
+                    S.setDraftSettings((s) => ({ ...s, model: e.target.value as typeof s.model }))
                   }
                   aria-label="Модель"
                   style={{ maxWidth: 260 }}
@@ -394,7 +407,7 @@ export function ScreenSettings() {
                   data-testid="model-state"
                 >
                   {localReady
-                    ? d.model === v.settings.model
+                    ? d.model === S.settings.model
                       ? `установлена · ${engine.local?.model ?? ''}`
                       : 'применится после сохранения'
                     : engine.local?.code === 'MODEL_NOT_PULLED'
@@ -486,9 +499,9 @@ export function ScreenSettings() {
               {rows(NOTIFY_TOGGLES)}
 
               <div className="sec-note">
-                В журнале сейчас {v.notifs.length}{' '}
-                {plural(v.notifs.length, 'событие', 'события', 'событий')}
-                {v.unread > 0 ? `, из них ${v.unread} непрочитанных` : ', все прочитаны'}. Журнал
+                В журнале сейчас {N.notifs.length}{' '}
+                {plural(N.notifs.length, 'событие', 'события', 'событий')}
+                {N.unread > 0 ? `, из них ${N.unread} непрочитанных` : ', все прочитаны'}. Журнал
                 хранится в сейфе и никуда не отправляется: ни push, ни почта, ни внешние сервисы.
               </div>
             </section>
@@ -511,7 +524,7 @@ export function ScreenSettings() {
                   <input
                     className="input input-mono"
                     value={d.folder}
-                    onChange={(e) => v.setDraftSettings((s) => ({ ...s, folder: e.target.value }))}
+                    onChange={(e) => S.setDraftSettings((s) => ({ ...s, folder: e.target.value }))}
                     aria-label="Папка сейфа"
                   />
                   <button
@@ -520,7 +533,7 @@ export function ScreenSettings() {
                     onClick={() =>
                       idxs.fsaSupported
                         ? void idxa.connectFolder()
-                        : v.flash(
+                        : flash(
                             'Браузер не даёт доступ к папке: выберите файлы кнопкой «Добавить файл» — содержимое всё равно прочитается локально.',
                           )
                     }
@@ -532,7 +545,7 @@ export function ScreenSettings() {
                     className="btn btn-tertiary btn-sm"
                     data-testid="set-reindex"
                     disabled={idxs.busy}
-                    onClick={v.reindexAll}
+                    onClick={D.reindexAll}
                   >
                     <IconRefresh />
                     Переиндексировать
@@ -590,7 +603,7 @@ export function ScreenSettings() {
                   </div>
                 </div>
                 <span className="sec-meta label-mono">
-                  {v.engineView.isCloud ? 'есть исходящие' : 'исходящих нет'}
+                  {engine.engineView.isCloud ? 'есть исходящие' : 'исходящих нет'}
                 </span>
               </div>
 
@@ -600,15 +613,15 @@ export function ScreenSettings() {
                 <div className="setting-row-text">
                   <div className="setting-title">Согласие на облачные запросы</div>
                   <div className="setting-note">
-                    {v.settings.cloudConsentAt
-                      ? `Дано ${new Date(v.settings.cloudConsentAt).toLocaleString('ru-RU')}. Каждый облачный ход пишется в ленту событий.`
+                    {S.settings.cloudConsentAt
+                      ? `Дано ${new Date(S.settings.cloudConsentAt).toLocaleString('ru-RU')}. Каждый облачный ход пишется в ленту событий.`
                       : 'Не дано: перед первым запросом во внешнюю модель спросим и покажем, что именно уйдёт.'}
                   </div>
                 </div>
-                {v.settings.cloudConsentAt ? (
+                {S.settings.cloudConsentAt ? (
                   <button
                     className="btn btn-ghost btn-sm"
-                    onClick={v.revokeCloudConsent}
+                    onClick={S.revokeCloudConsent}
                     data-testid="revoke-consent"
                   >
                     Отозвать
@@ -678,7 +691,7 @@ export function ScreenSettings() {
                   <button
                     className="btn btn-ghost btn-sm"
                     disabled={stats.files === 0}
-                    onClick={v.clearIndex}
+                    onClick={D.clearIndex}
                   >
                     Очистить индекс
                   </button>
@@ -700,7 +713,7 @@ export function ScreenSettings() {
                         className="btn btn-danger btn-sm"
                         onClick={() => {
                           setConfirmWipe(false)
-                          v.wipeVault()
+                          D.wipeVault()
                         }}
                       >
                         Да, стереть
@@ -724,23 +737,23 @@ export function ScreenSettings() {
 
       <footer className="set-footer">
         <div className="save-bar panel glass">
-          <span className={`save-hint${v.dirty ? ' dirty' : ''}`}>
+          <span className={`save-hint${S.dirty ? ' dirty' : ''}`}>
             <i />
-            {v.dirty ? 'Есть несохранённые изменения' : 'Все изменения сохранены локально'}
+            {S.dirty ? 'Есть несохранённые изменения' : 'Все изменения сохранены локально'}
           </span>
           <div className="save-actions">
             <button
               className="btn btn-ghost btn-sm"
-              disabled={!v.dirty}
-              onClick={v.revertSettings}
+              disabled={!S.dirty}
+              onClick={S.revertSettings}
               data-testid="settings-revert"
             >
               Отменить
             </button>
             <button
               className="btn btn-primary btn-sm"
-              disabled={!v.dirty}
-              onClick={v.saveSettings}
+              disabled={!S.dirty}
+              onClick={S.saveSettings}
               data-testid="settings-save"
             >
               Сохранить

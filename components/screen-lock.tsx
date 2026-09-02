@@ -14,7 +14,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { LockMethod } from '@/lib/lock-store'
-import { useVault } from '@/lib/vault-store'
+import { useLockStore } from '@/lib/vault-store'
 import { adoptMasterSession } from '@/hooks/use-file-keys'
 import { IconLockRound } from './icons'
 import { LogoWord } from './screen-lock-logo'
@@ -68,7 +68,9 @@ function fmtCooldown(ms: number): string {
 }
 
 export function ScreenLock() {
-  const v = useVault()
+  /* Узкая подписка: экран замка знает только домен замка, поэтому тик часов,
+     новые уведомления и правка настроек его больше не перерисовывают. */
+  const v = useLockStore()
   const lock = v.lock
   const method: LockMethod = lock.method ?? 'pin'
 

@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { skipOnboarding } from './onboard'
+import { waitAppReady } from './ready'
 
 /**
  * Сценарий 3 (§2 хвоста волны 2): ход диалога и цикл скиллов.
@@ -19,9 +20,12 @@ async function login(page: import('@playwright/test').Page) {
   await page.getByTestId('login-password').fill(process.env.APP_PASSWORD as string)
   await page.getByTestId('login-submit').click()
   await expect(page).toHaveURL(/\/$/, { timeout: 30_000 })
+  /* Без этого клик по навигации уходил в ещё не гидратированную кнопку. */
+  await waitAppReady(page)
   /* Облачный движок выбирается в настройках: по умолчанию стоит локальный.
      Выбор — черновик, он вступает в силу только после «Сохранить». */
   await page.getByTestId('nav-settings').click()
+  await expect(page.getByTestId('engine-cloud')).toBeVisible({ timeout: 30_000 })
   await page.getByTestId('engine-cloud').click()
   await page.getByTestId('settings-save').click()
   await expect(page.getByTestId('settings-save')).toBeDisabled({ timeout: 15_000 })

@@ -60,6 +60,11 @@ export function journalKindLabel(kind: JournalKind): string {
   return JOURNAL_KINDS.find((k) => k.id === kind)?.label ?? kind
 }
 
+/** Необратимое: то, что нельзя отменить и о чём стоит знать без захода в настройки. */
+export function isSevereKind(kind: JournalKind): boolean {
+  return JOURNAL_KINDS.find((k) => k.id === kind)?.severe === true
+}
+
 let seq = 0
 const uid = () => `j-${Date.now().toString(36)}-${(seq++).toString(36)}`
 

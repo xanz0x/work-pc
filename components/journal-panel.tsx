@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { download } from '@/lib/secrets-io'
 import {
   JOURNAL_KINDS,
+  isSevereKind,
   journalKindLabel,
   journalToFile,
   readJournal,
@@ -34,7 +35,7 @@ export function JournalPanel() {
   const { settingFocus } = useNavStore()
   const { flash } = useToast()
   const [entries, setEntries] = useState<JournalEntry[]>([])
-  const [filter, setFilter] = useState<JournalKind | 'all'>('all')
+  const [filter, setFilter] = useState<JournalKind | 'all' | 'severe'>('all')
   const rowsRef = useRef<HTMLDivElement>(null)
 
   const reload = useCallback(() => {
@@ -62,10 +63,13 @@ export function JournalPanel() {
     return JOURNAL_KINDS.filter((k) => seen.has(k.id))
   }, [entries])
 
-  const shown = useMemo(
-    () => (filter === 'all' ? entries : entries.filter((e) => e.kind === filter)),
-    [entries, filter],
-  )
+  const severeCount = useMemo(() => entries.filter((e) => isSevereKind(e.kind)).length, [entries])
+
+  const shown = useMemo(() => {
+    if (filter === 'all') return entries
+    if (filter === 'severe') return entries.filter((e) => isSevereKind(e.kind))
+    return entries.filter((e) => e.kind === filter)
+  }, [entries, filter])
 
   function exportAll() {
     const file = journalToFile(entries)
@@ -101,6 +105,16 @@ export function JournalPanel() {
           >
             Все
           </button>
+          {severeCount > 0 && (
+            <button
+              className="jr-chip severe"
+              aria-pressed={filter === 'severe'}
+              onClick={() => setFilter('severe')}
+              data-testid="journal-filter-severe"
+            >
+              Только необратимое · {severeCount}
+            </button>
+          )}
           {present.map((k) => (
             <button
               key={k.id}
@@ -128,7 +142,9 @@ export function JournalPanel() {
           <p className="jr-empty" data-testid="journal-empty">
             {entries.length === 0
               ? 'Пока ничего критического не происходило — журнал пуст.'
-              : 'Нет записей этого типа.'}
+              : filter === 'severe'
+                ? 'Необратимых событий не было.'
+                : 'Нет записей этого типа.'}
           </p>
         ) : (
           shown.map((e) => (
@@ -140,7 +156,14 @@ export function JournalPanel() {
               data-testid="journal-row"
             >
               <span className="jr-time num">{fmtAt(e.at)}</span>
-              <span className="jr-kind label-mono">{journalKindLabel(e.kind)}</span>
+              <span className="jr-kind label-mono">
+                {journalKindLabel(e.kind)}
+                {isSevereKind(e.kind) && (
+                  <i className="jr-flag" data-testid="journal-severe-flag">
+                    необратимо
+                  </i>
+                )}
+              </span>
               <span className="jr-text">
                 <b>{e.title}</b>
                 <span>{e.detail}</span>

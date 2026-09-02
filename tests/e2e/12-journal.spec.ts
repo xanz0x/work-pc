@@ -40,6 +40,19 @@ test('журнал: стирание сейфа записано, уведомл
   await page.getByTestId('journal-filter-all').click()
   await expect(rows).toHaveCount(1)
 
+  /* Необратимое видно отдельно: пометка на строке, свой фильтр и метка в
+     статус-баре, которая ведёт прямо в журнал. */
+  await expect(page.getByTestId('journal-severe-flag').first()).toBeVisible()
+  await page.getByTestId('journal-filter-severe').click()
+  await expect(rows).toHaveCount(1)
+  const alert = page.getByTestId('status-journal-alert')
+  await expect(alert).toContainText('ЖУРНАЛ · 1')
+  await page.getByTestId('nav-library').click()
+  await expect(page.getByTestId('journal-section')).toHaveCount(0)
+  await alert.click()
+  await expect(page.getByTestId('journal-section')).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByTestId('journal-row')).toHaveCount(1)
+
   /* Выгрузка отдаёт файл и ничего не удаляет. */
   const [dl] = await Promise.all([
     page.waitForEvent('download'),

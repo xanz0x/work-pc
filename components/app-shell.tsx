@@ -16,6 +16,7 @@ import { NumTicker } from './ui/num-ticker'
 import { StatusClock } from './ui/status-clock'
 import { ScreenLock } from './screen-lock'
 import { prefetchScreen } from './screens'
+import { JournalAlert } from './journal-alert'
 import { useEngineStore } from '@/lib/store/engine'
 import { useVault } from '@/lib/vault-store'
 import { useIndexActions } from '@/lib/indexer/context'
@@ -91,6 +92,15 @@ export function AppShell({ children }: { children: ReactNode }) {
      из ClockContext — каркас больше не перерисовывается раз в секунду. */
   const searchWrap = useRef<HTMLDivElement>(null)
   const picker = useRef<HTMLInputElement>(null)
+
+  /**
+   * Отметка «каркас ожил». До гидратации кнопки навигации уже нарисованы
+   * сервером, но обработчиков на них нет — клик в эту щель пропадает молча.
+   * Атрибут даёт честный признак готовности: его ждут e2e-сценарии, а живой
+   * человек видит по нему же курсор-ожидание.
+   */
+  const [ready, setReady] = useState(false)
+  useEffect(() => setReady(true), [])
 
   useEffect(() => {
     try {
@@ -191,7 +201,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <>
       {v.lock.status === 'locked' && <ScreenLock />}
-      <div className={`app${collapsed ? ' nav-collapsed' : ''}${v.lock.status === 'locked' ? ' lock-behind' : ''}`}>
+      <div
+        className={`app${collapsed ? ' nav-collapsed' : ''}${v.lock.status === 'locked' ? ' lock-behind' : ''}`}
+        data-testid="app-shell"
+        data-app-ready={ready ? '1' : '0'}
+      >
         <aside className="sidebar">
           <div className="brand">
             <span className="logo-mark" aria-hidden="true">
@@ -512,6 +526,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           {v.engineView.statusLabel}
         </span>
         <span className="grow" />
+        <JournalAlert />
         <span className="sb-net" data-testid="status-net">
           <i className={`net-dot${v.engineView.isCloud ? ' warn' : ''}`} />
           {v.engineView.netLabel}
