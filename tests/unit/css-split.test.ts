@@ -34,6 +34,7 @@ function statements(css: string): string[] {
 describe('AR-2 · разрез globals.css', () => {
   it('экранные слои есть и в базе объявлен их порядок', () => {
     expect(screenFiles.sort()).toEqual([
+      'screen-activity.css',
       'screen-chat.css',
       'screen-library.css',
       'screen-map.css',

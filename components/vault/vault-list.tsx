@@ -3,10 +3,13 @@
 /* ============================================================
    ЦЕНТРАЛЬНАЯ КОЛОНКА · карточки записей
    Значения всегда маскированы: список не расшифровывает ничего.
+   NF-5: карточка умеет быть выбранной. Обычный клик открывает запись,
+   Ctrl/Cmd+клик добавляет её к выделению, Shift+клик берёт диапазон
+   от предыдущей отметки — как в файловом менеджере.
    ============================================================ */
 
 import { useEffect } from 'react'
-import { iconOf } from '@/components/icons'
+import { IconCheck, iconOf } from '@/components/icons'
 import { useSecrets } from '@/lib/secrets-store'
 import {
   TYPE_HUE,
@@ -23,14 +26,23 @@ export function VaultList({
   onSelect,
   now,
   trashMode,
+  marked,
+  selectMode = false,
+  onMark,
 }: {
   entries: SecretRecord[]
   selId: string | null
   onSelect: (id: string) => void
   now: number
   trashMode: boolean
+  /** NF-5: отмеченные записи; пустое множество = выделения нет. */
+  marked?: ReadonlySet<string>
+  selectMode?: boolean
+  /** NF-5: клик с модификатором или в режиме выбора. */
+  onMark?: (id: string, mods: { range: boolean; toggle: boolean }) => void
 }) {
   const s = useSecrets()
+  const markedSet = marked ?? EMPTY_SET
 
   /* Иконки сайтов подтягиваются только при показе карточки и только если
      тумблер включён. Наружу уходит домен, в DOM — локальный b64. */
@@ -60,15 +72,36 @@ export function VaultList({
         const domain = domainOf(e)
         const expired = isExpired(e, now)
         const secretCount = e.fields.filter((f) => f.secret && f.value).length
+        const isMarked = markedSet.has(e.id)
         return (
           <button
             key={e.id}
             role="option"
             aria-selected={selId === e.id}
-            className={`vt-card${selId === e.id ? ' on' : ''}`}
-            onClick={() => onSelect(e.id)}
+            className={`vt-card${selId === e.id ? ' on' : ''}${isMarked ? ' marked' : ''}${
+              selectMode ? ' pickable' : ''
+            }`}
+            onClick={(ev) => {
+              const toggle = ev.metaKey || ev.ctrlKey || selectMode
+              const range = ev.shiftKey
+              if (onMark && (toggle || range)) {
+                onMark(e.id, { range, toggle })
+                return
+              }
+              onSelect(e.id)
+            }}
             data-testid={`vault-card-${e.id}`}
+            data-marked={isMarked ? '1' : undefined}
           >
+            {(selectMode || markedSet.size > 0) && (
+              <span
+                className={`vt-mark${isMarked ? ' on' : ''}`}
+                aria-hidden="true"
+                data-testid={`vault-mark-${e.id}`}
+              >
+                {isMarked ? <IconCheck width={11} height={11} stroke="currentColor" strokeWidth={2} /> : null}
+              </span>
+            )}
             <span
               className="vt-card-icon"
               aria-hidden="true"
@@ -107,3 +140,5 @@ export function VaultList({
     </div>
   )
 }
+
+const EMPTY_SET: ReadonlySet<string> = new Set<string>()

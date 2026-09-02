@@ -102,6 +102,14 @@ export type DataCtx = {
   setReindexHandler: (fn: (() => void) | null) => void
   removeFile: (id: string) => void
   retagFile: (id: string, cluster: ClusterId) => void
+  /** NF-5: правка порции файлов одной записью — без тоста на каждый объект. */
+  bulkPatchFiles: (ids: string[], fn: (f: VaultFile) => VaultFile) => void
+  /** NF-5: удаление порции файлов; отмена делается restoreFiles. */
+  bulkRemoveFiles: (ids: string[]) => void
+  /** NF-5: вернуть снятые файлы обратно в сейф (окно отмены). */
+  restoreFiles: (list: VaultFile[]) => void
+  /** NF-5: правка порции стикеров одной записью. */
+  bulkPatchNotes: (ids: string[], fn: (n: Note) => Note) => void
   reindexAll: () => void
   clearIndex: () => void
   wipeVault: () => void
@@ -246,6 +254,60 @@ export function DataProvider({ children }: { children: ReactNode }) {
       flash(`Файл перенесён в кластер «${clusterOf(cluster).label}».`)
     },
     [flash, setFiles],
+  )
+
+  /* ---------- NF-5: массовые операции ----------
+     Ключевое отличие от одиночных действий: одна запись в состояние на
+     всю порцию. Пятьсот вызовов patchNote дали бы пятьсот записей в
+     хранилище и столько же перерисовок — порциями это двадцать. */
+
+  const bulkPatchFiles = useCallback(
+    (ids: string[], fn: (f: VaultFile) => VaultFile) => {
+      if (ids.length === 0) return
+      const set = new Set(ids)
+      setFiles((all) => all.map((f) => (set.has(f.id) ? fn(f) : f)))
+    },
+    [setFiles],
+  )
+
+  const bulkRemoveFiles = useCallback(
+    (ids: string[]) => {
+      if (ids.length === 0) return
+      const set = new Set(ids)
+      setFiles((all) => all.filter((f) => !set.has(f.id)))
+      setNotes((all) =>
+        all.map((n) => (n.pinnedTo && set.has(n.pinnedTo) ? { ...n, pinnedTo: undefined } : n)),
+      )
+      setSessions((all) =>
+        all.map((s) =>
+          s.pinned.some((p) => set.has(p))
+            ? { ...s, pinned: s.pinned.filter((p) => !set.has(p)) }
+            : s,
+        ),
+      )
+    },
+    [setFiles, setNotes, setSessions],
+  )
+
+  const restoreFiles = useCallback(
+    (list: VaultFile[]) => {
+      if (list.length === 0) return
+      setFiles((all) => {
+        const known = new Set(all.map((f) => f.id))
+        const back = list.filter((f) => !known.has(f.id))
+        return back.length === 0 ? all : [...back, ...all]
+      })
+    },
+    [setFiles],
+  )
+
+  const bulkPatchNotes = useCallback(
+    (ids: string[], fn: (n: Note) => Note) => {
+      if (ids.length === 0) return
+      const set = new Set(ids)
+      setNotes((all) => all.map((n) => (set.has(n.id) ? fn(n) : n)))
+    },
+    [setNotes],
   )
 
   /**
@@ -536,6 +598,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setReindexHandler,
       removeFile,
       retagFile,
+      bulkPatchFiles,
+      bulkRemoveFiles,
+      restoreFiles,
+      bulkPatchNotes,
       reindexAll,
       clearIndex,
       wipeVault,
@@ -566,7 +632,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }),
     [
       ready, files, views, fileById, viewById, addFiles, applyIndexed, setIndexing, dropIndexed,
-      setReindexHandler, removeFile, retagFile, reindexAll, clearIndex, wipeVault, notes,
+      setReindexHandler, removeFile, retagFile, bulkPatchFiles, bulkRemoveFiles, restoreFiles,
+      bulkPatchNotes, reindexAll, clearIndex, wipeVault, notes,
       liveNotes, notesFor, addNote, patchNote, burnNote, extendNote, patchNoteSecret, sessions,
       activeSessionId, setActiveSessionId, addSession, patchSession, removeSession, drafts,
       setDraft, scrolls, setScroll, graph, clusters, mix, neighbors, stats,

@@ -13,6 +13,7 @@ import {
   IconGraph,
   IconGridBoard,
   IconKey,
+  IconLayers,
   IconLock,
   IconLockRound,
   IconPencil,
@@ -21,6 +22,7 @@ import {
   IconRefresh,
   IconSparkText,
   IconSticker,
+  IconTag,
   IconTrash,
 } from './icons'
 import { CLUSTERS, clusterOf, fmtBytes, type ClusterId, type FileView } from '@/lib/data'
@@ -59,6 +61,9 @@ import {
 import { Beam } from '@/components/ui/beam'
 import { NumTicker } from '@/components/ui/num-ticker'
 import { usePersistedState } from '@/hooks/use-persisted-state'
+import { useBulkRunner } from '@/lib/bulk'
+import { useIntent } from '@/lib/commands'
+import { BulkBar, type BulkAction } from '@/components/bulk-bar'
 
 /** Локальный алиас: короче в объявлении состояния доски. */
 const usePersisted = usePersistedState
@@ -79,6 +84,8 @@ const FILE_PAGE = 150
    ============================================================ */
 
 type Sel = { kind: 'file' | 'note'; id: string }
+/** NF-5: отметка мультивыделения — «слой:id», файлы и стикеры в одном списке. */
+type MarkKey = string
 type Layer = 'all' | 'files' | 'notes'
 type CatId = ClusterId | 'all'
 
@@ -105,6 +112,17 @@ export function ScreenLibrary() {
   const [sel, setSel] = useState<Sel | null>(null)
   const [tab, setTab] = useState<'details' | 'ai'>('details')
   const [dismissed, setDismissed] = useState<string[]>([])
+
+  /* ---------- NF-5: мультивыделение и массовые действия ---------- */
+  const bulk = useBulkRunner()
+  const [selectMode, setSelectMode] = useState(false)
+  const [markedRaw, setMarked] = useState<MarkKey[]>([])
+  const [bulkForm, setBulkForm] = useState<null | 'tag' | 'cluster' | 'key'>(null)
+  const [bulkTag, setBulkTag] = useState('')
+  const [bulkKey1, setBulkKey1] = useState('')
+  const [bulkKey2, setBulkKey2] = useState('')
+  const [bulkKeyErr, setBulkKeyErr] = useState<string | null>(null)
+  const markAnchor = useRef<MarkKey | null>(null)
 
   /* Разблокировка — только на этот сеанс, ключ никуда не сохраняется. */
   const [unlocked, setUnlocked] = useState<string[]>([])
@@ -486,6 +504,375 @@ export function ScreenLibrary() {
     flash('Файл под ключом: описание зашифровано локально')
   }
 
+  /* ---------- NF-5: массовые операции ----------
+     Порядок отметок берём из того, что человек видит: диапазон
+     Shift+клика считается по этому же списку. */
+
+  const markOrder = useMemo<MarkKey[]>(
+    () => [
+      ...(view !== 'notes' ? pagedFiles.map((f) => `file:${f.id}`) : []),
+      ...(view !== 'files' ? shownNotes.map((n) => `note:${n.id}`) : []),
+    ],
+    [pagedFiles, shownNotes, view],
+  )
+
+  /**
+   * «Выбрать всё в фильтре» — это весь фильтр, а не только нарисованная
+   * страница: на папке из тысячи файлов доска рисует первые 150, но выбор
+   * обязан покрывать все 1000, иначе обещание в кнопке ложное.
+   */
+  const filterOrder = useMemo<MarkKey[]>(
+    () => [
+      ...(view !== 'notes' ? shownFiles.map((f) => `file:${f.id}`) : []),
+      ...(view !== 'files' ? shownNotes.map((n) => `note:${n.id}`) : []),
+    ],
+    [shownFiles, shownNotes, view],
+  )
+
+  /* Фильтр сузился — отметки на выпавших объектах не остаются: видимый
+     фильтр отсеивает их прямо в рендере, без эффекта-догонялки. */
+  const marked = useMemo(() => {
+    const live = new Set(filterOrder)
+    return markedRaw.filter((k) => live.has(k))
+  }, [markedRaw, filterOrder])
+  const markedSet = useMemo(() => new Set(marked), [marked])
+
+  const clearMarks = useCallback(() => {
+    setMarked([])
+    setBulkForm(null)
+    markAnchor.current = null
+  }, [])
+
+  /* п.10.4: замок закрылся — выделение и режим выбора не достаются
+     следующему человеку вместе с открытой вкладкой. Первый прогон при
+     монтировании пропускаем: сбрасывать там нечего. */
+  const lockEpochRef = useRef(LK.lockEpoch)
+  useEffect(() => {
+    if (lockEpochRef.current === LK.lockEpoch) return
+    lockEpochRef.current = LK.lockEpoch
+    clearMarks()
+    setSelectMode(false)
+  }, [LK.lockEpoch, clearMarks])
+
+  const markKey = useCallback(
+    (key: MarkKey, mods: { range: boolean }) => {
+      if (mods.range && markAnchor.current) {
+        const from = markOrder.indexOf(markAnchor.current)
+        const to = markOrder.indexOf(key)
+        if (from >= 0 && to >= 0) {
+          const slice = markOrder.slice(Math.min(from, to), Math.max(from, to) + 1)
+          setMarked((prev) => [...new Set([...prev, ...slice])])
+          return
+        }
+      }
+      markAnchor.current = key
+      setMarked((prev) => (prev.includes(key) ? prev.filter((x) => x !== key) : [...prev, key]))
+    },
+    [markOrder],
+  )
+
+  /** Клик по карточке: с модификатором или в режиме выбора — отметка, иначе открытие. */
+  const onCardClick = useCallback(
+    (kind: 'file' | 'note', id: string, e: React.MouseEvent) => {
+      const key = `${kind}:${id}`
+      if (e.shiftKey) {
+        markKey(key, { range: true })
+        return
+      }
+      if (e.metaKey || e.ctrlKey || selectMode) {
+        markKey(key, { range: false })
+        return
+      }
+      if (kind === 'file') openFileTile(id)
+      else NAV.openNote(id)
+    },
+    [markKey, selectMode, openFileTile, NAV],
+  )
+
+  const markedFileIds = useMemo(
+    () => marked.filter((k) => k.startsWith('file:')).map((k) => k.slice(5)),
+    [marked],
+  )
+  const markedNoteIds = useMemo(
+    () => marked.filter((k) => k.startsWith('note:')).map((k) => k.slice(5)),
+    [marked],
+  )
+
+  const finishBulk = useCallback(
+    (total: number, done: string) => (applied: number, cancelled: boolean) => {
+      setBulkForm(null)
+      if (!cancelled) clearMarks()
+      flash(cancelled ? `Прервано: применено ${applied} из ${total}` : `${done}: ${applied}`)
+    },
+    [clearMarks, flash],
+  )
+
+  /** Метка: одна на все выбранные объекты, отмена возвращает прежние списки. */
+  const applyBulkTag = useCallback(() => {
+    const tag = bulkTag.trim()
+    if (!tag || marked.length === 0) return
+    const prevFiles = new Map(
+      D.files.filter((f) => markedFileIds.includes(f.id)).map((f) => [f.id, f.tags]),
+    )
+    const prevNotes = new Map(
+      D.notes.filter((n) => markedNoteIds.includes(n.id)).map((n) => [n.id, n.tags]),
+    )
+    void bulk.start({
+      label: `Метка «${tag}» · ${marked.length}`,
+      ids: [...marked],
+      step: (batch) => {
+        const files = batch.filter((k) => k.startsWith('file:')).map((k) => k.slice(5))
+        const notes = batch.filter((k) => k.startsWith('note:')).map((k) => k.slice(5))
+        D.bulkPatchFiles(files, (f) => {
+          const tags = f.tags ?? []
+          return tags.includes(tag) ? f : { ...f, tags: [...tags, tag] }
+        })
+        D.bulkPatchNotes(notes, (n) =>
+          n.tags.includes(tag) ? n : { ...n, tags: [...n.tags, tag] },
+        )
+      },
+      undo: {
+        label: `Можно вернуть: метка «${tag}» у ${marked.length} объектов`,
+        run: () => {
+          D.bulkPatchFiles([...prevFiles.keys()], (f) => ({ ...f, tags: prevFiles.get(f.id) ?? f.tags }))
+          D.bulkPatchNotes([...prevNotes.keys()], (n) => ({ ...n, tags: prevNotes.get(n.id) ?? n.tags }))
+        },
+      },
+      onDone: finishBulk(marked.length, 'Метка добавлена'),
+    })
+  }, [bulk, bulkTag, D, finishBulk, marked, markedFileIds, markedNoteIds])
+
+  /** Кластер — только файлы: у стикера кластера нет, и врать об этом нельзя. */
+  const applyBulkCluster = useCallback(
+    (cluster: ClusterId) => {
+      if (markedFileIds.length === 0) return
+      const prev = new Map(
+        D.files.filter((f) => markedFileIds.includes(f.id)).map((f) => [f.id, f.cluster]),
+      )
+      void bulk.start({
+        label: `Кластер «${clusterOf(cluster).label}» · ${markedFileIds.length}`,
+        ids: [...markedFileIds],
+        step: (batch) => D.bulkPatchFiles(batch, (f) => ({ ...f, cluster })),
+        undo: {
+          label: `Можно вернуть: прежний кластер у ${markedFileIds.length} файлов`,
+          run: () =>
+            D.bulkPatchFiles([...prev.keys()], (f) => ({ ...f, cluster: prev.get(f.id) ?? f.cluster })),
+        },
+        onDone: finishBulk(markedFileIds.length, 'Перенесено в кластер'),
+      })
+    },
+    [bulk, D, finishBulk, markedFileIds],
+  )
+
+  /** Файловый ключ на группу: каждый файл получает свой ключ, обёрнутый мастером. */
+  const applyBulkKey = useCallback(() => {
+    const p1 = bulkKey1.trim()
+    const p2 = bulkKey2.trim()
+    const targets = markedFileIds.filter((id) => !fk.isProtected(id))
+    if (!p1) return setBulkKeyErr('Введите пароль файла')
+    if (p1.length < 8) return setBulkKeyErr('Пароль файла: минимум 8 символов')
+    if (p1 !== p2) return setBulkKeyErr('Пароли не совпадают')
+    if (!fk.canPack()) return setBulkKeyErr('Нет сеанса мастера: разблокируйте сейф заново')
+    if (targets.length === 0) return setBulkKeyErr('Все выбранные файлы уже под ключом')
+    setBulkKeyErr(null)
+    let failed = 0
+    void bulk.start({
+      /* Крипто дороже правки состояния — порция меньше, кадры остаются живыми. */
+      chunk: 5,
+      label: `Файловый ключ · ${targets.length}`,
+      ids: targets,
+      step: async (batch) => {
+        for (const id of batch) {
+          const file = views.find((x) => x.id === id)
+          if (!file) continue
+          const r = await fk.setFileKey(id, p1, fk.openDescOf(id) ?? file.desc)
+          if (!r.ok) failed += 1
+        }
+      },
+      onDone: (applied, cancelled) => {
+        setBulkForm(null)
+        setBulkKey1('')
+        setBulkKey2('')
+        if (!cancelled) clearMarks()
+        flash(
+          failed > 0
+            ? `Под ключом: ${applied - failed} из ${targets.length}, не удалось ${failed}`
+            : cancelled
+              ? `Прервано: под ключом ${applied} из ${targets.length}`
+              : `Файлов под ключом: ${applied}`,
+        )
+      },
+    })
+  }, [bulk, bulkKey1, bulkKey2, clearMarks, fk, flash, markedFileIds, views])
+
+  /** Удаление: файлы уходят из сейфа, стикеры сгорают — оба под окном отмены. */
+  const applyBulkTrash = useCallback(() => {
+    if (marked.length === 0) return
+    const fileSet = new Set(markedFileIds)
+    const noteSet = new Set(markedNoteIds)
+    const filesSnap = D.files.filter((f) => fileSet.has(f.id))
+    const pinsSnap = new Map(
+      D.liveNotes
+        .filter((n) => n.pinnedTo && fileSet.has(n.pinnedTo))
+        .map((n) => [n.id, n.pinnedTo as string]),
+    )
+    const notesSnap = new Map(
+      D.notes.filter((n) => noteSet.has(n.id)).map((n) => [n.id, n.expiresAt]),
+    )
+    void bulk.start({
+      label: `Удаление · ${marked.length}`,
+      ids: [...marked],
+      step: (batch) => {
+        const files = batch.filter((k) => k.startsWith('file:')).map((k) => k.slice(5))
+        const notes = batch.filter((k) => k.startsWith('note:')).map((k) => k.slice(5))
+        files.forEach((id) => fk.forgetKey(id))
+        D.bulkRemoveFiles(files)
+        D.bulkPatchNotes(notes, (n) => ({ ...n, expiresAt: Date.now() - 1 }))
+      },
+      undo: {
+        label: `Можно вернуть: ${marked.length} удалённых объектов`,
+        run: () => {
+          D.restoreFiles(filesSnap)
+          D.bulkPatchNotes([...pinsSnap.keys()], (n) => ({ ...n, pinnedTo: pinsSnap.get(n.id) }))
+          D.bulkPatchNotes([...notesSnap.keys()], (n) => ({
+            ...n,
+            expiresAt: notesSnap.get(n.id) ?? null,
+          }))
+        },
+      },
+      onDone: finishBulk(marked.length, 'Удалено'),
+    })
+  }, [bulk, D, finishBulk, fk, marked, markedFileIds, markedNoteIds])
+
+  const bulkActions = useMemo<BulkAction[]>(
+    () => [
+      {
+        id: 'tag',
+        label: 'Метка',
+        icon: <IconTag />,
+        hint: 'Добавить одну метку всем выбранным файлам и стикерам',
+        onRun: () => setBulkForm((f) => (f === 'tag' ? null : 'tag')),
+      },
+      {
+        id: 'cluster',
+        label: 'Кластер',
+        icon: <IconLayers />,
+        hint: 'Перенести выбранные файлы в кластер (стикеры не тронутся)',
+        disabled: markedFileIds.length === 0,
+        onRun: () => setBulkForm((f) => (f === 'cluster' ? null : 'cluster')),
+      },
+      {
+        id: 'key',
+        label: 'Под ключ',
+        icon: <IconLockRound width={13} height={13} stroke="currentColor" strokeWidth={1.6} />,
+        hint: 'Запереть выбранные файлы файловым ключом: описание шифруется локально',
+        disabled: markedFileIds.length === 0,
+        onRun: () => {
+          setBulkKeyErr(null)
+          setBulkForm((f) => (f === 'key' ? null : 'key'))
+        },
+      },
+      {
+        id: 'trash',
+        label: 'Удалить',
+        icon: <IconTrash />,
+        danger: true,
+        hint: 'Файлы уходят из сейфа, стикеры сгорают — вернуть можно 10 секунд',
+        onRun: applyBulkTrash,
+      },
+    ],
+    [applyBulkTrash, markedFileIds.length],
+  )
+
+  const bulkFormNode =
+    bulkForm === 'tag' ? (
+      <>
+        <input
+          className="input input-sm"
+          autoFocus
+          value={bulkTag}
+          onChange={(e) => setBulkTag(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.nativeEvent.isComposing) applyBulkTag()
+          }}
+          placeholder="новая метка для выбранных объектов"
+          aria-label="Метка для выбранных объектов"
+          data-testid="lib-bulk-tag-input"
+        />
+        <button
+          className="btn btn-primary btn-sm"
+          disabled={!bulkTag.trim()}
+          onClick={applyBulkTag}
+          data-testid="lib-bulk-tag-apply"
+        >
+          <IconCheck />
+          Применить
+        </button>
+      </>
+    ) : bulkForm === 'cluster' ? (
+      <>
+        {CLUSTERS.map((c) => (
+          <button
+            key={c.id}
+            className="btn btn-ghost btn-sm"
+            onClick={() => applyBulkCluster(c.id)}
+            data-testid={`lib-bulk-cluster-${c.id}`}
+          >
+            <IconLayers />
+            {c.label}
+          </button>
+        ))}
+      </>
+    ) : bulkForm === 'key' ? (
+      <>
+        <input
+          className="input input-sm mono"
+          type="password"
+          autoFocus
+          value={bulkKey1}
+          onChange={(e) => {
+            setBulkKey1(e.target.value)
+            if (bulkKeyErr) setBulkKeyErr(null)
+          }}
+          placeholder="ключ файлов (минимум 8)"
+          aria-label="Ключ для выбранных файлов"
+          data-testid="lib-bulk-key1"
+        />
+        <input
+          className="input input-sm mono"
+          type="password"
+          value={bulkKey2}
+          onChange={(e) => {
+            setBulkKey2(e.target.value)
+            if (bulkKeyErr) setBulkKeyErr(null)
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.nativeEvent.isComposing) applyBulkKey()
+          }}
+          placeholder="повторите ключ"
+          aria-label="Повторите ключ"
+          data-testid="lib-bulk-key2"
+        />
+        <button className="btn btn-primary btn-sm" onClick={applyBulkKey} data-testid="lib-bulk-key-apply">
+          <IconLockRound width={13} height={13} stroke="currentColor" strokeWidth={1.6} />
+          Запереть
+        </button>
+        <span className={`key-hint mono${bulkKeyErr ? ' err' : ''}`} role="status" data-testid="lib-bulk-key-hint">
+          {bulkKeyErr ?? 'один ключ на все выбранные файлы · описание шифруется локально'}
+        </span>
+      </>
+    ) : null
+
+  /* Команды палитры (NF-6): действия экрана работают из любого места. */
+  useIntent('library.newNote', () => startNew())
+  useIntent('library.addFile', () => fileInputRef.current?.click())
+  useIntent('library.select', () => setSelectMode(true))
+  useIntent('library.density', () => setDensity((d) => (d === 'cozy' ? 'compact' : 'cozy')))
+  useIntent('library.resetBoard', () => {
+    setLayouts((prev) => putBoard(prev, boardId, resetBoard()))
+    flash('Раскладка сброшена к сортировке по умолчанию')
+  })
+
   /* ---------- Жизнь стикера ---------- */
 
   function makePermanent(id: string) {
@@ -645,10 +1032,15 @@ export function ScreenLibrary() {
    * не тронута, изменилась только обёртка. Функции объявлены после
    * всех состояний и читают их напрямую.
    */
-  const noteItems = useMemo<BoardItem[]>(() => shownNotes.map(renderNoteTile), [shownNotes])
+  const noteItems = useMemo<BoardItem[]>(
+    () => shownNotes.map(renderNoteTile),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [shownNotes, markedSet, selectMode, sel],
+  )
   const fileItems = useMemo<BoardItem[]>(
     () => pagedFiles.map(renderFileTile),
-    [pagedFiles, fk.isProtected, fk.isOpen],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [pagedFiles, fk.isProtected, fk.isOpen, markedSet, selectMode],
   )
   /** Единая доска «Всё»: файлы и стикеры в одном списке. */
   const allBoardItems = useMemo(() => [...fileItems, ...noteItems], [fileItems, noteItems])
@@ -678,7 +1070,9 @@ export function ScreenLibrary() {
         <NoteCardContent
           note={n}
           isSelected={sel?.kind === 'note' && sel.id === n.id}
-          onSelect={(id) => NAV.openNote(id)}
+          marked={markedSet.has(`note:${n.id}`)}
+          pickable={selectMode}
+          onSelect={(id, e) => onCardClick('note', id, e)}
           onTag={(t) => {
             setView('notes')
             setTag(t)
@@ -694,7 +1088,9 @@ export function ScreenLibrary() {
       content: (
         <FileCardContent
           file={f}
-          onSelect={openFileTile}
+          onSelect={(id, e) => onCardClick('file', id, e)}
+          marked={markedSet.has(`file:${f.id}`)}
+          pickable={selectMode}
           fkHidden={fk.isProtected(f.id) && !fk.isOpen(f.id)}
         />
       ),
@@ -898,6 +1294,19 @@ export function ScreenLibrary() {
             )}
             <span className="grow" />
             <button
+              className={`btn btn-ghost btn-sm${selectMode ? ' on' : ''}`}
+              onClick={() => {
+                setSelectMode((m) => !m)
+                if (selectMode) clearMarks()
+              }}
+              aria-pressed={selectMode}
+              title="Мультивыделение: Ctrl/Cmd+клик добавляет карточку, Shift+клик берёт диапазон"
+              data-testid="lib-select-mode"
+            >
+              <IconCheck />
+              {selectMode ? 'Выбор включён' : 'Выделение'}
+            </button>
+            <button
               className={`btn btn-ghost btn-sm${density === 'compact' ? ' on' : ''}`}
               onClick={() => setDensity((d) => (d === 'cozy' ? 'compact' : 'cozy'))}
               aria-pressed={density === 'compact'}
@@ -922,6 +1331,26 @@ export function ScreenLibrary() {
               </button>
             )}
           </div>
+
+          {/* NF-5: панель массовых действий. Появляется, когда что-то выбрано,
+              и живёт до конца операции — прогресс и отмена внутри неё. */}
+          <BulkBar
+            count={marked.length}
+            totalInFilter={filterOrder.length}
+            noun={
+              markedFileIds.length > 0 && markedNoteIds.length > 0
+                ? `${markedFileIds.length} файлов, ${markedNoteIds.length} стикеров`
+                : markedNoteIds.length > 0
+                  ? 'стикеров'
+                  : 'файлов'
+            }
+            actions={bulkActions}
+            form={bulkFormNode}
+            runner={bulk}
+            onSelectAll={() => setMarked(filterOrder)}
+            onClear={clearMarks}
+            testid="lib-bulk"
+          />
 
           {/* Запрос из шапки сузил сетку — говорим об этом прямо, с выходом. */}
           {searching && (
@@ -1807,11 +2236,17 @@ function NoteCardContent({
   onSelect,
   onTag,
   isSelected = false,
+  marked = false,
+  pickable = false,
 }: {
   note: Note
-  onSelect: (id: string) => void
+  onSelect: (id: string, e: React.MouseEvent) => void
   onTag: (tag: string) => void
   isSelected?: boolean
+  /** NF-5: карточка попала в мультивыделение. */
+  marked?: boolean
+  /** NF-5: режим выбора включён — курсор и рамка говорят об этом. */
+  pickable?: boolean
 }) {
   const D = useDataStore()
   const NAV = useNavStore()
@@ -1879,19 +2314,26 @@ function NoteCardContent({
     <article
       className={`ncard panel card-hover${isSelected ? ' sel' : ''}${
         left !== null ? ' temp' : ''
-      }${open ? ' fade-in' : ''}`}
-      onClick={() => onSelect(note.id)}
+      }${open ? ' fade-in' : ''}${marked ? ' marked' : ''}${pickable ? ' pickable' : ''}`}
+      onClick={(e) => onSelect(note.id, e)}
       onKeyDown={(e) => {
         if (e.target !== e.currentTarget) return
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
-          onSelect(note.id)
+          onSelect(note.id, e as unknown as React.MouseEvent)
         }
       }}
       role="button"
       tabIndex={0}
       aria-pressed={isSelected}
+      data-testid={`lib-note-${note.id}`}
+      data-marked={marked ? '1' : undefined}
     >
+      {(marked || pickable) && (
+        <span className={`card-mark${marked ? ' on' : ''}`} aria-hidden="true">
+          {marked ? <IconCheck width={11} height={11} stroke="currentColor" strokeWidth={2} /> : null}
+        </span>
+      )}
       <div className="ncard-top">
         <span className="chip chip-note">
           <IconSticker width={11} height={11} stroke="currentColor" strokeWidth={1.6} />
@@ -2011,11 +2453,16 @@ function FileCardContent({
   file,
   onSelect,
   fkHidden = false,
+  marked = false,
+  pickable = false,
 }: {
   file: FileView
-  onSelect: (id: string) => void
+  onSelect: (id: string, e: React.MouseEvent) => void
   /** Файл под ключом: содержимое скрыто, видно имя и бейдж (этап 5). */
   fkHidden?: boolean
+  /** NF-5: карточка попала в мультивыделение. */
+  marked?: boolean
+  pickable?: boolean
 }) {
   const D = useDataStore()
   const NAV = useNavStore()
@@ -2023,19 +2470,28 @@ function FileCardContent({
 
   return (
     <article
-      className={`fcard panel card-hover fade-in${file.processing ? ' proc-live beam-host' : ''}`}
+      className={`fcard panel card-hover fade-in${file.processing ? ' proc-live beam-host' : ''}${
+        marked ? ' marked' : ''
+      }${pickable ? ' pickable' : ''}`}
       data-drop-pin={file.id}
-      onClick={() => onSelect(file.id)}
+      onClick={(e) => onSelect(file.id, e)}
       onKeyDown={(e) => {
         if (e.target !== e.currentTarget) return
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
-          onSelect(file.id)
+          onSelect(file.id, e as unknown as React.MouseEvent)
         }
       }}
       role="button"
       tabIndex={0}
+      data-testid={`lib-file-${file.id}`}
+      data-marked={marked ? '1' : undefined}
     >
+      {(marked || pickable) && (
+        <span className={`card-mark${marked ? ' on' : ''}`} aria-hidden="true">
+          {marked ? <IconCheck width={11} height={11} stroke="currentColor" strokeWidth={2} /> : null}
+        </span>
+      )}
       {/* Файл в обработке: луч по кромке показывает живую работу модели. */}
       {file.processing ? <Beam duration={3.2} size={34} /> : null}
       <div className="fcard-top">

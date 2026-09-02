@@ -6,13 +6,25 @@
    у модуля ровно один пункт (правило роста из ТЗ §2.1).
    ============================================================ */
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 /* AR-2: слой стилей менеджера секретов приезжает вместе с чанком экрана. */
 import '@/app/styles/screen-vault.css'
-import { IconDatabase, IconPlus, IconShield, IconSparkText } from './icons'
+import {
+  IconCheck,
+  IconDatabase,
+  IconFolder,
+  IconPlus,
+  IconShield,
+  IconSparkText,
+  IconTag,
+  IconTrash,
+} from './icons'
 import { useVault, useNow } from '@/lib/vault-store'
 import { useSecrets } from '@/lib/secrets-store'
 import { filterEntries, isLive, parseQuery, type SecretType } from '@/lib/secrets'
+import { useBulkRunner } from '@/lib/bulk'
+import { useIntent } from '@/lib/commands'
+import { BulkBar, type BulkAction } from './bulk-bar'
 import { VaultNav, type VaultView } from './vault/vault-nav'
 import { VaultList } from './vault/vault-list'
 import { VaultDetail } from './vault/vault-detail'
@@ -34,12 +46,36 @@ export function ScreenVault() {
   const [io, setIo] = useState(false)
   const now = useNow() || Date.now()
 
-  /* Замок закрылся — выбор и модалки сбрасываются (п.10.4 + Panic Lock+). */
+  /* ---------- NF-5: мультивыделение и массовые действия ---------- */
+  const bulk = useBulkRunner()
+  const [selectMode, setSelectMode] = useState(false)
+  const [markedRaw, setMarked] = useState<string[]>([])
+  const [form, setForm] = useState<null | 'tag' | 'folder'>(null)
+  const [tagDraft, setTagDraft] = useState('')
+  const anchor = useRef<string | null>(null)
+
+  /* Команды палитры (NF-6) открывают модалки этого экрана. */
+  useIntent('vault.new', () => {
+    setNewType('login')
+    setEditing('new')
+  })
+  useIntent('vault.generator', () => setGen(true))
+  useIntent('vault.io', () => setIo(true))
+  useIntent('vault.select', () => setSelectMode(true))
+
+  /* Замок закрылся — выбор и модалки сбрасываются (п.10.4 + Panic Lock+).
+     Именно «закрылся»: первый прогон при монтировании ничего не сбрасывает,
+     иначе он гасил бы модалку, только что открытую командой палитры. */
+  const lockEpochRef = useRef(v.lockEpoch)
   useEffect(() => {
+    if (lockEpochRef.current === v.lockEpoch) return
+    lockEpochRef.current = v.lockEpoch
     setSel(null)
     setEditing(null)
     setGen(false)
     setIo(false)
+    setMarked([])
+    setSelectMode(false)
   }, [v.lockEpoch])
 
   /* Переход из глобального поиска / палитры Ctrl+K. */
@@ -65,6 +101,198 @@ export function ScreenVault() {
     () => s.entries.find((e) => e.id === sel && (trashMode ? !isLive(e) : isLive(e))) ?? null,
     [s.entries, sel, trashMode],
   )
+
+  /* Смена раздела или фильтра не должна оставлять «призрачное» выделение:
+     отметки фильтруются по видимому списку прямо в рендере. */
+  const shownIds = useMemo(() => shown.map((e) => e.id), [shown])
+  const marked = useMemo(() => {
+    const live = new Set(shownIds)
+    return markedRaw.filter((id) => live.has(id))
+  }, [markedRaw, shownIds])
+  const markedSet = useMemo(() => new Set(marked), [marked])
+
+  const onMark = useCallback(
+    (id: string, mods: { range: boolean; toggle: boolean }) => {
+      if (mods.range && anchor.current) {
+        const from = shownIds.indexOf(anchor.current)
+        const to = shownIds.indexOf(id)
+        if (from >= 0 && to >= 0) {
+          const slice = shownIds.slice(Math.min(from, to), Math.max(from, to) + 1)
+          setMarked((prev) => [...new Set([...prev, ...slice])])
+          return
+        }
+      }
+      anchor.current = id
+      setMarked((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+    },
+    [shownIds],
+  )
+
+  const clearMarks = useCallback(() => {
+    setMarked([])
+    setForm(null)
+    anchor.current = null
+  }, [])
+
+  /** Снимок прежних значений: по нему работает окно отмены. */
+  const snapshotOf = useCallback(
+    (ids: string[]) => {
+      const set = new Set(ids)
+      return s.entries
+        .filter((e) => set.has(e.id))
+        .map((e) => ({
+          id: e.id,
+          tags: e.tags,
+          folderId: e.folderId,
+          favorite: e.favorite,
+          deletedAt: e.deletedAt,
+        }))
+    },
+    [s.entries],
+  )
+
+  const runBulk = useCallback(
+    (
+      label: string,
+      patch: Parameters<typeof s.bulkPatch>[1],
+      undoLabel: string,
+      done: string,
+    ) => {
+      const ids = [...marked]
+      const snap = snapshotOf(ids)
+      void bulk.start({
+        label: `${label} · ${ids.length}`,
+        ids,
+        step: (batch) => s.bulkPatch(batch, patch),
+        undo: { label: undoLabel, run: () => s.bulkRestore(snap) },
+        onDone: (applied, cancelled) => {
+          setForm(null)
+          if (!cancelled) clearMarks()
+          v.flash(cancelled ? `Прервано: применено ${applied} из ${ids.length}` : `${done}: ${applied}`)
+        },
+      })
+    },
+    [bulk, clearMarks, marked, s, snapshotOf, v],
+  )
+
+  const bulkActions = useMemo<BulkAction[]>(() => {
+    if (trashMode) {
+      return [
+        {
+          id: 'restore',
+          label: 'Восстановить',
+          icon: <IconCheck />,
+          hint: 'Вернуть записи из корзины в сейф',
+          onRun: () => runBulk('Возврат из корзины', { trashed: false }, 'Можно вернуть: записи в корзину', 'Восстановлено'),
+        },
+        {
+          id: 'purge',
+          label: 'Удалить навсегда',
+          icon: <IconTrash />,
+          danger: true,
+          hint: 'Стереть шифртекст без возможности восстановления',
+          onRun: () => {
+            const ids = [...marked]
+            void bulk.start({
+              label: `Безвозвратное удаление · ${ids.length}`,
+              ids,
+              step: (batch) => s.bulkPurge(batch),
+              onDone: (applied) => {
+                clearMarks()
+                v.flash(`Удалено безвозвратно: ${applied}`)
+              },
+            })
+          },
+        },
+      ]
+    }
+    return [
+      {
+        id: 'tag',
+        label: 'Метка',
+        icon: <IconTag />,
+        hint: 'Добавить одну метку всем выбранным записям',
+        onRun: () => setForm((f) => (f === 'tag' ? null : 'tag')),
+      },
+      {
+        id: 'folder',
+        label: 'Папка',
+        icon: <IconFolder />,
+        hint: 'Перенести выбранные записи в папку',
+        onRun: () => setForm((f) => (f === 'folder' ? null : 'folder')),
+      },
+      {
+        id: 'fav',
+        label: 'В избранное',
+        icon: <span aria-hidden="true">★</span>,
+        hint: 'Отметить выбранные записи звездой',
+        onRun: () => runBulk('Избранное', { favorite: true }, 'Можно вернуть: прежнее избранное', 'В избранном'),
+      },
+      {
+        id: 'trash',
+        label: 'В корзину',
+        icon: <IconTrash />,
+        danger: true,
+        hint: 'Мягкое удаление: записи ждут в корзине и возвращаются одним нажатием',
+        onRun: () => runBulk('Удаление в корзину', { trashed: true }, 'Можно вернуть: записи из корзины', 'В корзине'),
+      },
+    ]
+  }, [bulk, clearMarks, marked, runBulk, s, trashMode, v])
+
+  const bulkForm =
+    form === 'tag' ? (
+      <>
+        <input
+          className="input input-sm"
+          value={tagDraft}
+          autoFocus
+          onChange={(e) => setTagDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.nativeEvent.isComposing && tagDraft.trim()) {
+              runBulk(`Метка «${tagDraft.trim()}»`, { addTag: tagDraft.trim() }, 'Можно вернуть: прежние метки', 'Метка добавлена')
+            }
+          }}
+          placeholder="новая метка для выбранных записей"
+          aria-label="Метка для выбранных записей"
+          data-testid="vault-bulk-tag-input"
+        />
+        <button
+          className="btn btn-primary btn-sm"
+          disabled={!tagDraft.trim()}
+          onClick={() =>
+            runBulk(`Метка «${tagDraft.trim()}»`, { addTag: tagDraft.trim() }, 'Можно вернуть: прежние метки', 'Метка добавлена')
+          }
+          data-testid="vault-bulk-tag-apply"
+        >
+          <IconCheck />
+          Применить
+        </button>
+      </>
+    ) : form === 'folder' ? (
+      <>
+        <button
+          className="btn btn-ghost btn-sm"
+          onClick={() => runBulk('Папка снята', { folderId: null }, 'Можно вернуть: прежние папки', 'Без папки')}
+          data-testid="vault-bulk-folder-none"
+        >
+          Без папки
+        </button>
+        {s.folders.map((f) => (
+          <button
+            key={f.id}
+            className="btn btn-ghost btn-sm"
+            onClick={() => runBulk(`Папка «${f.name}»`, { folderId: f.id }, 'Можно вернуть: прежние папки', 'Перенесено')}
+            data-testid={`vault-bulk-folder-${f.id}`}
+          >
+            <IconFolder />
+            {f.name}
+          </button>
+        ))}
+        {s.folders.length === 0 && (
+          <span className="vt-note">Папок пока нет — создайте её в левой колонке.</span>
+        )}
+      </>
+    ) : null
 
   if (s.needsLock) {
     return (
@@ -114,6 +342,7 @@ export function ScreenVault() {
         setView={(next) => {
           setView(next)
           setSel(null)
+          clearMarks()
         }}
         query={query}
         setQuery={setQuery}
@@ -181,7 +410,36 @@ export function ScreenVault() {
               </button>
             </>
           )}
+          {view.kind !== 'health' && view.kind !== 'expiring' && (
+            <button
+              className={`btn btn-ghost btn-sm${selectMode ? ' on' : ''}`}
+              aria-pressed={selectMode}
+              onClick={() => {
+                setSelectMode((m) => !m)
+                if (selectMode) clearMarks()
+              }}
+              title="Мультивыделение: Ctrl/Cmd+клик добавляет запись, Shift+клик берёт диапазон"
+              data-testid="vault-select-mode"
+            >
+              <IconCheck />
+              {selectMode ? 'Выбор включён' : 'Выделение'}
+            </button>
+          )}
         </header>
+
+        {view.kind !== 'health' && view.kind !== 'expiring' && (
+          <BulkBar
+            count={marked.length}
+            totalInFilter={shown.length}
+            noun={trashMode ? 'в корзине' : 'записей'}
+            actions={bulkActions}
+            form={bulkForm}
+            runner={bulk}
+            onSelectAll={() => setMarked(shownIds)}
+            onClear={clearMarks}
+            testid="vault-bulk"
+          />
+        )}
 
         <div className="vt-scroll">
           {view.kind === 'health' ? (
@@ -207,6 +465,9 @@ export function ScreenVault() {
               onSelect={setSel}
               now={now}
               trashMode={trashMode}
+              marked={markedSet}
+              selectMode={selectMode}
+              onMark={onMark}
             />
           )}
         </div>

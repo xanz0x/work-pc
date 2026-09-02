@@ -4,6 +4,10 @@
 - Страница входа: `/login`
 - Пароль приложения: `IceKrymTeam13@`
 - Переменная окружения: `APP_PASSWORD` в `/app/.env`
+- `/app/.env` восстановлен 2026-09-02 (файл пропадал вместе с pod'ом): помимо
+  `APP_PASSWORD` в нём `APP_SESSION_SECRET` (локальный dev-ключ подписи cookie,
+  меняется свободно — старые сессии просто перестанут проходить) и
+  `APP_SESSION_TTL_HOURS=12`. Без этих переменных прод-сервер не поднимается
 - Cookie сессии: `wf_session` (httpOnly, 12 часов), выдаётся `POST /ai-api/auth/login`
 - Проверка сессии: `GET /ai-api/auth/session`, выход: `DELETE /ai-api/auth/session`
 - Без cookie любой маршрут `/ai-api/*` отвечает 401 `{"code":"AUTH_REQUIRED"}`,

@@ -102,6 +102,29 @@ export type SecretsCtx = {
   restoreEntry: (id: string) => void
   purgeEntry: (id: string) => void
   purgeAll: () => void
+  /** NF-5: одна запись на порцию записей — теги, папка, избранное, корзина. */
+  bulkPatch: (
+    ids: string[],
+    patch: {
+      addTag?: string
+      folderId?: string | null
+      favorite?: boolean
+      /** true — в корзину, false — вернуть из корзины. */
+      trashed?: boolean
+    },
+  ) => void
+  /** NF-5: безвозвратное удаление порции записей из корзины. */
+  bulkPurge: (ids: string[]) => void
+  /** NF-5: вернуть прежние значения порции записей (окно отмены). */
+  bulkRestore: (
+    snap: {
+      id: string
+      tags: string[]
+      folderId: string | null
+      favorite: boolean
+      deletedAt: number | null
+    }[],
+  ) => void
 
   addFolder: (name: string) => void
   renameFolder: (id: string, name: string) => void
@@ -451,6 +474,68 @@ export function SecretsProvider({ children }: { children: ReactNode }) {
     write((all) => all.filter(isLive))
     v.flash('Корзина сейфа секретов очищена.')
   }, [v, write])
+
+  /* ---------- NF-5: массовые операции ----------
+     Метки, папка, избранное и корзина не требуют крипто: значения полей
+     не пересобираются, поэтому порция записей меняется одной записью в
+     хранилище, а не пятьюстами вызовами updateEntry. */
+
+  const bulkPatch = useCallback<SecretsCtx['bulkPatch']>(
+    (ids, patch) => {
+      if (ids.length === 0) return
+      const set = new Set(ids)
+      const at = Date.now()
+      write((all) =>
+        all.map((e) => {
+          if (!set.has(e.id)) return e
+          const tags =
+            patch.addTag && !e.tags.includes(patch.addTag) ? [...e.tags, patch.addTag] : e.tags
+          return {
+            ...e,
+            tags,
+            folderId: patch.folderId !== undefined ? patch.folderId : e.folderId,
+            favorite: patch.favorite !== undefined ? patch.favorite : e.favorite,
+            deletedAt:
+              patch.trashed === undefined ? e.deletedAt : patch.trashed ? (e.deletedAt ?? at) : null,
+            updatedAt: at,
+          }
+        }),
+      )
+    },
+    [write],
+  )
+
+  const bulkPurge = useCallback(
+    (ids: string[]) => {
+      if (ids.length === 0) return
+      const set = new Set(ids)
+      write((all) => all.filter((e) => !set.has(e.id)))
+    },
+    [write],
+  )
+
+  const bulkRestore = useCallback<SecretsCtx['bulkRestore']>(
+    (snap) => {
+      if (snap.length === 0) return
+      const by = new Map(snap.map((s) => [s.id, s]))
+      write((all) =>
+        all.map((e) => {
+          const prev = by.get(e.id)
+          return prev
+            ? {
+                ...e,
+                tags: prev.tags,
+                folderId: prev.folderId,
+                favorite: prev.favorite,
+                deletedAt: prev.deletedAt,
+                updatedAt: Date.now(),
+              }
+            : e
+        }),
+      )
+    },
+    [write],
+  )
 
   /* ---------- папки ---------- */
 
@@ -1103,6 +1188,9 @@ export function SecretsProvider({ children }: { children: ReactNode }) {
     restoreEntry,
     purgeEntry,
     purgeAll,
+    bulkPatch,
+    bulkPurge,
+    bulkRestore,
     addFolder,
     renameFolder,
     removeFolder,

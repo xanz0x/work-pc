@@ -12612,3 +12612,185 @@ button.chip:hover {
     margin: 0 12px 8px;
   }
 }
+
+/* ------------------------------------------------------------
+   NF-5 · ПАНЕЛЬ МАССОВЫХ ДЕЙСТВИЙ И ОТМЕТКИ ВЫДЕЛЕНИЯ
+   Панель живёт над списком: сначала счёт, потом действия, потом
+   честный прогресс с отменой и окно возврата.
+   ------------------------------------------------------------ */
+.bulk-bar {
+  margin: 12px 0 4px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  border-left: 2px solid var(--accent);
+  animation: bulk-in 0.16s ease-out both;
+}
+@keyframes bulk-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+.bulk-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.bulk-count {
+  margin-right: auto;
+  color: var(--text-2);
+}
+.bulk-count b {
+  color: var(--text);
+}
+.bulk-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.bulk-form {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-2);
+}
+.bulk-form .input {
+  min-width: 220px;
+  flex: 1 1 220px;
+}
+.bulk-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-2);
+}
+.bulk-progress-text {
+  font-size: 11.5px;
+  color: var(--text-2);
+}
+.bulk-track {
+  position: relative;
+  flex: 1 1 160px;
+  height: 4px;
+  min-width: 120px;
+  border-radius: 999px;
+  background: var(--bg-3);
+  overflow: hidden;
+}
+.bulk-track i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.14s linear;
+}
+.bulk-note {
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+.bulk-undo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 7px 9px;
+  border: 1px dashed var(--border);
+  border-radius: var(--r);
+  background: var(--bg-2);
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+/* Отметка на карточке доски: файл и стикер помечаются одинаково. */
+.card-mark {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 3;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg-input);
+  color: var(--accent-ink, #08110c);
+}
+.card-mark.on {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.fcard.pickable,
+.ncard.pickable {
+  cursor: copy;
+}
+.fcard.marked,
+.ncard.marked {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+/* Отметка в списке записей менеджера секретов. */
+.vt-mark {
+  flex-shrink: 0;
+  width: 15px;
+  height: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg-input);
+  color: var(--accent-ink, #08110c);
+}
+.vt-mark.on {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.vt-card.pickable {
+  cursor: copy;
+}
+.vt-card.marked {
+  border-color: var(--accent);
+}
+
+/* ------------------------------------------------------------
+   NF-6 · КОМАНДНЫЙ ЦЕНТР В ПАЛИТРЕ
+   ------------------------------------------------------------ */
+.cmdk-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 11px 5px;
+  color: var(--text-3);
+}
+.cmdk-group-note {
+  margin-left: auto;
+  color: var(--text-3);
+}
+.cmdk-keys {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--text-3);
+  border: 1px solid var(--border-2);
+  border-radius: var(--r);
+  padding: 2px 6px;
+}
+.cmdk-row.cmdk-off {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.cmdk-row.cmdk-off:hover {
+  background: transparent;
+}
+.cmdk-cmd .cmdk-kind {
+  text-transform: lowercase;
+}
