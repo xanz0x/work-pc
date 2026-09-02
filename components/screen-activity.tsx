@@ -49,6 +49,7 @@ import {
   type IconId,
 } from './icons'
 import { Dropdown } from './dropdown'
+import { fmtBytes } from '@/lib/data'
 
 /* ---------- единый вид события ленты ---------- */
 
@@ -110,6 +111,7 @@ const OBJ_LABELS: Record<ObjType, string> = {
 }
 
 const DAY = 86_400_000
+const HOUR = 3_600_000
 
 function stamp(at: number, now: number): string {
   const d = Math.max(0, now - at)
@@ -314,6 +316,219 @@ function LiveNow() {
 }
 
 /* ============================================================
+   МЕТРИКИ СИСТЕМЫ · собственные SVG-графики (zero-dependency)
+   Честно к local-first: показываем то, что реально измеримо в браузере —
+   нагрузку памяти вкладки (живой график JS-кучи), занятость локального
+   хранилища и, главное для этого продукта, исходящий облачный трафик и
+   общую активность сейфа за сутки. Никаких выдуманных серверных метрик.
+   ============================================================ */
+
+/** Разложить события по часовым корзинам за последние `hours` часов. */
+function hourlyBuckets(times: number[], now: number, hours = 24): number[] {
+  const buckets = new Array(hours).fill(0)
+  const start = now - hours * HOUR
+  for (const t of times) {
+    if (t < start) continue
+    const idx = Math.min(hours - 1, Math.floor((t - start) / HOUR))
+    buckets[idx] += 1
+  }
+  return buckets
+}
+
+const CHART_W = 220
+const CHART_H = 46
+
+/** Живой график-заливка: нагрузка памяти во времени. */
+function AreaSpark({ data, tone }: { data: number[]; tone: 'accent' | 'warn' | 'ok' }) {
+  if (data.length < 2) {
+    return (
+      <svg className={`act-spark tone-${tone}`} viewBox={`0 0 ${CHART_W} ${CHART_H}`} preserveAspectRatio="none" aria-hidden="true">
+        <line className="act-spark-flat" x1={0} y1={CHART_H - 2} x2={CHART_W} y2={CHART_H - 2} />
+      </svg>
+    )
+  }
+  const max = Math.max(...data)
+  const min = Math.min(...data)
+  const range = Math.max(1, max - min)
+  const pts = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * CHART_W
+    const y = CHART_H - 3 - ((v - min) / range) * (CHART_H - 6)
+    return `${x.toFixed(1)} ${y.toFixed(1)}`
+  })
+  const line = pts.map((p, i) => (i ? 'L' : 'M') + p).join(' ')
+  const area = `${line} L ${CHART_W} ${CHART_H} L 0 ${CHART_H} Z`
+  return (
+    <svg className={`act-spark tone-${tone}`} viewBox={`0 0 ${CHART_W} ${CHART_H}`} preserveAspectRatio="none" aria-hidden="true">
+      <path className="act-spark-area" d={area} />
+      <path className="act-spark-line" d={line} />
+    </svg>
+  )
+}
+
+/** Столбики по часам: облачные ходы / события за сутки. */
+function BarSpark({ data, tone }: { data: number[]; tone: 'accent' | 'warn' | 'ok' }) {
+  const max = Math.max(1, ...data)
+  const n = data.length
+  const gap = 1.6
+  const bw = (CHART_W - gap * (n - 1)) / n
+  return (
+    <svg className={`act-bars tone-${tone}`} viewBox={`0 0 ${CHART_W} ${CHART_H}`} preserveAspectRatio="none" aria-hidden="true">
+      {data.map((v, i) => {
+        const h = v > 0 ? Math.max(2.5, (v / max) * (CHART_H - 4)) : 1
+        return (
+          <rect
+            key={i}
+            x={i * (bw + gap)}
+            y={CHART_H - h}
+            width={bw}
+            height={h}
+            rx={0.8}
+            className={v > 0 ? 'on' : 'off'}
+          />
+        )
+      })}
+    </svg>
+  )
+}
+
+type HeapInfo = { used: number; limit: number } | null
+
+function SystemMetrics({ journal, items }: { journal: JournalEntry[]; items: FeedItem[] }) {
+  const [samples, setSamples] = useState<number[]>([])
+  const [heap, setHeap] = useState<HeapInfo>(null)
+  const [est, setEst] = useState<{ usage: number; quota: number } | null>(null)
+  const [now, setNow] = useState(() => Date.now())
+
+  /* Живой замер: память вкладки + время для часовых корзин. Раз в 2 с. */
+  useEffect(() => {
+    const read = () => {
+      setNow(Date.now())
+      const mem = (performance as unknown as { memory?: { usedJSHeapSize: number; jsHeapSizeLimit: number } }).memory
+      if (mem) {
+        setHeap({ used: mem.usedJSHeapSize, limit: mem.jsHeapSizeLimit })
+        setSamples((s) => [...s.slice(-59), mem.usedJSHeapSize])
+      }
+    }
+    read()
+    const t = setInterval(read, 2000)
+    return () => clearInterval(t)
+  }, [])
+
+  /* Занятость локального хранилища (origin storage). Раз в 5 с. */
+  useEffect(() => {
+    let alive = true
+    const read = async () => {
+      try {
+        if (navigator.storage?.estimate) {
+          const e = await navigator.storage.estimate()
+          if (alive) setEst({ usage: e.usage ?? 0, quota: e.quota ?? 0 })
+        }
+      } catch {
+        /* приватный режим — оценка недоступна */
+      }
+    }
+    void read()
+    const t = setInterval(() => void read(), 5000)
+    return () => {
+      alive = false
+      clearInterval(t)
+    }
+  }, [])
+
+  const cloudBuckets = useMemo(
+    () => hourlyBuckets(journal.filter((e) => e.kind === 'cloud-request').map((e) => e.at), now),
+    [journal, now],
+  )
+  const eventBuckets = useMemo(() => hourlyBuckets(items.map((i) => i.at), now), [items, now])
+
+  const cloud24 = cloudBuckets.reduce((a, b) => a + b, 0)
+  const events24 = eventBuckets.reduce((a, b) => a + b, 0)
+  const storagePct = est && est.quota > 0 ? Math.min(100, Math.round((est.usage / est.quota) * 100)) : 0
+  const heapPct = heap && heap.limit > 0 ? Math.min(100, Math.round((heap.used / heap.limit) * 100)) : 0
+  const cores = typeof navigator !== 'undefined' ? navigator.hardwareConcurrency : undefined
+
+  return (
+    <section className="act-metrics panel" data-testid="activity-metrics">
+      <div className="act-now-head">
+        <span className="act-now-title">
+          <IconDatabase width={15} height={15} />
+          Метрики системы
+        </span>
+        <span className="act-metrics-hint label-mono">только локальные измерения · вживую</span>
+      </div>
+
+      <div className="act-metric-grid">
+        {/* Нагрузка · память вкладки */}
+        <div className="act-metric" data-testid="metric-memory">
+          <div className="act-metric-head">
+            <span className="act-metric-label label-mono">Нагрузка · память</span>
+            {heap ? (
+              <>
+                <b className="act-metric-value">{fmtBytes(heap.used)}</b>
+                <span className="act-metric-sub">
+                  {heapPct}% лимита JS-кучи{cores ? ` · ${cores} ядер` : ''}
+                </span>
+              </>
+            ) : (
+              <>
+                <b className="act-metric-value">{cores ? `${cores} ядер` : 'н/д'}</b>
+                <span className="act-metric-sub">Браузер не отдаёт объём JS-кучи</span>
+              </>
+            )}
+          </div>
+          <div className="act-metric-chart">
+            <AreaSpark data={samples} tone={heapPct >= 75 ? 'warn' : 'accent'} />
+          </div>
+        </div>
+
+        {/* Локальное хранилище */}
+        <div className="act-metric" data-testid="metric-storage">
+          <div className="act-metric-head">
+            <span className="act-metric-label label-mono">Хранилище</span>
+            <b className="act-metric-value">{est ? fmtBytes(est.usage) : '—'}</b>
+            <span className="act-metric-sub">
+              {est ? `из ${fmtBytes(est.quota)} · ${storagePct}%` : 'оценка недоступна'}
+            </span>
+          </div>
+          <div className="act-metric-chart center">
+            <div className="act-metric-bar" data-hot={storagePct >= 80}>
+              <i style={{ width: `${storagePct}%` }} />
+            </div>
+            <span className="act-metric-bignum num">{storagePct}%</span>
+          </div>
+        </div>
+
+        {/* Исходящий облачный трафик · 24 ч (флагманская метрика приватности) */}
+        <div className="act-metric" data-testid="metric-cloud">
+          <div className="act-metric-head">
+            <span className="act-metric-label label-mono">Исходящий трафик · 24 ч</span>
+            <b className={`act-metric-value${cloud24 > 0 ? ' warn' : ' ok'}`}>{cloud24}</b>
+            <span className="act-metric-sub">
+              {cloud24 > 0 ? 'облачных ходов за сутки' : 'наружу ничего не ушло'}
+            </span>
+          </div>
+          <div className="act-metric-chart">
+            <BarSpark data={cloudBuckets} tone={cloud24 > 0 ? 'warn' : 'ok'} />
+          </div>
+        </div>
+
+        {/* Активность сейфа · 24 ч */}
+        <div className="act-metric" data-testid="metric-events">
+          <div className="act-metric-head">
+            <span className="act-metric-label label-mono">Активность · 24 ч</span>
+            <b className="act-metric-value">{events24}</b>
+            <span className="act-metric-sub">событий в ленте за сутки</span>
+          </div>
+          <div className="act-metric-chart">
+            <BarSpark data={eventBuckets} tone="accent" />
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/* ============================================================
    ЭКРАН
    ============================================================ */
 
@@ -445,6 +660,8 @@ export function ScreenActivity() {
         </header>
 
         <LiveNow />
+
+        <SystemMetrics journal={journal} items={items} />
 
         <section className="act-feed panel" data-testid="activity-feed">
           <div className="act-feed-head">
