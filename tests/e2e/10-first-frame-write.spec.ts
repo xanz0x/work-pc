@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { readDoc } from './idb'
+import { skipOnboarding } from './onboard'
 
 /**
  * Сценарий 10 (§1.2 хвоста волны 2): запись на первом кадре не затирает архив.
@@ -48,6 +49,7 @@ test('запись на первом кадре: архив из 20 файлов
     }
   })
 
+  await skipOnboarding(page)
   await page.goto('/')
   await page.getByTestId('nav-library').click()
   await expect

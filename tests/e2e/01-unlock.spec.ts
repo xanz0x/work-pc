@@ -1,7 +1,9 @@
 import { expect, test } from '@playwright/test'
+import { skipOnboarding } from './onboard'
 
 /** Сценарий 1: настроить мастер-ключ, закрыть сейф, открыть его заново. */
 test('замок: настройка, блокировка и разблокировка', async ({ page }) => {
+  await skipOnboarding(page)
   await page.goto('/')
   await page.getByTestId('nav-settings').click()
 

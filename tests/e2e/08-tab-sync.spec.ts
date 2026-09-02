@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { skipOnboarding } from './onboard'
 
 /**
  * Сценарий 8 (§1.5 хвоста волны 2): синхронизация вкладок.
@@ -10,10 +11,12 @@ import { expect, test } from '@playwright/test'
  */
 test('две вкладки: файл, принятый в первой, появляется во второй', async ({ context }) => {
   const first = await context.newPage()
+  await skipOnboarding(first)
   await first.goto('/')
   await first.getByTestId('nav-library').click()
 
   const second = await context.newPage()
+  await skipOnboarding(second)
   await second.goto('/')
   await second.getByTestId('nav-library').click()
   /* Ждём, пока вторая вкладка дочитает архив: иначе проверять нечего. */

@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { readDoc } from './idb'
+import { skipOnboarding } from './onboard'
 
 /**
  * Сценарий 9 (§1.1 хвоста волны 2): обёртки файловых ключей живут одним
@@ -34,6 +35,7 @@ async function fileKeyMap(page: Page): Promise<Record<string, unknown> | null> {
 test('файловый ключ: файл на ключ, перезагрузка, тот же пароль открывает', async ({ page }) => {
   test.setTimeout(120_000)
 
+  await skipOnboarding(page)
   await page.goto('/')
   await setupMaster(page)
 

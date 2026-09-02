@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, type ReactNode } from 'react'
 import type { IndexedRecord } from '@/lib/indexer/types'
+import type { OnboardingResult, OnboardingState } from './onboarding'
 import {
   CLUSTERS,
   fmtBytes,
@@ -56,6 +57,7 @@ export {
   type ToggleId,
 } from './store/settings'
 export type { Notif, NotifCat, NotifKind, NotifLink } from './store/notifs'
+export type { OnboardingResult, OnboardingState } from './onboarding'
 export type { LockStatus, LockView } from './store/lock'
 export { useNow } from './store/clock'
 export { useDataStore } from './store/data'
@@ -131,6 +133,9 @@ export type VaultCtx = {
   dirty: boolean
   saveSettings: () => void
   revertSettings: () => void
+  /** NF-4: что человек выбрал в онбординге и пройден ли он. */
+  onboarding: OnboardingState
+  finishOnboarding: (r: OnboardingResult) => void
 
   /* события */
   notifs: Notif[]
@@ -371,6 +376,8 @@ function VaultFacade({ children }: { children: ReactNode }) {
       dirty: S.dirty,
       saveSettings: S.saveSettings,
       revertSettings: S.revertSettings,
+      onboarding: S.settings.onboarding,
+      finishOnboarding: S.finishOnboarding,
       engineView: E.engineView,
       grantCloudConsent: S.grantCloudConsent,
       revokeCloudConsent: S.revokeCloudConsent,

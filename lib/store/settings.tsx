@@ -26,6 +26,12 @@ import {
   type EngineId,
   type ModelId,
 } from '@/lib/data'
+import {
+  NO_ONBOARDING,
+  resolveOnboarding,
+  type OnboardingResult,
+  type OnboardingState,
+} from '@/lib/onboarding'
 import { useToast } from './toast'
 
 export type ToggleId =
@@ -46,6 +52,8 @@ export type Settings = {
   toggles: Record<ToggleId, boolean>
   /** Когда пользователь согласился отправлять запросы во внешнюю модель. */
   cloudConsentAt: number | null
+  /** NF-4: пройден ли онбординг и что человек в нём выбрал. */
+  onboarding: OnboardingState
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -64,6 +72,7 @@ export const DEFAULT_SETTINGS: Settings = {
     ntfDigest: false,
   },
   cloudConsentAt: null,
+  onboarding: NO_ONBOARDING,
 }
 
 /** Профиль мог быть записан старой сборкой — добираем поля. */
@@ -72,6 +81,7 @@ export function normalizeSettings(s: Settings): Settings {
     ...DEFAULT_SETTINGS,
     ...s,
     toggles: { ...DEFAULT_SETTINGS.toggles, ...s.toggles },
+    onboarding: { ...NO_ONBOARDING, ...s.onboarding },
   }
 }
 
@@ -138,6 +148,12 @@ export type SettingsCtx = {
   revokeCloudConsent: () => void
   /** Источник индексации: пишет indexer-провайдер после выбора папки. */
   setFolder: (path: string) => void
+  /** NF-4: онбординг пройден — режим и согласие выставляются одним действием. */
+  finishOnboarding: (r: OnboardingResult) => void
+  /** NF-4: промежуточный выбор (ключ создан/отклонён) — чтобы перезагрузка не потеряла шаг. */
+  noteOnboarding: (patch: Partial<OnboardingState>) => void
+  /** NF-4: у профиля уже есть мастер-ключ — три шага ему не нужны. */
+  markOnboarded: () => void
 }
 
 const Ctx = createContext<SettingsCtx | null>(null)
@@ -204,6 +220,42 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     [setRaw],
   )
 
+  const finishOnboarding = useCallback(
+    (r: OnboardingResult) => {
+      const res = resolveOnboarding(r, Date.now())
+      setRaw((s) => ({
+        ...normalizeSettings(s),
+        engine: res.engine,
+        cloudConsentAt: res.cloudConsent ? Date.now() : null,
+        onboarding: res.onboarding,
+      }))
+      setDraftState((s) => ({ ...s, engine: res.engine }))
+      if (res.downgraded) {
+        flash('Без мастер-ключа гибридный режим недоступен — оставили локальный.')
+      }
+    },
+    [flash, setRaw],
+  )
+
+  const noteOnboarding = useCallback(
+    (patch: Partial<OnboardingState>) => {
+      setRaw((s) => {
+        const base = normalizeSettings(s)
+        if (base.onboarding.at !== null) return s
+        return { ...base, onboarding: { ...base.onboarding, ...patch, at: null } }
+      })
+    },
+    [setRaw],
+  )
+
+  const markOnboarded = useCallback(() => {
+    setRaw((s) => {
+      const base = normalizeSettings(s)
+      if (base.onboarding.at !== null) return s
+      return { ...base, onboarding: { ...base.onboarding, at: Date.now() } }
+    })
+  }, [setRaw])
+
   const value = useMemo<SettingsCtx>(
     () => ({
       settings,
@@ -217,10 +269,14 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       grantCloudConsent,
       revokeCloudConsent,
       setFolder,
+      finishOnboarding,
+      noteOnboarding,
+      markOnboarded,
     }),
     [
-      dirty, draftSettings, grantCloudConsent, ready, revertSettings,
-      revokeCloudConsent, saveSettings, setDraftSettings, setFolder, setToggle, settings,
+      dirty, draftSettings, finishOnboarding, grantCloudConsent, markOnboarded, noteOnboarding,
+      ready, revertSettings, revokeCloudConsent, saveSettings, setDraftSettings, setFolder,
+      setToggle, settings,
     ],
   )
 

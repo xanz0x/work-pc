@@ -1,7 +1,9 @@
 import { expect, test } from '@playwright/test'
+import { skipOnboarding } from './onboard'
 
 /** Сценарий 2: файл принят в сейф и виден в библиотеке. */
 test('приём файла: появляется в библиотеке и в счётчике', async ({ page }) => {
+  await skipOnboarding(page)
   await page.goto('/')
   await page.getByTestId('nav-library').click()
 

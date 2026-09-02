@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { skipOnboarding } from './onboard'
 
 /**
  * Сценарий 3 (§2 хвоста волны 2): ход диалога и цикл скиллов.
@@ -13,6 +14,7 @@ import { expect, test } from '@playwright/test'
 const CLOUD_OFF = process.env.E2E_CLOUD === 'off'
 
 async function login(page: import('@playwright/test').Page) {
+  await skipOnboarding(page)
   await page.goto('/login')
   await page.getByTestId('login-password').fill(process.env.APP_PASSWORD as string)
   await page.getByTestId('login-submit').click()

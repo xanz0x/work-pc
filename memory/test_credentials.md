@@ -25,6 +25,14 @@ E2E-сценарии (`tests/e2e/`) создают замок в чистом п
 `e2e-master-2026`. К данным разработчика он отношения не имеет: профиль Playwright
 одноразовый.
 
+## Первый запуск (NF-4)
+- Новый профиль браузера начинает с онбординга из трёх шагов; он перекрывает
+  интерфейс, пока не пройден.
+- В e2e он гасится хелпером `skipOnboarding(page)` (`tests/e2e/onboard.ts`):
+  в `localStorage` пишется `wf.settings.v1.onboarding.at`.
+- Сценарий `tests/e2e/11-onboarding.spec.ts` проходит шаги честно и создаёт PIN
+  `123456` в одноразовом профиле Playwright.
+
 ## Модель
 - Облачная модель: `claude-sonnet-4-5-20250929` (`AI_MODEL`), подпись в UI — `NEXT_PUBLIC_AI_MODEL_LABEL`
 - Шлюз: `AI_PROXY_URL=https://integrations.emergentagent.com/llm`

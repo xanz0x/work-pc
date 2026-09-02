@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { readDoc } from './idb'
+import { skipOnboarding } from './onboard'
 
 /**
  * Сценарий 6 (§1.3 хвоста волны 2): переезд «старого» профиля.
@@ -35,6 +36,7 @@ const OLD_NOTE = {
  *  сеем один раз за сессию: иначе бэкап пересевался бы и «уборка на втором
  *  запуске» давала ложный провал. */
 async function seedOldProfile(page: import('@playwright/test').Page) {
+  await skipOnboarding(page)
   await page.addInitScript(
     ({ file, note }) => {
       if (sessionStorage.getItem('wf.e2e.seeded') === '1') return

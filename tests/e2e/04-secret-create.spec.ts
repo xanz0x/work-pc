@@ -1,8 +1,10 @@
 import { expect, test } from '@playwright/test'
+import { skipOnboarding } from './onboard'
 
 /** Сценарий 4: создание записи в менеджере секретов поверх замка. */
 test('секреты: мастер-ключ, новая запись, запись в списке', async ({ page }) => {
   test.setTimeout(120_000)
+  await skipOnboarding(page)
   await page.goto('/')
 
   await page.getByTestId('nav-settings').click()

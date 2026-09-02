@@ -1,7 +1,9 @@
 import { expect, test } from '@playwright/test'
+import { skipOnboarding } from './onboard'
 
 /** Сценарий 5: уведомления — прочитано, архив, восстановление. */
 test('уведомления: read/unread и архив', async ({ page }) => {
+  await skipOnboarding(page)
   await page.goto('/')
 
   // Событие в ленте появляется от приёма файла — не полагаемся на демо-данные.
@@ -17,6 +19,9 @@ test('уведомления: read/unread и архив', async ({ page }) => {
 
   const markAll = page.getByTestId('notif-mark-all')
   if (await markAll.isVisible().catch(() => false)) {
+    /* Индексация присылает своё событие асинхронно: без ожидания «прочитать
+       всё» срабатывает до него и бейдж честно возвращается с единицей. */
+    await expect(panel.getByText('Индексация завершена').first()).toBeVisible({ timeout: 30_000 })
     await markAll.click()
     await expect(page.getByTestId('notif-badge')).toBeHidden()
   }

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { skipOnboarding } from './onboard'
 
 /**
  * Сценарий 7 (§1.4 хвоста волны 2): «нет места» и «не сохранилось».
@@ -21,6 +22,7 @@ const patchIdb = () => {
 }
 
 test('переполнение хранилища: экран «нет места», повтор и продолжение', async ({ page }) => {
+  await skipOnboarding(page)
   await page.addInitScript(patchIdb)
   await page.goto('/')
   await page.getByTestId('nav-library').click()
@@ -54,6 +56,7 @@ test('переполнение хранилища: экран «нет мест�
 })
 
 test('«не сохранилось»: баннер с повтором и уходом по кнопке', async ({ page }) => {
+  await skipOnboarding(page)
   await page.addInitScript(patchIdb)
   await page.goto('/')
   await page.getByTestId('nav-library').click()
