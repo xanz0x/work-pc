@@ -34,6 +34,7 @@ import {
   verifyMasterSecret,
 } from '../crypto-vault'
 import { migrateKdfIterations, rewrapAll } from '../lock-migrate'
+import { logJournal } from '../journal'
 import {
   auditLockState,
   broadcastLockNow,
@@ -215,6 +216,11 @@ export function LockProvider({ children }: { children: ReactNode }) {
           title: 'Замок включён',
           body: `Мастер-ключ (${method === 'pin' ? 'PIN' : 'пароль'}) создан на этом устройстве. PBKDF2 · 600 000 итераций.`,
         })
+        void logJournal(
+          'lock-setup',
+          'Замок включён',
+          `Мастер-ключ создан на этом устройстве (${method === 'pin' ? 'PIN' : 'пароль'}), PBKDF2 · 600 000 итераций.`,
+        )
         return null
       } catch (e) {
         setLock((p) => ({ ...p, busy: false }))
@@ -295,6 +301,11 @@ export function LockProvider({ children }: { children: ReactNode }) {
           title: 'Мастер-ключ изменён',
           body: 'Верификатор пересоздан с новой солью. Файловые ключи будут пере-обёрнуты при следующем открытии.',
         })
+        void logJournal(
+          'master-changed',
+          'Мастер-ключ изменён',
+          `Верификатор пересоздан с новой солью, метод: ${method === 'pin' ? 'PIN' : 'пароль'}. Обёртки файловых ключей и секретов переупакованы.`,
+        )
         return null
       } catch (e) {
         setLock((p) => ({ ...p, busy: false }))
@@ -332,6 +343,11 @@ export function LockProvider({ children }: { children: ReactNode }) {
           title: 'Замок выключен',
           body: 'Мастер-ключ и файловые ключи стёрты. Содержимое сейфа осталось без защиты.',
         })
+        void logJournal(
+          'lock-disabled',
+          'Замок выключен',
+          'Мастер-ключ и обёртки файловых ключей стёрты по подтверждённому паролю. Содержимое сейфа осталось без защиты.',
+        )
         return null
       } catch (e) {
         setLock((p) => ({ ...p, busy: false }))
@@ -455,17 +471,25 @@ export function LockProvider({ children }: { children: ReactNode }) {
 
   /** Путь «забыл мастер»: без подтверждения, зато с честной ценой — файловые ключи. */
   const resetLock = useCallback(() => {
+    const lostKeys = countFileKeys()
     wipeLockData()
     setFileKeysCount(0)
     postLockSync('unlock-config-changed') // п.10.9: вкладки перечитают конфиг
     setLock({ ...OFF_LOCK })
-    notify({
-      kind: 'danger',
-      cat: 'privacy',
-      icon: 'trash',
-      title: 'Замок сброшен',
-      body: 'Мастер-ключ и файловые ключи стёрты. Файлы остались, пароли к ним — нет.',
-    })
+    void logJournal(
+      'lock-reset',
+      'Замок сброшен',
+      `Путь «забыл мастер-ключ»: верификатор и ${lostKeys} обёрток файловых ключей стёрты без подтверждения. Файлы остались, пароли к ним — нет.`,
+    ).then((jid) =>
+      notify({
+        kind: 'danger',
+        cat: 'privacy',
+        icon: 'trash',
+        title: 'Замок сброшен',
+        body: 'Мастер-ключ и файловые ключи стёрты. Файлы остались, пароли к ним — нет.',
+        link: { kind: 'journal', id: jid },
+      }),
+    )
   }, [notify])
 
   /* Автоблокировка: тик раз в 5 секунд против последней активности (план п.2.4). */

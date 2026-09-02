@@ -11,6 +11,7 @@ import {
   IconFolder,
   IconInbox,
   IconKey,
+  IconLayers,
   IconMemory,
   IconPipeline,
   IconRefresh,
@@ -27,6 +28,7 @@ import { useEngineStore } from '@/lib/store/engine'
 import { NumTicker } from './ui/num-ticker'
 import { SecuritySection } from './security-section'
 import { SecretsSection } from './secrets-section'
+import { JournalPanel } from './journal-panel'
 
 type Ico = ComponentType<SVGProps<SVGSVGElement>>
 
@@ -91,6 +93,7 @@ const SECTIONS: { id: string; label: string; Icon: Ico }[] = [
   { id: 'storage', label: 'Хранилище', Icon: IconDatabase },
   { id: 'privacy', label: 'Приватность', Icon: IconShield },
   { id: 'secrets', label: 'Менеджер секретов', Icon: IconKey },
+  { id: 'journal', label: 'Журнал безопасности', Icon: IconLayers },
   { id: 'danger', label: 'Опасная зона', Icon: IconTrash },
 ]
 
@@ -104,6 +107,7 @@ const FOCUS_ALIAS: Record<string, string> = {
   storage: 'storage',
   privacy: 'privacy',
   security: 'security',
+  journal: 'journal',
   secrets: 'secrets',
   danger: 'danger',
 }
@@ -156,7 +160,9 @@ export function ScreenSettings() {
   /** Переход из поиска, палитры или колокольчика ведёт в нужный раздел. */
   useEffect(() => {
     if (!v.settingFocus) return
-    const id = FOCUS_ALIAS[v.settingFocus.id] ?? 'engine'
+    /* LG-3: ссылка из уведомления приходит как `journal:<id записи>`. */
+    const raw = v.settingFocus.id.split(':')[0]
+    const id = FOCUS_ALIAS[raw] ?? 'engine'
     const el = document.getElementById(`set-${id}`)
     el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     el?.classList.add('sec-flash')
@@ -647,6 +653,7 @@ export function ScreenSettings() {
 
             <SecuritySection />
             <SecretsSection />
+            <JournalPanel />
 
             <section className="sec panel danger-zone" id="set-danger">
               <div className="sec-head">

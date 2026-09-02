@@ -32,6 +32,7 @@ import { useRedacted } from '@/lib/redact-context'
 import { aiApi } from '@/lib/ai-client'
 import { fileMeta, fileTags } from '@/lib/data'
 import { CHAT_SUGGESTIONS } from '@/lib/chat-data'
+import { logJournal } from '@/lib/journal'
 
 const hhmm = () =>
   new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
@@ -187,6 +188,11 @@ export function ScreenChat() {
           title: 'ИИ сохранил пароль в сейф',
           body: `Запись «${title}» создана скиллом save_password с вашего разрешения.`,
         })
+        void logJournal(
+          'ai-saved-password',
+          'ИИ сохранил пароль в сейф',
+          `Запись «${title}» создана скиллом save_password с явного разрешения владельца. Значения полей в журнал не попадают.`,
+        )
         return {
           ok: true,
           summary: `запись «${title}» зашифрована и сохранена`,

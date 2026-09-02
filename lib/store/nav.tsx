@@ -187,6 +187,12 @@ export function NavProvider({ children }: { children: ReactNode }) {
         setScreen(link.id as ScreenId)
         return
       }
+      /* LG-3: ведём в журнал и подсвечиваем именно ту запись. */
+      if (link?.kind === 'journal') {
+        setScreen('settings')
+        setSettingFocus({ id: `journal:${link.id}`, at })
+        return
+      }
       if (n.cat === 'pipeline') {
         setScreen('library')
         return

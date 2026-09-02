@@ -55,6 +55,7 @@ import {
 } from './secrets-crypto'
 import type { ImportDraft, ImportPreview } from './secrets-io'
 import { totpCode } from './secrets-totp'
+import { logJournal } from './journal'
 
 const MAX_BACKUPS = 5
 
@@ -765,13 +766,20 @@ export function SecretsProvider({ children }: { children: ReactNode }) {
     async (format: 'csv' | 'json') => {
       const json = await plainSnapshot()
       if (!json) return null
-      v.notify({
-        kind: 'danger',
-        cat: 'privacy',
-        icon: 'shield',
-        title: 'Экспорт без шифрования',
-        body: `Секреты выгружены в ${format.toUpperCase()} в открытом виде. Удалите файл вручную — ОС не гарантирует безопасное стирание.`,
-      })
+      void logJournal(
+        'plaintext-export',
+        'Экспорт секретов без шифрования',
+        `Формат ${format.toUpperCase()}. Файл содержит пароли в открытом виде: ОС не гарантирует безопасное стирание.`,
+      ).then((jid) =>
+        v.notify({
+          kind: 'danger',
+          cat: 'privacy',
+          icon: 'shield',
+          title: 'Экспорт без шифрования',
+          body: `Секреты выгружены в ${format.toUpperCase()} в открытом виде. Удалите файл вручную — ОС не гарантирует безопасное стирание.`,
+          link: { kind: 'journal', id: jid },
+        }),
+      )
       if (format === 'json') return json
       const parsed = JSON.parse(json) as {
         entries: {
@@ -871,13 +879,20 @@ export function SecretsProvider({ children }: { children: ReactNode }) {
       /* Восстановление — это замена состава, а не импорт: иначе каждый restore
          удваивал бы сейф (баг, найденный на приёмке). */
       const res = await materialize(preview, true)
-      v.notify({
-        kind: 'warn',
-        cat: 'privacy',
-        icon: 'refresh',
-        title: 'Сейф секретов восстановлен из бэкапа',
-        body: `Состав заменён снимком от ${new Date(at).toLocaleString('ru-RU')}: ${res.added} записей. Корзина не тронута.`,
-      })
+      void logJournal(
+        'backup-restore',
+        'Сейф секретов восстановлен из бэкапа',
+        `Состав заменён снимком от ${new Date(at).toLocaleString('ru-RU')}: ${res.added} записей. Корзина не тронута.`,
+      ).then((jid) =>
+        v.notify({
+          kind: 'warn',
+          cat: 'privacy',
+          icon: 'refresh',
+          title: 'Сейф секретов восстановлен из бэкапа',
+          body: `Состав заменён снимком от ${new Date(at).toLocaleString('ru-RU')}: ${res.added} записей. Корзина не тронута.`,
+          link: { kind: 'journal', id: jid },
+        }),
+      )
       return res.added
     },
     [backupRecs, materialize, v],

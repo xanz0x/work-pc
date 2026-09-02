@@ -8,6 +8,7 @@ import {
   DB_NAME,
   DB_VERSION,
   DOC_STORE,
+  JOURNAL_STORE,
   META_STORE,
   type Doc,
 } from './schema'
@@ -51,6 +52,12 @@ export function upgrade(db: IDBDatabase, tx: IDBTransaction, oldVersion: number)
         cur.update({ key: String(rec?.key ?? cur.key), value: rec?.value, updatedAt: 0 })
       }
       cur.continue()
+    }
+  }
+  if (oldVersion < 3) {
+    // LG-3: журнал безопасности — отдельный стор, только добавление.
+    if (!db.objectStoreNames.contains(JOURNAL_STORE)) {
+      db.createObjectStore(JOURNAL_STORE, { keyPath: 'seq', autoIncrement: true })
     }
   }
 }
@@ -134,4 +141,23 @@ export async function metaSet(key: string, value: unknown): Promise<void> {
 export async function schemaVersion(): Promise<number> {
   const db = await openDb()
   return db.version
+}
+
+/* ---------- журнал безопасности (LG-3) ---------- */
+
+/**
+ * Добавить запись журнала. Только добавление: обновления и удаления в этом
+ * сторе не предусмотрены ни одним путём кода.
+ */
+export async function journalAppend<T extends object>(entry: T): Promise<void> {
+  const db = await openDb()
+  const tx = db.transaction(JOURNAL_STORE, 'readwrite')
+  tx.objectStore(JOURNAL_STORE).add(entry)
+  await done(tx)
+}
+
+export async function journalAll<T>(): Promise<T[]> {
+  const db = await openDb()
+  const tx = db.transaction(JOURNAL_STORE, 'readonly')
+  return req<T[]>(tx.objectStore(JOURNAL_STORE).getAll() as IDBRequest<T[]>)
 }

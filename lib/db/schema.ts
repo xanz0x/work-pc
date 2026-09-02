@@ -12,12 +12,16 @@ export const DB_NAME = 'workflow'
  * Версии схемы:
  *  v1 — стор `docs` (keyPath 'key') с записями { key, value };
  *  v2 — у записей появилось `updatedAt`, добавлен стор `meta`
- *       (флаги миграций, отметки квоты).
+ *       (флаги миграций, отметки квоты);
+ *  v3 — стор `journal` (LG-3): append-only лента критических действий,
+ *       autoIncrement, живёт отдельно от документов — стирание сейфа и
+ *       очистка ленты уведомлений её не касаются.
  */
-export const DB_VERSION = 2
+export const DB_VERSION = 3
 
 export const DOC_STORE = 'docs'
 export const META_STORE = 'meta'
+export const JOURNAL_STORE = 'journal'
 
 /** Конверт документа: значение + время последней записи. */
 export type Doc<T = unknown> = { key: string; value: T; updatedAt: number }

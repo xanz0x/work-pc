@@ -48,15 +48,17 @@ describe('слой IndexedDB: схема и миграции', () => {
     expect(db.version).toBe(DB_VERSION)
     expect(db.objectStoreNames.contains(DOC_STORE)).toBe(true)
     expect(db.objectStoreNames.contains(META_STORE)).toBe(true)
+    expect(db.objectStoreNames.contains('journal')).toBe(true)
   })
 
-  it('миграция v1→v2: записи получают updatedAt, появляется стор meta', async () => {
+  it('миграция v1→v3: записи получают updatedAt, появляются сторы meta и journal', async () => {
     await makeV1([{ key: 'wf.notes.v1', value: [{ id: 'n1' }] }])
     resetDbHandle()
 
     const db = await openDb()
-    expect(db.version).toBe(2)
+    expect(db.version).toBe(DB_VERSION)
     expect(db.objectStoreNames.contains(META_STORE)).toBe(true)
+    expect(db.objectStoreNames.contains('journal')).toBe(true)
 
     const doc = await docGet<{ id: string }[]>('wf.notes.v1')
     expect(doc?.value).toEqual([{ id: 'n1' }])
@@ -65,7 +67,7 @@ describe('слой IndexedDB: схема и миграции', () => {
 
   it('апгрейд идемпотентен: повторный вызов не ломает существующие сторы', async () => {
     const db = await openDb()
-    expect(() => upgrade(db, db.transaction(DOC_STORE, 'readonly'), 2)).not.toThrow()
+    expect(() => upgrade(db, db.transaction(DOC_STORE, 'readonly'), DB_VERSION)).not.toThrow()
   })
 
   it('репозиторий: get/put/patch/remove/list с одним интерфейсом', async () => {

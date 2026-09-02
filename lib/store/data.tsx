@@ -41,6 +41,7 @@ import {
 } from '../data'
 import { buildGraph, clusterLoad, neighborsOf, type Graph } from '../graph'
 import { isAlive, seedNotes, type Note } from '../notes'
+import { logJournal } from '../journal'
 import { useCoarseTick } from './clock'
 import { useNotifsStore } from './notifs'
 import { useSettingsStore } from './settings'
@@ -358,13 +359,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setDrafts({})
     setScrolls({})
     flash('Сейф стёрт. Восстановить содержимое невозможно.')
-    notify({
-      kind: 'danger',
-      cat: 'privacy',
-      icon: 'trash',
-      title: 'Сейф стёрт',
-      body: `${n} файлов и ${fmtBytes(bytes)} удалены без возможности восстановления.`,
-    })
+    void logJournal(
+      'vault-wipe',
+      'Сейф стёрт',
+      `Удалены ${n} файлов (${fmtBytes(bytes)}), стикеры и разговоры. Восстановление невозможно.`,
+    ).then((jid) =>
+      notify({
+        kind: 'danger',
+        cat: 'privacy',
+        icon: 'trash',
+        title: 'Сейф стёрт',
+        body: `${n} файлов и ${fmtBytes(bytes)} удалены без возможности восстановления.`,
+        link: { kind: 'journal', id: jid },
+      }),
+    )
   }, [
     files,
     flash,

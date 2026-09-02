@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from 'react'
 import type { ToolRun, TraceStage } from '@/components/chat/types'
 import { isAiErrorCode, type AiErrorCode } from '@/lib/ai-errors'
+import { logJournal } from '@/lib/journal'
 
 /**
  * Живой разговор с моделью через /ai-api/chat (SSE) — локальной (Ollama)
@@ -285,6 +286,16 @@ export function useAiChat(
       setPending(null)
       setActive(true)
       pushStage(`запрос · ${body.modelLabel}`)
+
+      /* LG-3: каждый ход, уходящий наружу, попадает в журнал безопасности.
+         Локальный движок не логируется — из устройства ничего не выходит. */
+      if (body.engine !== 'local') {
+        void logJournal(
+          'cloud-request',
+          'Исходящий запрос к внешней модели',
+          `Режим «${body.engine === 'cloud' ? 'внешняя модель' : 'гибридный'}», модель ${body.modelLabel}. Индекс сейфа ${body.sendIndex ? `передан (${body.ctx.files.length} файлов в контексте)` : 'не передавался'}.`,
+        )
+      }
 
       const finalize = (errorCode?: AiErrorCode) => {
         const s = st.current

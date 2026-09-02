@@ -22,6 +22,7 @@ import {
   type StartChoice,
 } from '@/lib/onboarding'
 import { useIndexActions, useIndexSummary } from '@/lib/indexer/context'
+import { logJournal } from '@/lib/journal'
 import { useLockStore, useNavStore, useNotifsStore, useSettingsStore } from '@/lib/vault-store'
 import { IconCheck, IconFolder, IconLockRound, IconShield } from './icons'
 import '@/app/styles/onboarding.css'
@@ -120,14 +121,20 @@ export function Onboarding() {
     setKeyChoice('declined')
     setDeclining(false)
     S.noteOnboarding({ mode, keyChoice: 'declined' })
-    notify({
-      kind: 'warn',
-      cat: 'privacy',
-      icon: 'shield',
-      title: 'Сейф создан без мастер-ключа',
-      body: 'Отказ зафиксирован при первом запуске. Внешние запросы отключены, замок можно включить в настройках в любой момент.',
-      link: { kind: 'setting', id: 'privacy' },
-    })
+    void logJournal(
+      'key-declined',
+      'Отказ от мастер-ключа при первом запуске',
+      'Владелец явно отказался создавать мастер-ключ. Шифрование стикеров и менеджер секретов недоступны, режим опущен до локального, облако отключено.',
+    ).then((jid) =>
+      notify({
+        kind: 'warn',
+        cat: 'privacy',
+        icon: 'shield',
+        title: 'Сейф создан без мастер-ключа',
+        body: 'Отказ зафиксирован при первом запуске. Внешние запросы отключены, замок можно включить в настройках в любой момент.',
+        link: { kind: 'journal', id: jid },
+      }),
+    )
     setStep(3)
   }
 

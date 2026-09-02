@@ -34,6 +34,8 @@ export type NotifLink =
   | { kind: 'secret'; id: string }
   | { kind: 'setting'; id: string }
   | { kind: 'screen'; id: string }
+  /** LG-3: запись журнала безопасности — уведомление ведёт к факту, а не к тексту. */
+  | { kind: 'journal'; id: string }
 
 export type Notif = {
   id: string

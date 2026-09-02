@@ -1276,3 +1276,156 @@
     height: 16px;
   }
 }
+
+/* ============================================================
+   ЖУРНАЛ БЕЗОПАСНОСТИ (LG-3) · панель настроек
+   Только чтение: ритм строк лога, тон вместо теней, один акцент.
+   ============================================================ */
+@layer wf031 {
+  .jr-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+
+  .jr-filters {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    flex: 1;
+  }
+
+  .jr-chip {
+    padding: 4px 10px;
+    font-family: var(--font-plex-mono), 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-2);
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    cursor: pointer;
+    transition:
+      color 160ms ease,
+      border-color 160ms ease,
+      background-color 160ms ease;
+  }
+
+  .jr-chip:hover {
+    color: var(--text);
+    border-color: var(--border-2);
+  }
+
+  .jr-chip[aria-pressed='true'] {
+    color: var(--text);
+    border-color: var(--accent-line);
+    background: rgba(47, 190, 126, 0.06);
+  }
+
+  .jr-chip.severe[aria-pressed='true'] {
+    border-color: rgba(229, 100, 92, 0.5);
+    background: rgba(229, 100, 92, 0.07);
+  }
+
+  .jr-rows {
+    max-height: 340px;
+    overflow-y: auto;
+  }
+
+  .jr-row {
+    display: grid;
+    grid-template-columns: 132px 190px 1fr;
+    gap: 12px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    transition: background-color 200ms ease;
+  }
+
+  .jr-row:last-child {
+    border-bottom: 0;
+  }
+
+  .jr-row:hover {
+    background: var(--raise-1);
+  }
+
+  .jr-row.focused {
+    background: rgba(47, 190, 126, 0.07);
+    box-shadow: inset 2px 0 0 var(--accent);
+  }
+
+  .jr-row[data-kind='master-changed'],
+  .jr-row[data-kind='lock-reset'],
+  .jr-row[data-kind='lock-disabled'],
+  .jr-row[data-kind='plaintext-export'],
+  .jr-row[data-kind='vault-wipe'],
+  .jr-row[data-kind='key-declined'] {
+    box-shadow: inset 2px 0 0 var(--danger);
+  }
+
+  .jr-time {
+    font-family: var(--font-plex-mono), 'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    color: var(--text-3r);
+  }
+
+  .jr-kind {
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+
+  .jr-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .jr-text b {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .jr-text span {
+    font-size: 12px;
+    color: var(--text-2);
+  }
+
+  .jr-empty {
+    padding: 18px 14px;
+    font-size: 12.5px;
+    color: var(--text-3r);
+  }
+
+  .jr-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+    padding: 11px 14px;
+    border-top: 1px solid var(--border);
+    font-size: 11.5px;
+    color: var(--text-3r);
+  }
+
+  .jr-note svg {
+    flex: 0 0 13px;
+    margin-top: 2px;
+    stroke: currentColor;
+    stroke-width: 1.5;
+    fill: none;
+  }
+
+  @media (max-width: 1180px) {
+    .jr-row {
+      grid-template-columns: 1fr;
+      gap: 4px;
+    }
+  }
+}

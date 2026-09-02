@@ -32,6 +32,7 @@ import {
   type OnboardingResult,
   type OnboardingState,
 } from '@/lib/onboarding'
+import { logJournal } from '@/lib/journal'
 import { useToast } from './toast'
 
 export type ToggleId =
@@ -204,10 +205,20 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
   const grantCloudConsent = useCallback(() => {
     setRaw((s) => ({ ...normalizeSettings(s), cloudConsentAt: Date.now() }))
+    void logJournal(
+      'cloud-consent',
+      'Согласие на облачные запросы выдано',
+      'С этого момента вопросы и подобранные фрагменты файлов могут уходить внешнему провайдеру модели.',
+    )
   }, [setRaw])
 
   const revokeCloudConsent = useCallback(() => {
     setRaw((s) => ({ ...normalizeSettings(s), cloudConsentAt: null }))
+    void logJournal(
+      'cloud-consent',
+      'Согласие на облачные запросы отозвано',
+      'Перед следующим внешним ходом продукт спросит согласие заново.',
+    )
     flash('Согласие на облачные запросы отозвано — спросим снова перед следующим ходом.')
   }, [flash, setRaw])
 
@@ -229,7 +240,16 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         cloudConsentAt: res.cloudConsent ? Date.now() : null,
         onboarding: res.onboarding,
       }))
-      setDraftState((s) => ({ ...s, engine: res.engine }))
+      /* Черновик держим в курсе, иначе экран настроек решит, что есть
+         несохранённые изменения, хотя пользователь ничего не правил. */
+      setDraftState((s) => ({ ...s, engine: res.engine, onboarding: res.onboarding }))
+      if (res.cloudConsent) {
+        void logJournal(
+          'cloud-consent',
+          'Согласие на облачные запросы выдано при первом запуске',
+          'Владелец выбрал гибридный режим и подтвердил, что вопрос и фрагменты файлов уходят внешнему провайдеру.',
+        )
+      }
       if (res.downgraded) {
         flash('Без мастер-ключа гибридный режим недоступен — оставили локальный.')
       }
@@ -244,16 +264,19 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         if (base.onboarding.at !== null) return s
         return { ...base, onboarding: { ...base.onboarding, ...patch, at: null } }
       })
+      setDraftState((s) => ({ ...s, onboarding: { ...s.onboarding, ...patch, at: null } }))
     },
     [setRaw],
   )
 
   const markOnboarded = useCallback(() => {
+    const at = Date.now()
     setRaw((s) => {
       const base = normalizeSettings(s)
       if (base.onboarding.at !== null) return s
-      return { ...base, onboarding: { ...base.onboarding, at: Date.now() } }
+      return { ...base, onboarding: { ...base.onboarding, at } }
     })
+    setDraftState((s) => (s.onboarding.at === null ? { ...s, onboarding: { ...s.onboarding, at } } : s))
   }, [setRaw])
 
   const value = useMemo<SettingsCtx>(
