@@ -113,6 +113,22 @@ const OBJ_LABELS: Record<ObjType, string> = {
 const DAY = 86_400_000
 const HOUR = 3_600_000
 
+/** Склонение «ход / хода / ходов». */
+function hodWord(n: number): string {
+  const a = n % 10
+  const b = n % 100
+  if (a === 1 && b !== 11) return 'ход'
+  if (a >= 2 && a <= 4 && (b < 10 || b >= 20)) return 'хода'
+  return 'ходов'
+}
+
+/** Начало сегодняшнего дня по местному времени. */
+function startOfToday(): number {
+  const d = new Date()
+  d.setHours(0, 0, 0, 0)
+  return d.getTime()
+}
+
 function stamp(at: number, now: number): string {
   const d = Math.max(0, now - at)
   if (d < 60_000) return 'только что'
@@ -149,6 +165,7 @@ type Tile = {
   sub?: string
   state: TileState
   pct?: number
+  valueTestId?: string
 }
 
 function LiveNow() {
@@ -157,6 +174,20 @@ function LiveNow() {
   const engine = useEngineStore()
   const { lock } = useLockStore()
   const view = engine.engineView
+
+  /* Живой счётчик: сколько облачных ходов ушло наружу за сегодня — прямо из
+     журнала (append-only), поэтому число честное и переживает перезагрузку. */
+  const [cloudToday, setCloudToday] = useState(0)
+  useEffect(() => {
+    const load = () => {
+      void readJournal().then((rows) => {
+        const from = startOfToday()
+        setCloudToday(rows.filter((r) => r.kind === 'cloud-request' && r.at >= from).length)
+      })
+    }
+    load()
+    return subscribeJournal(load)
+  }, [])
 
   const tiles: Tile[] = []
 
@@ -241,25 +272,24 @@ function LiveNow() {
   }
 
   /* Исходящий трафик */
-  tiles.push(
-    view.isCloud
-      ? {
-          key: 'traffic',
-          Icon: IconShield,
-          label: 'Исходящий трафик',
-          value: 'Возможны внешние запросы',
-          sub: view.netLabel,
-          state: 'warn',
-        }
-      : {
-          key: 'traffic',
-          Icon: IconShield,
-          label: 'Исходящий трафик',
-          value: 'Нет исходящих запросов',
-          sub: 'Всё считается на устройстве',
-          state: 'ok',
-        },
-  )
+  tiles.push({
+    key: 'traffic',
+    Icon: IconShield,
+    label: 'Исходящий трафик',
+    value:
+      cloudToday > 0
+        ? `${cloudToday} ${hodWord(cloudToday)} за сегодня`
+        : view.isCloud
+          ? 'Ноль ходов за сегодня'
+          : 'Нет исходящих запросов',
+    sub: view.isCloud
+      ? 'Режим допускает внешние запросы'
+      : cloudToday > 0
+        ? 'Режим сейчас локальный'
+        : 'Всё считается на устройстве',
+    state: view.isCloud || cloudToday > 0 ? 'warn' : 'ok',
+    valueTestId: 'activity-cloud-today',
+  })
 
   /* Замок */
   tiles.push(
@@ -299,7 +329,7 @@ function LiveNow() {
             </span>
             <div className="act-tile-body">
               <span className="act-tile-label label-mono">{t.label}</span>
-              <b className="act-tile-value">{t.value}</b>
+              <b className="act-tile-value" data-testid={t.valueTestId}>{t.value}</b>
               {t.sub && <span className="act-tile-sub">{t.sub}</span>}
               {t.pct != null && (
                 <div className="act-mini-bar">
@@ -337,6 +367,43 @@ function hourlyBuckets(times: number[], now: number, hours = 24): number[] {
 
 const CHART_W = 220
 const CHART_H = 46
+
+/* История нагрузки памяти живёт между сессиями: коарс-семплы JS-кучи в
+   localStorage (не чувствительны — только размеры), окно 6 часов. Так всплески
+   индексации и облачных ходов видны за часы, а не только в текущей сессии. */
+const HEAP_KEY = 'wf.metrics.heap.v1'
+const HEAP_WINDOW = 6 * HOUR
+const HEAP_CAP = 500
+const HEAP_SAMPLE_MS = 30_000
+
+type HeapSample = { t: number; u: number }
+
+function loadHeap(): HeapSample[] {
+  try {
+    const raw = localStorage.getItem(HEAP_KEY)
+    if (!raw) return []
+    const arr = JSON.parse(raw) as unknown
+    if (!Array.isArray(arr)) return []
+    const cut = Date.now() - HEAP_WINDOW
+    return arr
+      .filter(
+        (x): x is HeapSample =>
+          !!x && typeof (x as HeapSample).t === 'number' && typeof (x as HeapSample).u === 'number',
+      )
+      .filter((x) => x.t >= cut)
+      .slice(-HEAP_CAP)
+  } catch {
+    return []
+  }
+}
+
+function saveHeap(list: HeapSample[]): void {
+  try {
+    localStorage.setItem(HEAP_KEY, JSON.stringify(list))
+  } catch {
+    /* приватный режим или переполнение — история просто не сохранится */
+  }
+}
 
 /** Живой график-заливка: нагрузка памяти во времени. */
 function AreaSpark({ data, tone }: { data: number[]; tone: 'accent' | 'warn' | 'ok' }) {
@@ -394,25 +461,38 @@ function BarSpark({ data, tone }: { data: number[]; tone: 'accent' | 'warn' | 'o
 type HeapInfo = { used: number; limit: number } | null
 
 function SystemMetrics({ journal, items }: { journal: JournalEntry[]; items: FeedItem[] }) {
-  const [samples, setSamples] = useState<number[]>([])
+  const [hist, setHist] = useState<HeapSample[]>(() => loadHeap())
   const [heap, setHeap] = useState<HeapInfo>(null)
   const [est, setEst] = useState<{ usage: number; quota: number } | null>(null)
   const [now, setNow] = useState(() => Date.now())
 
-  /* Живой замер: память вкладки + время для часовых корзин. Раз в 2 с. */
+  /* Часовые корзины освежаем не спеша — раз в 5 с. */
   useEffect(() => {
-    const read = () => {
-      setNow(Date.now())
-      const mem = (performance as unknown as { memory?: { usedJSHeapSize: number; jsHeapSizeLimit: number } }).memory
-      if (mem) {
-        setHeap({ used: mem.usedJSHeapSize, limit: mem.jsHeapSizeLimit })
-        setSamples((s) => [...s.slice(-59), mem.usedJSHeapSize])
-      }
-    }
-    read()
-    const t = setInterval(read, 2000)
+    const t = setInterval(() => setNow(Date.now()), 5000)
     return () => clearInterval(t)
   }, [])
+
+  /* Замер памяти + запись истории в localStorage (окно 6 ч). */
+  useEffect(() => {
+    const read = () => {
+      const mem = (performance as unknown as { memory?: { usedJSHeapSize: number; jsHeapSizeLimit: number } }).memory
+      if (!mem) return
+      setHeap({ used: mem.usedJSHeapSize, limit: mem.jsHeapSizeLimit })
+      setHist((prev) => {
+        const t = Date.now()
+        const next = [...prev, { t, u: mem.usedJSHeapSize }]
+          .filter((sm) => t - sm.t <= HEAP_WINDOW)
+          .slice(-HEAP_CAP)
+        saveHeap(next)
+        return next
+      })
+    }
+    read()
+    const t = setInterval(read, HEAP_SAMPLE_MS)
+    return () => clearInterval(t)
+  }, [])
+
+  const samples = useMemo(() => hist.map((h) => h.u), [hist])
 
   /* Занятость локального хранилища (origin storage). Раз в 5 с. */
   useEffect(() => {
@@ -466,7 +546,7 @@ function SystemMetrics({ journal, items }: { journal: JournalEntry[]; items: Fee
               <>
                 <b className="act-metric-value">{fmtBytes(heap.used)}</b>
                 <span className="act-metric-sub">
-                  {heapPct}% лимита JS-кучи{cores ? ` · ${cores} ядер` : ''}
+                  {heapPct}% лимита · история 6 ч{cores ? ` · ${cores} ядер` : ''}
                 </span>
               </>
             ) : (
