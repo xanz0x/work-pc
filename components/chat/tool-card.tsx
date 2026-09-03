@@ -1,6 +1,6 @@
 'use client'
 
-import { IconCheck, IconClose, IconKey, IconSearch, IconExternal, IconChipAi } from '../icons'
+import { IconCheck, IconClose, IconKey, IconSearch, IconExternal, IconChipAi, IconAlertTri } from '../icons'
 import type { ToolRun } from './types'
 
 const STATUS_LABEL: Record<ToolRun['status'], string> = {
@@ -62,6 +62,14 @@ export function ToolCards({
               </span>
             </span>
             <span className="tool-args mono ellipsis">{argsLine(t)}</span>
+            {/* RM-3: макет обязан выглядеть макетом. Плашка стоит ДО текста
+                ответа, иначе выдуманный фрагмент успевают прочитать как факт. */}
+            {t.mock ? (
+              <span className="tool-mock" data-testid={`tool-mock-${t.name}`}>
+                <IconAlertTri aria-hidden="true" />
+                макет, не реальные данные
+              </span>
+            ) : null}
             {t.summary ? <span className="tool-sum">{t.summary}</span> : null}
             {t.files?.length ? (
               <ul className="tool-files">

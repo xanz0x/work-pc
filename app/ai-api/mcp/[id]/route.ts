@@ -7,6 +7,17 @@ export const dynamic = 'force-dynamic'
 
 type P = { params: Promise<{ id: string }> }
 
+/**
+ * RM-3: пометка макета едет в КАЖДОМ ответе скелета.
+ * Клиент рисует плашку по этому признаку, а не по имени скилла, — если
+ * когда-нибудь появится настоящий клиент MCP, плашка исчезнет сама.
+ */
+const MOCK_NOTICE = 'макет, не реальные данные'
+
+function mock(body: Record<string, unknown>, status = 200) {
+  return NextResponse.json({ ...body, mock: true, notice: MOCK_NOTICE }, { status })
+}
+
 export const PUT = withRoute('/ai-api/mcp/[id]', async (req: NextRequest, { params }: P) => {
   const { id } = await params
   const m = await getMcp(safeId(id))
@@ -24,7 +35,12 @@ export const PUT = withRoute('/ai-api/mcp/[id]', async (req: NextRequest, { para
   return NextResponse.json(m)
 })
 
-/** Действия скелета: проверка соединения и мок «вытянуть документ». */
+/**
+ * Действия скелета: проверка соединения и макет «вытянуть документ».
+ * Настоящей сети здесь нет — поэтому нет ни правдоподобных ссылок, ни
+ * выдуманной задержки: имитировать признаки живого сервиса значит врать
+ * человеку о том, чего в продукте пока не существует.
+ */
 export const POST = withRoute('/ai-api/mcp/[id]', async (req: NextRequest, { params }: P) => {
   const { id } = await params
   const m = await getMcp(safeId(id))
@@ -33,39 +49,42 @@ export const POST = withRoute('/ai-api/mcp/[id]', async (req: NextRequest, { par
 
   if (b.action === 'test') {
     if (!m.enabled) {
-      return NextResponse.json({ ok: false, message: 'Сервер выключен — включите тумблер.' })
+      return mock({ ok: false, message: 'Сервер выключен — включите тумблер.' })
     }
     if (!m.host) {
-      return NextResponse.json({ ok: false, message: 'Укажите адрес сервера (IP или хост).' })
+      return mock({ ok: false, message: 'Укажите адрес сервера (IP или хост).' })
     }
-    return NextResponse.json({
+    return mock({
       ok: true,
       mode: 'skeleton',
-      latency: 40 + Math.round(Math.random() * 80),
-      message: `Скелет ответил: ${m.host}:${m.port} принят. ${
+      /* Соединения не было: сообщать «latency 73 мс» — выдумка. */
+      message: `Настройки приняты: ${m.host}:${m.port}. Соединение НЕ проверялось — клиента MCP в сборке ещё нет. ${
         m.tokenSet
-          ? 'Токен задан в окружении — реальное соединение появится вместе с клиентом MCP.'
-          : 'Токен в окружении не задан (MCP_NOTION_TOKEN) — ответы остаются макетом.'
+          ? 'Токен задан в окружении сервера.'
+          : 'Токен в окружении не задан (MCP_NOTION_TOKEN).'
       }`,
     })
   }
 
   if (b.action === 'pull') {
     if (!m.enabled) {
-      return NextResponse.json({
+      return mock({
         ok: false,
         error: 'MCP-сервер Notion выключен. Включите его в AI-центре.',
       })
     }
     const q = (b.query ?? 'документ').slice(0, 120)
-    return NextResponse.json({
+    return mock({
       ok: true,
-      mock: true,
+      source: 'skeleton',
       doc: {
-        title: `Notion · ${q}`,
-        url: `https://notion.so/mock/${encodeURIComponent(q.replace(/\s+/g, '-')).slice(0, 60)}`,
-        excerpt: `Это макет документа «${q}» из скелета MCP. Реальное содержимое появится после подключения токена Notion${m.host ? ` (сервер ${m.host}:${m.port})` : ''}.`,
-        updated: new Date().toISOString(),
+        title: `Макет ответа на запрос «${q}»`,
+        /* Схема mock:// вместо notion.so — по такой ссылке некуда пойти,
+           и её нельзя перепутать с настоящим документом. */
+        url: `mock://notion/${encodeURIComponent(q.replace(/\s+/g, '-')).slice(0, 60)}`,
+        excerpt: `Документа с таким содержимым не существует: это заглушка скелета MCP${
+          m.host ? ` (сервер ${m.host}:${m.port} записан в настройках, но не опрашивался)` : ''
+        }. Реальный текст появится вместе с клиентом MCP и токеном Notion.`,
       },
     })
   }

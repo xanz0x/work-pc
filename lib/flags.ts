@@ -36,7 +36,7 @@ export const FLAG_META: { id: FlagId; label: string; note: string }[] = [
   {
     id: 'mcp.skeleton',
     label: 'Каркас MCP',
-    note: 'Показывает список настроенных MCP-серверов из локальной папки ai/ — только чтение',
+    note: 'Открывает вкладку MCP в AI-центре и скилл notion_pull. Клиента MCP в сборке нет: ответы — макет, помеченный плашкой',
   },
 ]
 

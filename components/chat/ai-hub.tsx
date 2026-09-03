@@ -1,8 +1,9 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { IconCheck, IconChipAi, IconClose, IconExternal, IconPlus, IconRefresh, IconTrash } from '../icons'
+import { IconAlertTri, IconCheck, IconChipAi, IconClose, IconExternal, IconPlus, IconRefresh, IconTrash } from '../icons'
 import { aiApi, type McpDto, type SkillDto } from '@/lib/ai-client'
+import { useFlags } from '@/lib/flags'
 import { CLOUD_MODEL_LABEL } from '@/lib/data'
 
 type Tab = 'skills' | 'mcp' | 'prompt'
@@ -13,6 +14,15 @@ type Tab = 'skills' | 'mcp' | 'prompt'
  */
 export function AiHub({ onClose }: { onClose: () => void }) {
   const [tab, setTab] = useState<Tab>('skills')
+  /* RM-3: скелет MCP — незаконченная часть продукта, её показывает флаг.
+     Пока он выключен, вкладки просто нет: не показываем макет как функцию. */
+  const mcpOn = useFlags().flags['mcp.skeleton']
+  const shown: [Tab, string][] = [
+    ['skills', 'Скиллы'],
+    ...((mcpOn ? [['mcp', 'MCP-серверы']] : []) as [Tab, string][]),
+    ['prompt', 'Промпт'],
+  ]
+  const current: Tab = tab === 'mcp' && !mcpOn ? 'skills' : tab
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -40,19 +50,13 @@ export function AiHub({ onClose }: { onClose: () => void }) {
         </header>
 
         <nav className="aihub-tabs" aria-label="Разделы AI-центра">
-          {(
-            [
-              ['skills', 'Скиллы'],
-              ['mcp', 'MCP-серверы'],
-              ['prompt', 'Промпт'],
-            ] as [Tab, string][]
-          ).map(([id, label]) => (
+          {shown.map(([id, label]) => (
             <button
               key={id}
               type="button"
-              className={`aihub-tab${tab === id ? ' is-on' : ''}`}
+              className={`aihub-tab${current === id ? ' is-on' : ''}`}
               onClick={() => setTab(id)}
-              aria-pressed={tab === id}
+              aria-pressed={current === id}
               data-testid={`ai-hub-tab-${id}`}
             >
               {label}
@@ -61,9 +65,9 @@ export function AiHub({ onClose }: { onClose: () => void }) {
         </nav>
 
         <div className="aihub-body">
-          {tab === 'skills' ? <SkillsTab /> : null}
-          {tab === 'mcp' ? <McpTab /> : null}
-          {tab === 'prompt' ? <PromptTab /> : null}
+          {current === 'skills' ? <SkillsTab /> : null}
+          {current === 'mcp' ? <McpTab /> : null}
+          {current === 'prompt' ? <PromptTab /> : null}
         </div>
       </aside>
     </div>
@@ -270,10 +274,15 @@ function McpTab() {
   if (!servers) return <p className="aihub-empty">Читаю ai/mcp…</p>
   return (
     <div className="aihub-stack">
+      <p className="mcp-mock" data-testid="mcp-mock-banner">
+        <IconAlertTri aria-hidden="true" />
+        Макет, не реальные данные: клиента MCP в сборке нет, соединение не устанавливается,
+        а «документы» придумывает скелет.
+      </p>
       <p className="aihub-note">
         MCP (Model Context Protocol) подключает внешние источники к модели. Конфиги лежат в{' '}
-        <span className="mono">ai/mcp/</span>. Notion пока работает как скелет: до реального токена
-        ответы имитируются.
+        <span className="mono">ai/mcp/</span> и настраиваются заранее — чтобы в день появления
+        клиента ничего не пришлось искать.
       </p>
       {servers.map((m) => (
         <McpCard key={m.id} server={m} />
@@ -297,7 +306,9 @@ function McpCard({ server }: { server: McpDto }) {
       <header className="mcp-head">
         <span className={`mcp-dot${m.enabled ? (m.host ? ' is-ok' : ' is-warn') : ''}`} aria-hidden="true" />
         <h3 className="mcp-name">{m.name}</h3>
-        <span className="badge">скелет</span>
+        <span className="badge badge-mock" data-testid={`mcp-badge-${m.id}`}>
+          макет
+        </span>
         <span className="grow" />
         <button
           type="button"
@@ -372,7 +383,7 @@ function McpCard({ server }: { server: McpDto }) {
               | null
             setMsg(
               r?.ok && r.doc
-                ? { ok: true, text: `Получен макет: «${r.doc.title}»` }
+                ? { ok: true, text: `Скелет вернул макет: «${r.doc.title}». Данные выдуманы.` }
                 : { ok: false, text: String(r?.error ?? 'Сервер не ответил.') },
             )
             setBusy(false)

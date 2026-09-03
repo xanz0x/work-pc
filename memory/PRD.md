@@ -1025,3 +1025,19 @@ UX-4 accessibility · LG-4/LG-5 · RM-3.
 - P2: RM-3 · скелет MCP как макет — единственная незакрытая задача волны.
 - P2: `region` и дублирующиеся landmark-и на экране настроек (axe, moderate).
 - P2: `06-storage-migration` — миграция при входе через `/login`.
+
+---
+
+## RM-3 · Скелет MCP помечен как макет (2026-06, сделано)
+
+- `app/ai-api/mcp/[id]/route.ts`: убраны выдуманная задержка и правдоподобная
+  ссылка на notion.so (теперь `mock://notion/<запрос>`), убрано поле `updated`.
+  Каждый ответ несёт `mock: true` и `notice: 'макет, не реальные данные'`.
+- `components/chat/tool-card.tsx`: жёлтая плашка «макет, не реальные данные»
+  перед результатом скилла; признак едет через `ExecResult.mock` → `ToolRun.mock`.
+- Флаг `mcp.skeleton` прячет вкладку «MCP-серверы» в AI-центре и выключает
+  скилл `notion_pull` (он честно сообщает модели, что источника нет).
+  Сервер не предлагает `notion_pull`, пока MCP-сервер выключен в `ai/mcp/`.
+- Тесты: `tests/unit/mcp-skeleton.test.ts`, `tests/e2e/19-mcp-skeleton.spec.ts`.
+
+**Волна 4 закрыта полностью.** `vitest` 193/193, `eslint` 0 ошибок.

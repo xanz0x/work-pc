@@ -28,6 +28,8 @@ export type ToolRun = {
   args: Record<string, unknown>
   status: 'run' | 'wait' | 'ok' | 'err' | 'deny'
   summary?: string
+  /** RM-3: результат пришёл из скелета — данные выдуманы, а не получены. */
+  mock?: boolean
   files?: { id: string; name: string }[]
 }
 

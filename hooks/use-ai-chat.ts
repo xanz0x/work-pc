@@ -17,6 +17,8 @@ export type ExecResult = {
   ok: boolean
   content: string
   summary: string
+  /** RM-3: ответ макетный — карточка скилла обязана сказать это вслух. */
+  mock?: boolean
   files?: { id: string; name: string; weight: number }[]
 }
 
@@ -237,6 +239,7 @@ export function useAiChat(
         }
         run.status = r.ok ? 'ok' : 'err'
         run.summary = r.summary
+        run.mock = r.mock === true
         if (c.name === 'save_password') run.args = { ...run.args, password: '•••' }
         if (r.files?.length) {
           run.files = r.files.map((f) => ({ id: f.id, name: f.name }))

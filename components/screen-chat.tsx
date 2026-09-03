@@ -39,6 +39,7 @@ import {
 import { useSecrets } from '@/lib/secrets-store'
 import { useRedacted } from '@/lib/redact-context'
 import { aiApi } from '@/lib/ai-client'
+import { isFlagOn } from '@/lib/flags'
 import { fileMeta, fileTags } from '@/lib/data'
 import { CHAT_SUGGESTIONS } from '@/lib/chat-data'
 import { logJournal } from '@/lib/journal'
@@ -245,9 +246,24 @@ export function ScreenChat() {
       }
 
       if (name === 'notion_pull') {
+        /* RM-3: скелет MCP спрятан за флагом. Пока флаг выключен, скилл не
+           притворяется работающим — он честно отвечает, что источника нет. */
+        if (!isFlagOn('mcp.skeleton')) {
+          return {
+            ok: false,
+            summary: 'скелет MCP выключен флагом',
+            content: JSON.stringify({
+              ok: false,
+              error:
+                'Каркас MCP выключен в настройках (флаг mcp.skeleton). Реального источника Notion нет — отвечай без него и не выдумывай содержимое документа.',
+            }),
+          }
+        }
         const r = (await aiApi
           .mcpAction('notion', { action: 'pull', query: String(args.query ?? '') })
-          .catch(() => null)) as { ok?: boolean; doc?: { title?: string }; error?: string } | null
+          .catch(() => null)) as
+          | { ok?: boolean; mock?: boolean; doc?: { title?: string }; error?: string }
+          | null
         if (!r) {
           return {
             ok: false,
@@ -256,11 +272,17 @@ export function ScreenChat() {
           }
         }
         if (!r.ok) {
-          return { ok: false, summary: String(r.error ?? 'ошибка MCP'), content: JSON.stringify(r) }
+          return {
+            ok: false,
+            mock: r.mock === true,
+            summary: String(r.error ?? 'ошибка MCP'),
+            content: JSON.stringify(r),
+          }
         }
         return {
           ok: true,
-          summary: `получен макет «${r.doc?.title ?? ''}» · скелет MCP`,
+          mock: r.mock === true,
+          summary: `макет «${r.doc?.title ?? ''}» · данные выдуманы скелетом`,
           content: JSON.stringify(r),
         }
       }

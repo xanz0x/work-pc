@@ -147,6 +147,9 @@ async function buildSystem(
   }
 
   const tools = enabled
+    /* RM-3: скилл, за которым стоит только скелет, не предлагаем модели,
+       пока MCP-сервер выключен: иначе она уверенно цитирует выдумку. */
+    .filter((s) => s.tool !== 'notion_pull' || notion?.enabled === true)
     .filter((s) => s.kind === 'tool' && s.tool && TOOL_SCHEMAS[s.tool])
     .map((s) => ({
       type: 'function',
