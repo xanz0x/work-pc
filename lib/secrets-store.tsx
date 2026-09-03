@@ -145,7 +145,10 @@ export type SecretsCtx = {
   copySecret: (value: string, target: ClipTarget, label: string) => Promise<void>
   clearClipboard: () => Promise<void>
 
-  applyImport: (preview: ImportPreview) => Promise<{ added: number; failed: number }>
+  /** LG-5: `repeated` — повтор той же операции, записи не дублировались. */
+  applyImport: (
+    preview: ImportPreview,
+  ) => Promise<{ added: number; failed: number; repeated: boolean }>
   exportPlain: (format: 'csv' | 'json') => Promise<string | null>
   exportEncrypted: (password: string) => Promise<string | null>
   importEncrypted: (password: string, text: string) => Promise<ImportPreview | null>
@@ -806,17 +809,34 @@ export function SecretsProvider({ children }: { children: ReactNode }) {
     [folders, ready, sealAll, setBox, setFolders, write],
   )
 
+  /**
+   * LG-5: импорт идемпотентен. Ключ операции — источник и состав файла,
+   * поэтому двойной клик по «Импортировать» (или второе окно) не заводит
+   * второй комплект записей: повтор честно возвращается как `repeated`.
+   */
   const applyImport = useCallback(
     async (preview: ImportPreview) => {
-      const res = await materialize(preview, false)
-      v.notify({
-        kind: 'ok',
-        cat: 'privacy',
-        icon: 'inbox',
-        title: 'Импорт в сейф секретов',
-        body: `${res.added} записей из «${preview.source}» зашифрованы локально${res.failed ? `, ${res.failed} не удалось` : ''}.`,
-      })
-      return res
+      const key = `secrets:import:${preview.source}:${preview.total}`
+      const run = await v.runExclusive(
+        key,
+        async () => {
+          const res = await materialize(preview, false)
+          v.notify({
+            kind: 'ok',
+            cat: 'privacy',
+            icon: 'inbox',
+            title: 'Импорт в сейф секретов',
+            body: `${res.added} записей из «${preview.source}» зашифрованы локально${res.failed ? `, ${res.failed} не удалось` : ''}.`,
+          })
+          return res
+        },
+        {
+          dedupMs: 15_000,
+          errorMessage: 'Импорт не прошёл. В сейф ничего не записано.',
+        },
+      )
+      if (run.ok) return { ...run.value, repeated: false }
+      return { added: 0, failed: 0, repeated: true }
     },
     [materialize, v],
   )

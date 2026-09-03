@@ -177,7 +177,11 @@ export function VaultIo({ onClose }: { onClose: () => void }) {
                     const res = await s.applyImport(preview)
                     setBusy(false)
                     setPreview(null)
-                    setMsg(`Импортировано ${res.added}${res.failed ? `, не удалось ${res.failed}` : ''}`)
+                    setMsg(
+                      res.repeated
+                        ? 'Этот импорт уже выполнен — записи не задваивались'
+                        : `Импортировано ${res.added}${res.failed ? `, не удалось ${res.failed}` : ''}`,
+                    )
                   }}
                 >
                   {busy ? 'Шифрую…' : `Импортировать ${preview.total}`}

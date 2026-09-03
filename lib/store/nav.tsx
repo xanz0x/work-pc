@@ -49,7 +49,7 @@ export type NavCtx = {
   openSecret: (id: string) => void
   openSession: (id: string) => void
   /** Открыть источник события и снять unread одним действием. */
-  openNotif: (id: string) => void
+  openNotif: (id: string, itemId?: string) => void
   /** Индекс сейфа секретов для глобального поиска (заполняет SecretsProvider). */
   secretIndex: SecretIndexItem[]
   setSecretIndex: (list: SecretIndexItem[]) => void
@@ -158,9 +158,12 @@ export function NavProvider({ children }: { children: ReactNode }) {
 
   /** Клик по телу уведомления: лента снимает unread, а куда вести — знает навигация. */
   const readNotif = N.readNotif
+  const readNotifItem = N.readNotifItem
   const openNotif = useCallback(
-    (id: string) => {
-      const n = readNotif(id)
+    (id: string, itemId?: string) => {
+      /* LG-4: клик по склеенному событию ведёт к его источнику и снимает
+         непрочитанность именно у него, а не у всей сводки. */
+      const n = itemId ? readNotifItem(id, itemId) : readNotif(id)
       if (!n) return
       const at = Date.now()
       const link = n.link
@@ -201,7 +204,7 @@ export function NavProvider({ children }: { children: ReactNode }) {
       setScreen('settings')
       setSettingFocus({ id: n.cat === 'privacy' ? 'privacy' : 'notifs', at })
     },
-    [readNotif],
+    [readNotif, readNotifItem],
   )
 
   /* ---------- поиск ---------- */

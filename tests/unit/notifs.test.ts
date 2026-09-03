@@ -3,7 +3,11 @@ import {
   NOTIF_ACTIVE_CAP,
   NOTIF_ARCHIVE_TTL,
   NOTIF_FILTERS,
+  digestTitle,
+  digestUnread,
+  isDigest,
   isVisible,
+  plural,
   parseNotifFilter,
   pruneNotifs,
   snoozedCount,
@@ -103,5 +107,53 @@ describe('UX-3 · счётчики и фильтр панели событий',
     expect(parseNotifFilter(null)).toBe('all')
     expect(parseNotifFilter(7)).toBe('all')
     expect(NOTIF_FILTERS).toHaveLength(6)
+  })
+})
+
+describe('LG-4 · сводка как контейнер', () => {
+  it('заголовок сводки склоняется по-русски', () => {
+    expect(digestTitle(1)).toBe('Сводка конвейера: 1 событие')
+    expect(digestTitle(3)).toBe('Сводка конвейера: 3 события')
+    expect(digestTitle(5)).toBe('Сводка конвейера: 5 событий')
+    expect(digestTitle(11)).toBe('Сводка конвейера: 11 событий')
+    expect(digestTitle(21)).toBe('Сводка конвейера: 21 событие')
+    expect(plural(0, ['файл', 'файла', 'файлов'])).toBe('файлов')
+  })
+
+  it('сводка остаётся новой, пока внутри есть непрочитанное', () => {
+    const items = [
+      { id: 'a', unread: false },
+      { id: 'b', unread: true },
+    ]
+    expect(digestUnread({ unread: false, items })).toBe(true)
+    expect(digestUnread({ unread: true, items: items.map((i) => ({ ...i, unread: false })) })).toBe(
+      false,
+    )
+    /* Пустой контейнер живёт своей пометкой: терять её нельзя. */
+    expect(digestUnread({ unread: true, items: [] })).toBe(true)
+    expect(digestUnread({ unread: false })).toBe(false)
+  })
+
+  it('сводка узнаётся по id — склеивать в чужую запись нельзя', () => {
+    expect(isDigest({ id: 'digest-abc' })).toBe(true)
+    expect(isDigest({ id: 'n-abc' })).toBe(false)
+  })
+
+  it('бейдж считает сводку один раз, а не по числу склеенных событий', () => {
+    const now = 1_000_000
+    const all = [
+      {
+        id: 'digest-1',
+        at: now,
+        cat: 'pipeline',
+        unread: true,
+        items: [
+          { id: 'i1', unread: true },
+          { id: 'i2', unread: true },
+        ],
+      },
+      { id: 'n-1', at: now - 1, cat: 'system', unread: false },
+    ]
+    expect(unreadCount(all, now)).toBe(1)
   })
 })

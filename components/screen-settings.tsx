@@ -24,6 +24,7 @@ import {
 } from './icons'
 import {
   useDataStore,
+  useMutations,
   useNavStore,
   useNotifsStore,
   useSettingsStore,
@@ -159,6 +160,8 @@ export function ScreenSettings() {
   const engine = useEngineStore()
   const idxs = useIndexSummary()
   const idxa = useIndexActions()
+  /* LG-5: переиндексация — мутация: двойной клик даёт один прогон. */
+  const M = useMutations()
   const d = S.draftSettings
   const [active, setActive] = useState('engine')
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -561,11 +564,15 @@ export function ScreenSettings() {
                   <button
                     className="btn btn-tertiary btn-sm"
                     data-testid="set-reindex"
-                    disabled={idxs.busy}
-                    onClick={D.reindexAll}
+                    disabled={idxs.busy || M.isPending('vault:reindex')}
+                    onClick={() =>
+                      void M.runExclusive('vault:reindex', () => D.reindexAll(), {
+                        errorMessage: 'Переиндексация не прошла. Прежний индекс на месте.',
+                      })
+                    }
                   >
                     <IconRefresh />
-                    Переиндексировать
+                    {M.isPending('vault:reindex') ? 'Идёт…' : 'Переиндексировать'}
                   </button>
                 </div>
                 <div className="sec-note">

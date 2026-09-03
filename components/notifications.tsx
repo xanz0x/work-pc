@@ -5,7 +5,7 @@ import { IconBell, IconCheck, IconClose, IconRefresh, iconOf } from './icons'
 import { useVault, useNow, type Notif, type NotifCat, type NotifKind } from '@/lib/vault-store'
 import { usePersistedState } from '@/hooks/use-persisted-state'
 import { useDialog, useListNav } from '@/hooks/use-dialog'
-import { isVisible, parseNotifFilter, snoozedCount, type NotifFilter } from '@/lib/notifs'
+import { isVisible, parseNotifFilter, plural, snoozedCount, type NotifFilter } from '@/lib/notifs'
 import { DAY } from '@/lib/notes'
 
 const KIND_LABEL: Record<NotifKind, string> = {
@@ -369,6 +369,7 @@ export function NotificationsBell() {
                         <span className="notif-kind">
                           {CAT_LABEL[n.cat].toLowerCase()} · {KIND_LABEL[n.kind]}
                           {n.merged ? ` · склеено ${n.merged}` : ''}
+                          {n.items?.some((it) => it.unread) ? ' · есть новые' : ''}
                         </span>
                       </button>
                       {n.items?.length ? (
@@ -381,14 +382,41 @@ export function NotificationsBell() {
                           >
                             {openDigest === n.id
                               ? 'Свернуть события'
-                              : `Показать ${n.items.length} ${n.items.length === 1 ? 'событие' : 'события'}`}
+                              : `Показать ${n.items.length} ${plural(n.items.length, ['событие', 'события', 'событий'])}`}
+                            {(() => {
+                              const fresh = n.items.filter((it) => it.unread).length
+                              return fresh > 0 ? <b className="num">{fresh}</b> : null
+                            })()}
                           </button>
                           {openDigest === n.id ? (
                             <ul className="notif-digest-list" data-testid={`notif-digest-list-${n.id}`}>
                               {n.items.map((it) => (
-                                <li key={it.id}>
-                                  <span className="notif-digest-title">{it.title}</span>
-                                  <span className="notif-digest-body">{it.body}</span>
+                                <li
+                                  key={it.id}
+                                  className={it.unread ? 'unread' : undefined}
+                                  data-testid={`notif-digest-item-${it.id}`}
+                                  data-unread={it.unread ? 'true' : 'false'}
+                                >
+                                  <button
+                                    type="button"
+                                    className="notif-digest-open"
+                                    data-nav-item=""
+                                    onClick={() => {
+                                      v.openNotif(n.id, it.id)
+                                      setOpen(false)
+                                    }}
+                                    title="Открыть источник склеенного события"
+                                    data-testid={`notif-digest-open-${it.id}`}
+                                  >
+                                    <span className="notif-digest-row">
+                                      <span className="notif-digest-title">{it.title}</span>
+                                      {it.unread ? (
+                                        <span className="notif-digest-new">новое</span>
+                                      ) : null}
+                                      <span className="notif-time num">{stamp(it.at, now)}</span>
+                                    </span>
+                                    <span className="notif-digest-body">{it.body}</span>
+                                  </button>
                                 </li>
                               ))}
                             </ul>
@@ -481,7 +509,7 @@ export function NotificationsBell() {
               {snoozed > 0
                 ? `Отложено: ${snoozed} — вернутся в ленту сами`
                 : mutedCats.length > 0
-                  ? `Выключено категорий: ${mutedCats.length}`
+                  ? `Выключено категорий: ${mutedCats.length} — новые события не придут, накопленные остаются`
                   : digestOn
                     ? 'Конвейер приходит одной сводкой'
                     : 'Уведомления не выходят за пределы устройства'}

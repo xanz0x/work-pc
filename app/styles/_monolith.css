@@ -14580,3 +14580,62 @@ body {
 .ncard .ttl.soon {
   animation: pulse-soft 2s ease-in-out infinite;
 }
+
+/* ============================================================
+   LG-4 · СВОДКА КАК КОНТЕЙНЕР
+   Склеенное событие — не строчка в тексте, а самостоятельная запись:
+   со своим временем, меткой «новое» и переходом к источнику.
+   ============================================================ */
+
+.notif-digest-list > li {
+  border-left: 2px solid transparent;
+  margin-left: -12px;
+  padding-left: 10px;
+}
+.notif-digest-list > li.unread {
+  border-left-color: var(--accent);
+}
+.notif-digest-open {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: var(--r);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+.notif-digest-open:hover {
+  background: var(--raise-1);
+}
+.notif-digest-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.notif-digest-row .notif-digest-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.notif-digest-new {
+  flex-shrink: 0;
+  padding: 0 5px;
+  border-radius: var(--r);
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  color: var(--accent);
+  font-family: var(--font-plex-mono), 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+@media (max-width: 768px) {
+  .notif-digest-row .notif-digest-title {
+    white-space: normal;
+  }
+}

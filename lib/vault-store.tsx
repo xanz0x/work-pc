@@ -66,6 +66,7 @@ export { useSettingsStore } from './store/settings'
 export { useNotifsStore } from './store/notifs'
 export { useEngineStore } from './store/engine'
 export { useToast } from './store/toast'
+export { useMutations } from './store/mutations'
 
 import { ClockProvider } from './store/clock'
 import { ToastProvider, useToast } from './store/toast'
@@ -75,6 +76,7 @@ import { DataProvider, useDataStore, type DemoView, type VaultStats } from './st
 import { LockProvider, useLockStore, type LockView } from './store/lock'
 import { EngineProvider, useEngineStore } from './store/engine'
 import { NavProvider, useNavStore } from './store/nav'
+import { MutationsProvider, useMutations, type MutationsCtx } from './store/mutations'
 import type { LockMethod } from './lock-store'
 
 export type VaultCtx = {
@@ -146,8 +148,9 @@ export type VaultCtx = {
   notify: (n: Omit<Notif, 'id' | 'at' | 'unread'>) => void
   markAllRead: () => void
   toggleRead: (id: string) => void
-  /** Открыть источник события и снять unread одним действием. */
-  openNotif: (id: string) => void
+  /** Открыть источник события и снять unread одним действием.
+   *  LG-4: со вторым аргументом открывает событие внутри сводки. */
+  openNotif: (id: string, itemId?: string) => void
   snoozeNotif: (id: string, ms: number) => void
   muteNotifCat: (cat: NotifCat) => void
   archiveNotif: (id: string) => void
@@ -214,6 +217,10 @@ export type VaultCtx = {
   toast: string | null
   flash: (msg: string) => void
 
+  /* LG-5: идемпотентность мутаций */
+  runExclusive: MutationsCtx['runExclusive']
+  isPending: (id: string) => boolean
+
   /* замок */
   lock: LockView
   lockEpoch: number
@@ -253,6 +260,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
   return (
     <ClockProvider>
       <ToastProvider>
+       <MutationsProvider>
         <SettingsProvider>
           <EngineProvider>
            <NotifsProvider>
@@ -266,6 +274,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
            </NotifsProvider>
           </EngineProvider>
         </SettingsProvider>
+       </MutationsProvider>
       </ToastProvider>
     </ClockProvider>
   )
@@ -278,6 +287,7 @@ function VaultFacade({ children }: { children: ReactNode }) {
   const D = useDataStore()
   const L = useLockStore()
   const E = useEngineStore()
+  const M = useMutations()
 
   const hydrated = D.ready && S.ready && N.ready
 
@@ -445,6 +455,10 @@ function VaultFacade({ children }: { children: ReactNode }) {
       toast,
       flash,
 
+      /* LG-5: одна мутация — один результат */
+      runExclusive: M.runExclusive,
+      isPending: M.isPending,
+
       /* замок */
       lock: L.lock,
       lockEpoch: L.lockEpoch,
@@ -458,7 +472,7 @@ function VaultFacade({ children }: { children: ReactNode }) {
       setAutoLock: L.setAutoLock,
       resetLock: L.resetLock,
     }),
-    [hydrated, D, S, N, L, E, NAV, toast, flash],
+    [hydrated, D, S, N, L, E, M, NAV, toast, flash],
   )
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

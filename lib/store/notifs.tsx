@@ -20,7 +20,7 @@ import {
 import type { IconId } from '@/components/icons'
 import { usePersistedState } from '@/hooks/use-persisted-state'
 import { engineOf, modelOf } from '@/lib/data'
-import { pruneNotifs, unreadCount } from '@/lib/notifs'
+import { digestTitle, digestUnread, isDigest, isVisible, pruneNotifs, unreadCount } from '@/lib/notifs'
 import { useCoarseTick } from './clock'
 import { useSettingsStore, type ToggleId } from './settings'
 import { useToast } from './toast'
@@ -54,6 +54,9 @@ export type Notif = {
   snoozedUntil?: number
 }
 
+/** Сколько событий помнит одна сводка. */
+const DIGEST_CAP = 50
+
 let seq = 0
 const uid = (p: string) => `${p}-${Date.now().toString(36)}-${seq++}`
 
@@ -71,6 +74,8 @@ export type NotifsCtx = {
   toggleRead: (id: string) => void
   /** Снять unread; куда вести — решает сейф (он знает про экраны). */
   readNotif: (id: string) => Notif | undefined
+  /** LG-4: прочитать одно склеенное событие внутри сводки. */
+  readNotifItem: (parentId: string, itemId: string) => Notif | undefined
   snoozeNotif: (id: string, ms: number) => void
   muteNotifCat: (cat: NotifCat) => void
   archiveNotif: (id: string) => void
@@ -114,31 +119,34 @@ export function NotifsProvider({ children }: { children: ReactNode }) {
 
       if (n.cat === 'pipeline' && t.ntfDigest) {
         setNotifs((all) => {
-          const i = all.findIndex((x) => x.id.startsWith('digest'))
           const item: Notif = { ...n, id: uid('n'), at: Date.now(), unread: true }
+          /* Склеиваем только в ЖИВУЮ сводку: убранная в архив или отложенная
+             забрала бы новые события с собой, и человек их не увидел бы. */
+          const i = all.findIndex((x) => isDigest(x) && isVisible(x))
           if (i >= 0) {
             const cur = all[i]
-            const items = [item, ...(cur.items ?? [])].slice(0, 50)
+            const items = [item, ...(cur.items ?? [])].slice(0, DIGEST_CAP)
             const next: Notif = {
               ...cur,
               at: Date.now(),
-              unread: true,
+              /* LG-4: unread контейнера — производная от состава, а не
+                 «всегда true»: прочитанные события внутри так и остаются
+                 прочитанными, а новое возвращает сводке статус «новое». */
+              unread: digestUnread({ unread: true, items }),
               body: n.body,
               merged: items.length,
               items,
-              title: `Сводка конвейера: ${items.length} ${
-                items.length === 1 ? 'событие' : 'события'
-              }`,
+              title: digestTitle(items.length),
             }
-            return [next, ...all.filter((_, k) => k !== i)]
+            return pruneNotifs([next, ...all.filter((_, k) => k !== i)])
           }
-          return [
+          return pruneNotifs([
             {
               id: `digest-${Date.now().toString(36)}`,
               kind: 'info',
               cat: 'pipeline',
               icon: 'inbox',
-              title: 'Сводка конвейера: 1 событие',
+              title: digestTitle(1),
               body: n.body,
               at: Date.now(),
               unread: true,
@@ -146,7 +154,7 @@ export function NotifsProvider({ children }: { children: ReactNode }) {
               items: [item],
             },
             ...all,
-          ]
+          ])
         })
         return
       }
@@ -241,7 +249,16 @@ export function NotifsProvider({ children }: { children: ReactNode }) {
 
   const toggleRead = useCallback(
     (id: string) =>
-      setNotifs((all) => all.map((n) => (n.id === id ? { ...n, unread: !n.unread } : n))),
+      setNotifs((all) =>
+        all.map((n) => {
+          if (n.id !== id) return n
+          const unread = !n.unread
+          /* LG-4: у сводки нет своей прочитанности — она у событий внутри.
+             Иначе «прочитано» на контейнере пряталo бы новые события. */
+          if (!n.items?.length) return { ...n, unread }
+          return { ...n, unread, items: n.items.map((it) => ({ ...it, unread })) }
+        }),
+      ),
     [setNotifs],
   )
 
@@ -249,8 +266,39 @@ export function NotifsProvider({ children }: { children: ReactNode }) {
     (id: string) => {
       const n = notifsRef.current.find((x) => x.id === id)
       if (!n) return undefined
-      setNotifs((all) => all.map((x) => (x.id === id ? { ...x, unread: false } : x)))
+      setNotifs((all) =>
+        all.map((x) =>
+          x.id === id
+            ? {
+                ...x,
+                unread: false,
+                items: x.items?.map((it) => ({ ...it, unread: false })),
+              }
+            : x,
+        ),
+      )
       return n
+    },
+    [setNotifs],
+  )
+
+  /**
+   * LG-4: событие внутри сводки читается отдельно. Контейнер остаётся новым,
+   * пока внутри есть непрочитанные, — счётчик не врёт и события не теряются.
+   */
+  const readNotifItem = useCallback(
+    (parentId: string, itemId: string) => {
+      const parent = notifsRef.current.find((x) => x.id === parentId)
+      const item = parent?.items?.find((it) => it.id === itemId)
+      if (!item) return undefined
+      setNotifs((all) =>
+        all.map((x) => {
+          if (x.id !== parentId || !x.items) return x
+          const items = x.items.map((it) => (it.id === itemId ? { ...it, unread: false } : it))
+          return { ...x, items, unread: digestUnread({ unread: false, items }) }
+        }),
+      )
+      return item
     },
     [setNotifs],
   )
@@ -293,7 +341,9 @@ export function NotifsProvider({ children }: { children: ReactNode }) {
         return
       }
       setToggle(key, false)
-      flash(`Категория «${cat === 'pipeline' ? 'Конвейер' : 'Приватность'}» выключена в настройках.`)
+      flash(
+        `Категория «${cat === 'pipeline' ? 'Конвейер' : 'Приватность'}» выключена: новые события не придут, накопленные остаются.`,
+      )
     },
     [flash, setToggle],
   )
@@ -339,6 +389,7 @@ export function NotifsProvider({ children }: { children: ReactNode }) {
       markAllRead,
       toggleRead,
       readNotif,
+      readNotifItem,
       snoozeNotif,
       muteNotifCat,
       archiveNotif,
@@ -352,7 +403,7 @@ export function NotifsProvider({ children }: { children: ReactNode }) {
     }),
     [
       archiveNotif, clearAllNotifs, clearRead, deleteNotif, markAllRead, markSeeded, muteNotifCat,
-      notifUndo, notifs, notify, purgeArchive, readNotif, ready, replaceNotifs, restoreNotif,
+      notifUndo, notifs, notify, purgeArchive, readNotif, readNotifItem, ready, replaceNotifs, restoreNotif,
       seeded, seededReady, snoozeNotif, toggleRead, undoNotifs, unread,
     ],
   )

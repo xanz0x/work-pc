@@ -28,6 +28,7 @@ import { useAiChat, type ExecResult, type TurnBody } from '@/hooks/use-ai-chat'
 import { EnginePanel } from '@/components/engine-panel'
 import {
   useDataStore,
+  useMutations,
   useEngineStore,
   useNavStore,
   useNotifsStore,
@@ -64,6 +65,8 @@ export function ScreenChat() {
   const NAV = useNavStore()
   const { notify } = useNotifsStore()
   const { flash } = useToast()
+  /* LG-5: скилл записи пароля — мутация: один вызов, один результат. */
+  const M = useMutations()
   const v = useMemo(
     () => ({ ...D, ...S, ...NAV, notify, flash, hydrated: D.ready && S.ready }),
     [D, S, NAV, notify, flash],
@@ -193,7 +196,28 @@ export function ScreenChat() {
           { name: 'Пароль', kind: 'password' as const, value: String(args.password ?? ''), secret: true },
           { name: 'Заметки', kind: 'multiline' as const, value: String(args.notes ?? ''), secret: false },
         ].filter((f) => f.value)
-        const problem = await secrets.createEntry('login', title, fields, { tags: ['ИИ'] })
+        /* LG-5: модель может прислать один и тот же скилл дважды за ход —
+           ключ операции считается по содержимому, поэтому в сейфе появится
+           одна запись, а не две одинаковых. */
+        const key = `skill:save_password:${title}:${String(args.url ?? '')}:${String(args.login ?? '')}`
+        const run = await M.runExclusive(
+          key,
+          () => secrets.createEntry('login', title, fields, { tags: ['ИИ'] }),
+          { dedupMs: 5 * 60_000 },
+        )
+        if (!run.ok) {
+          const already = run.reason !== 'error'
+          return {
+            ok: already,
+            summary: already ? `запись «${title}» уже сохранена` : 'сохранить не удалось',
+            content: JSON.stringify(
+              already
+                ? { ok: true, title, note: 'Запись уже создана в этом разговоре, дубль не нужен.' }
+                : { ok: false, error: 'Сейф не принял запись. Пусть пользователь повторит вручную.' },
+            ),
+          }
+        }
+        const problem = run.value
         if (problem) {
           return {
             ok: false,
@@ -247,7 +271,7 @@ export function ScreenChat() {
         content: JSON.stringify({ ok: false, error: `Скилл ${name} не реализован на устройстве.` }),
       }
     },
-    [v, secrets],
+    [M, v, secrets],
   )
 
   const ai = useAiChat(exec)

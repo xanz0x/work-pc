@@ -30,6 +30,7 @@ import { DAY, HOUR, TTL_OPTIONS, fmtLeft, fmtWhen, type Note } from '@/lib/notes
 import type { EdgeReason } from '@/lib/graph'
 import {
   useDataStore,
+  useMutations,
   useLockStore,
   useNavStore,
   useNotifsStore,
@@ -102,6 +103,9 @@ export function ScreenLibrary() {
   const NAV = useNavStore()
   const LK = useLockStore()
   const { flash } = useToast()
+  /* LG-5: приём файлов, подключение папки и переиндексация — мутации:
+     двойной клик по кнопке обязан дать один результат. */
+  const M = useMutations()
   const idxs = useIndexSummary()
   const idxa = useIndexActions()
   const now = useNow()
@@ -1169,29 +1173,46 @@ export function ScreenLibrary() {
                 <button
                   className="btn btn-ghost"
                   data-testid="idx-connect-folder"
-                  disabled={idxs.busy}
-                  onClick={() => void idxa.connectFolder()}
+                  disabled={idxs.busy || M.isPending('index:folder')}
+                  onClick={() =>
+                    void M.runExclusive('index:folder', () => idxa.connectFolder(), {
+                      errorMessage: 'Не удалось подключить папку. Индекс не изменился.',
+                    })
+                  }
                   title="Выбрать папку на диске и построить индекс по содержимому"
                 >
                   <IconGraph />
-                  {idxs.folder ? 'Сменить папку' : 'Подключить папку'}
+                  {M.isPending('index:folder')
+                    ? 'Подключаю…'
+                    : idxs.folder
+                      ? 'Сменить папку'
+                      : 'Подключить папку'}
                 </button>
               ) : null}
               {idxs.folder && idxs.folderMode === 'fsa' ? (
                 <button
                   className="btn btn-ghost"
                   data-testid="idx-reindex"
-                  disabled={idxs.busy}
-                  onClick={() => void idxa.reindex(false)}
+                  disabled={idxs.busy || M.isPending('index:reindex')}
+                  onClick={() =>
+                    void M.runExclusive('index:reindex', () => idxa.reindex(false), {
+                      errorMessage: 'Переиндексация не прошла. Прежний индекс на месте.',
+                    })
+                  }
                   title="Перечитать папку: изменённые файлы будут прочитаны заново"
                 >
                   <IconRefresh />
-                  Переиндексировать
+                  {M.isPending('index:reindex') ? 'Читаю…' : 'Переиндексировать'}
                 </button>
               ) : null}
-              <button className="btn btn-primary" onClick={() => fileInputRef.current?.click()}>
+              <button
+                className="btn btn-primary"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={M.isPending('index:files')}
+                data-testid="lib-add-file"
+              >
                 <IconPlus />
-                Добавить файл
+                {M.isPending('index:files') ? 'Принимаю…' : 'Добавить файл'}
               </button>
               <input
                 ref={fileInputRef}
@@ -1206,7 +1227,9 @@ export function ScreenLibrary() {
                   if (list.length > 0) {
                     setCat('all')
                     if (view === 'notes') setView('all')
-                    void idxa.indexFiles(list)
+                    void M.runExclusive('index:files', () => idxa.indexFiles(list), {
+                      errorMessage: 'Файлы не приняты. Сейф остался прежним.',
+                    })
                   }
                   e.target.value = ''
                 }}
