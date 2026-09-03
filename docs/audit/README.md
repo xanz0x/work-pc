@@ -1,11 +1,11 @@
 # Экспертный аудит продукта · июнь 2026
 
-[`WorkfloW-Audit-2026-06.pdf`](./WorkfloW-Audit-2026-06.pdf) — интерактивный отчёт
+[`WorkSpaceX-Audit-2026-06.pdf`](./WorkSpaceX-Audit-2026-06.pdf) — интерактивный отчёт
 на 31 страницу: 183 заполняемых поля (чекбоксы решений, комментарии, подпись),
 кликабельное оглавление.
 
 Та же копия лежит в `public/`, поэтому файл открывается прямо из приложения:
-`/WorkfloW-Audit-2026-06.pdf`.
+`/WorkSpaceX-Audit-2026-06.pdf`.
 
 ## Что внутри
 
@@ -24,8 +24,8 @@ prototype-driven development · production checklist · roadmap из 5 волн 
 
 ```bash
 pip install reportlab
-python3 scripts/build_audit_pdf.py            # → public/WorkfloW-Audit-2026-06.pdf
-cp public/WorkfloW-Audit-2026-06.pdf docs/audit/
+python3 scripts/build_audit_pdf.py            # → public/WorkSpaceX-Audit-2026-06.pdf
+cp public/WorkSpaceX-Audit-2026-06.pdf docs/audit/
 ```
 
 ## Статус решений

@@ -1,4 +1,4 @@
-# Тестовые доступы · WorkfloW
+# Тестовые доступы · WorkSpaceX
 
 ## Вход в приложение (P0-2, волна 1)
 - Страница входа: `/login`
@@ -104,3 +104,11 @@ APP_URL=http://localhost:3000 APP_PASSWORD=IceKrymTeam13@ node scripts/long-dial
 - Новые data-testid: `lock-cell-0..5` (экран блокировки),
   `settings-clear-index`, `settings-delete-vault`,
   `settings-delete-vault-confirm`, `settings-delete-vault-cancel`.
+
+## Итерация 24 (2026-06)
+- Продукт переименован в **WorkSpaceX**; пароль входа не менялся: `IceKrymTeam13@`.
+- Масштаб интерфейса живёт в `localStorage['wf.ui.scale']` (80–150). Сбросить:
+  `localStorage.removeItem('wf.ui.scale')` или кнопка `ui-scale-reset`.
+- Новые data-testid: `ui-scale-slider`, `ui-scale-minus`, `ui-scale-plus`,
+  `ui-scale-value`, `ui-scale-reset`, `ui-scale-preset-{80,100,125,150}`,
+  `app-splash` (сплэш холодного старта, уходит ≤3 с).

@@ -19,6 +19,8 @@ import { NumTicker } from './ui/num-ticker'
 import { StatusClock } from './ui/status-clock'
 import { ScreenLock } from './screen-lock'
 import { prefetchScreen } from './screens'
+import { AppSplash } from './app-splash'
+import { initScale, resetScale, stepScale } from '@/lib/ui-scale'
 import { JournalAlert } from './journal-alert'
 import { useEngineStore } from '@/lib/store/engine'
 import { useVault } from '@/lib/vault-store'
@@ -134,6 +136,27 @@ export function AppShell({ children }: { children: ReactNode }) {
    */
   const [ready, setReady] = useState(false)
   useEffect(() => setReady(true), [])
+
+  /* Масштаб интерфейса: значение уже применено bootstrap-скриптом, здесь
+     поднимаем его в модуль и вешаем горячие клавиши Ctrl +/− и Ctrl 0. */
+  useEffect(() => {
+    initScale()
+    function onKey(e: KeyboardEvent) {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey) return
+      if (e.key === '+' || e.key === '=' || e.code === 'Equal') {
+        e.preventDefault()
+        stepScale(1)
+      } else if (e.key === '-' || e.key === '_' || e.code === 'Minus') {
+        e.preventDefault()
+        stepScale(-1)
+      } else if (e.key === '0') {
+        e.preventDefault()
+        resetScale()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   useEffect(() => {
     try {
@@ -271,6 +294,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <>
+      <AppSplash done={ready && v.hydrated} />
       {v.lock.status === 'locked' && <ScreenLock />}
       <div
         className={`app${collapsed ? ' nav-collapsed' : ''}${v.lock.status === 'locked' ? ' lock-behind' : ''}`}
@@ -284,9 +308,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             </span>
             <span className="brand-words">
               <span className="logo-word">
-                WORKFLO<b>W</b>
+                WORKSPACE<b>X</b>
               </span>
-              <span className="logo-sub">local ai vault</span>
+              <span className="logo-sub">local ai workspace</span>
             </span>
             <button
               className="sidebar-toggle"

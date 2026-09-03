@@ -53,16 +53,30 @@ const LOADERS: Record<ScreenId, Loader> = {
     import('@/components/screen-activity').then((m) => ({ default: m.ScreenActivity })),
 }
 
-/** Заглушка на время загрузки чанка: тон и ритм статус-бара, без прыжка вёрстки. */
+/** Заглушка на время загрузки чанка: ритм экрана скелетоном, без прыжка вёрстки. */
 function ScreenLoading() {
   return (
     <div
       data-testid="screen-loading"
       role="status"
       aria-live="polite"
-      className="flex min-h-0 flex-1 items-center justify-center text-[11px] tracking-[0.18em] text-[var(--text-3)] uppercase"
+      aria-label="Загрузка экрана"
+      className="screen-sk"
     >
-      Загрузка экрана…
+      <div className="sk-head">
+        <span className="sk sk-title" />
+        <span className="sk sk-sub" />
+      </div>
+      <div className="sk-strip">
+        <span className="sk sk-chip" />
+        <span className="sk sk-chip" />
+        <span className="sk sk-chip" />
+      </div>
+      <div className="sk-grid">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <span key={i} className="sk sk-card" style={{ animationDelay: `${i * 70}ms` }} />
+        ))}
+      </div>
     </div>
   )
 }

@@ -299,7 +299,7 @@ export function importNativeJson(text: string, sourceName: string): ImportPrevie
   }
   const box = parsed as { kind?: unknown; entries?: unknown }
   if (box.kind !== 'workflow-secrets-plain' || !Array.isArray(box.entries)) {
-    return emptyPreview(sourceName, ['Это не снимок WorkfloW (kind ≠ workflow-secrets-plain)'])
+    return emptyPreview(sourceName, ['Это не снимок WorkSpaceX (kind ≠ workflow-secrets-plain)'])
   }
   const drafts: ImportDraft[] = []
   let skipped = 0

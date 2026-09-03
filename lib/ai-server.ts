@@ -144,7 +144,7 @@ export async function getSystemPrompt(): Promise<string> {
   try {
     return await fs.readFile(path.join(ROOT, 'system.md'), 'utf8')
   } catch {
-    return 'Ты — ИИ-ассистент хранилища WorkfloW. Отвечай по-русски, кратко.'
+    return 'Ты — ИИ-ассистент хранилища WorkSpaceX. Отвечай по-русски, кратко.'
   }
 }
 

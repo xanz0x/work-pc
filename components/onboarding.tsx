@@ -182,7 +182,7 @@ export function Onboarding() {
             <IconShield />
           </span>
           <span>
-            <h1>WorkfloW · первый запуск</h1>
+            <h1>WorkSpaceX · первый запуск</h1>
             <p>Три шага, после которых сейф защищён и знает, где ваши файлы.</p>
           </span>
           <span className="onb-steps" aria-hidden="true">

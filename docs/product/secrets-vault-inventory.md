@@ -2,7 +2,7 @@
 
 ---
 
-# Инвентаризация vault-core-arch (WorkfloW · local ai vault)
+# Инвентаризация vault-core-arch (WorkSpaceX · local ai vault)
 
 **Стек:** Next.js 16.3.3 / React 19 / TS strict / Tailwind v4 / pnpm. Одиночная страница (`app/page.tsx`), всё состояние в React Context. Ни одного бэкенда — только браузерные API.
 

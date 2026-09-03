@@ -1361,3 +1361,72 @@
     padding: 1px 4px;
   }
 }
+
+@layer wf048 {
+
+
+  /* Ползунок масштаба в настройках. */
+  .uis-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px 4px;
+  }
+  .uis-step {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+  }
+  .uis-step:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+  .uis-slider {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 22px;
+    appearance: none;
+    background: transparent;
+    cursor: ew-resize;
+  }
+  .uis-slider::-webkit-slider-runnable-track {
+    height: 2px;
+    background: var(--border-3);
+  }
+  .uis-slider::-moz-range-track {
+    height: 2px;
+    background: var(--border-3);
+  }
+  .uis-slider::-webkit-slider-thumb {
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    margin-top: -5px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--bg);
+    transition: transform 0.12s ease;
+  }
+  .uis-slider::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--bg);
+  }
+  .uis-slider:hover::-webkit-slider-thumb {
+    transform: scale(1.25);
+  }
+  .uis-presets {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 10px 16px 16px;
+  }
+  .uis-reset {
+    margin-left: auto;
+  }
+}

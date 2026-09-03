@@ -1,6 +1,6 @@
 # backend/ — намеренно пустой
 
-У WorkfloW нет отдельного backend-сервиса: вся серверная логика живёт в
+У WorkSpaceX нет отдельного backend-сервиса: вся серверная логика живёт в
 route handlers Next.js (`app/ai-api/*`, `app/proxy/*`), а данные — на устройстве
 пользователя (localStorage сейчас, IndexedDB по плану аудита).
 

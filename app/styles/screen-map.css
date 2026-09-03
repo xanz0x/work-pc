@@ -89,9 +89,6 @@
   .map-status:hover {
     border-color: var(--accent);
   }
-  .map-status.is-done {
-    animation: chip-done 0.35s ease-out both;
-  }
   .chip-progress {
     position: absolute;
     left: 0;
@@ -904,5 +901,35 @@
     background:
       radial-gradient(130% 110% at 42% 46%, transparent 34%, rgba(0, 0, 2, 0.9) 100%),
       linear-gradient(180deg, rgba(0, 0, 2, 0.7), transparent 24%, transparent 72%, rgba(0, 0, 2, 0.82));
+  }
+}
+
+@layer wf048 {
+
+
+  /* ============================================================
+     ИНСПЕКТОР КАРТЫ · ПЛАВНАЯ ПРОКРУТКА
+     Панель висит над канвасом, который перерисовывается каждый кадр.
+     Полупрозрачный фон заставлял браузер смешивать её с канвасом на
+     каждый шаг колеса. Теперь фон плотный, панель живёт своим слоем,
+     а прокрутка ограничена собственной областью отрисовки.
+     ============================================================ */
+  .map-space .node-inspector {
+    background: #080b12;
+  }
+  .node-inspector {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+  .ni-scroll {
+    contain: paint;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    will-change: scroll-position;
+  }
+  .ni-links,
+  .ni-trace,
+  .ni-section {
+    contain: content;
   }
 }

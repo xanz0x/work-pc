@@ -40,6 +40,8 @@ const BEAT_MS = 2400
 const BEAT_FAST_MS = 1000
 /* Космос: притухание и виньетка красятся в глубокий синий, а не в графит. */
 const BG = '6,9,16'
+/* Фон непрозрачного канваса — тот же тон, что у .map-space в CSS. */
+const MAP_BG = '#010204'
 
 /* ---------------- Таймлайн проигрывания поиска ----------------
    Один источник истины: и канвас, и лог инспектора читают фазу
@@ -207,7 +209,10 @@ export function ScreenMap() {
   useEffect(() => {
     const cv = canvasRef.current
     if (!cv) return
-    const ctx = cv.getContext('2d')
+    /* alpha: false — канвас непрозрачный и сам красит фон. Полупрозрачный
+       слой браузер смешивал с фоном страницы на каждый кадр; на карте это
+       был самый дорогой шаг композиции. */
+    const ctx = cv.getContext('2d', { alpha: false })
     if (!ctx) return
 
     const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -415,7 +420,7 @@ export function ScreenMap() {
         setInfo({
           id: '',
           kind: 'core',
-          name: 'WORKFLOW CORE',
+          name: 'WORKSPACEX CORE',
           meta: `Ядро индексации: держит ${spokes.length} магистралей к кластерам сейфа и отдаёт импульсы, пока работает модель.`,
           links: spokes.length,
           power: Math.round(60000 / (search && search.phase !== 'settled' ? BEAT_FAST_MS : BEAT_MS)),
@@ -447,7 +452,7 @@ export function ScreenMap() {
     }
 
     function resize() {
-      dpr = Math.min(devicePixelRatio || 1, 2)
+      dpr = Math.min(devicePixelRatio || 1, 1.5)
       const r = cv!.getBoundingClientRect()
       W = r.width
       H = r.height
@@ -582,7 +587,7 @@ export function ScreenMap() {
         cluster: -1,
         clusterId: null,
         core: true,
-        name: 'WORKFLOW CORE',
+        name: 'WORKSPACEX CORE',
         meta: 'Ядро индексации · связывает все кластеры',
         weight: 1,
         locked: false,
@@ -872,10 +877,24 @@ export function ScreenMap() {
     }
 
     let last = performance.now()
+    let drawCost = 8
+    let lastDraw = 0
     function tick(now: number) {
+      /* Сцена перерисовывается целиком, и на слабой видеоподсистеме кадр
+         не укладывается в 16 мс. Тогда карта честно идёт на 30 к/с: движение
+         остаётся плавным, а браузер перестаёт захлёбываться — прокрутка
+         панелей поверх карты снова живая. */
+      const budget = drawCost > 12 ? 30 : 15
+      if (now - lastDraw < budget) {
+        raf = requestAnimationFrame(tick)
+        return
+      }
+      lastDraw = now
+      const frameT0 = performance.now()
       const dt = Math.min(32, now - last)
       last = now
-      ctx!.clearRect(0, 0, W, H)
+      ctx!.fillStyle = MAP_BG
+      ctx!.fillRect(0, 0, W, H)
       place()
 
       if (!reduced) {
@@ -1222,6 +1241,7 @@ export function ScreenMap() {
         ctx!.fillText(text, bx + 8, by + 15)
       }
 
+      drawCost = drawCost * 0.85 + (performance.now() - frameT0) * 0.15
       raf = requestAnimationFrame(tick)
     }
 
@@ -1242,6 +1262,14 @@ export function ScreenMap() {
       cv!.style.cursor = 'grabbing'
     }
     const onMove = (e: MouseEvent) => {
+      /* Курсор над плавающей панелью (инспектор, легенда): читать геометрию
+         канваса на каждый шаг мыши незачем — getBoundingClientRect внутри
+         прокрутки панели заставлял браузер пересчитывать раскладку и давал
+         рывки. Карта в это время просто не подсвечивает узлы. */
+      if (!drag && e.target !== cv) {
+        hovered = null
+        return
+      }
       const sp = stagePos(e)
       if (drag) {
         const dx = sp.x - drag.x
@@ -1249,12 +1277,10 @@ export function ScreenMap() {
         if (Math.abs(dx) + Math.abs(dy) > 4) moved = true
         view.x = drag.vx + dx
         view.y = drag.vy + dy
-      } else if (e.target === cv) {
+      } else {
         hovered = pick(sp)
         if (hovered) lastInteract = performance.now()
         cv!.style.cursor = hovered ? 'pointer' : 'grab'
-      } else {
-        hovered = null
       }
     }
     const onUp = (e: MouseEvent) => {

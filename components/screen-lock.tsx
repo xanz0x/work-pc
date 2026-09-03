@@ -207,7 +207,7 @@ export function ScreenLock() {
 
           <LogoWord className="lock-logo" />
 
-          <p className="lock-tagline">local ai vault · сейф заблокирован</p>
+          <p className="lock-tagline">local ai workspace · сейф заблокирован</p>
         </div>
 
         <div className="lock-well">

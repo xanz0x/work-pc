@@ -17,9 +17,9 @@ const plexMono = IBM_Plex_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'WorkfloW · Локальное ИИ-хранилище',
+  title: 'WorkSpaceX · Локальное ИИ-пространство',
   description:
-    'Приватное локальное хранилище с ИИ-индексацией: библиотека файлов, карта памяти, чат с локальной моделью и настройки конвейера обработки.',
+    'Приватное локальное рабочее пространство с ИИ-индексацией: библиотека файлов, карта памяти, чат с локальной моделью и настройки конвейера обработки.',
   generator: 'v0.app',
 }
 
@@ -44,7 +44,7 @@ export default function RootLayout({
             чтобы первый кадр не мигнул открытым сейфом. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var c=JSON.parse(localStorage.getItem('wf.lock.config')||'null');if(c&&c.enabled)document.documentElement.classList.add('lock-pending')}catch(e){}`,
+            __html: `try{var c=JSON.parse(localStorage.getItem('wf.lock.config')||'null');if(c&&c.enabled)document.documentElement.classList.add('lock-pending')}catch(e){}try{var z=Number(localStorage.getItem('wf.ui.scale'));if(z>=80&&z<=150){document.documentElement.style.setProperty('--ui-zoom',String(z/100));document.documentElement.dataset.uiScale=String(z)}}catch(e){}`,
           }}
         />
       </head>

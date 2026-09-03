@@ -1,6 +1,6 @@
-# ПЛАН «МЕНЕДЖЕР СЕКРЕТОВ» ДЛЯ WORKFLOW — 52 пункта (исходник от другой ИИ, дословная выжимка)
+# ПЛАН «МЕНЕДЖЕР СЕКРЕТОВ» ДЛЯ WORKSPACEX — 52 пункта (исходник от другой ИИ, дословная выжимка)
 
-Идея: добавить в боковую панель WorkfloW полноценный менеджер паролей / seed-фраз / секретов
+Идея: добавить в боковую панель WorkSpaceX полноценный менеджер паролей / seed-фраз / секретов
 («Personal Security Vault»), профессиональный, защищённый, local-first, в стиле проекта.
 Копирование в буфер с автоочисткой (10 сек). Далее — все пункты плана.
 
@@ -107,7 +107,7 @@
 
 ## UI/UX
 
-51. **Стиль WorkfloW** — dark, minimal, technical, premium, dense but readable, зелёный акцент,
+51. **Стиль WorkSpaceX** — dark, minimal, technical, premium, dense but readable, зелёный акцент,
     тонкие бордеры, лёгкие glow-состояния; менеджер — родной модуль, не KeePass-клон.
 52. **Главный экран** — layout: слева категории (Favorites/All/Passwords/Passkeys/TOTP/Seed/
     API Keys/SSH/Cards/Notes...), сверху поиск + «+ New Secret», SECURITY SCORE, Recent,

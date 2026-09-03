@@ -90,6 +90,17 @@ export function IconMinus(p: P) {
   )
 }
 
+/** Масштаб интерфейса: рамка и стрелки роста по диагонали. */
+export function IconScale(p: P) {
+  return (
+    <svg {...base} {...p}>
+      <rect x="3.5" y="3.5" width="17" height="17" rx="1.5" />
+      <path d="M8 13v3h3M16 11V8h-3" />
+      <path d="m8 16 8-8" />
+    </svg>
+  )
+}
+
 export function IconTarget(p: P) {
   return (
     <svg {...base} {...p}>
@@ -650,20 +661,20 @@ export function IconDetails(p: P) {
 
 
 /**
- * Знак WorkfloW: волосяная рамка сейфа, внутри — литера «W»,
- * собранная как граф из пяти узлов и четырёх связей. Центральный
- * узел акцентный: это точка, в которой ИИ смыкает смыслы.
+ * Знак WorkSpaceX: волосяная рамка рабочего пространства, внутри — литера
+ * «X», собранная как граф из четырёх узлов и двух пересекающихся связей.
+ * Центральный узел акцентный: это точка, в которой ИИ смыкает смыслы.
  */
 export function IconLogoMark(p: P) {
   return (
     <svg viewBox="0 0 24 24" fill="none" {...p}>
       <rect className="lm-frame" x="2.25" y="2.25" width="19.5" height="19.5" rx="1" />
-      <path className="lm-edge" d="M6.4 8.2 9.6 15.4 12 10.6 14.4 15.4 17.6 8.2" />
-      <circle className="lm-node" cx="6.4" cy="8.2" r="1.25" />
-      <circle className="lm-node" cx="9.6" cy="15.4" r="1.25" />
-      <circle className="lm-node" cx="14.4" cy="15.4" r="1.25" />
-      <circle className="lm-node" cx="17.6" cy="8.2" r="1.25" />
-      <circle className="lm-core" cx="12" cy="10.6" r="1.7" />
+      <path className="lm-edge" d="M7 7 17 17M17 7 7 17" />
+      <circle className="lm-node" cx="7" cy="7" r="1.25" />
+      <circle className="lm-node" cx="17" cy="7" r="1.25" />
+      <circle className="lm-node" cx="7" cy="17" r="1.25" />
+      <circle className="lm-node" cx="17" cy="17" r="1.25" />
+      <circle className="lm-core" cx="12" cy="12" r="1.9" />
     </svg>
   )
 }

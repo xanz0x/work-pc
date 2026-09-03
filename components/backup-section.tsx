@@ -160,7 +160,7 @@ export function BackupSection() {
     const text = await file.text()
     const parsed = parseSnapshotFile(text)
     if (!parsed) {
-      setErr('Это не файл снимка WorkfloW (.vaultbak).')
+      setErr('Это не файл снимка WorkSpaceX (.vaultbak).')
       return
     }
     setReport(null)

@@ -1048,15 +1048,14 @@ export function SecretsProvider({ children }: { children: ReactNode }) {
       const domain = domainOf(e)
       if (!domain) return
       try {
-        /* Наружу уходит ТОЛЬКО домен. Сначала свой origin (/proxy/favicon —
-           не режется адблоком, CORS и ингрессом), затем прямой Google S2.
-           Картинка сохраняется в сейф как b64, в DOM нет внешних src. */
-        let res = await fetch(`/proxy/favicon?domain=${encodeURIComponent(domain)}`).catch(() => null)
-        if (!res || !res.ok)
-          res = await fetch(
-            `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(domain)}`,
-          )
-        if (!res.ok) return
+        /* Наружу ходит только свой origin: /proxy/favicon сам сходит к Google
+           и вернёт картинку. Прямого запроса из браузера нет — домен записи
+           не попадает в чужой лог с реферером страницы, а адблок и CORS не
+           мешают. Картинка сохраняется в сейф как b64, в DOM внешних src нет. */
+        const res = await fetch(`/proxy/favicon?domain=${encodeURIComponent(domain)}`).catch(
+          () => null,
+        )
+        if (!res || !res.ok) return
         const blob = await res.blob()
         if (blob.size > 64 * 1024) return
         const b64 = await new Promise<string>((resolve, reject) => {

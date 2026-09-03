@@ -43,7 +43,7 @@ SCREEN_FILES = {
     'chat': ['components/screen-chat.tsx', 'components/chat'],
     'settings': ['components/screen-settings.tsx', 'components/security-section.tsx',
                  'components/secrets-section.tsx', 'components/journal-panel.tsx',
-                 'components/flags-section.tsx'],
+                 'components/flags-section.tsx', 'components/ui-scale-section.tsx'],
     'vault': ['components/screen-vault.tsx', 'components/vault'],
     'activity': ['components/screen-activity.tsx'],
 }
@@ -55,7 +55,7 @@ SHELL_FILES = [
     'components/storage-alert.tsx', 'components/screen-boundary.tsx',
     'components/icons.tsx', 'components/ui', 'app/layout.tsx', 'app/(app)',
     'app/login', 'app/error.tsx', 'app/global-error.tsx', 'app/not-found.tsx',
-    'app/loading.tsx', 'components/screens.tsx',
+    'app/loading.tsx', 'components/screens.tsx', 'components/app-splash.tsx',
 ]
 
 HEAD_IMPORT = "@import 'tailwindcss';"

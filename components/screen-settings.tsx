@@ -15,6 +15,7 @@ import {
   IconMemory,
   IconPipeline,
   IconRefresh,
+  IconScale,
   IconShield,
   IconSparkText,
   IconTag,
@@ -39,6 +40,7 @@ import { SecretsSection } from './secrets-section'
 import { BackupSection } from './backup-section'
 import { FlagsSection } from './flags-section'
 import { JournalPanel } from './journal-panel'
+import { UiScaleSection } from './ui-scale-section'
 
 type Ico = ComponentType<SVGProps<SVGSVGElement>>
 
@@ -98,6 +100,7 @@ const PRIVACY_TOGGLES: { id: ToggleId; title: string; note: string }[] = [
 
 const SECTIONS: { id: string; label: string; Icon: Ico }[] = [
   { id: 'engine', label: 'Движок ИИ', Icon: IconChipAi },
+  { id: 'ui', label: 'Интерфейс', Icon: IconScale },
   { id: 'pipeline', label: 'Конвейер', Icon: IconPipeline },
   { id: 'notify', label: 'Уведомления', Icon: IconBell },
   { id: 'storage', label: 'Хранилище', Icon: IconDatabase },
@@ -112,6 +115,9 @@ const SECTIONS: { id: string; label: string; Icon: Ico }[] = [
 /** Записи поиска зовут разделы своими именами — переводим их в id секций. */
 const FOCUS_ALIAS: Record<string, string> = {
   engine: 'engine',
+  ui: 'ui',
+  scale: 'ui',
+  interface: 'ui',
   index: 'pipeline',
   pipeline: 'pipeline',
   notifs: 'notify',
@@ -446,6 +452,9 @@ export function ScreenSettings() {
                 </div>
               )}
             </section>
+
+            <UiScaleSection />
+
 
             <section className="sec panel" id="set-pipeline">
               <div className="sec-head">

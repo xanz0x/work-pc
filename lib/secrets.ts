@@ -394,7 +394,11 @@ export function domainOf(entry: SecretRecord): string | null {
   if (!raw) return null
   try {
     const url = new URL(raw.includes('://') ? raw : `https://${raw}`)
-    return url.hostname.replace(/^www\./, '')
+    const host = url.hostname.replace(/^www\./, '')
+    /* Только настоящее доменное имя: «val0» или «мой пароль» URL-парсер
+       проглатывает, и черновик поля утекал бы в запрос иконки. */
+    if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(host)) return null
+    return host
   } catch {
     return null
   }
