@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { IconBell, IconCheck, IconClose, IconRefresh, iconOf } from './icons'
 import { useVault, useNow, type Notif, type NotifCat, type NotifKind } from '@/lib/vault-store'
+import { usePersistedState } from '@/hooks/use-persisted-state'
+import { isVisible, parseNotifFilter, snoozedCount, type NotifFilter } from '@/lib/notifs'
 import { DAY } from '@/lib/notes'
 
 const KIND_LABEL: Record<NotifKind, string> = {
@@ -26,15 +28,18 @@ const CAT_TOGGLE = {
 } as const
 
 /** Одна ось фильтрации вместо вкладок + отдельного тумблера «только новые». */
-type Filter = 'all' | 'unread' | NotifCat | 'archive'
+type Filter = NotifFilter
 
-const FILTERS: { id: Filter; label: string }[] = [
-  { id: 'all', label: 'Все' },
-  { id: 'unread', label: 'Новые' },
-  { id: 'pipeline', label: 'Конвейер' },
-  { id: 'privacy', label: 'Приватность' },
-  { id: 'system', label: 'Система' },
-  { id: 'archive', label: 'Архив' },
+/** Ключ выбранного фильтра: мелочь, живёт в localStorage (UX-3). */
+const FILTER_KEY = 'wf.notifs.filter'
+
+const FILTERS: { id: Filter; label: string; short: string }[] = [
+  { id: 'all', label: 'Все', short: 'Все' },
+  { id: 'unread', label: 'Новые', short: 'Новые' },
+  { id: 'pipeline', label: 'Конвейер', short: 'Конв.' },
+  { id: 'privacy', label: 'Приватность', short: 'Прив.' },
+  { id: 'system', label: 'Система', short: 'Сист.' },
+  { id: 'archive', label: 'Архив', short: 'Архив' },
 ]
 
 /** Сколько живёт возможность отменить последнее действие. */
@@ -77,7 +82,14 @@ function dayLabel(at: number, now: number): string {
 export function NotificationsBell() {
   const v = useVault()
   const [open, setOpen] = useState(false)
-  const [filter, setFilter] = useState<Filter>('all')
+  /* UX-3: выбранный фильтр переживает закрытие панели и перезагрузку. */
+  const [storedFilter, setStoredFilter] = usePersistedState<Filter>(
+    FILTER_KEY,
+    'all',
+    (_prev, local) => local,
+  )
+  const filter = parseNotifFilter(storedFilter)
+  const setFilter = setStoredFilter
   const [limit, setLimit] = useState(PAGE)
   /** Раскрытая сводка: показываем склеенные события списком. */
   const [openDigest, setOpenDigest] = useState<string | null>(null)
@@ -110,11 +122,9 @@ export function NotificationsBell() {
     if (open) setLimit(PAGE)
   }, [open, filter])
 
-  const active = useMemo(
-    () => items.filter((n) => !n.archived && !(n.snoozedUntil && n.snoozedUntil > now)),
-    [items, now],
-  )
+  const active = useMemo(() => items.filter((n) => isVisible(n, now)), [items, now])
   const archived = useMemo(() => items.filter((n) => n.archived), [items])
+  const snoozed = useMemo(() => snoozedCount(items, now), [items, now])
 
   /** Счётчик на чипе — непрочитанные, кроме архива (там всего записей). */
   const counts = useMemo(() => {
@@ -265,10 +275,19 @@ export function NotificationsBell() {
                   }
                   data-testid={`notif-filter-${f.id}`}
                 >
-                  {f.label}
+                  <span className="notif-tab-full">{f.label}</span>
+                  <span className="notif-tab-short" aria-hidden="true">
+                    {f.short}
+                  </span>
                   {counts[f.id] > 0 && <b className="num">{counts[f.id]}</b>}
                   {off && (
-                    <i className="notif-off" aria-hidden="true" title="категория выключена" />
+                    <span
+                      className="notif-off"
+                      role="img"
+                      aria-label={`${f.label}: категория выключена в настройках`}
+                      title="Категория выключена в настройках: новые события не приходят, накопленные остаются"
+                      data-testid={`notif-off-${f.id}`}
+                    />
                   )}
                 </button>
               )
@@ -444,12 +463,14 @@ export function NotificationsBell() {
           </div>
 
           <div className="notif-foot">
-            <span className="notif-foot-note">
-              {mutedCats.length > 0
-                ? `Выключено категорий: ${mutedCats.length}`
-                : digestOn
-                  ? 'Конвейер приходит одной сводкой'
-                  : 'Уведомления не выходят за пределы устройства'}
+            <span className="notif-foot-note" data-testid="notif-foot-note">
+              {snoozed > 0
+                ? `Отложено: ${snoozed} — вернутся в ленту сами`
+                : mutedCats.length > 0
+                  ? `Выключено категорий: ${mutedCats.length}`
+                  : digestOn
+                    ? 'Конвейер приходит одной сводкой'
+                    : 'Уведомления не выходят за пределы устройства'}
             </span>
             {!inArchive && (
               <span className="notif-foot-hint mono">архив хранится 30 дней</span>

@@ -20,7 +20,8 @@ import {
 import type { IconId } from '@/components/icons'
 import { usePersistedState } from '@/hooks/use-persisted-state'
 import { engineOf, modelOf } from '@/lib/data'
-import { pruneNotifs } from '@/lib/notifs'
+import { pruneNotifs, unreadCount } from '@/lib/notifs'
+import { useCoarseTick } from './clock'
 import { useSettingsStore, type ToggleId } from './settings'
 import { useToast } from './toast'
 
@@ -87,6 +88,8 @@ const Ctx = createContext<NotifsCtx | null>(null)
 export function NotifsProvider({ children }: { children: ReactNode }) {
   const { flash } = useToast()
   const { settings, setToggle } = useSettingsStore()
+  /* Отложенные возвращаются в ленту сами: грубый тик двигает и бейдж. */
+  const tick = useCoarseTick(5000)
   const [notifs, setNotifs, ready] = usePersistedState<Notif[]>('wf.notifs.v1', [])
   const [seeded, setSeeded, seededReady] = usePersistedState<boolean>('wf.notifs.seeded.v1', false)
   const [notifUndo, setNotifUndo] = useState<{ label: string; at: number } | null>(null)
@@ -316,7 +319,12 @@ export function NotifsProvider({ children }: { children: ReactNode }) {
   const replaceNotifs = useCallback((list: Notif[]) => setNotifs(list), [setNotifs])
   const markSeeded = useCallback(() => setSeeded(true), [setSeeded])
 
-  const unread = useMemo(() => notifs.filter((n) => n.unread && !n.archived).length, [notifs])
+  /* До первого тика часов клиента нет: считаем, что отложенных нет —
+     иначе первая отрисовка занизила бы бейдж и разошлась с SSR. */
+  const unread = useMemo(
+    () => unreadCount(notifs, tick === 0 ? Number.POSITIVE_INFINITY : tick),
+    [notifs, tick],
+  )
 
   const value = useMemo<NotifsCtx>(
     () => ({

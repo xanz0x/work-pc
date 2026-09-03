@@ -6370,3 +6370,62 @@
     margin-left: auto;
   }
 }
+
+/* ------------------------------------------------------------
+   UX-3 · ПАНЕЛЬ СОБЫТИЙ: компактный вид и метка выключенной категории
+   ------------------------------------------------------------ */
+.notif-tab-short {
+  display: none;
+}
+.notif-tab .notif-off {
+  cursor: help;
+}
+@media (max-width: 420px) {
+  /* Панель шире, чем остаток строки справа от колокольчика, поэтому на
+     узком экране она крепится к самому экрану, а не к кнопке. */
+  .notif-panel {
+    position: fixed;
+    top: 62px;
+    left: 8px;
+    right: 8px;
+    width: auto;
+    max-width: none;
+  }
+  /* Компактный вид: короткие подписи фильтров в одну строку без переноса. */
+  .notif-tab-full {
+    display: none;
+  }
+  .notif-tab-short {
+    display: inline;
+  }
+  .notif-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 6px 6px 7px;
+    gap: 3px;
+    scrollbar-width: none;
+  }
+  .notif-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .notif-tab {
+    flex: 0 0 auto;
+    padding: 0 7px;
+    gap: 4px;
+  }
+  .notif-bar {
+    gap: 10px;
+    padding: 7px 10px;
+    font-size: 11px;
+  }
+  .notif-list {
+    max-height: 60vh;
+  }
+  .notif-foot-hint {
+    display: none;
+  }
+  .notif-extra {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+}
