@@ -24,7 +24,6 @@ import { usePersistedState } from '@/hooks/use-persisted-state'
 import type { IndexedRecord } from '@/lib/indexer/types'
 import type { Session } from '@/components/chat/types'
 import {
-  VAULT_FILES,
   VAULT_QUOTA,
   classify,
   clusterMix,
@@ -40,7 +39,7 @@ import {
   type VaultFile,
 } from '../data'
 import { buildGraph, clusterLoad, neighborsOf, type Graph } from '../graph'
-import { isAlive, seedNotes, type Note } from '../notes'
+import { isAlive, type Note } from '../notes'
 import { logJournal } from '../journal'
 import { useCoarseTick } from './clock'
 import { useNotifsStore } from './notifs'
@@ -87,6 +86,33 @@ export type VaultStats = {
   indexedAgo: string
 }
 
+/* ---------- UX-5: демо-режим ----------
+   Показательный корпус живёт отдельным модулем (lib/demo-seed.ts) и
+   грузится динамическим import() только тогда, когда сейф пуст и демо
+   ещё не отключали. Отметка о посеве и отказе — в localStorage. */
+
+const DEMO_KEY = 'wf.demo.v1'
+
+type DemoState = {
+  /** Демо уже сеяли: второй раз не подмешиваем даже в пустой сейф. */
+  seeded: boolean
+  /** Человек нажал «Начать с чистого сейфа». */
+  dismissed: boolean
+}
+
+const DEMO_OFF: DemoState = { seeded: false, dismissed: false }
+
+export type DemoView = {
+  /** В сейфе прямо сейчас лежат демо-объекты. */
+  active: boolean
+  /** Сколько демо-объектов: файлы + стикеры + разговоры. */
+  count: number
+  files: number
+  notes: number
+  sessions: number
+  dismissed: boolean
+}
+
 export type DataCtx = {
   /** Корпус, стикеры и разговоры прочитаны из хранилища. */
   ready: boolean
@@ -113,6 +139,10 @@ export type DataCtx = {
   reindexAll: () => void
   clearIndex: () => void
   wipeVault: () => void
+  /** UX-5: состояние демо-режима — баннер и плашки читают его. */
+  demo: DemoView
+  /** UX-5: убрать демо-объекты, не трогая пользовательские. */
+  clearDemo: () => void
 
   notes: Note[]
   liveNotes: Note[]
@@ -152,7 +182,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   /** Состав живых стикеров пересчитываем раз в пять секунд, а не каждую. */
   const tick = useCoarseTick(5000)
 
-  const [files, setFiles, filesReady] = usePersistedState<VaultFile[]>('wf.files.v1', VAULT_FILES)
+  const [files, setFiles, filesReady] = usePersistedState<VaultFile[]>('wf.files.v1', [])
   const [notes, setNotes, notesReady] = usePersistedState<Note[]>('wf.notes.v1', [])
   const [sessions, setSessions, chatReady] = usePersistedState<Session[]>('wf.chat.v1', [])
   const [activeSessionId, setActiveSessionId] = usePersistedState<string | null>(
@@ -175,12 +205,85 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [setNotes],
   )
 
-  /** Стикеры первого запуска. */
+  /** UX-5: демо-объекты первого запуска — отдельным модулем и одним решением. */
+  const [demoState, setDemoState, demoReady] = usePersistedState<DemoState>(
+    DEMO_KEY,
+    DEMO_OFF,
+    (_prev, local) => local,
+  )
+  const filesRef = useRef(files)
+  filesRef.current = files
+  const sessionsRef = useRef(sessions)
+  sessionsRef.current = sessions
+
   useEffect(() => {
-    if (!notesReady) return
-    if (notesRef.current.length === 0) setNotes(seedNotes(Date.now()))
+    if (!demoReady || !filesReady || !notesReady || !chatReady) return
+    if (demoState.seeded || demoState.dismissed) return
+    /* В сейфе уже что-то лежит: это данные человека — демо к ним не мешаем.
+       Но профиль мог приехать со старой сборки, где демо-объекты лежали
+       без метки: помечаем их по id, иначе «Начать с чистого сейфа» не
+       найдёт, что именно убирать. */
+    if (filesRef.current.length > 0 || notesRef.current.length > 0) {
+      let alive2 = true
+      void import('../demo-seed').then(({ DEMO_FILES, demoNotes, demoSession }) => {
+        if (!alive2) return
+        const fileIds = new Set(DEMO_FILES.map((f) => f.id))
+        const noteIds = new Set(demoNotes(0).map((n) => n.id))
+        const sessionId = demoSession(0, 0).id
+        const hasDemo =
+          filesRef.current.some((f) => fileIds.has(f.id)) ||
+          notesRef.current.some((n) => noteIds.has(n.id))
+        if (hasDemo) {
+          setFiles((all) => all.map((f) => (fileIds.has(f.id) ? { ...f, demo: true } : f)))
+          setNotes((all) => all.map((n) => (noteIds.has(n.id) ? { ...n, demo: true } : n)))
+          setSessions((all) => all.map((s) => (s.id === sessionId ? { ...s, demo: true } : s)))
+        }
+        setDemoState({ seeded: true, dismissed: !hasDemo })
+      })
+      return () => {
+        alive2 = false
+      }
+    }
+    let alive = true
+    void import('../demo-seed').then(({ DEMO_FILES, demoNotes, demoSession }) => {
+      if (!alive) return
+      const t0 = Date.now()
+      setFiles((all) => (all.length > 0 ? all : DEMO_FILES))
+      setNotes((all) => (all.length > 0 ? all : demoNotes(t0)))
+      setSessions((all) => (all.length > 0 ? all : [demoSession(t0, DEMO_FILES.length)]))
+      setDemoState({ seeded: true, dismissed: false })
+    })
+    return () => {
+      alive = false
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [notesReady])
+  }, [demoReady, filesReady, notesReady, chatReady, demoState.seeded, demoState.dismissed])
+
+  const demo = useMemo<DemoView>(() => {
+    const df = files.filter((f) => f.demo).length
+    const dn = notes.filter((n) => n.demo).length
+    const ds = sessions.filter((s) => s.demo).length
+    return {
+      active: df + dn + ds > 0,
+      count: df + dn + ds,
+      files: df,
+      notes: dn,
+      sessions: ds,
+      dismissed: demoState.dismissed,
+    }
+  }, [files, notes, sessions, demoState.dismissed])
+
+  /** «Начать с чистого сейфа»: уходит только демо, пользовательское остаётся. */
+  const clearDemo = useCallback(() => {
+    setFiles((all) => all.filter((f) => !f.demo))
+    setNotes((all) => all.filter((n) => !n.demo))
+    setSessions((all) => all.filter((s) => !s.demo))
+    setActiveSessionId((cur) =>
+      cur && sessionsRef.current.some((s) => s.id === cur && s.demo) ? null : cur,
+    )
+    setDemoState({ seeded: true, dismissed: true })
+    flash('Демо-данные убраны. В сейфе остались только ваши объекты.')
+  }, [flash, setActiveSessionId, setDemoState, setFiles, setNotes, setSessions])
 
   /* ---------- корпус ---------- */
 
@@ -605,6 +708,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       reindexAll,
       clearIndex,
       wipeVault,
+      demo,
+      clearDemo,
       notes,
       liveNotes,
       notesFor,
@@ -633,7 +738,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [
       ready, files, views, fileById, viewById, addFiles, applyIndexed, setIndexing, dropIndexed,
       setReindexHandler, removeFile, retagFile, bulkPatchFiles, bulkRemoveFiles, restoreFiles,
-      bulkPatchNotes, reindexAll, clearIndex, wipeVault, notes,
+      bulkPatchNotes, reindexAll, clearIndex, wipeVault, demo, clearDemo, notes,
       liveNotes, notesFor, addNote, patchNote, burnNote, extendNote, patchNoteSecret, sessions,
       activeSessionId, setActiveSessionId, addSession, patchSession, removeSession, drafts,
       setDraft, scrolls, setScroll, graph, clusters, mix, neighbors, stats,

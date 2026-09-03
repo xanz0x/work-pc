@@ -12,6 +12,7 @@ import { IconClose, IconRefresh, IconWifi } from '@/components/icons'
 import { useSecrets } from '@/lib/secrets-store'
 import type { SecretRecord } from '@/lib/secrets'
 import { qrMatrix, wifiPayload } from '@/lib/qr'
+import { useDialog } from '@/hooks/use-dialog'
 
 const SHOW_SECONDS = 45
 
@@ -78,6 +79,8 @@ export function WifiQr({ entry, onClose }: { entry: SecretRecord; onClose: () =>
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, nonce])
 
+  const { dialogProps } = useDialog<HTMLDivElement>({ onClose, label: 'QR-код Wi-Fi' })
+
   const size = grid?.length ?? 0
   const quiet = 4
   const total = size + quiet * 2
@@ -86,9 +89,7 @@ export function WifiQr({ entry, onClose }: { entry: SecretRecord; onClose: () =>
     <div className="vt-modal-back" role="presentation" onPointerDown={onClose}>
       <div
         className="vt-modal panel vt-qr"
-        role="dialog"
-        aria-modal="true"
-        aria-label="QR-код Wi-Fi"
+        {...dialogProps}
         onPointerDown={(e) => e.stopPropagation()}
         data-testid="wifi-qr-modal"
       >

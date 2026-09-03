@@ -66,6 +66,9 @@ export function Dropdown({
   const rootRef = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const listId = useId()
+  /* UX-4: скринридер обязан слышать, на каком пункте курсор — иначе список
+     «молчит» при стрелочной навигации, потому что фокус остаётся на триггере. */
+  const optionId = (i: number) => `${listId}-opt-${i}`
 
   const selectedIndex = Math.max(
     0,
@@ -161,6 +164,8 @@ export function Dropdown({
         className={`dd-trigger dd-${variant}`}
         aria-haspopup="listbox"
         aria-expanded={open}
+        aria-controls={open ? listId : undefined}
+        aria-activedescendant={open ? optionId(active) : undefined}
         aria-label={label}
         onClick={() => (open ? setOpen(false) : openMenu())}
         onKeyDown={onKeyDown}
@@ -193,7 +198,9 @@ export function Dropdown({
                   <button
                     type="button"
                     role="option"
+                    id={optionId(index)}
                     aria-selected={option.value === value}
+                    tabIndex={-1}
                     disabled={option.disabled}
                     className={`dd-item${option.value === value ? ' sel' : ''}${
                       index === active ? ' cursor' : ''

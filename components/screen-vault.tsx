@@ -340,7 +340,7 @@ export function ScreenVault() {
   }
 
   return (
-    <div className="vt" data-testid="screen-vault">
+    <div className="vt" role="main" data-testid="screen-vault">
       <VaultNav
         view={view}
         setView={(next) => {

@@ -28,6 +28,8 @@ export type Note = {
   pinnedTo?: string
   /** Момент создания: подпись собирается из него, а не хранится строкой. */
   createdAt: number
+  /** UX-5: стикер из демо-корпуса — помечен плашкой и снимается одним действием. */
+  demo?: boolean
 }
 
 export const TTL_OPTIONS: { label: string; value: number | null }[] = [
@@ -37,58 +39,9 @@ export const TTL_OPTIONS: { label: string; value: number | null }[] = [
   { label: 'навсегда', value: null },
 ]
 
-/** Демо-стикеры первого запуска: приколоты к настоящим id файлов сейфа. */
-export function seedNotes(t0: number): Note[] {
-  return [
-    {
-      id: 'n-key',
-      title: 'Ключ от сейфа арендодателя',
-      body: 'Код домофона 41К, ключ у охраны на первом этаже. Стереть сразу после переезда.',
-      tags: ['аренда', 'секрет'],
-      expiresAt: t0 + 2 * MIN + 45_000,
-      lifeSpan: 6 * HOUR,
-      locked: true,
-      secret: null,
-      pinnedTo: 'rent-2026',
-      createdAt: t0 - 5 * HOUR,
-    },
-    {
-      id: 'n-pitch',
-      title: 'Что переписать в питче',
-      body: 'Слайд 7 — убрать три графика, оставить один. Слайд 11 — цифры за январь уже устарели, взять из бюджета.',
-      tags: ['питч', 'правки'],
-      expiresAt: null,
-      lifeSpan: null,
-      locked: false,
-      secret: null,
-      pinnedTo: 'pitch',
-      createdAt: t0 - 6 * DAY,
-    },
-    {
-      id: 'n-idea',
-      title: 'Идея на утро',
-      body: 'Сделать так, чтобы ИИ сам предлагал приколоть стикер к файлу, если текст пересекается по смыслу.',
-      tags: ['продукт', 'идея'],
-      expiresAt: t0 + 18 * HOUR,
-      lifeSpan: DAY,
-      locked: false,
-      secret: null,
-      createdAt: t0 - 7 * HOUR,
-    },
-    {
-      id: 'n-money',
-      title: 'Разговор с бухгалтером',
-      body: 'Просил пересчитать налог по новой ставке, обещал прислать таблицу до пятницы. Проверить бюджет после.',
-      tags: ['финансы'],
-      expiresAt: t0 + 5 * DAY,
-      lifeSpan: 7 * DAY,
-      locked: true,
-      secret: null,
-      pinnedTo: 'budget',
-      createdAt: t0 - 4 * DAY,
-    },
-  ]
-}
+/* UX-5: демо-стикеры первого запуска живут в lib/demo-seed.ts —
+   отдельным модулем вне основного бандла. */
+
 
 export function isAlive(n: Note, now: number): boolean {
   return n.expiresAt === null || n.expiresAt > now

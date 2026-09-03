@@ -194,6 +194,10 @@ describe('AR-1 · действие перерисовывает свою обл�
 
 describe('AR-1 · узкие подписки экранов', () => {
   it('строка поиска не перерисовывает домен данных, а тост — навигацию', async () => {
+    /* UX-5: тест считает рендеры доменов, а не первый запуск. Демо-корпус
+       приезжает отдельным модулем асинхронно — его поздняя запись сбила бы
+       замер, поэтому здесь он выключен отметкой в хранилище. */
+    localStorage.setItem('wf.demo.v1', JSON.stringify({ seeded: true, dismissed: true }))
     vi.useFakeTimers()
     const navC: Counter = { renders: 0 }
     const dataC: Counter = { renders: 0 }

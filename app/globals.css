@@ -6904,4 +6904,167 @@
     margin-top: auto;
     flex-shrink: 0;
   }
+
+  /* ============================================================
+     UX-4 · ДОСТУПНОСТЬ ПАНЕЛЕЙ И МОДАЛОК
+     Три правки поверх системы «Графит»:
+     1) неактивная кнопка перестала быть «полупрозрачным призраком» —
+        вместо opacity ей выдан честный тон, читаемый на панели;
+     2) диалоги получили видимую рамку фокуса внутри ловушки;
+     3) на 768px подсказки переносятся, а не обрезаются многоточием.
+     ============================================================ */
+
+  :root {
+    /* Тон неактивного элемента: контраст к панели ≈ 7:1, а не 3:1 от opacity. */
+    --text-off: #99a3ad;
+  }
+
+  .btn-primary:disabled,
+  .input:disabled,
+  .textarea:disabled,
+  .select:disabled,
+  .dd-item:disabled,
+  .vt-icon-btn:disabled,
+  .vte-btn:disabled,
+  .uis-step:disabled,
+  .m-branch-btn:disabled,
+  .ni-foot .btn[disabled],
+  .lock-submit:disabled,
+  .lock-danger-btn:disabled,
+  .lf-submit:disabled,
+  .mk-submit:disabled,
+  .notif-link:disabled,
+  .btn:disabled {
+    opacity: 1;
+    color: var(--text-off);
+    cursor: not-allowed;
+  }
+  .btn-primary:disabled,
+  .lock-submit:disabled,
+  .mk-submit:disabled {
+    border-color: var(--border-2);
+    background: var(--raise-1);
+  }
+  .input:disabled,
+  .textarea:disabled,
+  .select:disabled,
+  .fk-modal .lock-input:disabled {
+    opacity: 1;
+    background: var(--bg-input);
+    color: var(--text-off);
+    border-color: var(--border);
+  }
+  .notif-tab.muted,
+  .notif-foot-hint,
+  .notif-tab b {
+    color: var(--text-off);
+  }
+
+  /* Ловушка фокуса без видимого фокуса бессмысленна. */
+  [role='dialog'] :focus-visible,
+  .notif-panel :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+  [role='dialog']:focus {
+    outline: none;
+  }
+
+  @media (max-width: 768px) {
+
+    /* Панель событий шире остатка строки: крепим её к экрану, а не к кнопке. */
+    .notif-panel {
+      position: fixed;
+      top: 62px;
+      left: 8px;
+      right: 8px;
+      width: auto;
+      max-width: none;
+    }
+    .notif-bar,
+    .notif-foot,
+    .notif-extra {
+      flex-wrap: wrap;
+      row-gap: 6px;
+    }
+    .notif-list {
+      max-height: 60vh;
+    }
+    /* Подсказки не режутся многоточием — переносятся. */
+    .notif-foot-note,
+    .notif-item-title,
+    .search-row-sub,
+    .dd-note,
+    .dd-label,
+    .vt-note {
+      white-space: normal;
+      overflow: visible;
+      text-overflow: clip;
+    }
+    .dd-menu {
+      max-width: calc(100vw - 24px);
+    }
+    .dd-list {
+      max-height: 50vh;
+    }
+  }
+
+
+  .demo-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 24px;
+    padding: 0 9px;
+    border-radius: var(--r);
+    border: 1px solid rgba(176, 141, 87, 0.45);
+    background: rgba(176, 141, 87, 0.08);
+    color: #d3ab6f;
+    font-family: var(--font-plex-mono), 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: background-color 0.12s ease, border-color 0.12s ease;
+  }
+  .demo-pill:hover {
+    background: rgba(176, 141, 87, 0.16);
+    border-color: rgba(176, 141, 87, 0.7);
+  }
+  .demo-pill b {
+    font-weight: 500;
+    color: var(--text-2);
+  }
+
+  /* UX-4: секции библиотеки стали настоящими заголовками — вид прежний. */
+  .sec-head h2 {
+    margin: 0;
+    font-size: inherit;
+    font-weight: inherit;
+    line-height: inherit;
+  }
+
+  /* UX-4 · контраст мелких подписей.
+     Тон --text-3 (#565f69) давал 3.0:1 на панели — ниже порога 4.5:1 для
+     текста 10–12px, и axe честно ругался на 35 узлов сразу. Поднимаем сам
+     токен: подпись остаётся второстепенной по тону, но читается. */
+  :root {
+    --text-3: #7b848e;
+    --text-3r: #8b949e;
+  }
+
+  /* UX-4: пульс таймера уводил подпись до 3.3:1 в нижней точке.
+     Мигание остаётся заметным, но текст не проваливается под порог. */
+  @keyframes pulse-soft {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.72;
+    }
+  }
+  .ncard .ttl.soon {
+    animation: pulse-soft 2s ease-in-out infinite;
+  }
 }

@@ -11,6 +11,7 @@ import { useSecrets } from '@/lib/secrets-store'
 import { generateMnemonic, validateMnemonic, type MnemonicCheck } from '@/lib/bip39'
 import { BIP39_WORDS } from '@/lib/bip39-words'
 import { VtSelect } from './vt-select'
+import { useDialog } from '@/hooks/use-dialog'
 import {
   DEFAULT_GEN,
   DEFAULT_PHRASE,
@@ -99,6 +100,9 @@ export function VaultGenerator({
     }
   }, [check, mode])
 
+  /* UX-4: единый диалог — ловушка фокуса, Escape, возврат фокуса. */
+  const { dialogProps } = useDialog<HTMLDivElement>({ onClose, label: 'Генератор паролей' })
+
   const st =
     mode === 'passphrase'
       ? (() => {
@@ -117,9 +121,7 @@ export function VaultGenerator({
     <div className="vt-modal-back" role="presentation" onPointerDown={onClose}>
       <div
         className="vt-modal panel vt-gen"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Генератор"
+        {...dialogProps}
         onPointerDown={(e) => e.stopPropagation()}
         data-testid="generator-modal"
       >

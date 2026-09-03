@@ -273,7 +273,7 @@ export function ScreenSettings() {
   }
 
   return (
-    <div className="set-page">
+    <div className="set-page" role="main">
       <div className="scroll-col" ref={scrollRef}>
         <div className="set-shell">
           <aside className="set-rail" aria-label="Разделы настроек">

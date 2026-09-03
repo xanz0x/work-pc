@@ -645,7 +645,7 @@ export function ScreenChat() {
         </div>
       ) : null}
 
-      <section className="chat-main" aria-label="Разговор с архивом">
+      <section className="chat-main" role="main" aria-label="Разговор с архивом">
         <header className="chat-top">
           {!railOpen ? (
             <button

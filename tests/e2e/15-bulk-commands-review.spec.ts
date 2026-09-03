@@ -66,7 +66,7 @@ test('A · 500 файлов: прогресс движется, UI жив, от�
   await page.getByTestId('lib-select-mode').click()
   await page.locator('[data-testid^="lib-file-"]').first().click()
   await page.getByTestId('lib-bulk-select-all').click()
-  await expect(page.getByTestId('lib-bulk-count')).toContainText('504')
+  await expect(page.getByTestId('lib-bulk-count')).toContainText('500')
 
   /* Метка на весь выбор: прогресс обязан двигаться и не блокировать интерфейс */
   await page.getByTestId('lib-bulk-action-tag').click()
@@ -77,7 +77,7 @@ test('A · 500 файлов: прогресс движется, UI жив, от�
   await expect(progress).toBeVisible()
   const t1 = (await progress.textContent()) ?? ''
   console.log('прогресс #1:', t1.trim())
-  expect(t1).toContain('из 504')
+  expect(t1).toContain('из 500')
 
   /* интерфейс не заблокирован — чужая кнопка реагирует во время операции */
   await page.getByTestId('nav-library-toggle').click()

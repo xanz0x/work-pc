@@ -71,7 +71,7 @@ import { ClockProvider } from './store/clock'
 import { ToastProvider, useToast } from './store/toast'
 import { SettingsProvider, useSettingsStore, type EngineView, type Settings, type ToggleId } from './store/settings'
 import { NotifsProvider, useNotifsStore, type Notif, type NotifCat } from './store/notifs'
-import { DataProvider, useDataStore, type VaultStats } from './store/data'
+import { DataProvider, useDataStore, type DemoView, type VaultStats } from './store/data'
 import { LockProvider, useLockStore, type LockView } from './store/lock'
 import { EngineProvider, useEngineStore } from './store/engine'
 import { NavProvider, useNavStore } from './store/nav'
@@ -104,6 +104,9 @@ export type VaultCtx = {
   clearIndex: () => void
   /** Стереть сейф целиком: файлы, стикеры и разговоры. */
   wipeVault: () => void
+  /** UX-5: в сейфе лежат демо-объекты и их можно убрать одним действием. */
+  demo: DemoView
+  clearDemo: () => void
 
   /* стикеры */
   notes: Note[]
@@ -281,6 +284,9 @@ function VaultFacade({ children }: { children: ReactNode }) {
   /** Лента первого запуска собирается из настоящего состояния сейфа. */
   useEffect(() => {
     if (!hydrated || !N.seededReady || N.seeded || N.notifs.length > 0) return
+    /* UX-5: демо приезжает отдельным модулем — ждём его решения, иначе
+       первая запись ленты соврёт «0 файлов». */
+    if (D.files.length === 0 && !D.demo.dismissed) return
     const t0 = Date.now()
     const files = D.files
     const bytes = totalBytes(files)
@@ -292,8 +298,10 @@ function VaultFacade({ children }: { children: ReactNode }) {
         kind: 'ok',
         cat: 'pipeline',
         icon: 'check',
-        title: 'Демо-корпус загружен',
-        body: `${files.length} файлов, ${g.links} связей на карте памяти. Содержимое демо-файлов не читалось: подключите папку, чтобы построить настоящий индекс.`,
+        title: D.demo.active ? 'Демо-корпус загружен' : 'Сейф готов к работе',
+        body: D.demo.active
+          ? `${files.length} демо-файлов, ${g.links} связей на карте памяти. Содержимое демо-файлов не читалось: подключите папку, чтобы построить настоящий индекс.`
+          : 'Сейф пуст: добавьте файлы или подключите папку — после индексации появится карта памяти.',
         at: t0 - 34 * 60_000,
         unread: true,
       },
@@ -320,7 +328,7 @@ function VaultFacade({ children }: { children: ReactNode }) {
     ])
     N.markSeeded()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hydrated, N.seededReady])
+  }, [hydrated, N.seededReady, D.files.length, D.demo.dismissed])
 
   /* Навигация, поиск и палитра живут в отдельном домене (lib/store/nav.tsx):
      тяжёлые экраны подписываются на него точечно, минуя фасад. */
@@ -346,6 +354,8 @@ function VaultFacade({ children }: { children: ReactNode }) {
       reindexAll: D.reindexAll,
       clearIndex: D.clearIndex,
       wipeVault: D.wipeVault,
+      demo: D.demo,
+      clearDemo: D.clearDemo,
       notes: D.notes,
       liveNotes: D.liveNotes,
       notesFor: D.notesFor,

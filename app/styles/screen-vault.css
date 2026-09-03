@@ -1972,3 +1972,18 @@
     color: var(--accent-ink, #08110c);
   }
 }
+
+@layer wf048 {
+
+
+  @media (max-width: 768px) {
+
+    .vt-modal-back {
+      padding: 12px;
+    }
+    .vt-modal {
+      max-height: 92vh;
+    }
+  }
+
+}

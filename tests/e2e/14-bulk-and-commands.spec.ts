@@ -57,7 +57,7 @@ test('NF-5: 500 объектов — выбор всего фильтра, пр�
 
   /* 2. «Выбрать всё в фильтре» покрывает весь фильтр, а не страницу доски */
   await page.getByTestId('lib-bulk-select-all').click()
-  await expect(page.getByTestId('lib-bulk-count')).toContainText('504')
+  await expect(page.getByTestId('lib-bulk-count')).toContainText('500')
 
   /* 3. Операция идёт с прогрессом и её можно прервать на границе порции */
   await page.getByTestId('lib-bulk-action-cluster').click()
@@ -79,7 +79,7 @@ test('NF-5: 500 объектов — выбор всего фильтра, пр�
      осталось целиком (человек может повторить действие) — выбирать снова
      не нужно, кнопка «Выбрать всё в фильтре» честно неактивна. */
   await expect(page.getByTestId('lib-bulk-select-all')).toBeDisabled()
-  await expect(page.getByTestId('lib-bulk-count')).toContainText('504')
+  await expect(page.getByTestId('lib-bulk-count')).toContainText('500')
   await page.getByTestId('lib-bulk-action-tag').click()
   await page.getByTestId('lib-bulk-tag-input').fill('нагрузка500')
   await page.getByTestId('lib-bulk-tag-apply').click()

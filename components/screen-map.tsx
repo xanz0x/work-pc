@@ -1607,7 +1607,7 @@ export function ScreenMap() {
   )
 
   return (
-    <div className="map-stage map-space" data-testid="screen-map">
+    <div className="map-stage map-space" role="main" data-testid="screen-map">
       <div className="cosmos" aria-hidden="true">
         <i className="cos-deep" />
         <i className="cos-neb n1" />

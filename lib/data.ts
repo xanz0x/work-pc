@@ -82,6 +82,12 @@ export type VaultFile = {
   keywords?: string[]
   /** Длина извлечённого текста в символах — источник для «есть текст». */
   textLen?: number
+  /**
+   * UX-5: объект из демо-корпуса (lib/demo-seed.ts). Помечает карточку
+   * плашкой «демо» и позволяет убрать показательные данные одним действием,
+   * не задев ничего, что человек добавил или импортировал сам.
+   */
+  demo?: boolean
 }
 
 /** Дата файла в подписи карточки: из времени изменения на диске. */
@@ -101,150 +107,10 @@ export function dateLabel(ts: number, now = Date.now()): string {
 const KB = 1024
 const MB = 1024 * KB
 
-/**
- * Демо-корпус. Байты подобраны так, чтобы совпадать с подписями карточек:
- * размер файла считается из bytes, а не хранится строкой.
- */
-export const VAULT_FILES: VaultFile[] = [
-  {
-    id: 'rent-2026',
-    icon: 'doc',
-    cluster: 'docs',
-    name: 'договор_аренды_2026.pdf',
-    desc: 'Договор аренды офиса на год, подписан 12 февраля',
-    bytes: Math.round(4.2 * MB),
-    date: '12 фев',
-    pages: 18,
-    tags: ['документы', 'аренда'],
-  },
-  {
-    id: 'rent-2025',
-    icon: 'doc',
-    cluster: 'docs',
-    name: 'договор_аренды_2025.pdf',
-    desc: 'Прошлогодний договор на то же помещение',
-    bytes: Math.round(3.9 * MB),
-    date: '14 фев 2025',
-    pages: 16,
-    tags: ['документы', 'аренда'],
-  },
-  {
-    id: 'protocol',
-    icon: 'docDraft',
-    cluster: 'docs',
-    name: 'протокол_разногласий.pdf',
-    desc: 'Правки к договору аренды, согласованы обеими сторонами',
-    bytes: 640 * KB,
-    date: '13 фев',
-    pages: 6,
-    tags: ['документы', 'аренда'],
-  },
-  {
-    id: 'act',
-    icon: 'doc',
-    cluster: 'docs',
-    name: 'акт_приёмки.pdf',
-    desc: 'Приёмка помещения, подписан 14 февраля',
-    bytes: 820 * KB,
-    date: '14 фев',
-    pages: 3,
-    tags: ['документы'],
-  },
-  {
-    id: 'estimate',
-    icon: 'spreadsheetFin',
-    cluster: 'fin',
-    name: 'смета_офис.xlsx',
-    desc: 'Смета ремонта и мебели, итог 1,24 млн ₽',
-    bytes: Math.round(1.2 * MB),
-    date: '16 фев',
-    pages: 4,
-    tags: ['финансы', 'аренда'],
-  },
-  {
-    id: 'budget',
-    icon: 'sheet',
-    cluster: 'fin',
-    name: 'бюджет_2026.xlsx',
-    desc: 'Личный бюджет на 2026 год, листы по месяцам',
-    bytes: 860 * KB,
-    date: '3 фев',
-    pages: 12,
-    tags: ['финансы', 'план'],
-  },
-  {
-    id: 'q1',
-    icon: 'sheetSmall',
-    cluster: 'fin',
-    name: 'отчёт_квартал1.xlsx',
-    desc: 'Расходы по офису за первый квартал',
-    bytes: 540 * KB,
-    date: '2 апр',
-    pages: 5,
-    tags: ['финансы'],
-  },
-  {
-    id: 'office-photo',
-    icon: 'image',
-    cluster: 'img',
-    name: 'фото_офиса.jpg',
-    desc: 'Съёмка помещения до ремонта, 12 февраля',
-    bytes: Math.round(3.4 * MB),
-    date: '12 фев',
-    tags: ['аренда'],
-  },
-  {
-    id: 'build-error',
-    icon: 'image',
-    cluster: 'img',
-    name: 'скрин_ошибки_сборки.png',
-    desc: 'Скриншот ошибки сборки проекта «Сайт», строка 142',
-    bytes: Math.round(1.1 * MB),
-    date: 'вчера',
-    tags: ['скриншот', 'баг'],
-  },
-  {
-    id: 'meeting-notes',
-    icon: 'docDraft',
-    cluster: 'proj',
-    name: 'заметки_встречи.txt',
-    desc: 'Обсуждение условий с арендодателем',
-    bytes: 18 * KB,
-    date: '11 фев',
-    tags: ['аренда'],
-  },
-  {
-    id: 'pitch',
-    icon: 'presentation',
-    cluster: 'proj',
-    name: 'презентация_стартап.pptx',
-    desc: 'Питч-дек стартапа: 14 слайдов, для инвесторов',
-    bytes: Math.round(14.7 * MB),
-    date: '18 фев',
-    pages: 14,
-    tags: ['проект', 'питч'],
-  },
-  {
-    id: 'ideas',
-    icon: 'docCheck',
-    cluster: 'misc',
-    name: 'заметки_идеи.md',
-    desc: 'Черновик идей: демо-запись без прочитанного содержимого',
-    bytes: 12 * KB,
-    date: 'только что',
-    tags: ['новое', 'продукт'],
-  },
-  {
-    id: 'demo-track',
-    icon: 'music',
-    cluster: 'music',
-    name: 'демо_трек.mp3',
-    desc: 'Черновик музыкальной идеи: гитара + бит, 3 минуты',
-    bytes: Math.round(6.8 * MB),
-    date: '20 фев',
-    tags: ['музыка', 'черновик'],
-  },
-]
+/* UX-5: демо-корпус переехал в lib/demo-seed.ts — он грузится динамически
+   и только при первом запуске пустого сейфа, поэтому в основном бандле
+   показательных файлов больше нет. */
+
 
 /* ------------------------------------------------------------
    МОДЕЛИ
@@ -385,19 +251,6 @@ export function classify(name: string): { cluster: ClusterId; icon: IconId } {
 }
 
 /* ------------------------------------------------------------
-   ДОСТУП ПО ID
-   Чат ссылается на файл по id, карта — тоже. Один индекс на весь
-   прототип: если файла нет, вызывающий обязан это обработать.
-   ------------------------------------------------------------ */
-
-const SEED_BY_ID = new Map(VAULT_FILES.map((f) => [f.id, f]))
-
-/** Файл демо-корпуса по id. Живой сейф ищет в своём списке (см. vault-store). */
-export function fileById(id: string): VaultFile | undefined {
-  return SEED_BY_ID.get(id)
-}
-
-/* ------------------------------------------------------------
    ВИД ФАЙЛА
    В состоянии лежит только строковый id иконки — компонент туда
    не положишь, он не переживёт localStorage. Всё, что нужно для
@@ -418,16 +271,6 @@ export type FileView = VaultFile & {
 
 export function viewOf(f: VaultFile): FileView {
   return { ...f, Icon: iconOf(f.icon), cat: fileCat(f), meta: fileMeta(f), tagList: fileTags(f) }
-}
-
-/** Демо-корпус, готовый к отрисовке. Живой сейф отдаёт свой (см. vault-store). */
-export const VAULT_VIEWS: FileView[] = VAULT_FILES.map(viewOf)
-
-const SEED_VIEW_BY_ID = new Map(VAULT_VIEWS.map((v) => [v.id, v]))
-
-/** Готовый к отрисовке файл демо-корпуса по id. */
-export function viewById(id: string): FileView | undefined {
-  return SEED_VIEW_BY_ID.get(id)
 }
 
 export function totalBytes(files: VaultFile[]): number {
@@ -462,16 +305,4 @@ export function clusterMix(files: VaultFile[]) {
     biggest.pct = Math.max(0, biggest.pct + drift)
   }
   return rows
-}
-
-/**
- * Стартовая справка о сейфе: используется там, где нужен снимок на момент
- * сборки (сохранённая демо-сессия чата). Живые числа отдаёт vault-store.
- */
-export const VAULT_STATS = {
-  files: VAULT_FILES.length,
-  bytes: totalBytes(VAULT_FILES),
-  quota: VAULT_QUOTA,
-  model: MODELS[0].short,
-  indexedAgo: '2 мин назад',
 }

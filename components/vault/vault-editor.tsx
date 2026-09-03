@@ -38,6 +38,7 @@ import {
   type SecretType,
 } from '@/lib/secrets'
 import { parseOtpauth } from '@/lib/secrets-totp'
+import { useDialog } from '@/hooks/use-dialog'
 import { scorePassword } from '@/lib/secrets-gen'
 import { VaultGenerator } from './vault-generator'
 
@@ -232,15 +233,18 @@ export function VaultEditor({
     onClose(entry?.id)
   }
 
+  const { dialogProps } = useDialog<HTMLDivElement>({
+    onClose: () => onClose(),
+    label: entry ? 'Изменить запись' : 'Новая запись',
+  })
+
   const TypeIcon = iconOf(TYPE_META[type].icon)
 
   return (
     <div className="vt-modal-back" role="presentation" onPointerDown={() => onClose()}>
       <div
         className="vt-modal panel vt-editor"
-        role="dialog"
-        aria-modal="true"
-        aria-label={entry ? 'Изменить запись' : 'Новая запись'}
+        {...dialogProps}
         onPointerDown={(e) => e.stopPropagation()}
         data-testid="entry-editor"
       >

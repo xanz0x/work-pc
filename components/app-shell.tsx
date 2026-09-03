@@ -582,6 +582,16 @@ export function AppShell({ children }: { children: ReactNode }) {
               menuWidth={288}
             />
             <span className="grow" />
+            {v.demo.active && (
+              <button
+                className="demo-pill"
+                onClick={() => v.go('library')}
+                title={`Демо-данные: ${v.demo.count} объектов. Убрать их можно баннером в библиотеке.`}
+                data-testid="demo-pill"
+              >
+                ДЕМО<b className="num">{v.demo.count}</b>
+              </button>
+            )}
             <span className="status-chip">
               <i className={`net-dot${stats.offline ? '' : ' warn'}`} />
               <span>{statusText}</span>

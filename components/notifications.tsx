@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { IconBell, IconCheck, IconClose, IconRefresh, iconOf } from './icons'
 import { useVault, useNow, type Notif, type NotifCat, type NotifKind } from '@/lib/vault-store'
 import { usePersistedState } from '@/hooks/use-persisted-state'
+import { useDialog, useListNav } from '@/hooks/use-dialog'
 import { isVisible, parseNotifFilter, snoozedCount, type NotifFilter } from '@/lib/notifs'
 import { DAY } from '@/lib/notes'
 
@@ -94,7 +95,16 @@ export function NotificationsBell() {
   /** Раскрытая сводка: показываем склеенные события списком. */
   const [openDigest, setOpenDigest] = useState<string | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
-  const panelRef = useRef<HTMLDivElement>(null)
+  /* UX-4: панель — диалог: Escape закрывает, фокус возвращается на колокольчик,
+     стрелки водят по фильтрам и по ленте событий. */
+  const { dialogProps } = useDialog<HTMLDivElement>({
+    onClose: () => setOpen(false),
+    label: 'Уведомления',
+    open,
+    modal: false,
+  })
+  const tabsNav = useListNav<HTMLDivElement>({ orientation: 'horizontal', selector: '[role="tab"]' })
+  const listNav = useListNav<HTMLDivElement>()
 
   const items = v.notifs
   const unread = v.unread
@@ -107,14 +117,9 @@ export function NotificationsBell() {
     function onPointerDown(e: PointerEvent) {
       if (!rootRef.current?.contains(e.target as Node)) setOpen(false)
     }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false)
-    }
     document.addEventListener('pointerdown', onPointerDown)
-    document.addEventListener('keydown', onKey)
     return () => {
       document.removeEventListener('pointerdown', onPointerDown)
-      document.removeEventListener('keydown', onKey)
     }
   }, [open])
 
@@ -190,7 +195,14 @@ export function NotificationsBell() {
       </span>
 
       {open && (
-        <div className="notif-panel" role="dialog" aria-label="Уведомления" ref={panelRef} data-testid="notif-panel">
+        <div
+          className="notif-panel"
+          {...dialogProps}
+          /* Стрелки водят по ленте из любого места панели, а не только
+             когда фокус уже стоит на событии. */
+          onKeyDown={listNav.listProps.onKeyDown}
+          data-testid="notif-panel"
+        >
           <div className="notif-head">
             <span className="label-mono">Уведомления</span>
             <span className="notif-head-count num" data-testid="notif-head-count">
@@ -253,7 +265,7 @@ export function NotificationsBell() {
             </div>
           )}
 
-          <div className="notif-tabs" role="tablist" aria-label="Фильтр уведомлений">
+          <div className="notif-tabs" role="tablist" aria-label="Фильтр уведомлений" {...tabsNav.listProps}>
             {FILTERS.map((f) => {
               const key = f.id === 'pipeline' || f.id === 'privacy' ? CAT_TOGGLE[f.id] : null
               const off = key ? !v.settings.toggles[key] : false
@@ -262,6 +274,7 @@ export function NotificationsBell() {
                   key={f.id}
                   role="tab"
                   aria-selected={filter === f.id}
+                  tabIndex={filter === f.id ? 0 : -1}
                   className={`notif-tab${filter === f.id ? ' on' : ''}${off ? ' muted' : ''}`}
                   onClick={() => setFilter(f.id)}
                   title={
@@ -294,7 +307,7 @@ export function NotificationsBell() {
             })}
           </div>
 
-          <div className="notif-list">
+          <div className="notif-list" ref={listNav.ref}>
             {!v.hydrated && (
               <div className="notif-empty" data-testid="notif-loading">
                 <div className="notif-empty-title">Загрузка событий…</div>
@@ -340,6 +353,7 @@ export function NotificationsBell() {
                       </span>
                       <button
                         className="notif-body"
+                        data-nav-item=""
                         onClick={() => {
                           v.openNotif(n.id)
                           setOpen(false)

@@ -1478,3 +1478,69 @@
     color: var(--accent-ink, #08110c);
   }
 }
+
+@layer wf048 {
+
+
+  /* ============================================================
+     UX-5 · ЯВНЫЙ ДЕМО-РЕЖИМ
+     Демо-объекты названы своим именем: плашка на карточке, баннер в
+     библиотеке и метка в топбаре. Тон — предупреждающий, но спокойный:
+     это не ошибка, а честное «здесь показательные данные».
+     ============================================================ */
+
+  .demo-tag {
+    display: inline-flex;
+    align-items: center;
+    height: 17px;
+    padding: 0 6px;
+    border-radius: var(--r);
+    border: 1px solid rgba(176, 141, 87, 0.45);
+    background: rgba(176, 141, 87, 0.1);
+    color: #d3ab6f;
+    font-family: var(--font-plex-mono), 'IBM Plex Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .demo-banner {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 14px;
+    margin-bottom: 12px;
+    border-left: 2px solid #d3ab6f;
+  }
+  .demo-banner-text {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+    flex: 1;
+  }
+  .demo-banner-text b {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+  }
+  .demo-banner-text span {
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--text-2);
+  }
+  .demo-clear-btn {
+    flex-shrink: 0;
+  }
+  @media (max-width: 768px) {
+    .demo-banner {
+      flex-wrap: wrap;
+      row-gap: 10px;
+    }
+    .demo-clear-btn {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+}

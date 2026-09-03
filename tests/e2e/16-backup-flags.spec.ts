@@ -170,10 +170,15 @@ test('бэкап забирает состояние, которое ещё не
   test.setTimeout(180_000)
   await enter(page)
 
-  /* Чистый профиль: файлы показаны, но документа в базе нет. */
+  /* Чистый профиль: демо-корпус (UX-5) приезжает отдельным модулем и
+     ложится в базу — снимок обязан увидеть ровно то, что на экране. */
   await page.getByTestId('nav-library').click()
   await expect(page.getByTestId('nav-library')).toBeVisible()
-  expect(await readDoc<unknown[]>(page, 'wf.files.v1')).toBeUndefined()
+  await expect
+    .poll(async () => (await readDoc<unknown[]>(page, 'wf.files.v1'))?.length ?? 0, {
+      timeout: 30_000,
+    })
+    .toBeGreaterThan(0)
 
   await page.getByTestId('nav-settings').click()
   await expect(page.getByTestId('settings-backup')).toBeVisible({ timeout: 30_000 })

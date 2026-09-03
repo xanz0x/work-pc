@@ -4,9 +4,9 @@ import {
   HOUR,
   fmtLeft,
   isAlive,
-  seedNotes,
   type Note,
 } from '@/lib/notes'
+import { demoNotes } from '@/lib/demo-seed'
 
 const base: Note = {
   id: 'n1',
@@ -36,10 +36,11 @@ describe('стикеры: срок жизни', () => {
     expect(fmtLeft(2 * HOUR)).toMatch(/\d/)
   })
 
-  it('демо-стикеры первого запуска имеют осмысленные сроки', () => {
-    const seeded = seedNotes(1_000_000)
+  it('демо-стикеры первого запуска помечены и имеют осмысленные сроки', () => {
+    const seeded = demoNotes(1_000_000)
     expect(seeded.length).toBeGreaterThan(0)
     for (const n of seeded) {
+      expect(n.demo).toBe(true)
       if (n.expiresAt !== null) expect(n.expiresAt).toBeGreaterThan(1_000_000)
     }
   })

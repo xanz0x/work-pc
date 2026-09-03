@@ -9,6 +9,7 @@ import { useRef, useState } from 'react'
 import { IconClose } from '@/components/icons'
 import { useSecrets } from '@/lib/secrets-store'
 import { MAX_IMPORT_BYTES, detectAndImport, download, type ImportPreview } from '@/lib/secrets-io'
+import { useDialog } from '@/hooks/use-dialog'
 
 type Tab = 'import' | 'export' | 'backup'
 
@@ -25,6 +26,8 @@ export function VaultIo({ onClose }: { onClose: () => void }) {
   const picker = useRef<HTMLInputElement>(null)
   const encPicker = useRef<HTMLInputElement>(null)
 
+  const { dialogProps } = useDialog<HTMLDivElement>({ onClose, label: 'Импорт, экспорт и бэкапы' })
+
   async function readFile(file: File): Promise<string | null> {
     if (file.size > MAX_IMPORT_BYTES) {
       setMsg(`Файл больше ${Math.round(MAX_IMPORT_BYTES / 1024 / 1024)} МБ — отклонён`)
@@ -37,9 +40,7 @@ export function VaultIo({ onClose }: { onClose: () => void }) {
     <div className="vt-modal-back" role="presentation" onPointerDown={onClose}>
       <div
         className="vt-modal panel vt-modal-wide"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Импорт, экспорт и бэкапы"
+        {...dialogProps}
         onPointerDown={(e) => e.stopPropagation()}
         data-testid="vault-io"
       >

@@ -64,6 +64,7 @@ import { usePersistedState } from '@/hooks/use-persisted-state'
 import { useBulkRunner } from '@/lib/bulk'
 import { useIntent } from '@/lib/commands'
 import { BulkBar, type BulkAction } from '@/components/bulk-bar'
+import { DialogShell } from '@/components/dialog-shell'
 
 /** Локальный алиас: короче в объявлении состояния доски. */
 const usePersisted = usePersistedState
@@ -479,6 +480,14 @@ export function ScreenLibrary() {
       )
     }
     setFkVal('')
+  }
+
+  /** Закрыть модалку постановки ключа: одна дверь для Escape, «Отмены» и успеха. */
+  function closeFkSet() {
+    setFkSetFor(null)
+    setFkSetErr(null)
+    setFkNew1('')
+    setFkNew2('')
   }
 
   async function saveFileKeySetup() {
@@ -1189,6 +1198,9 @@ export function ScreenLibrary() {
                 type="file"
                 multiple
                 className="sr-only"
+                aria-label="Выбрать файлы для индексации"
+                aria-hidden="true"
+                tabIndex={-1}
                 onChange={(e) => {
                   const list = Array.from(e.target.files ?? [])
                   if (list.length > 0) {
@@ -1201,6 +1213,36 @@ export function ScreenLibrary() {
               />
             </div>
           </div>
+
+          {/* UX-5: демо-данные названы своим именем и убираются одним действием. */}
+          {D.demo.active && (
+            <div
+              className="demo-banner panel"
+              role="region"
+              aria-label="Демо-данные"
+              data-testid="demo-banner"
+            >
+              <span className="demo-tag" aria-hidden="true">
+                демо
+              </span>
+              <div className="demo-banner-text">
+                <b>В сейфе показательные данные</b>
+                <span>
+                  {D.demo.files} файлов и {D.demo.notes} стикеров из демо-корпуса: они помечены
+                  плашкой «демо» и не смешиваются с тем, что вы добавите или импортируете.
+                </span>
+              </div>
+              <button
+                className="btn btn-ghost demo-clear-btn"
+                onClick={D.clearDemo}
+                title="Убрать демо-объекты; ваши файлы и стикеры останутся"
+                data-testid="demo-clear"
+              >
+                <IconTrash />
+                Начать с чистого сейфа
+              </button>
+            </div>
+          )}
 
           {/* NF-1: настоящий прогресс индексации. Числа берутся из конвейера,
               а не из таймера, поэтому «отмена» действительно отменяет. */}
@@ -1489,7 +1531,7 @@ export function ScreenLibrary() {
           {showNotes && (
             <>
               <div className="sec-head">
-                <span className="label-mono">Стикеры</span>
+                <h2 className="label-mono">Стикеры</h2>
                 <span className="sec-rule" />
                 <span className="sec-note mono num">
                   {shownNotes.length} {tag === 'Все' ? 'активных' : `по тегу «${tag}»`} · {tempCount} с
@@ -1542,7 +1584,7 @@ export function ScreenLibrary() {
           {showFiles && (
             <>
               <div className="sec-head">
-                <span className="label-mono">Файлы</span>
+                <h2 className="label-mono">Файлы</h2>
                 <span className="sec-rule" />
                 <span className="sec-note mono num">
                   {shownFiles.length}{' '}
@@ -2076,7 +2118,17 @@ export function ScreenLibrary() {
           const f = views.find((x) => x.id === fkAsk)
           const cooling = Date.now() < fkCooldownUntil
           return (
-            <div className="fk-modal" role="dialog" aria-modal="true" aria-label="Файловый ключ" data-testid="fk-ask-modal">
+            <DialogShell
+              className="fk-modal"
+              label="Файловый ключ"
+              testId="fk-ask-modal"
+              onClose={() => {
+                setFkAsk(null)
+                setFkErr(null)
+                setFkVal('')
+                setFkCooldownUntil(0)
+              }}
+            >
               <div className="lock-card">
                 <div className="lk-head mono">
                   <IconKey width={12} height={12} aria-hidden="true" focusable="false" />
@@ -2136,7 +2188,7 @@ export function ScreenLibrary() {
                   </button>
                 </div>
               </div>
-            </div>
+            </DialogShell>
           )
         })()}
 
@@ -2144,7 +2196,12 @@ export function ScreenLibrary() {
         (() => {
           const f = views.find((x) => x.id === fkSetFor)
           return (
-            <div className="fk-modal" role="dialog" aria-modal="true" aria-label="Новый файловый ключ" data-testid="fk-set-modal">
+            <DialogShell
+              className="fk-modal"
+              label="Новый файловый ключ"
+              testId="fk-set-modal"
+              onClose={() => closeFkSet()}
+            >
               <div className="lock-card">
                 <div className="lk-head mono">
                   <IconLockRound width={12} height={12} aria-hidden="true" focusable="false" />
@@ -2205,17 +2262,14 @@ export function ScreenLibrary() {
                   <button
                     className="btn btn-ghost btn-sm"
                     onClick={() => {
-                      setFkSetFor(null)
-                      setFkSetErr(null)
-                      setFkNew1('')
-                      setFkNew2('')
+                      closeFkSet()
                     }}
                   >
                     Отмена
                   </button>
                 </div>
               </div>
-            </div>
+            </DialogShell>
           )
         })()}
     </div>
@@ -2323,9 +2377,9 @@ function NoteCardContent({
           onSelect(note.id, e as unknown as React.MouseEvent)
         }
       }}
-      role="button"
+      aria-label={`Стикер «${note.title}»: открыть в инспекторе`}
+      aria-current={isSelected ? 'true' : undefined}
       tabIndex={0}
-      aria-pressed={isSelected}
       data-testid={`lib-note-${note.id}`}
       data-marked={marked ? '1' : undefined}
     >
@@ -2339,6 +2393,11 @@ function NoteCardContent({
           <IconSticker width={11} height={11} stroke="currentColor" strokeWidth={1.6} />
           стикер
         </span>
+        {note.demo && (
+          <span className="demo-tag" title="Объект демо-корпуса" data-testid={`demo-tag-${note.id}`}>
+            демо
+          </span>
+        )}
         {left === null ? (
           <span className="ttl mono">постоянный</span>
         ) : (
@@ -2482,7 +2541,10 @@ function FileCardContent({
           onSelect(file.id, e as unknown as React.MouseEvent)
         }
       }}
-      role="button"
+      /* UX-4: карточка сама не кнопка — внутри неё живут свои кнопки, и
+         role="button" делал их вложенными интерактивными (axe). Она остаётся
+         в обходе с клавиатуры и открывается Enter/Пробелом. */
+      aria-label={`Файл ${file.name}: открыть в инспекторе`}
       tabIndex={0}
       data-testid={`lib-file-${file.id}`}
       data-marked={marked ? '1' : undefined}
@@ -2498,6 +2560,11 @@ function FileCardContent({
         <span className="ficon panel">
           <file.Icon width={18} height={18} stroke="currentColor" strokeWidth={1.5} />
         </span>
+        {file.demo && (
+          <span className="demo-tag" title="Объект демо-корпуса" data-testid={`demo-tag-${file.id}`}>
+            демо
+          </span>
+        )}
         <button
           className="chip chip-cat chip-btn"
           onClick={(e) => {

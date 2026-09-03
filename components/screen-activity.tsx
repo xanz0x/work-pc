@@ -727,7 +727,7 @@ export function ScreenActivity() {
   }
 
   return (
-    <div className="act-page" data-testid="screen-activity">
+    <div className="act-page" role="main" data-testid="screen-activity">
       <div className="act-shell">
         <header className="act-head">
           <div className="act-head-text">
