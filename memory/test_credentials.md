@@ -89,7 +89,7 @@ APP_URL=http://localhost:3000 APP_PASSWORD=IceKrymTeam13@ node scripts/long-dial
   нужен `npx next build && sudo supervisorctl restart frontend`.
 - Из-за прод-сборки cookie входа помечена `Secure`, и `pytest tests/api` по
   `http://localhost:3000` получает 401 на всё после входа. Прогонять их надо по
-  https-адресу preview: `APP_URL=https://a11y-modals.preview.emergentagent.com
+  https-адресу preview: `APP_URL=https://token-permissions.preview.emergentagent.com
   python3 -m pytest tests/api -q`. Оставшиеся падения там — среда, а не код:
   нет `/root/.workflow/ai/*` (файлы скиллов лежат в `/app/ai`) и не запущен
   локальный Ollama (503).
@@ -112,3 +112,15 @@ APP_URL=http://localhost:3000 APP_PASSWORD=IceKrymTeam13@ node scripts/long-dial
 - Новые data-testid: `ui-scale-slider`, `ui-scale-minus`, `ui-scale-plus`,
   `ui-scale-value`, `ui-scale-reset`, `ui-scale-preset-{80,100,125,150}`,
   `app-splash` (сплэш холодного старта, уходит ≤3 с).
+
+## NF-10 · MCP наружу (2026-06-04)
+- Эндпоинт агента: `POST {APP_URL}/mcp`, заголовок `Authorization: Bearer wsx_<id>_<secret>`.
+  Токен выдаётся в Настройки → «MCP наружу» (`mcp-token-issue`) и показывается один раз;
+  на сервере хранится только хеш (`/root/.workflow/ai/mcp-access/tokens.json`).
+- Управление: `GET/POST/DELETE /mcp/admin/tokens`, `GET /mcp/admin/pending`,
+  `GET/POST /mcp/admin/bridge` — нужна cookie сессии `wf_session`.
+- Инструменты работают только при открытой вкладке приложения (иначе `NO_BRIDGE`);
+  `create_secret` требует одобрения в UI и разблокированного сейфа.
+- Тесты: `APP_URL=https://token-permissions.preview.emergentagent.com python3 -m pytest tests/api/test_mcp.py -q`;
+  e2e `tests/e2e/21-mcp-external.spec.ts` создаёт PIN `123456` в одноразовом профиле.
+- `.env` восстановлен 2026-06-04 (пароль прежний `IceKrymTeam13@`), добавлен `/app/.env.example`.

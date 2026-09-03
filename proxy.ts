@@ -4,11 +4,13 @@ import { log, newRequestId } from '@/lib/log'
 
 /**
  * Всё под /ai-api закрыто сессией: без cookie — 401, кроме самого входа.
+ * NF-10: управление MCP-токенами и мост вкладки (/mcp/admin/*) закрыты так же;
+ * сам /mcp открыт агентам по Bearer-токену и сессию не использует.
  * В Next 16 конвенция middleware переименована в proxy (P0-2).
  * Здесь же рождается request-id (AR-5): он уезжает в маршрут заголовком
  * x-request-id и возвращается клиенту в X-Request-Id.
  */
-export const config = { matcher: ['/ai-api/:path*'] }
+export const config = { matcher: ['/ai-api/:path*', '/mcp/admin/:path*'] }
 
 export async function proxy(req: NextRequest) {
   const rid = newRequestId()

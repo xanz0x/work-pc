@@ -66,6 +66,7 @@ export const SETTING_ENTRIES: { id: string; title: string; sub: string; words: s
   { id: 'storage', title: 'Хранилище', sub: 'Настройки · объём и состав сейфа', words: ['хранилище', 'место', 'объём', 'гб', 'квота', 'состав'] },
   { id: 'notifs', title: 'Уведомления', sub: 'Настройки · какие события показывать', words: ['уведомления', 'события', 'сводка', 'колокол'] },
   { id: 'secrets', title: 'Менеджер секретов', sub: 'Настройки · буфер, авто-скрытие, иконки', words: ['секреты', 'пароли', 'буфер', 'clipboard', 'totp', 'иконки', 'favicon', 'менеджер'] },
+  { id: 'mcp', title: 'MCP наружу', sub: 'Настройки · токены внешних агентов и подтверждения', words: ['mcp', 'агент', 'токен', 'claude', 'cursor', 'внешний', 'подтверждение', 'разрешения'] },
 ]
 
 const norm = (s: string) => s.toLowerCase().replace('ё', 'е').trim()

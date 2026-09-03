@@ -1,5 +1,6 @@
 import { StorageAlert } from '@/components/storage-alert'
 import { IndexerProvider } from '@/lib/indexer/context'
+import { McpBridge } from '@/lib/mcp-bridge'
 import { RedactedProvider } from '@/lib/redact-context'
 import { SecretsProvider } from '@/lib/secrets-store'
 import { VaultProvider } from '@/lib/vault-store'
@@ -23,7 +24,12 @@ export default function AppLayout({ children }: Readonly<{ children: React.React
           <IndexerProvider>
             {/* Менеджер секретов живёт поверх сейфа: без открытого замка
                 он ничего не расшифровывает и ничего не пишет. */}
-            <SecretsProvider>{children}</SecretsProvider>
+            <SecretsProvider>
+              {children}
+              {/* NF-10: мост к MCP-серверу — выполняет задания внешних агентов
+                  через те же сторы и пишет их аудит в журнал безопасности. */}
+              <McpBridge />
+            </SecretsProvider>
           </IndexerProvider>
         </VaultProvider>
       </RedactedProvider>

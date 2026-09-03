@@ -1061,3 +1061,38 @@ UX-4 accessibility · LG-4/LG-5 · RM-3.
   Сервер принимает только известные ключи и конечные числа; маршрут за сессией
   и лимитом частоты. Успешная отправка обнуляет счётчики.
 - Тесты: `tests/unit/telemetry.test.ts`, `tests/e2e/20-telemetry-consent.spec.ts`.
+
+---
+
+## NF-10 · MCP-сервер наружу (2026-06-04, сделано)
+
+- `POST /mcp` — MCP Streamable HTTP (JSON-RPC 2.0, zero-dependency): `initialize`,
+  `ping`, `tools/list`, `tools/call`. Только Bearer-токен `wsx_<id>_<secret>`,
+  сессия браузера не принимается; `GET /mcp` → 405.
+- `lib/permissions.ts`: области `search` / `read` / `notes:write` / `secrets:write`;
+  инструменты `search`, `list_files`, `get_metadata`, `create_sticker`, `create_secret`.
+  Значения секретов, тексты файлов и тела стикеров наружу не уходят.
+- `lib/mcp-server.ts`: токены (хеш SHA-256 в `AI_DIR/mcp-access/tokens.json`, срок,
+  отзыв, счётчик вызовов), append-only аудит `audit.jsonl`, очередь заданий и
+  ожидающие подтверждения в памяти. Лимит 60 вызовов/мин на токен (`MCP_RATE_PER_MIN`).
+- Мост `lib/mcp-bridge.tsx` (`McpBridge` в `app/(app)/layout.tsx`): данные сейфа живут в
+  браузере, поэтому вкладка забирает задания long-poll'ом `/mcp/admin/bridge` и выполняет
+  их через `useVault`/`useSecrets`/`searchAll`. Без вкладки агент получает `NO_BRIDGE`.
+- Опасная операция `create_secret`: `pending_approval` + `approvalId` → владелец одобряет
+  в Настройки → «MCP наружу» (`mcp-pending-approve`/`-reject`) → агент повторяет вызов.
+  Одобрение выполняет запись сразу во вкладке; сейф должен быть разблокирован.
+- Журнал безопасности: новые типы `mcp-token-issued`, `mcp-token-revoked`, `mcp-call`,
+  `mcp-denied`, `mcp-approval`; аудит сервера доставляется во вкладку и пишется в IndexedDB.
+- UI `components/mcp-section.tsx` + `mcp-tokens.tsx`: адрес сервера, статус моста,
+  ожидающие подтверждения, выдача токена (имя, области, срок), список и отзыв,
+  сниппет для Claude Desktop / Cursor (`mcp-remote`).
+- `/mcp/admin/*` закрыты сессией (`proxy.ts` matcher расширен).
+- Тесты: `tests/unit/mcp-access.test.ts` (8), `tests/api/test_mcp.py` (12),
+  `tests/e2e/21-mcp-external.spec.ts` (полный сценарий агента). Регресс: `tsc` 0,
+  `eslint` 0 ошибок, `vitest` 205/205.
+
+### Бэклог после NF-10
+- P3: NF-11 · E2EE-синхронизация — последняя задача волны 5.
+- P3: MCP — SSE-поток для `tools/call` с долгим ожиданием; OAuth resource metadata
+  (RFC 9728) для клиентов, которые не умеют статический Bearer.
+- P3: MCP — инструмент чтения тела стикера по отдельной области `notes:read`.

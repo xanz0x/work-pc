@@ -12,6 +12,7 @@ const minute = new Map<string, Win>()
 const day = new Map<string, Win>()
 const login = new Map<string, Win>()
 const telemetry = new Map<string, Win>()
+const mcp = new Map<string, Win>()
 
 function bump(map: Map<string, Win>, key: string, windowMs: number, limit: number): number {
   const now = Date.now()
@@ -62,4 +63,9 @@ export function limitTelemetry(ip: string): number {
 /** Успешный вход обнуляет счётчик: лимит считает только промахи. */
 export function resetLogin(ip: string): void {
   login.delete(ip)
+}
+
+/** NF-10: внешний агент — 60 вызовов в минуту на один токен. */
+export function limitMcp(tokenId: string): number {
+  return bump(mcp, tokenId, MINUTE, envInt('MCP_RATE_PER_MIN', 60))
 }

@@ -29,6 +29,11 @@ export type JournalKind =
   | 'ai-saved-password'
   | 'cloud-consent'
   | 'cloud-request'
+  | 'mcp-token-issued'
+  | 'mcp-token-revoked'
+  | 'mcp-call'
+  | 'mcp-denied'
+  | 'mcp-approval'
 
 export type JournalEntry = {
   id: string
@@ -54,6 +59,11 @@ export const JOURNAL_KINDS: { id: JournalKind; label: string; severe: boolean }[
   { id: 'ai-saved-password', label: 'ИИ сохранил пароль', severe: false },
   { id: 'cloud-consent', label: 'Согласие на облако', severe: false },
   { id: 'cloud-request', label: 'Облачный запрос', severe: false },
+  { id: 'mcp-token-issued', label: 'MCP · токен выдан', severe: false },
+  { id: 'mcp-token-revoked', label: 'MCP · токен отозван', severe: false },
+  { id: 'mcp-call', label: 'MCP · вызов агента', severe: false },
+  { id: 'mcp-denied', label: 'MCP · отказ агенту', severe: false },
+  { id: 'mcp-approval', label: 'MCP · подтверждение', severe: true },
 ]
 
 export function journalKindLabel(kind: JournalKind): string {

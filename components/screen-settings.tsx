@@ -27,6 +27,7 @@ import {
   IconShield,
   IconSparkText,
   IconTag,
+  IconTerminal,
   IconTrash,
   IconWifi,
 } from './icons'
@@ -48,6 +49,7 @@ import { SecuritySection } from './security-section'
 import { SecretsSection } from './secrets-section'
 import { BackupSection } from './backup-section'
 import { FlagsSection } from './flags-section'
+import { McpSection } from './mcp-section'
 import { JournalPanel } from './journal-panel'
 import { UiScaleSection } from './ui-scale-section'
 import {
@@ -125,6 +127,7 @@ const SECTIONS: { id: string; label: string; Icon: Ico }[] = [
   { id: 'secrets', label: 'Менеджер секретов', Icon: IconKey },
   { id: 'backup', label: 'Бэкап сейфа', Icon: IconDatabase },
   { id: 'flags', label: 'Автономный режим', Icon: IconWifi },
+  { id: 'mcp', label: 'MCP наружу', Icon: IconTerminal },
   { id: 'journal', label: 'Журнал безопасности', Icon: IconLayers },
   { id: 'danger', label: 'Опасная зона', Icon: IconTrash },
 ]
@@ -147,6 +150,8 @@ const FOCUS_ALIAS: Record<string, string> = {
   backup: 'backup',
   flags: 'flags',
   offline: 'flags',
+  mcp: 'mcp',
+  agents: 'mcp',
   danger: 'danger',
 }
 
@@ -829,6 +834,7 @@ export function ScreenSettings() {
             <SecretsSection />
             <BackupSection />
             <FlagsSection />
+            <McpSection />
             <JournalPanel />
 
             <section className="sec panel danger-zone" id="set-danger">

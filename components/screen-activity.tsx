@@ -98,6 +98,11 @@ const JKIND_ICON: Record<JournalKind, IconId> = {
   'ai-saved-password': 'key',
   'cloud-consent': 'chipAi',
   'cloud-request': 'chipAi',
+  'mcp-token-issued': 'key',
+  'mcp-token-revoked': 'key',
+  'mcp-call': 'terminal',
+  'mcp-denied': 'shield',
+  'mcp-approval': 'shield',
 }
 
 const OBJ_LABELS: Record<ObjType, string> = {
