@@ -51,7 +51,7 @@ const KINDS: { id: FieldKind; label: string }[] = [
   { id: 'email', label: 'email' },
   { id: 'number', label: 'число' },
   { id: 'date', label: 'дата' },
-  { id: 'multiline', label: 'многострочный' },
+  { id: 'multiline', label: 'абзац' },
   { id: 'boolean', label: 'да/нет' },
 ]
 
@@ -474,6 +474,27 @@ export function VaultEditor({
                         >
                           <IconCopy />
                         </button>
+                        <button
+                          className={`vte-btn vte-lock${f.secret ? ' on' : ''}`}
+                          title={
+                            f.secret
+                              ? 'Шифруется AES-GCM · нажмите, чтобы сделать открытым'
+                              : 'Открытое поле · нажмите, чтобы шифровать'
+                          }
+                          aria-pressed={f.secret}
+                          onClick={() => patch(i, { secret: !f.secret })}
+                          data-testid={`editor-field-secret-${i}`}
+                        >
+                          <IconLock />
+                        </button>
+                        <button
+                          className="vte-btn vte-del"
+                          title="Удалить поле"
+                          onClick={() => setFields((all) => all.filter((_, k) => k !== i))}
+                          data-testid={`editor-field-del-${i}`}
+                        >
+                          <IconTrash />
+                        </button>
                       </div>
                       {str && (
                         <div
@@ -486,43 +507,20 @@ export function VaultEditor({
                       )}
                     </div>
 
-                    <div className="vte-acts">
-                      <button
-                        className={`vt-ct${f.secret ? ' on' : ''}`}
-                        title={
-                          f.secret
-                            ? 'Шифруется AES-GCM · нажмите, чтобы сделать открытым'
-                            : 'Открытое поле · нажмите, чтобы шифровать'
-                        }
-                        aria-pressed={f.secret}
-                        onClick={() => patch(i, { secret: !f.secret })}
-                        data-testid={`editor-field-secret-${i}`}
-                      >
-                        <IconLock />
-                      </button>
-                      <VtSelect
-                        className="vte-kind"
-                        value={f.kind}
-                        onChange={(v) => {
-                          const kind = v as FieldKind
-                          patch(i, {
-                            kind,
-                            secret: kind === 'password' || kind === 'secret' ? true : f.secret,
-                          })
-                        }}
-                        ariaLabel="Тип поля"
-                        testId={`editor-field-kind-${i}`}
-                        options={KINDS.map((k) => ({ value: k.id, label: k.label }))}
-                      />
-                      <button
-                        className="vt-icon-btn tiny danger"
-                        title="Удалить поле"
-                        onClick={() => setFields((all) => all.filter((_, k) => k !== i))}
-                        data-testid={`editor-field-del-${i}`}
-                      >
-                        <IconTrash />
-                      </button>
-                    </div>
+                    <VtSelect
+                      className="vte-kind"
+                      value={f.kind}
+                      onChange={(v) => {
+                        const kind = v as FieldKind
+                        patch(i, {
+                          kind,
+                          secret: kind === 'password' || kind === 'secret' ? true : f.secret,
+                        })
+                      }}
+                      ariaLabel="Тип поля"
+                      testId={`editor-field-kind-${i}`}
+                      options={KINDS.map((k) => ({ value: k.id, label: k.label }))}
+                    />
                   </div>
                 )
               })}

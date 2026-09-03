@@ -12442,30 +12442,45 @@ button.chip:hover {
 .vte-str.s2 i {
   background: var(--warn);
 }
-.vte-acts {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  flex: none;
-  opacity: 0;
-  transition: opacity 140ms ease-out;
+/* Замок и удаление живут в самом поле значения: отдельная колонка действий
+   пряталась под opacity:0 и оставляла справа мёртвую полосу, а кнопки
+   выпрыгивали при наведении. Тип поля — узкий чип, а не широкий селект. */
+.vte-lock {
+  color: var(--text-3);
 }
-.vte-row:hover .vte-acts,
-.vte-row:focus-within .vte-acts,
-.vte-row.is-ct .vte-acts {
-  opacity: 1;
+.vte-lock.on {
+  color: var(--accent);
+  background: rgba(47, 190, 126, 0.08);
 }
-.vte-acts .vt-ct {
-  width: 28px;
-  height: 28px;
+.vte-lock.on:hover {
+  background: rgba(47, 190, 126, 0.14);
+}
+.vte-del:hover {
+  color: var(--danger);
+  background: rgba(229, 100, 92, 0.1);
 }
 .vte-kind {
-  width: 116px;
+  width: 84px;
   flex: none;
+  opacity: 0.7;
+  transition: opacity 140ms ease-out;
+}
+.vte-row:hover .vte-kind,
+.vte-row:focus-within .vte-kind {
+  opacity: 1;
 }
 .vte-kind .vts-btn {
   height: 28px;
-  font-size: 11px;
+  padding: 0 8px;
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  border-color: var(--border);
+  background: transparent;
+  color: var(--text-3);
+}
+.vte-kind .vts-btn:hover {
+  border-color: var(--border-3);
+  color: var(--text-2);
 }
 .vt-det {
   padding: 14px;
