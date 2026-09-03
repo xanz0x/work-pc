@@ -6214,3 +6214,159 @@
     text-transform: lowercase;
   }
 }
+
+/* ------------------------------------------------------------
+   NF-7 · БЭКАП ВСЕГО СЕЙФА и NF-8 · АВТОНОМНЫЙ РЕЖИМ
+   Слой добавлен в конец: базовые правила не переписываются.
+   ------------------------------------------------------------ */
+.bk-mods {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+.bk-mod {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 10px 11px;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--bg-input);
+  cursor: pointer;
+  transition-property: border-color, background-color;
+  transition-duration: 140ms;
+}
+.bk-mod:hover {
+  border-color: var(--border-2);
+}
+.bk-mod > i {
+  flex-shrink: 0;
+  width: 13px;
+  height: 13px;
+  margin-top: 2px;
+  border: 1px solid var(--border-2);
+  border-radius: 3px;
+  transition-property: background-color, border-color;
+  transition-duration: 140ms;
+}
+.bk-mod.on {
+  border-color: color-mix(in oklab, var(--accent) 45%, var(--border));
+}
+.bk-mod.on > i {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.bk-mod-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.bk-mod-text b {
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.bk-mod-text span {
+  font-size: 11px;
+  color: var(--text-3);
+}
+.bk-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+.bk-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--bg-input);
+}
+.bk-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 190px;
+  flex: 1;
+}
+.bk-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.bk-row .bk-actions {
+  margin-top: 0;
+}
+.bk-preview {
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid var(--border-2);
+  border-radius: var(--r);
+  background: var(--panel-2);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.net-log {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
+.net-log-row {
+  display: grid;
+  grid-template-columns: 76px 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 9px;
+  font-size: 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--bg-input);
+}
+.sb-dev {
+  color: var(--text-3);
+  font-size: 10.5px;
+  margin-right: 10px;
+}
+.sb-offline {
+  color: var(--accent);
+}
+.sb-offline .net-dot {
+  background: var(--accent);
+}
+
+/* Приёмка NF-7/NF-8: узкие окна и читаемость журнала запретов. */
+#set-backup .setting-row,
+#set-flags .setting-row {
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+.net-log-row .net-via {
+  color: var(--text-2);
+}
+@media (max-width: 900px) {
+  .bk-mods {
+    grid-template-columns: 1fr;
+  }
+  .bk-row-main {
+    min-width: 140px;
+  }
+  .net-log-row {
+    grid-template-columns: 1fr auto;
+    row-gap: 4px;
+  }
+  #set-backup .vt-seg,
+  #set-flags .vt-seg {
+    margin-left: auto;
+  }
+}

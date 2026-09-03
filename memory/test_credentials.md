@@ -4,7 +4,7 @@
 - Страница входа: `/login`
 - Пароль приложения: `IceKrymTeam13@`
 - Переменная окружения: `APP_PASSWORD` в `/app/.env`
-- `/app/.env` восстановлен 2026-09-02 (файл пропадал вместе с pod'ом): помимо
+- `/app/.env` восстановлен 2026-09-03 (файл пропадает вместе с pod'ом): помимо
   `APP_PASSWORD` в нём `APP_SESSION_SECRET` (локальный dev-ключ подписи cookie,
   меняется свободно — старые сессии просто перестанут проходить) и
   `APP_SESSION_TTL_HOURS=12`. Без этих переменных прод-сервер не поднимается
@@ -77,3 +77,19 @@ APP_URL=http://localhost:3000 APP_PASSWORD=IceKrymTeam13@ node scripts/long-dial
 Браузеры Playwright после сброса пода ставятся заново:
 `PLAYWRIGHT_BROWSERS_PATH=/pw-browsers npx playwright install chromium`.
 Зависимости — pnpm: `npx -y pnpm@10.11.0 install --frozen-lockfile`.
+
+## Волна 4 · NF-7 / NF-8 (2026-09-03)
+- Пароль снимка бэкапа в e2e (`16-backup-flags.spec.ts`): `снимок-пароль-2026`.
+  Это пароль ОТДЕЛЬНЫЙ от мастер-ключа: снимок открывается только им.
+- Флаги и автономный режим живут в `localStorage` под ключом `wf.flags.v1`.
+- Node в поде: pnpm 11 требует Node ≥ 22.13, стоял Node 20. Поставлен Node 22
+  (arm64) в `/usr/local`, после чего `pnpm install` проходит; сборочные скрипты
+  включаются вручную: `pnpm rebuild esbuild unrs-resolver @tailwindcss/oxide`.
+- Supervisor запускает ПРОДАКШН-сервер (`next start`), поэтому после правок
+  нужен `npx next build && sudo supervisorctl restart frontend`.
+- Из-за прод-сборки cookie входа помечена `Secure`, и `pytest tests/api` по
+  `http://localhost:3000` получает 401 на всё после входа. Прогонять их надо по
+  https-адресу preview: `APP_URL=https://<preview>.preview.emergentagent.com
+  python3 -m pytest tests/api -q`. Оставшиеся падения там — среда, а не код:
+  нет `/root/.workflow/ai/*` (файлы скиллов лежат в `/app/ai`) и не запущен
+  локальный Ollama (503).

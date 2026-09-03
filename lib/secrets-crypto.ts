@@ -76,6 +76,38 @@ export async function ensureSecretsSession(): Promise<boolean> {
   return true
 }
 
+/**
+ * NF-7: сырьё SEK для бэкапа всего сейфа. Отдаётся ТОЛЬКО внутри открытого
+ * сеанса и только для того, чтобы уехать внутрь снимка, зашифрованного
+ * отдельным паролем (sealPortable). Без него снимок секретов бесполезен на
+ * чистом устройстве: там будет другой мастер-ключ, а значит другая обёртка.
+ */
+export function exportSekRaw(): string | null {
+  return sekRaw ? bytesToB64(sekRaw) : null
+}
+
+/**
+ * NF-7: принять SEK из снимка — заново обернуть его мастер-ключом ЭТОГО
+ * устройства и положить в localStorage. Производные ключи записей сбрасываются.
+ */
+export async function adoptSekRaw(rawB64: string): Promise<boolean> {
+  const master = getMasterSession()
+  if (!master) return false
+  let raw: Uint8Array
+  try {
+    raw = b64ToBytes(rawB64)
+  } catch {
+    return false
+  }
+  if (raw.length !== 32) return false
+  const wrapped = await aesEncrypt(master, bytesToB64(raw))
+  writeSek({ v: 1, wct: wrapped.ctB64, wiv: wrapped.ivB64 })
+  if (sekRaw) sekRaw.fill(0)
+  sekRaw = raw
+  keyCache.clear()
+  return true
+}
+
 async function entryKey(entryId: string): Promise<CryptoKey | null> {
   if (!sekRaw) return null
   const cached = keyCache.get(entryId)

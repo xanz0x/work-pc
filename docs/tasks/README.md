@@ -48,8 +48,8 @@
 | NF-3 | Центр активности | P1 | 4 | **DONE** 2026-06-02 |
 | NF-5 | Bulk actions | P2 | 4 | **DONE** 2026-09-02 |
 | NF-6 | Командный центр в палитре | P2 | 4 | **DONE** 2026-09-02 |
-| NF-7 | Бэкап всего сейфа | P2 | 4 | TODO |
-| NF-8 | Feature flags и автономный режим | P2 | 4 | TODO |
+| NF-7 | Бэкап всего сейфа | P2 | 4 | **DONE** 2026-09-03 |
+| NF-8 | Feature flags и автономный режим | P2 | 4 | **DONE** 2026-09-03 |
 | UX-3 | Фильтры панели событий | P2 | 4 | TODO |
 | UX-4 | Accessibility панелей и модалок | P2 | 4 | TODO |
 | UX-5 | Явный демо-режим | P2 | 4 | TODO |
@@ -71,6 +71,9 @@ lib/vault-store.tsx     единый сейф: файлы, стикеры, ди�
 lib/secrets-store.tsx   менеджер секретов поверх замка
 app/ai-api/chat/route.ts  SSE-поток модели + цикл tool-calling
 hooks/use-ai-chat.ts    клиентский цикл агента и подтверждение опасных скиллов
+lib/backup/*            снимок всего сейфа: сбор, ключевой материал, ротация, расписание
+lib/flags.ts            флаги и автономный режим (wf.flags.v1, синхронное чтение)
+lib/net.ts              обёртка над fetch/XHR/WebSocket/EventSource/sendBeacon
 app/globals.css         дизайн-система «Графит» (слоями, ничего не переписывать)
 ```
 

@@ -5,6 +5,7 @@ import {
   useEffect,
   useRef,
   useState,
+  useSyncExternalStore,
   type ComponentType,
   type ReactNode,
   type SVGProps,
@@ -23,7 +24,20 @@ import { useIndexActions } from '@/lib/indexer/context'
 import { fmtBytes } from '@/lib/data'
 import { SCOPES } from '@/lib/search'
 import { flushClientErrors } from '@/lib/telemetry-client'
+import { useFlags } from '@/lib/flags'
+import { blockedCount, installNetGuard, subscribeNet } from '@/lib/net'
+import { DB_VERSION } from '@/lib/db/schema'
+import { APP_BUILD } from '@/lib/backup/registry'
 import type { ScreenId } from '@/lib/vault-store'
+
+/** «1 запрет», «2 запрета», «5 запретов» — счётчик обязан звучать по-русски. */
+function blockedWord(n: number): string {
+  const d = n % 10
+  const dd = n % 100
+  if (d === 1 && dd !== 11) return 'ЗАПРЕТ'
+  if (d >= 2 && d <= 4 && (dd < 12 || dd > 14)) return 'ЗАПРЕТА'
+  return 'ЗАПРЕТОВ'
+}
 import {
   IconChat,
   IconChevronDown,
@@ -91,6 +105,14 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const [collapsed, setCollapsed] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
+  /* NF-8: обёртка над сетью ставится до первого эффекта — иначе запрет
+     опоздает на промис и запрос успеет уйти. */
+  useState(() => {
+    installNetGuard()
+    return true
+  })
+  const flags = useFlags()
+  const blocked = useSyncExternalStore(subscribeNet, blockedCount, () => 0)
   /* AR-1: часы статус-бара живут в своём компоненте (StatusClock) и тикают
      из ClockContext — каркас больше не перерисовывается раз в секунду. */
   const searchWrap = useRef<HTMLDivElement>(null)
@@ -117,6 +139,25 @@ export function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     void flushClientErrors()
   }, [])
+
+  /* NF-7: расписание бэкапа. Планировщика в браузере нет, поэтому
+     просрочку проверяем при открытии приложения — один раз за сессию и
+     только при открытом сейфе: пароль снимка лежит под мастер-ключом. */
+  const dueChecked = useRef(false)
+  useEffect(() => {
+    if (v.lock.status === 'locked' || !v.hydrated || dueChecked.current) return
+    dueChecked.current = true
+    void import('@/lib/backup').then(({ runDueBackup, liveOf }) =>
+      runDueBackup(Date.now(), liveOf(v)).then((r) => {
+        if (r.ran) {
+          v.flash(
+            `Снимок сейфа по расписанию создан: ${r.meta.modules.length} модулей, ротация держит последние копии.`,
+          )
+        }
+      }),
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [v.lock.status, v.hydrated])
 
   // Клик мимо панели результатов закрывает её, не трогая сам запрос.
   useEffect(() => {
@@ -533,10 +574,22 @@ export function AppShell({ children }: { children: ReactNode }) {
         </span>
         <span className="grow" />
         <JournalAlert />
-        <span className="sb-net" data-testid="status-net">
-          <i className={`net-dot${v.engineView.isCloud ? ' warn' : ''}`} />
-          {v.engineView.netLabel}
-        </span>
+        {flags.flags.dev && (
+          <span className="sb-dev mono" data-testid="status-dev">
+            сборка {APP_BUILD} · схема v{DB_VERSION} · запретов {blocked}
+          </span>
+        )}
+        {flags.offline ? (
+          <span className="sb-net sb-offline" data-testid="status-offline">
+            <i className="net-dot" />
+            АВТОНОМНЫЙ РЕЖИМ · {blocked} {blockedWord(blocked)}
+          </span>
+        ) : (
+          <span className="sb-net" data-testid="status-net">
+            <i className={`net-dot${v.engineView.isCloud ? ' warn' : ''}`} />
+            {v.engineView.netLabel}
+          </span>
+        )}
       </footer>
 
       <CommandPalette />

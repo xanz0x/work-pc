@@ -19,6 +19,7 @@ import {
   IconSparkText,
   IconTag,
   IconTrash,
+  IconWifi,
 } from './icons'
 import {
   useDataStore,
@@ -35,6 +36,8 @@ import { useEngineStore } from '@/lib/store/engine'
 import { NumTicker } from './ui/num-ticker'
 import { SecuritySection } from './security-section'
 import { SecretsSection } from './secrets-section'
+import { BackupSection } from './backup-section'
+import { FlagsSection } from './flags-section'
 import { JournalPanel } from './journal-panel'
 
 type Ico = ComponentType<SVGProps<SVGSVGElement>>
@@ -100,6 +103,8 @@ const SECTIONS: { id: string; label: string; Icon: Ico }[] = [
   { id: 'storage', label: 'Хранилище', Icon: IconDatabase },
   { id: 'privacy', label: 'Приватность', Icon: IconShield },
   { id: 'secrets', label: 'Менеджер секретов', Icon: IconKey },
+  { id: 'backup', label: 'Бэкап сейфа', Icon: IconDatabase },
+  { id: 'flags', label: 'Автономный режим', Icon: IconWifi },
   { id: 'journal', label: 'Журнал безопасности', Icon: IconLayers },
   { id: 'danger', label: 'Опасная зона', Icon: IconTrash },
 ]
@@ -116,6 +121,9 @@ const FOCUS_ALIAS: Record<string, string> = {
   security: 'security',
   journal: 'journal',
   secrets: 'secrets',
+  backup: 'backup',
+  flags: 'flags',
+  offline: 'flags',
   danger: 'danger',
 }
 
@@ -666,6 +674,8 @@ export function ScreenSettings() {
 
             <SecuritySection />
             <SecretsSection />
+            <BackupSection />
+            <FlagsSection />
             <JournalPanel />
 
             <section className="sec panel danger-zone" id="set-danger">

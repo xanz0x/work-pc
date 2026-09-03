@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { IconLockRound } from '@/components/icons'
 
 /**
@@ -11,17 +11,25 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [err, setErr] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  /* Значение берём из DOM: менеджер паролей и автозаполнение успевают
+     заполнить поле до гидратации, и тогда React-state пуст, а поле — нет. */
+  const inputRef = useRef<HTMLInputElement>(null)
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     if (busy) return
+    const value = inputRef.current?.value ?? password
+    if (value.length === 0) {
+      setErr('Введите пароль приложения.')
+      return
+    }
     setBusy(true)
     setErr(null)
     try {
       const r = await fetch('/ai-api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ password: value }),
       })
       if (r.ok) {
         window.location.replace('/')
@@ -52,6 +60,7 @@ export default function LoginPage() {
             type="password"
             autoFocus
             autoComplete="current-password"
+            ref={inputRef}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             data-testid="login-password"
@@ -65,7 +74,7 @@ export default function LoginPage() {
         <button
           type="submit"
           className="btn btn-primary login-submit"
-          disabled={busy || !password}
+          disabled={busy}
           data-testid="login-submit"
         >
           {busy ? 'Проверяю…' : 'Войти'}

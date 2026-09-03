@@ -49,6 +49,8 @@ const LOCAL_EXACT = new Set([
   'wf.chat.scroll',
   'wf.chat.rail',
   'wf.filekeys.lockedlist',
+  /* NF-8: флаги и автономный режим читаются СИНХРОННО — до первого fetch. */
+  'wf.flags.v1',
   'wf-nav',
 ])
 
