@@ -40,13 +40,21 @@ export async function validateMnemonic(phrase: string): Promise<MnemonicCheck> {
     return { ok: false, msg: `Сейчас ${ws.length} слов — BIP39 допускает 12, 15, 18, 21 или 24` }
   for (const w of ws)
     if (!INDEX.has(w)) return { ok: false, msg: `Слова «${w}» нет в словаре BIP39` }
+  const entropy = await mnemonicToEntropy(ws)
+  return entropy
+    ? { ok: true, msg: 'Контрольная сумма верна — фраза валидна' }
+    : { ok: false, msg: 'Контрольная сумма не сходится — в фразе опечатка или неверный порядок слов' }
+}
+
+/** Обратное преобразование (NF-11): энтропия из слов или null, если фраза битая. */
+export async function mnemonicToEntropy(words: string[]): Promise<Uint8Array | null> {
+  const ws = words.map((w) => w.trim().toLowerCase()).filter(Boolean)
+  if (![12, 15, 18, 21, 24].includes(ws.length) || ws.some((w) => !INDEX.has(w))) return null
   const bits = ws.map((w) => INDEX.get(w)!.toString(2).padStart(11, '0')).join('')
   const entBits = (ws.length * 11 * 32) / 33
   const entropy = new Uint8Array(entBits / 8)
   for (let i = 0; i < entropy.length; i++)
     entropy[i] = parseInt(bits.slice(i * 8, i * 8 + 8), 2)
   const cs = await checksumBits(entropy)
-  return bits.slice(entBits) === cs
-    ? { ok: true, msg: 'Контрольная сумма верна — фраза валидна' }
-    : { ok: false, msg: 'Контрольная сумма не сходится — в фразе опечатка или неверный порядок слов' }
+  return bits.slice(entBits) === cs ? entropy : null
 }

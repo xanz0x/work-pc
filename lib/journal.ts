@@ -34,6 +34,9 @@ export type JournalKind =
   | 'mcp-call'
   | 'mcp-denied'
   | 'mcp-approval'
+  | 'sync-enabled'
+  | 'sync-disabled'
+  | 'sync-device-revoked'
 
 export type JournalEntry = {
   id: string
@@ -64,6 +67,9 @@ export const JOURNAL_KINDS: { id: JournalKind; label: string; severe: boolean }[
   { id: 'mcp-call', label: 'MCP · вызов агента', severe: false },
   { id: 'mcp-denied', label: 'MCP · отказ агенту', severe: false },
   { id: 'mcp-approval', label: 'MCP · подтверждение', severe: true },
+  { id: 'sync-enabled', label: 'Синхронизация включена', severe: false },
+  { id: 'sync-disabled', label: 'Синхронизация выключена', severe: false },
+  { id: 'sync-device-revoked', label: 'Устройство отозвано', severe: true },
 ]
 
 export function journalKindLabel(kind: JournalKind): string {

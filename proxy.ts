@@ -10,7 +10,7 @@ import { log, newRequestId } from '@/lib/log'
  * Здесь же рождается request-id (AR-5): он уезжает в маршрут заголовком
  * x-request-id и возвращается клиенту в X-Request-Id.
  */
-export const config = { matcher: ['/ai-api/:path*', '/mcp/admin/:path*'] }
+export const config = { matcher: ['/ai-api/:path*', '/mcp/admin/:path*', '/sync/:path*'] }
 
 export async function proxy(req: NextRequest) {
   const rid = newRequestId()

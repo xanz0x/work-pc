@@ -145,6 +145,10 @@ export type DataCtx = {
   /** UX-5: убрать демо-объекты, не трогая пользовательские. */
   clearDemo: () => void
 
+  /** NF-11: движок синхронизации подменяет корпус целиком слитым состоянием. */
+  replaceFiles: (list: VaultFile[]) => void
+  replaceNotes: (list: Note[]) => void
+
   notes: Note[]
   liveNotes: Note[]
   notesFor: (fileId: string) => Note[]
@@ -712,6 +716,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       wipeVault,
       demo,
       clearDemo,
+      replaceFiles: setFiles,
+      replaceNotes: setNotes,
       notes,
       liveNotes,
       notesFor,
@@ -740,7 +746,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [
       ready, files, views, fileById, viewById, addFiles, applyIndexed, setIndexing, dropIndexed,
       setReindexHandler, removeFile, retagFile, bulkPatchFiles, bulkRemoveFiles, restoreFiles,
-      bulkPatchNotes, reindexAll, clearIndex, wipeVault, demo, clearDemo, notes,
+      bulkPatchNotes, reindexAll, clearIndex, wipeVault, demo, clearDemo, setFiles, setNotes, notes,
       liveNotes, notesFor, addNote, patchNote, burnNote, extendNote, patchNoteSecret, sessions,
       activeSessionId, setActiveSessionId, addSession, patchSession, removeSession, drafts,
       setDraft, scrolls, setScroll, graph, clusters, mix, neighbors, stats,

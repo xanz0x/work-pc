@@ -1096,3 +1096,24 @@ UX-4 accessibility · LG-4/LG-5 · RM-3.
 - P3: MCP — SSE-поток для `tools/call` с долгим ожиданием; OAuth resource metadata
   (RFC 9728) для клиентов, которые не умеют статический Bearer.
 - P3: MCP — инструмент чтения тела стикера по отдельной области `notes:read`.
+
+---
+
+## NF-11 · E2EE-синхронизация (2026-06-04, сделано) — волна 5 закрыта
+- Ключ: 12 слов BIP39 → HKDF → AES-GCM-ключ + `spaceId` + «пароль пространства» (`lib/sync/crypto.ts`).
+  Сервер видит только `spaceId` и хеш пароля; ключ хранится в `wf.sync.v1` (localStorage, локально).
+- CRDT `lib/sync/crdt.ts`: LWW по полю с HLC-метками и id устройства, tombstones, векторные часы.
+  Коллекции: файлы (без `processing`), стикеры (кроме `locked`), уведомления. Секреты не синкаются.
+- Слепое хранилище `lib/sync-server.ts`, маршруты `/sync/devices` (POST регистрация по паролю
+  пространства, GET список, DELETE отзыв) и `/sync/ops` (GET long-poll since/wait, POST push) — за сессией.
+  Диск: `AI_DIR/sync/<spaceId>/space.json` + `ops.jsonl`.
+- Движок `lib/sync/engine.tsx` (`SyncProvider` в `app/(app)/layout.tsx`), UI `components/sync-section.tsx`
+  (раздел «Синхронизация»: create/join, фраза+QR, устройства, отзыв, выключение). Журнал: 3 новых типа.
+- Тесты: `tests/unit/sync.test.ts` (5), `tests/api/test_sync.py` (5), `tests/e2e/22-sync-e2ee.spec.ts`
+  (два контекста). Регресс: `tsc` 0, `eslint` 0 ошибок, `vitest` 210/210.
+
+### Бэклог после волны 5
+- P3: ротация фразы после отзыва устройства (отозванное устройство всё ещё знает старую фразу;
+  сейчас UI об этом предупреждает). Ключ синхронизации под мастер-ключом при включённом замке.
+- P3: синхронизация разговоров чата (`wf.chat.v1`) и записей менеджера секретов отдельной областью.
+- P3: компакция `ops.jsonl` в снапшот при большом журнале.

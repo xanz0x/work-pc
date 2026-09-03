@@ -1,0 +1,42 @@
+{
+  "summary": "NF-11 · E2EE-синхронизация — сквозная приёмка. Backend pytest tests/api/test_sync.py: 5/5 PASS против preview. Unit-тесты (tests/unit/sync.test.ts): 5/5 PASS. E2E tests/e2e/22-sync-e2ee.spec.ts: 1/1 PASS (10.5 с) — два независимых контекста браузера A/B, приготовление фразы 12 слов, join, создание стикера на A через MCP-инструмент create_sticker (scopes:['notes:write']), появление стикера на B, отклонение неверной фразы контекстом C, двойной клик revoke, sync-error 'отозвано' на B, journal-row sync-enabled + sync-device-revoked присутствуют.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": { "ui_bugs": [], "integration_issues": [], "design_issues": [] },
+  "verified_requirements": [
+    "POST /sync/devices и GET /sync/ops без cookie → 401 AUTH_REQUIRED",
+    "После логина POST /sync/devices {spaceId(32hex), spacePass(64hex), deviceId(16hex), label{ct,iv}} → 200 {token(48hex), created:true}",
+    "Тот же spaceId с другим spacePass → 403 WRONG_PASS",
+    "Верный spacePass + другой deviceId → 200 created:false, свой token",
+    "Невалидная форма (spaceId 'xyz') → 400",
+    "Неверный X-Sync-Token → 403; GET /sync/devices возвращает список без tokenHash, поле self=<currentDev>",
+    "POST /sync/ops {ops:[{ct,iv},{ct,iv}]} → {seq:2}",
+    "GET /sync/ops?since=0 для отправителя → ops:[] (свои не возвращаются)",
+    "GET /sync/ops?since=0 для другого устройства → все ops по порядку seq=1,2 с dev отправителя",
+    "since=<seq> → ops:[]",
+    "ops:[] или неверная форма → 400",
+    "DELETE /sync/devices?id=<other> → 200; запросы отозванного устройства → 403; повторная регистрация того же deviceId → 403 REVOKED; revokedAt≠null в списке",
+    "Слепой сервер: /root/.workflow/ai/sync/<spaceId>/space.json содержит только passHash, tokenHash, label {ct,iv}; ops.jsonl — только {seq,dev,at,ct,iv}. grep по 'Стикер|Ноутбук|Телефон|устройства A' в каталоге sync ничего не находит",
+    "UI A: nav-settings → settings-sync → sync-label='Ноутбук A' → sync-create → sync-status='в эфире' в течение 30 с; sync-words содержит 12 элементов",
+    "UI B: sync-join-phrase = 12 слов A → sync-join → sync-status='в эфире'; sync-device-row=2 в обоих контекстах",
+    "MCP-инструмент create_sticker (scopes:['notes:write'], token wsx_...) на A выполнен без ошибки; на B в /library стикер 'Стикер с устройства A' виден в течение 30 с",
+    "Чужая фраза (11 слов A + повтор) в контексте C → sync-error виден",
+    "Двойной клик sync-device-revoke на A → второй sync-device-status='отозвано'; на B sync-error содержит 'отозвано' в течение 40 с",
+    "На A присутствуют journal-row с data-kind='sync-enabled' и 'sync-device-revoked'"
+  ],
+  "critical_code_review_comments": [],
+  "test_report_links": [
+    "/app/tests/api/test_sync.py",
+    "/app/tests/e2e/22-sync-e2ee.spec.ts",
+    "/app/tests/unit/sync.test.ts",
+    "/app/test_reports/pytest/iter26_sync.xml"
+  ],
+  "action_items": [],
+  "updated_files": [],
+  "success_rate": { "backend": "5/5 (100%) + unit 5/5 (100%)", "frontend": "1/1 e2e (100%)" },
+  "test_credentials": "APP_URL=https://token-permissions.preview.emergentagent.com; APP_PASSWORD=IceKrymTeam13@; PIN=123456",
+  "seed_data_creation": "pytest создал spaceId=64a87901... с двумя устройствами A/B (B отозван), ops.jsonl из 2 записей (ct='c1','c2'). e2e создаёт одноразовые пространства в изолированных контекстах браузера — не пересекаются с прод-данными. MCP-токен 'sync-e2e' в вкладке A ttl=1h.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Long-poll /sync/ops держит соединение до ~20 с — Playwright wait_until='networkidle' не сработает, использовать 'load' (учтено в waitAppReady). Server-blindness проверяется grep по каталогу /root/.workflow/ai/sync/<spaceId>/ — ни plaintext заголовков стикеров, ни имён устройств, ни пароля пространства нет. Ключ синхронизации переживает reload (kept в IndexedDB), диск хранит только шифртекст. Пароль входа стабилен: IceKrymTeam13@.",
+  "rca of the issue": "Отклонений нет — приёмка чистая."
+}

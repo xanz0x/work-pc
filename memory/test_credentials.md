@@ -124,3 +124,11 @@ APP_URL=http://localhost:3000 APP_PASSWORD=IceKrymTeam13@ node scripts/long-dial
 - Тесты: `APP_URL=https://token-permissions.preview.emergentagent.com python3 -m pytest tests/api/test_mcp.py -q`;
   e2e `tests/e2e/21-mcp-external.spec.ts` создаёт PIN `123456` в одноразовом профиле.
 - `.env` восстановлен 2026-06-04 (пароль прежний `IceKrymTeam13@`), добавлен `/app/.env.example`.
+
+## NF-11 · Синхронизация (2026-06-04)
+- Раздел Настройки → «Синхронизация» (`settings-sync`): `sync-create` создаёт пространство и
+  показывает 12 слов (`sync-words`); `sync-join-phrase` + `sync-join` присоединяет второе устройство.
+- Фраза — единственный ключ: сервер её не хранит. В e2e (`22-sync-e2ee.spec.ts`) она генерируется
+  на лету в одноразовых контекстах браузера.
+- Серверные данные: `/root/.workflow/ai/sync/<spaceId>/` — только шифртекст.
+- Тесты: `APP_URL=https://token-permissions.preview.emergentagent.com python3 -m pytest tests/api/test_sync.py -q`.

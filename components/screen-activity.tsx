@@ -103,6 +103,9 @@ const JKIND_ICON: Record<JournalKind, IconId> = {
   'mcp-call': 'terminal',
   'mcp-denied': 'shield',
   'mcp-approval': 'shield',
+  'sync-enabled': 'database',
+  'sync-disabled': 'database',
+  'sync-device-revoked': 'shield',
 }
 
 const OBJ_LABELS: Record<ObjType, string> = {

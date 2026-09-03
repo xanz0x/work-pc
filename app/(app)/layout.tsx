@@ -2,6 +2,7 @@ import { StorageAlert } from '@/components/storage-alert'
 import { IndexerProvider } from '@/lib/indexer/context'
 import { McpBridge } from '@/lib/mcp-bridge'
 import { RedactedProvider } from '@/lib/redact-context'
+import { SyncProvider } from '@/lib/sync/engine'
 import { SecretsProvider } from '@/lib/secrets-store'
 import { VaultProvider } from '@/lib/vault-store'
 
@@ -29,6 +30,8 @@ export default function AppLayout({ children }: Readonly<{ children: React.React
               {/* NF-10: мост к MCP-серверу — выполняет задания внешних агентов
                   через те же сторы и пишет их аудит в журнал безопасности. */}
               <McpBridge />
+              {/* NF-11: E2EE-синхронизация — сливает файлы, стикеры и ленту между устройствами. */}
+              <SyncProvider />
             </SecretsProvider>
           </IndexerProvider>
         </VaultProvider>
