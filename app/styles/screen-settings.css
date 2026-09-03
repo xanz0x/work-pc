@@ -140,7 +140,10 @@
      ============================================================ */
   /* Рельс разделов слева + колонка контента: длинная страница перестаёт
      быть свитком и получает адресную навигацию. */
-  /* Страница настроек: скролл только у контента, панель сохранения — подвал. */
+  /* Страница настроек: скролл только у контента, панель сохранения — подвал.
+     height:100% здесь врало: .set-page — flex-ребёнок .main-col рядом с
+     топбаром, поэтому «сто процентов» давали высоту БЕЗ вычета топбара,
+     колонка прокрутки уезжала под статус-бар и скролл проваливался в пустоту. */
   .set-page {
     display: flex;
     flex-direction: column;
@@ -274,23 +277,6 @@
   .set-stat-sub {
     font-size: 11px;
     color: var(--text-3);
-  }
-  .sec-head-text {
-    flex: 1;
-    min-width: 0;
-  }
-  .sec-meta {
-    flex-shrink: 0;
-    align-self: flex-start;
-    margin-top: 3px;
-    padding: 3px 8px;
-    border: 1px solid var(--border);
-    border-radius: var(--r);
-    color: var(--text-3r);
-  }
-  .danger-zone .sec-meta {
-    color: var(--danger);
-    border-color: rgba(229, 100, 92, 0.3);
   }
   .sec-split {
     height: 1px;
@@ -530,16 +516,6 @@
   .rows-list {
     margin-top: 4px;
   }
-  .setting-title {
-    font-size: 13.5px;
-    font-weight: 500;
-    color: var(--text);
-  }
-  .setting-note {
-    font-size: 12.5px;
-    color: var(--text-3r);
-    margin-top: 2px;
-  }
   /* Подвал вне области прокрутки: пан��ль сохранения не накрывает разделы. */
   .set-footer {
     flex-shrink: 0;
@@ -577,15 +553,15 @@
     flex-shrink: 0;
     background: var(--text-3);
   }
+}
+
+@layer wf006 {
+
   .save-actions {
     display: flex;
     gap: 8px;
     flex-shrink: 0;
   }
-}
-
-@layer wf006 {
-
   @media (max-width: 1100px) {
 
     /* Рельс уходит в горизонтальную ленту над контентом. */
@@ -781,19 +757,6 @@
     color: var(--text-2);
   }
 
-  /* Индикатор силы пароля: сегменты линией 2px */
-  .lock-strength {
-    display: flex;
-    gap: 5px;
-    margin: -2px 0 10px;
-  }
-  .lock-strength i {
-    height: 2px;
-    flex: 1;
-    background: var(--border-2);
-    transition: background 0.2s ease;
-  }
-
   /* Сегмент-контрол автоблокировки */
   .autolock-seg {
     display: flex;
@@ -824,46 +787,8 @@
 
 @layer wf016 {
 
-
-  /* ============================================================
-     POLISH v3.3 · Премиум-полиш слоя замка
-     Применён make-interfaces-feel-better: концентрические радиусы
-     (карточка --r-panel над полями --r), глубина лестницей тонов
-     (--panel-2 / --panel / --bg-input), волосяные границы,
-     tabular-nums на живых числах, transition-property указан
-     точечно (никакого all). Blur запрещён системой: «дефокус»
-     появления карточки имитирует стартовый letter-spacing логотипа.
-     Reduced-motion накрыт глобальным правилом v3 (duration 0.01ms).
-     ============================================================ */
-
-  /* ---------- 1 · Секция «Безопасность»: заголовок-строка ---------- */
-  /* Язык пипа статуса — тот же вертикальный штрих, что у mask-flag */
-  #set-security .sec-meta {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-  }
-  #set-security .sec-meta::before {
-    content: '';
-    flex: 0 0 auto;
-    width: 1px;
-    height: 11px;
-    background: var(--border-2);
-  }
-  #set-security .sec-meta.ok-text::before {
-    background: var(--accent);
-  }
-  #set-security .setting-title {
-    text-wrap: balance;
-  }
-  #set-security .setting-note {
-    text-wrap: pretty;
-  }
   .lock-form-card.is-danger {
     border-color: rgba(229, 100, 92, 0.25);
-  }
-  .lf-field .lock-strength {
-    margin: 2px 0 0;
   }
 
   /* Отмена — честный ghost: тише всех на кнопочной строке */
@@ -871,6 +796,10 @@
     background: var(--raise-1);
     color: var(--text-2);
   }
+}
+
+@layer wf017 {
+
 
   /* В danger-карточке иконка предупреждения говорит тем же голосом,
      что кромка формы — danger вместо warn */
@@ -879,7 +808,7 @@
   }
 }
 
-@layer wf021 {
+@layer wf022 {
 
   /* Живые числа настроек не дёргают ширину колонки */
   .set-stat b {
@@ -940,10 +869,6 @@
   #set-security .lock-form-card,
   #set-privacy .mask-demo {
     max-width: 760px;
-  }
-  /* Сила пароля и счётчики дышат от нового поля */
-  .lf-field .lock-strength {
-    margin-top: 8px;
   }
 }
 
@@ -1189,14 +1114,6 @@
     color: var(--bg);
   }
 
-  @media (max-width: 900px) {
-
-    .mk-cells {
-      gap: 6px;
-    }
-  }
-
-
   /* ---------- Правки переноса: штрихи иконок и раскладка строк ---------- */
 
   /* Иконки окна ключа рисуются штрихом, как везде в сейфе */
@@ -1218,11 +1135,71 @@
   }
 }
 
-/* ============================================================
-   ЖУРНАЛ БЕЗОПАСНОСТИ (LG-3) · панель настроек
-   Только чтение: ритм строк лога, тон вместо теней, один акцент.
-   ============================================================ */
-@layer wf031 {
+@layer wf046 {
+
+
+  .bk-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  margin-top: 8px;
+  flex-wrap: wrap;
+  }
+
+  .bk-row .bk-actions {
+  margin-top: 0;
+  }
+
+  .net-log {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+  }
+
+  .net-log-row {
+  display: grid;
+  grid-template-columns: 76px 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 9px;
+  font-size: 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--bg-input);
+  }
+
+  #set-backup .setting-row,
+  #set-flags .setting-row {
+  flex-wrap: wrap;
+  row-gap: 8px;
+  }
+
+  .net-log-row .net-via {
+  color: var(--text-2);
+  }
+
+  @media (max-width: 900px) {
+
+  .net-log-row {
+    grid-template-columns: 1fr auto;
+    row-gap: 4px;
+  }
+  }
+
+}
+
+@layer wf047 {
+
+
+
+  /* ============================================================
+     ДОГОНЯЮЩИЙ БЛОК · ПАНЕЛЬ ЖУРНАЛА БЕЗОПАСНОСТИ
+     Классы .jr-* принадлежат components/journal-panel.tsx (экран
+     настроек) и раньше правились прямо в сгенерированном слое.
+     ============================================================ */
+
   .jr-bar {
     display: flex;
     align-items: center;
@@ -1265,11 +1242,6 @@
     color: var(--text);
     border-color: var(--accent-line);
     background: rgba(47, 190, 126, 0.06);
-  }
-
-  .jr-chip.severe[aria-pressed='true'] {
-    border-color: rgba(229, 100, 92, 0.5);
-    background: rgba(229, 100, 92, 0.07);
   }
 
   .jr-rows {
@@ -1369,10 +1341,7 @@
       gap: 4px;
     }
   }
-}
 
-/* Пометка «необратимо» у тревожных записей журнала (LG-3). */
-@layer wf031 {
   .jr-kind {
     display: flex;
     flex-direction: column;

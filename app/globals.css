@@ -12,7 +12,7 @@
    scripts/check-css-split.py).
    ============================================================ */
 
-@layer wf001, wf002, wf003, wf004, wf005, wf006, wf007, wf008, wf009, wf010, wf011, wf012, wf013, wf014, wf015, wf016, wf017, wf018, wf019, wf020, wf021, wf022, wf023, wf024, wf025, wf026, wf027, wf028, wf029, wf030, wf031, wf032, wf033, wf034, wf035, wf036, wf037, wf038, wf039, wf040, wf041, wf042, wf043, wf044, wf045, wf046, wf047;
+@layer wf001, wf002, wf003, wf004, wf005, wf006, wf007, wf008, wf009, wf010, wf011, wf012, wf013, wf014, wf015, wf016, wf017, wf018, wf019, wf020, wf021, wf022, wf023, wf024, wf025, wf026, wf027, wf028, wf029, wf030, wf031, wf032, wf033, wf034, wf035, wf036, wf037, wf038, wf039, wf040, wf041, wf042, wf043, wf044, wf045, wf046, wf047, wf048;
 
 @theme inline {
   --color-background: var(--bg);
@@ -1892,35 +1892,6 @@
     gap: 7px;
   }
 
-  /* LG-3: метка тревожных записей журнала — быстрый переход из статус-бара. */
-  .sb-alert {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    margin-right: 14px;
-    padding: 1px 8px;
-    font: inherit;
-    letter-spacing: 0.14em;
-    color: var(--danger);
-    background: rgba(229, 100, 92, 0.08);
-    border: 1px solid rgba(229, 100, 92, 0.35);
-    border-radius: 2px;
-    cursor: pointer;
-    transition:
-      background-color 160ms ease,
-      border-color 160ms ease;
-  }
-  .sb-alert:hover {
-    background: rgba(229, 100, 92, 0.16);
-    border-color: rgba(229, 100, 92, 0.6);
-  }
-  .sb-alert svg {
-    stroke: currentColor;
-    stroke-width: 1.5;
-    fill: none;
-  }
-
-
   /* ---------- Анимации ---------- */
   @keyframes pulse {
     0%,
@@ -2354,6 +2325,23 @@
   .set-toast {
     margin-bottom: 16px;
   }
+  .sec-head-text {
+    flex: 1;
+    min-width: 0;
+  }
+  .sec-meta {
+    flex-shrink: 0;
+    align-self: flex-start;
+    margin-top: 3px;
+    padding: 3px 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    color: var(--text-3r);
+  }
+  .danger-zone .sec-meta {
+    color: var(--danger);
+    border-color: rgba(229, 100, 92, 0.3);
+  }
   .sec-note {
     margin-top: 16px;
     padding: 10px 12px;
@@ -2415,6 +2403,16 @@
     flex: 1;
     min-width: 220px;
     height: 36px;
+  }
+  .setting-title {
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--text);
+  }
+  .setting-note {
+    font-size: 12.5px;
+    color: var(--text-3r);
+    margin-top: 2px;
   }
   .save-hint.dirty {
     color: var(--warn);
@@ -2674,6 +2672,10 @@
   .comp-lock .input {
     max-width: 240px;
   }
+  .input-sm {
+    height: 30px;
+    font-size: 12px;
+  }
   .ncard.sel {
     border-color: var(--accent-line);
   }
@@ -2836,15 +2838,15 @@
     outline: 1px solid var(--accent);
     outline-offset: 2px;
   }
+}
+
+@layer wf010 {
+
 
   /* На экране настроек снизу стоит панель сохранения — флеш не должен её накрывать. */
   body:has(.set-page) .flash-toast {
     bottom: 122px;
   }
-}
-
-@layer wf010 {
-
   .board.compact {
     --board-gap: 8px;
   }
@@ -2893,6 +2895,10 @@
     }
   }
 
+}
+
+@layer wf011 {
+
 
   /* Тост с отменой прикола: кнопка встаёт рядом с текстом. */
   .flash-toast .toast-undo {
@@ -2901,10 +2907,6 @@
     height: 24px;
     padding: 0 10px;
   }
-}
-
-@layer wf011 {
-
   .lib-toast {
     border-color: var(--border);
   }
@@ -3197,15 +3199,15 @@
   .engine-option.selected .radio-dot::after {
     animation: dot-pop 0.18s var(--ease-snap) both;
   }
+}
+
+@layer wf013 {
+
   @keyframes dot-pop {
     from {
       transform: scale(0.4);
     }
   }
-}
-
-@layer wf013 {
-
   @keyframes ghost-lift {
     from {
       transform: scale(0.97);
@@ -3565,6 +3567,19 @@
     border-color: var(--accent-line);
     color: var(--accent);
   }
+
+  /* Индикатор силы пароля: сегменты линией 2px */
+  .lock-strength {
+    display: flex;
+    gap: 5px;
+    margin: -2px 0 10px;
+  }
+  .lock-strength i {
+    height: 2px;
+    flex: 1;
+    background: var(--border-2);
+    transition: background 0.2s ease;
+  }
   .lock-strength.s1 i:nth-child(-n + 1),
   .lock-strength.s2 i:nth-child(-n + 2) {
     background: var(--warn);
@@ -3585,15 +3600,15 @@
     font-size: 11.5px;
     color: var(--text-3r);
   }
+}
+
+@layer wf015 {
+
   .autolock-seg button.active {
     background: var(--raise-2);
     color: var(--accent);
     box-shadow: inset 0 -2px 0 var(--accent-line);
   }
-}
-
-@layer wf015 {
-
 
   /* ============================================================
      REDACT v3.2c · Красакт объектов под файловым ключом (пп.10.2–10.4)
@@ -3623,15 +3638,50 @@
   .fk-modal .key-hint.err {
     color: var(--danger-text, #e0655a);
   }
+}
+
+@layer wf016 {
+
 
   /* Блокировка ввода во время анти-брутфорс задержки (п.2.2). */
   .fk-modal .lock-input:disabled {
     opacity: 0.55;
   }
-}
 
-@layer wf016 {
+  /* ============================================================
+     POLISH v3.3 · Премиум-полиш слоя замка
+     Применён make-interfaces-feel-better: концентрические радиусы
+     (карточка --r-panel над полями --r), глубина лестницей тонов
+     (--panel-2 / --panel / --bg-input), волосяные границы,
+     tabular-nums на живых числах, transition-property указан
+     точечно (никакого all). Blur запрещён системой: «дефокус»
+     появления карточки имитирует стартовый letter-spacing логотипа.
+     Reduced-motion накрыт глобальным правилом v3 (duration 0.01ms).
+     ============================================================ */
 
+  /* ---------- 1 · Секция «Безопасность»: заголовок-строка ---------- */
+  /* Язык пипа статуса — тот же вертикальный штрих, что у mask-flag */
+  #set-security .sec-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+  }
+  #set-security .sec-meta::before {
+    content: '';
+    flex: 0 0 auto;
+    width: 1px;
+    height: 11px;
+    background: var(--border-2);
+  }
+  #set-security .sec-meta.ok-text::before {
+    background: var(--accent);
+  }
+  #set-security .setting-title {
+    text-wrap: balance;
+  }
+  #set-security .setting-note {
+    text-wrap: pretty;
+  }
 
   /* ---------- 2 · Формы замка как единые карточки ----------
      Концентрия: карточка r=4px поверх полей r=3px при паддинге 16px —
@@ -3661,6 +3711,9 @@
     font-size: 10px;
     letter-spacing: 0.16em;
     color: var(--text-3r);
+  }
+  .lf-field .lock-strength {
+    margin: 2px 0 0;
   }
 
   /* Кромка при фокусе: переход только граничных свойств, не all */
@@ -4457,6 +4510,10 @@
       display: none;
     }
   }
+}
+
+@layer wf020 {
+
 
   /* 6 · Штрих иконки замка: у системы stroke задаётся контекстными правилами,
      в карточке иконка была невидимой (stroke inherits --text-2 на тёмном).
@@ -4467,10 +4524,6 @@
     stroke-width: 1.6;
     fill: none;
   }
-}
-
-@layer wf020 {
-
 
   /* ============================================================
      PERF v3.7b · финальная оптимизация экрана блокировки
@@ -4767,13 +4820,17 @@
   .lock-form .lock-input:focus {
     background: var(--panel-2);
   }
-  .lf-field + .lf-field {
-    margin-top: 16px;
-  }
 }
 
 @layer wf031 {
 
+  /* Сила пароля и счётчики дышат от нового поля */
+  .lf-field .lock-strength {
+    margin-top: 8px;
+  }
+  .lf-field + .lf-field {
+    margin-top: 16px;
+  }
 
   /* ============================================================
      CLUSTERS-COLLAPSE v4.1 · свёрнутые кластеры в сайдбаре
@@ -4818,16 +4875,16 @@
   .nav-section-btn.open .ns-chev {
     transform: rotate(180deg);
   }
+}
+
+@layer wf032 {
+
   /* На тач-устройствах кнопка крупнее (правило hit-areas) */
   @media (hover: none) {
     .nav-section-btn {
       height: 44px;
     }
   }
-}
-
-@layer wf032 {
-
 
   /* ============================================================
      SIDEBAR-VOICE v4.3 · единая типографика меню: один шрифт (Plex Sans)
@@ -4872,6 +4929,10 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+}
+
+@layer wf033 {
+
 
   /* 3 · Единообразие: «Система» тоже без капса (это тот же .nav-section) */
 
@@ -4879,10 +4940,6 @@
   .app.nav-collapsed .nav-section-btn {
     display: none;
   }
-}
-
-@layer wf033 {
-
   .vt-nav-item.active {
     border-color: var(--accent-line);
     background: var(--panel-2);
@@ -5202,6 +5259,35 @@
   .vt-fe-value {
     width: 100%;
   }
+  .vt-ct {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    height: 30px;
+    width: 30px;
+    padding: 0;
+    flex: none;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    background: transparent;
+    color: var(--text-3);
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition-property: color, border-color, background-color;
+    transition-duration: 130ms;
+  }
+  .vt-ct svg {
+    width: 13px;
+    height: 13px;
+  }
+  .vt-ct:hover {
+    color: var(--text-2);
+    border-color: var(--border-2);
+  }
   .vt-ct.on {
     color: var(--accent);
     border-color: var(--accent-line);
@@ -5219,26 +5305,26 @@
     padding-right: 26px;
     cursor: pointer;
   }
+}
+
+@layer wf035 {
+
   @media (prefers-reduced-motion: reduce) {
     .nav-lib-chev svg {
       transition-duration: 0ms;
     }
   }
-}
-
-@layer wf035 {
-
   .vt-health-score.s2 b { color: var(--warn, #d8a03e); }
   .vt-health-score.s0 b { color: var(--danger); }
   .vt-health-stats .bad { color: var(--danger); }
   .vt-health-stats .bad b { color: var(--danger); }
   .vt-hist-toggle.open svg { transform: rotate(0deg); }
   .vt-hist-val.open { color: var(--accent); }
-  .vt-hist-row .btn { flex: none; padding: 2px 8px; height: 24px; font-size: 11px; }
 }
 
 @layer wf036 {
 
+  .vt-hist-row .btn { flex: none; padding: 2px 8px; height: 24px; font-size: 11px; }
   .vts.open .vts-btn {
     border-color: var(--accent-line);
     background: var(--panel-2);
@@ -5257,15 +5343,15 @@
   .vt-fe-value { flex: 1 1 auto; min-width: 80px; width: auto; }
   .vt-fe textarea.vt-fe-value { width: 100%; flex: none; }
   .vt-mini-strength { margin-top: 1px; }
+}
+
+@layer wf037 {
+
   @media (max-width: 640px) {
 
     .vt-fe-top { flex-wrap: wrap; }
     .vt-fe-value { flex: 1 1 100%; }
   }
-
-}
-
-@layer wf037 {
 
 
   /* ============================================================
@@ -5286,11 +5372,11 @@
     from { opacity: 0; transform: scale(0.97); }
     to { opacity: 1; transform: none; }
   }
-  .vt-gen .vt-seg { flex-wrap: wrap; }
 }
 
 @layer wf038 {
 
+  .vt-gen .vt-seg { flex-wrap: wrap; }
   @keyframes cos-drift-a {
     0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.2; }
     50% { transform: translate3d(3vw, 2vw, 0) scale(1.09); opacity: 0.3; }
@@ -5359,9 +5445,13 @@
 
 @layer wf039 {
 
+  .tool-card.is-ok { border-left-color: var(--ok); }
+  .tool-state.is-ok { color: var(--ok); }
   @keyframes toolspin { to { transform: rotate(360deg); } }
   @keyframes aihub-in { from { opacity: 0; } to { opacity: 1; } }
   @keyframes aihub-slide { from { transform: translateX(24px); opacity: 0.4; } to { transform: none; opacity: 1; } }
+  .mcp-dot.is-ok { background: var(--ok); }
+  .mcp-msg.is-ok { color: var(--ok); border-color: rgba(76, 195, 138, 0.35); }
 }
 
 @layer wf040 {
@@ -5625,14 +5715,14 @@
     opacity: 0.55;
     transition: opacity 0.15s ease;
   }
-  .notif-item:hover .notif-extra,
-  .notif-item:focus-within .notif-extra {
-    opacity: 1;
-  }
 }
 
 @layer wf041 {
 
+  .notif-item:hover .notif-extra,
+  .notif-item:focus-within .notif-extra {
+    opacity: 1;
+  }
 
 
   /* ============================================================
@@ -5799,6 +5889,10 @@
   .skeleton-row.tall {
     height: 120px;
   }
+}
+
+@layer wf042 {
+
   @keyframes skeleton-slide {
     0% {
       background-position: 180% 0;
@@ -5812,10 +5906,6 @@
       animation: none;
     }
   }
-}
-
-@layer wf042 {
-
   @keyframes mk-pulse {
     0%,
     100% {
@@ -5829,11 +5919,70 @@
     background: var(--accent);
     color: var(--on-accent);
   }
+  .mk-field {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+  .mk-label {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 0;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    color: var(--text-3r);
+  }
+  .mk-hint {
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: none;
+    color: var(--text-3);
+    transition: color 160ms ease-out;
+  }
   .mk-hint-ok {
     color: var(--ok);
   }
   .mk-hint-bad {
     color: var(--warn);
+  }
+  .mk-input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .mk-input {
+    width: 100%;
+    padding-right: 40px;
+  }
+  .mk-eye {
+    position: absolute;
+    right: 6px;
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border: 0;
+    border-radius: var(--r);
+    background: transparent;
+    color: var(--text-3);
+    cursor: pointer;
+    transition: color 140ms ease-out;
+  }
+  .mk-eye svg {
+    width: 15px;
+    height: 15px;
+  }
+  .mk-eye:hover {
+    color: var(--accent);
+  }
+  .mk-field .lock-strength {
+    margin: 1px 0 0;
+  }
+  .mk-cells {
+    justify-content: flex-start;
+    margin-top: 0;
   }
   .vt-editor .vt-type.on {
     border-bottom-color: var(--accent);
@@ -5915,6 +6064,9 @@
 
   @media (max-width: 900px) {
 
+    .mk-cells {
+      gap: 6px;
+    }
     .mk-cells .lock-cell {
       width: 100%;
       height: 44px;
@@ -5948,16 +6100,33 @@
 
 @layer wf043 {
 
+  .vte-btn.is-ok {
+    color: var(--accent);
+  }
+  .vt-val.compact .vt-val-well .vt-val-text {
+    min-height: 28px;
+  }
   .vte-str.s0 i,
   .vte-str.s1 i {
     background: var(--danger);
   }
-  .vte-str.s2 i {
-    background: var(--warn);
-  }
 }
 
 @layer wf044 {
+
+  .vte-str.s2 i {
+    background: var(--warn);
+  }
+  .vte-lock.on {
+    color: var(--accent);
+    background: rgba(47, 190, 126, 0.08);
+  }
+  .vte-lock.on:hover {
+    background: rgba(47, 190, 126, 0.14);
+  }
+}
+
+@layer wf045 {
 
   .idx-strip.warn {
     border-left-color: rgba(176, 141, 87, 0.7);
@@ -5973,10 +6142,6 @@
       transform: rotate(360deg);
     }
   }
-}
-
-@layer wf045 {
-
 
   /* ============================================================
      NF-2 · ПАНЕЛЬ ЛОКАЛЬНОГО ДВИЖКА
@@ -6042,9 +6207,6 @@
   .chat-engine-warn .engine-panel {
     margin-top: 0;
   }
-}
-
-@layer wf046 {
 
   /* ------------------------------------------------------------
      NF-5 · ПАНЕЛЬ МАССОВЫХ ДЕЙСТВИЙ И ОТМЕТКИ ВЫДЕЛЕНИЯ
@@ -6140,23 +6302,6 @@
     font-size: 12px;
     color: var(--text-2);
   }
-
-  /* Отметка на карточке доски: файл и стикер помечаются одинаково. */
-  .card-mark {
-    position: absolute;
-    top: 8px;
-    left: 8px;
-    z-index: 3;
-    width: 16px;
-    height: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid var(--border);
-    border-radius: 5px;
-    background: var(--bg-input);
-    color: var(--accent-ink, #08110c);
-  }
   .card-mark.on {
     background: var(--accent);
     border-color: var(--accent);
@@ -6169,20 +6314,6 @@
   .ncard.marked {
     border-color: var(--accent);
     box-shadow: inset 0 0 0 1px var(--accent);
-  }
-
-  /* Отметка в списке записей менеджера секретов. */
-  .vt-mark {
-    flex-shrink: 0;
-    width: 15px;
-    height: 15px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid var(--border);
-    border-radius: 5px;
-    background: var(--bg-input);
-    color: var(--accent-ink, #08110c);
   }
   .vt-mark.on {
     background: var(--accent);
@@ -6227,19 +6358,70 @@
   .cmdk-cmd .cmdk-kind {
     text-transform: lowercase;
   }
+  .cos-stars.s1 {
+    opacity: 0.48;
+  }
+  .cos-stars.s2 {
+    opacity: 0.36;
+  }
+  @keyframes cos-drift-a {
+    0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.1; }
+    50% { transform: translate3d(3vw, 2vw, 0) scale(1.09); opacity: 0.16; }
+  }
+  @keyframes cos-drift-b {
+    0%, 100% { transform: translate3d(0, 0, 0) scale(1.04); opacity: 0.08; }
+    50% { transform: translate3d(-4vw, 3vw, 0) scale(1); opacity: 0.14; }
+  }
 }
 
-/* ------------------------------------------------------------
-   NF-7 · БЭКАП ВСЕГО СЕЙФА и NF-8 · АВТОНОМНЫЙ РЕЖИМ
-   Слой добавлен в конец: базовые правила не переписываются.
-   ------------------------------------------------------------ */
-.bk-mods {
+@layer wf046 {
+
+
+  /* ============================================================
+     ДОГОНЯЮЩИЙ БЛОК · КАРКАС, БЭКАП И ФЛАГИ
+     Правила жили только в сгенерированном app/globals.css и терялись
+     при пересборке разреза: полоса хранилища статус-бара (.sb-*),
+     раздел бэкапа (.bk-*), журнал сети (.net-log*). Монолит — источник
+     правды, поэтому они здесь.
+     ============================================================ */
+
+  .sb-alert {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-right: 14px;
+    padding: 1px 8px;
+    font: inherit;
+    letter-spacing: 0.14em;
+    color: var(--danger);
+    background: rgba(229, 100, 92, 0.08);
+    border: 1px solid rgba(229, 100, 92, 0.35);
+    border-radius: 2px;
+    cursor: pointer;
+    transition:
+      background-color 160ms ease,
+      border-color 160ms ease;
+  }
+
+  .sb-alert:hover {
+    background: rgba(229, 100, 92, 0.16);
+    border-color: rgba(229, 100, 92, 0.6);
+  }
+
+  .sb-alert svg {
+    stroke: currentColor;
+    stroke-width: 1.5;
+    fill: none;
+  }
+
+  .bk-mods {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 8px;
   margin-top: 8px;
-}
-.bk-mod {
+  }
+
+  .bk-mod {
   display: flex;
   align-items: flex-start;
   gap: 9px;
@@ -6251,11 +6433,13 @@
   cursor: pointer;
   transition-property: border-color, background-color;
   transition-duration: 140ms;
-}
-.bk-mod:hover {
+  }
+
+  .bk-mod:hover {
   border-color: var(--border-2);
-}
-.bk-mod > i {
+  }
+
+  .bk-mod > i {
   flex-shrink: 0;
   width: 13px;
   height: 13px;
@@ -6264,35 +6448,42 @@
   border-radius: 3px;
   transition-property: background-color, border-color;
   transition-duration: 140ms;
-}
-.bk-mod.on {
+  }
+
+  .bk-mod.on {
   border-color: color-mix(in oklab, var(--accent) 45%, var(--border));
-}
-.bk-mod.on > i {
+  }
+
+  .bk-mod.on > i {
   background: var(--accent);
   border-color: var(--accent);
-}
-.bk-mod-text {
+  }
+
+  .bk-mod-text {
   display: flex;
   flex-direction: column;
   gap: 3px;
   min-width: 0;
-}
-.bk-mod-text b {
+  }
+
+  .bk-mod-text b {
   font-size: 12.5px;
   font-weight: 500;
-}
-.bk-mod-text span {
+  }
+
+  .bk-mod-text span {
   font-size: 11px;
   color: var(--text-3);
-}
-.bk-list {
+  }
+
+  .bk-list {
   display: flex;
   flex-direction: column;
   gap: 6px;
   margin-top: 8px;
-}
-.bk-row {
+  }
+
+  .bk-row {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -6301,26 +6492,17 @@
   border: 1px solid var(--border);
   border-radius: var(--r);
   background: var(--bg-input);
-}
-.bk-row-main {
+  }
+
+  .bk-row-main {
   display: flex;
   flex-direction: column;
   gap: 2px;
   min-width: 190px;
   flex: 1;
-}
-.bk-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: auto;
-  margin-top: 8px;
-  flex-wrap: wrap;
-}
-.bk-row .bk-actions {
-  margin-top: 0;
-}
-.bk-preview {
+  }
+
+  .bk-preview {
   margin-top: 10px;
   padding: 12px;
   border: 1px solid var(--border-2);
@@ -6329,72 +6511,42 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-}
-.net-log {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-top: 8px;
-}
-.net-log-row {
-  display: grid;
-  grid-template-columns: 76px 1fr auto auto;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 9px;
-  font-size: 11px;
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  background: var(--bg-input);
-}
-.sb-dev {
+  }
+
+  .sb-dev {
   color: var(--text-3);
   font-size: 10.5px;
   margin-right: 10px;
-}
-.sb-offline {
-  color: var(--accent);
-}
-.sb-offline .net-dot {
-  background: var(--accent);
-}
+  }
 
-/* Приёмка NF-7/NF-8: узкие окна и читаемость журнала запретов. */
-#set-backup .setting-row,
-#set-flags .setting-row {
-  flex-wrap: wrap;
-  row-gap: 8px;
-}
-.net-log-row .net-via {
-  color: var(--text-2);
-}
-@media (max-width: 900px) {
+  .sb-offline {
+  color: var(--accent);
+  }
+
+  .sb-offline .net-dot {
+  background: var(--accent);
+  }
+
+  @media (max-width: 900px) {
+
   .bk-mods {
     grid-template-columns: 1fr;
   }
   .bk-row-main {
     min-width: 140px;
   }
-  .net-log-row {
-    grid-template-columns: 1fr auto;
-    row-gap: 4px;
-  }
   #set-backup .vt-seg,
   #set-flags .vt-seg {
     margin-left: auto;
   }
-}
+  }
 
-/* ------------------------------------------------------------
-   UX-3 · ПАНЕЛЬ СОБЫТИЙ: компактный вид и метка выключенной категории
-   ------------------------------------------------------------ */
-.notif-tab-short {
+
+  .notif-tab-short {
   display: none;
-}
-.notif-tab .notif-off {
-  cursor: help;
-}
-@media (max-width: 420px) {
+  }
+
+  @media (max-width: 420px) {
   /* Панель шире, чем остаток строки справа от колокольчика, поэтому на
      узком экране она крепится к самому экрану, а не к кнопке. */
   .notif-panel {
@@ -6442,362 +6594,83 @@
     flex-wrap: wrap;
     row-gap: 4px;
   }
-}
-/* ------------------------------------------------------------
-   NF-7 · БЭКАП ВСЕГО СЕЙФА и NF-8 · АВТОНОМНЫЙ РЕЖИМ
-   Слой добавлен в конец: базовые правила не переписываются.
-   ------------------------------------------------------------ */
-.bk-mods {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 8px;
-  margin-top: 8px;
-}
-.bk-mod {
-  display: flex;
-  align-items: flex-start;
-  gap: 9px;
-  padding: 10px 11px;
-  text-align: left;
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  background: var(--bg-input);
-  cursor: pointer;
-  transition-property: border-color, background-color;
-  transition-duration: 140ms;
-}
-.bk-mod:hover {
-  border-color: var(--border-2);
-}
-.bk-mod > i {
-  flex-shrink: 0;
-  width: 13px;
-  height: 13px;
-  margin-top: 2px;
-  border: 1px solid var(--border-2);
-  border-radius: 3px;
-  transition-property: background-color, border-color;
-  transition-duration: 140ms;
-}
-.bk-mod.on {
-  border-color: color-mix(in oklab, var(--accent) 45%, var(--border));
-}
-.bk-mod.on > i {
-  background: var(--accent);
-  border-color: var(--accent);
-}
-.bk-mod-text {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 0;
-}
-.bk-mod-text b {
-  font-size: 12.5px;
-  font-weight: 500;
-}
-.bk-mod-text span {
-  font-size: 11px;
-  color: var(--text-3);
-}
-.bk-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 8px;
-}
-.bk-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  padding: 9px 11px;
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  background: var(--bg-input);
-}
-.bk-row-main {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 190px;
-  flex: 1;
-}
-.bk-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: auto;
-  margin-top: 8px;
-  flex-wrap: wrap;
-}
-.bk-row .bk-actions {
-  margin-top: 0;
-}
-.bk-preview {
-  margin-top: 10px;
-  padding: 12px;
-  border: 1px solid var(--border-2);
-  border-radius: var(--r);
-  background: var(--panel-2);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.net-log {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-top: 8px;
-}
-.net-log-row {
-  display: grid;
-  grid-template-columns: 76px 1fr auto auto;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 9px;
-  font-size: 11px;
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  background: var(--bg-input);
-}
-.sb-dev {
-  color: var(--text-3);
-  font-size: 10.5px;
-  margin-right: 10px;
-}
-.sb-offline {
-  color: var(--accent);
-}
-.sb-offline .net-dot {
-  background: var(--accent);
-}
-
-/* Приёмка NF-7/NF-8: узкие окна и читаемость журнала запретов. */
-#set-backup .setting-row,
-#set-flags .setting-row {
-  flex-wrap: wrap;
-  row-gap: 8px;
-}
-.net-log-row .net-via {
-  color: var(--text-2);
-}
-@media (max-width: 900px) {
-  .bk-mods {
-    grid-template-columns: 1fr;
-  }
-  .bk-row-main {
-    min-width: 140px;
-  }
-  .net-log-row {
-    grid-template-columns: 1fr auto;
-    row-gap: 4px;
-  }
-  #set-backup .vt-seg,
-  #set-flags .vt-seg {
-    margin-left: auto;
   }
 }
 
-/* ------------------------------------------------------------
-   UX-3 · ПАНЕЛЬ СОБЫТИЙ: компактный вид и метка выключенной категории
-   ------------------------------------------------------------ */
-.notif-tab-short {
-  display: none;
-}
-.notif-tab .notif-off {
-  cursor: help;
-}
-@media (max-width: 420px) {
-  /* Панель шире, чем остаток строки справа от колокольчика, поэтому на
-     узком экране она крепится к самому экрану, а не к кнопке. */
-  .notif-panel {
-    position: fixed;
-    top: 62px;
-    left: 8px;
-    right: 8px;
-    width: auto;
-    max-width: none;
-  }
-  /* Компактный вид: короткие подписи фильтров в одну строку без переноса. */
-  .notif-tab-full {
-    display: none;
-  }
-  .notif-tab-short {
-    display: inline;
-  }
-  .notif-tabs {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    padding: 6px 6px 7px;
-    gap: 3px;
-    scrollbar-width: none;
-  }
-  .notif-tabs::-webkit-scrollbar {
-    display: none;
-  }
-  .notif-tab {
-    flex: 0 0 auto;
-    padding: 0 7px;
-    gap: 4px;
-  }
-  .notif-bar {
-    gap: 10px;
-    padding: 7px 10px;
-    font-size: 11px;
-  }
-  .notif-list {
-    max-height: 60vh;
-  }
-  .notif-foot-hint {
-    display: none;
-  }
-  .notif-extra {
-    flex-wrap: wrap;
-    row-gap: 4px;
+@layer wf047 {
+
+
+  .jr-chip.severe[aria-pressed='true'] {
+    border-color: rgba(229, 100, 92, 0.5);
+    background: rgba(229, 100, 92, 0.07);
   }
 }
 
-/* ------------------------------------------------------------
-   MAP v2.3 · ТЁМНЫЙ КОСМОС
-   Просьба владельца: задний фон карты намного темнее. Свечение узлов
-   и связей не трогаем — темнеет только подложка, поэтому граф читается
-   лучше, а не хуже: контраст линий к фону вырос. Слой не переписываем —
-   правила добавлены в конец, вне слоёв, поэтому побеждают в каскаде.
-   ------------------------------------------------------------ */
-.cos-deep {
-  background:
-    radial-gradient(120% 90% at 20% 8%, rgba(16, 30, 50, 0.42), transparent 62%),
-    radial-gradient(96% 84% at 84% 92%, rgba(8, 26, 26, 0.34), transparent 60%),
-    radial-gradient(60% 50% at 62% 34%, rgba(22, 16, 38, 0.24), transparent 68%),
-    linear-gradient(180deg, #03050a 0%, #020407 56%, #010204 100%);
-}
-.cos-neb {
-  opacity: 0.34;
-  filter: blur(58px);
-}
-.cos-way {
-  opacity: 0.4;
-}
-.cos-stars.s3 {
-  opacity: 0.5;
-}
-.cos-vig {
-  background:
-    radial-gradient(130% 110% at 42% 46%, transparent 38%, rgba(0, 1, 3, 0.82) 100%),
-    linear-gradient(180deg, rgba(0, 1, 3, 0.6), transparent 24%, transparent 74%, rgba(0, 1, 3, 0.7));
-}
-.map-space .node-inspector {
-  background: rgba(3, 5, 9, 0.9);
-}
+@layer wf048 {
 
-/* ------------------------------------------------------------
-   ПОЛЯ МАСТЕР-КЛЮЧА В БАЗЕ
-   components/mk-fields.tsx рендерится и в настройках, и в онбординге
-   первого запуска, поэтому его правила обязаны быть в базовом слое:
-   в ленивом чанке настроек онбординг остался бы без стилей.
-   ------------------------------------------------------------ */
-.mk-field {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
-.mk-label {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  margin: 0;
-  font-size: 10px;
-  letter-spacing: 0.16em;
-  color: var(--text-3r);
-}
-.mk-hint {
-  font-size: 10.5px;
-  letter-spacing: 0.08em;
-  text-transform: none;
-  color: var(--text-3);
-  transition: color 160ms ease-out;
-}
-.mk-input-wrap {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-.mk-input {
-  width: 100%;
-  padding-right: 40px;
-}
-.mk-eye {
-  position: absolute;
-  right: 6px;
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border: 0;
-  border-radius: var(--r);
-  background: transparent;
-  color: var(--text-3);
-  cursor: pointer;
-  transition: color 140ms ease-out;
-}
-.mk-eye svg {
-  width: 15px;
-  height: 15px;
-}
-.mk-eye:hover {
-  color: var(--accent);
-}
-.mk-field .lock-strength {
-  margin: 1px 0 0;
-}
-.mk-cells {
-  justify-content: flex-start;
-  margin-top: 0;
-}
 
-/* ------------------------------------------------------------
-   MAP v2.4 · ФОН КАРТЫ ЗАМЕТНО ТЕМНЕЕ
-   Просьба владельца повторно: подложка карты должна быть почти
-   чёрной. Гасим не только градиент, но и то, что раньше его
-   переигрывало — анимации туманностей (они задают opacity в
-   кадрах) и звёздные слои. Свечение узлов и связей не тронуто.
-   ------------------------------------------------------------ */
-.map-space { background: #000102; }
-.cos-deep {
-  background:
-    radial-gradient(120% 90% at 20% 8%, rgba(14, 26, 44, 0.2), transparent 60%),
-    radial-gradient(96% 84% at 84% 92%, rgba(8, 24, 24, 0.16), transparent 58%),
-    radial-gradient(60% 50% at 62% 34%, rgba(20, 14, 34, 0.12), transparent 66%),
-    linear-gradient(180deg, #010204 0%, #010203 56%, #000102 100%);
-}
-.cos-neb {
-  opacity: 0.14;
-  filter: blur(64px);
-}
-.cos-way {
-  opacity: 0.2;
-}
-.cos-stars.s1 {
-  opacity: 0.48;
-}
-.cos-stars.s2 {
-  opacity: 0.36;
-}
-.cos-stars.s3 {
-  opacity: 0.26;
-}
-.cos-vig {
-  background:
-    radial-gradient(130% 110% at 42% 46%, transparent 34%, rgba(0, 0, 2, 0.9) 100%),
-    linear-gradient(180deg, rgba(0, 0, 2, 0.7), transparent 24%, transparent 72%, rgba(0, 0, 2, 0.82));
-}
-@keyframes cos-drift-a {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.1; }
-  50% { transform: translate3d(3vw, 2vw, 0) scale(1.09); opacity: 0.16; }
-}
-@keyframes cos-drift-b {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(1.04); opacity: 0.08; }
-  50% { transform: translate3d(-4vw, 3vw, 0) scale(1); opacity: 0.14; }
+  .act-live-pill.on {
+    border-color: var(--accent-line);
+    background: rgba(47, 190, 126, 0.07);
+    color: var(--text);
+  }
+
+  .act-live-pill.on .act-pulse {
+    background: var(--accent);
+    box-shadow: 0 0 0 0 rgba(47, 190, 126, 0.5);
+    animation: act-pulse 1.6s ease-out infinite;
+  }
+
+  @keyframes act-pulse {
+    0% {
+      box-shadow: 0 0 0 0 rgba(47, 190, 126, 0.5);
+    }
+    70% {
+      box-shadow: 0 0 0 7px rgba(47, 190, 126, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(47, 190, 126, 0);
+    }
+  }
+
+  .act-metric-value.warn {
+    color: var(--warn);
+  }
+
+  .act-metric-value.ok {
+    color: var(--ok);
+  }
+
+  .act-metric-chart.center {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .act-bars rect.on {
+    fill: var(--accent);
+  }
+
+  .act-bars rect.off {
+    fill: var(--raise-2);
+  }
+
+  .act-bars.tone-warn rect.on {
+    fill: var(--warn);
+  }
+
+  .act-bars.tone-ok rect.on {
+    fill: rgba(76, 195, 138, 0.55);
+  }
+
+  .act-bars.tone-ok rect.off {
+    fill: var(--raise-1);
+  }
+
+  .act-chip.severe[aria-pressed='true'] {
+    border-color: rgba(229, 100, 92, 0.5);
+    background: rgba(229, 100, 92, 0.08);
+    color: var(--danger);
+  }
 }

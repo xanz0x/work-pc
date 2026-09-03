@@ -22,8 +22,31 @@ export function ClockProvider({ children }: { children: ReactNode }) {
   const [now, setNow] = useState(0)
   useEffect(() => {
     setNow(Date.now())
-    const t = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(t)
+    let t: ReturnType<typeof setInterval> | null = null
+    /* В скрытой вкладке тик бессмысленен: никто не видит секунды, а дерево
+       консьюмеров всё равно пересобиралось. Возвращаемся — сразу свежее время. */
+    const start = () => {
+      if (t !== null) return
+      t = setInterval(() => setNow(Date.now()), 1000)
+    }
+    const stop = () => {
+      if (t === null) return
+      clearInterval(t)
+      t = null
+    }
+    const onVis = () => {
+      if (document.hidden) stop()
+      else {
+        setNow(Date.now())
+        start()
+      }
+    }
+    if (!document.hidden) start()
+    document.addEventListener('visibilitychange', onVis)
+    return () => {
+      stop()
+      document.removeEventListener('visibilitychange', onVis)
+    }
   }, [])
   return <NowCtx.Provider value={now}>{children}</NowCtx.Provider>
 }

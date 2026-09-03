@@ -32,7 +32,7 @@ BLOCK_STARTS = [
     1, 2120, 2327, 2846, 3986, 4524, 4849, 5488, 5694, 5738, 6021, 6110, 6562,
     6672, 7136, 7278, 7634, 7735, 8054, 8188, 8235, 8265, 8297, 8309, 8362,
     8433, 8469, 8513, 8564, 8593, 8640, 8690, 8741, 9597, 10050, 10274, 10438,
-    10597, 10936, 11042, 11413, 11591, 12294, 12472, 12539,
+    10597, 10936, 11042, 11413, 11591, 12294, 12472, 12539, 12907, 13171, 13344,
 ]
 
 # Разметка экранов: чей класс — того и правило.
@@ -42,15 +42,18 @@ SCREEN_FILES = {
     'map': ['components/screen-map.tsx'],
     'chat': ['components/screen-chat.tsx', 'components/chat'],
     'settings': ['components/screen-settings.tsx', 'components/security-section.tsx',
-                 'components/secrets-section.tsx'],
+                 'components/secrets-section.tsx', 'components/journal-panel.tsx',
+                 'components/flags-section.tsx'],
     'vault': ['components/screen-vault.tsx', 'components/vault'],
+    'activity': ['components/screen-activity.tsx'],
 }
 SHELL_FILES = [
     'components/app-shell.tsx', 'components/command-palette.tsx',
     'components/notifications.tsx', 'components/screen-lock.tsx',
     'components/screen-lock-logo.tsx', 'components/dropdown.tsx',
+    'components/mk-fields.tsx', 'components/onboarding.tsx',
     'components/storage-alert.tsx', 'components/screen-boundary.tsx',
-    'components/icons.tsx', 'components/ui', 'app/layout.tsx', 'app/page.tsx',
+    'components/icons.tsx', 'components/ui', 'app/layout.tsx', 'app/(app)',
     'app/login', 'app/error.tsx', 'app/global-error.tsx', 'app/not-found.tsx',
     'app/loading.tsx', 'components/screens.tsx',
 ]

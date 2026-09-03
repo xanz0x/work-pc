@@ -19,7 +19,7 @@ import {
   IconTag,
   IconTrash,
 } from './icons'
-import { useVault, useNow } from '@/lib/vault-store'
+import { useVault, useCoarseTick } from '@/lib/vault-store'
 import { useSecrets } from '@/lib/secrets-store'
 import { filterEntries, isLive, parseQuery, type SecretType } from '@/lib/secrets'
 import { useBulkRunner } from '@/lib/bulk'
@@ -44,7 +44,11 @@ export function ScreenVault() {
   const [newType, setNewType] = useState<SecretType>('login')
   const [gen, setGen] = useState(false)
   const [io, setIo] = useState(false)
-  const now = useNow() || Date.now()
+  /* Сейф показывает даты и «5 минут назад», а не секунды: секундный тик
+     раз в секунду пересобирал фильтр по всем записям и перерисовывал список
+     с деталью. Грубых пяти секунд глазу достаточно. */
+  const coarse = useCoarseTick(5000)
+  const now = coarse || Date.now()
 
   /* ---------- NF-5: мультивыделение и массовые действия ---------- */
   const bulk = useBulkRunner()

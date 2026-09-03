@@ -344,10 +344,6 @@
     display: flex;
     gap: 8px;
   }
-  .input-sm {
-    height: 30px;
-    font-size: 12px;
-  }
 
   /* ---------- Карточка стикера ---------- */
   .ncard {
@@ -1006,13 +1002,13 @@
   .tile.kb-dragging {
     animation: kb-hold 1.6s ease-in-out infinite;
   }
-  .tile-slot {
-    animation: slot-breathe 1.4s ease-in-out infinite;
-  }
 }
 
 @layer wf012 {
 
+  .tile-slot {
+    animation: slot-breathe 1.4s ease-in-out infinite;
+  }
 
   /* ---------- Библиотека ---------- */
 
@@ -1184,16 +1180,16 @@
   .board-footnote .add-note svg {
     margin: 0 auto;
   }
+}
+
+@layer wf014 {
+
 
   /* Перетаскиваемая плитка на своём месте почти растворяется —
      место занимает призрак, а не «призрак + полупрозрачный дубль». */
   .tile.dragging > article {
     opacity: 0.25;
   }
-}
-
-@layer wf014 {
-
 
   /* Формы замка в настройках */
   .lock-form {
@@ -1407,7 +1403,7 @@
 
 }
 
-@layer wf044 {
+@layer wf045 {
 
 
   /* ============================================================
@@ -1463,5 +1459,22 @@
     display: flex;
     justify-content: center;
     padding: 6px 0 18px;
+  }
+
+  /* Отметка на карточке доски: файл и стикер помечаются одинаково. */
+  .card-mark {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    z-index: 3;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: var(--bg-input);
+    color: var(--accent-ink, #08110c);
   }
 }

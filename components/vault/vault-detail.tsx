@@ -156,16 +156,27 @@ export function VaultDetail({
             <span className="vt-row-name label-mono">{f.name}</span>
             {f.kind === 'url' && f.value && !f.secret ? (
               <span className="vt-val">
-                <a
-                  className="vt-link mono ellipsis"
-                  href={f.value.includes('://') ? f.value : `https://${f.value}`}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  data-testid={`detail-link-${f.id}`}
-                >
-                  {f.value}
-                </a>
-                <IconExternal />
+                <span className="vte-well vt-val-well">
+                  <a
+                    className="vt-link mono ellipsis"
+                    href={f.value.includes('://') ? f.value : `https://${f.value}`}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    data-testid={`detail-link-${f.id}`}
+                  >
+                    {f.value}
+                  </a>
+                  <a
+                    className="vte-btn"
+                    href={f.value.includes('://') ? f.value : `https://${f.value}`}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    title="Открыть ссылку в новой вкладке"
+                    aria-label="Открыть ссылку в новой вкладке"
+                  >
+                    <IconExternal />
+                  </a>
+                </span>
               </span>
             ) : (
               <SecretValue entryId={entry.id} field={f} />

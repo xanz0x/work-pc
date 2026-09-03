@@ -108,7 +108,8 @@ export function SecuritySection() {
   const s1LenOk = method === 'pin' ? /^\d{6}$/.test(s1) : s1.length >= 8
   const [err, setErr] = useState<string | null>(null)
 
-  /* --- форма смены мастера --- */
+  /* --- форма смены мастера ---
+     Замок на PIN — все три поля шестью ячейками, как при создании. */
   const [changing, setChanging] = useState(false)
   const [curSecret, setCurSecret] = useState('')
   const [next1, setNext1] = useState('')
@@ -117,6 +118,11 @@ export function SecuritySection() {
   /* --- выключение --- */
   const [disabling, setDisabling] = useState(false)
   const [disableSecret, setDisableSecret] = useState('')
+
+  const isPin = lock.method === 'pin'
+  const curPinOk = isPin ? /^\d{6}$/.test(curSecret) : curSecret.length > 0
+  const nextOk = isPin ? /^\d{6}$/.test(next1) : next1.length >= 8
+  const disablePinOk = isPin ? /^\d{6}$/.test(disableSecret) : disableSecret.length > 0
 
   const firstFieldRef = useRef<HTMLInputElement | null>(null)
 
@@ -381,53 +387,107 @@ export function SecuritySection() {
           <button
             className="mk-submit"
             type="submit"
-            disabled={!curSecret || !next1}
+            disabled={!curPinOk || !nextOk || next1 !== next2}
             data-testid="mk-change-submit"
           >
             <IconKey width={13} height={13} aria-hidden="true" focusable="false" />
-            Сменить ключ
+            {nextOk && next1 === next2
+              ? 'Сменить ключ'
+              : isPin
+                ? 'Введите 6 цифр'
+                : 'Минимум 8 символов'}
           </button>
         </>
       }
     >
-      <MkPassField
-        id="sec-key-cur"
-        label="Текущий ключ"
-        value={curSecret}
-        onChange={setCurSecret}
-        autoComplete="current-password"
-        inputRef={firstFieldRef}
-        testId="mk-cur"
-      />
-      <MkPassField
-        id="sec-key-next"
-        label="Новый ключ"
-        hint={lock.method === 'pin' ? '6 цифр' : 'min 8 chars'}
-        value={next1}
-        onChange={setNext1}
-        autoComplete="new-password"
-        testId="mk-next1"
-      >
-        {next1.length > 0 && (
-          <div className={`lock-strength s${strengthPw(next1)}`} aria-hidden="true">
-            <i />
-            <i />
-            <i />
-            <i />
-          </div>
-        )}
-      </MkPassField>
-      <MkPassField
-        id="sec-key-rep2"
-        label="Подтверждение"
-        hint={next2 && next1 === next2 ? 'совпадает' : undefined}
-        hintTone={next2 && next1 === next2 ? 'ok' : undefined}
-        value={next2}
-        onChange={setNext2}
-        placeholder="Повторите новый"
-        autoComplete="new-password"
-        testId="mk-next2"
-      />
+      {isPin ? (
+        <>
+          <MkPinRow
+            idBase="sec-key-cur"
+            label="Текущий пин"
+            hint={`${curSecret.length}/6`}
+            hintTone={curPinOk ? 'ok' : curSecret ? 'bad' : undefined}
+            value={curSecret}
+            onChange={(next) => {
+              setCurSecret(next)
+              setErr(null)
+            }}
+            hasError={Boolean(curSecret) && !curPinOk}
+            firstRef={firstFieldRef}
+            testId="mk-cur"
+          />
+          <MkPinRow
+            idBase="sec-key-next"
+            label="Новый пин"
+            hint={`${next1.length}/6`}
+            hintTone={nextOk ? 'ok' : next1 ? 'bad' : undefined}
+            value={next1}
+            onChange={(next) => {
+              setNext1(next)
+              setErr(null)
+            }}
+            hasError={Boolean(next1) && !nextOk}
+            testId="mk-next1"
+          />
+          <MkPinRow
+            idBase="sec-key-rep2"
+            label="Повторите новый"
+            hint={next2 && next1 === next2 ? 'совпадает' : `${next2.length}/6`}
+            hintTone={next2 && next1 === next2 ? 'ok' : undefined}
+            value={next2}
+            onChange={(next) => {
+              setNext2(next)
+              setErr(null)
+            }}
+            hasError={Boolean(next2) && next1 !== next2}
+            testId="mk-next2"
+          />
+        </>
+      ) : (
+        <>
+          <MkPassField
+            id="sec-key-cur"
+            label="Текущий ключ"
+            value={curSecret}
+            onChange={setCurSecret}
+            autoComplete="current-password"
+            inputRef={firstFieldRef}
+            testId="mk-cur"
+          />
+          <MkPassField
+            id="sec-key-next"
+            label="Новый ключ"
+            hint={next1 ? `${next1.length}/8+` : 'min 8 chars'}
+            hintTone={nextOk ? 'ok' : next1 ? 'bad' : undefined}
+            value={next1}
+            onChange={setNext1}
+            autoComplete="new-password"
+            incomplete={Boolean(next1) && !nextOk}
+            testId="mk-next1"
+          >
+            {next1.length > 0 && (
+              <div className={`lock-strength s${strengthPw(next1)}`} aria-hidden="true">
+                <i />
+                <i />
+                <i />
+                <i />
+              </div>
+            )}
+          </MkPassField>
+          <MkPassField
+            id="sec-key-rep2"
+            label="Подтверждение"
+            hint={next2 && next1 === next2 ? 'совпадает' : undefined}
+            hintTone={next2 && next1 === next2 ? 'ok' : undefined}
+            value={next2}
+            onChange={setNext2}
+            placeholder="Повторите новый"
+            autoComplete="new-password"
+            incomplete={Boolean(next2) && next1 !== next2}
+            testId="mk-next2"
+          />
+        </>
+      )}
       <p className="mk-note">
         Файловые ключи продолжат работать — они переупакуются автоматически.
       </p>
@@ -453,7 +513,7 @@ export function SecuritySection() {
           <button
             className="mk-submit is-danger"
             type="submit"
-            disabled={!disableSecret}
+            disabled={!disablePinOk}
             data-testid="mk-disable-submit"
           >
             <IconAlertTri width={13} height={13} aria-hidden="true" focusable="false" />
@@ -466,16 +526,33 @@ export function SecuritySection() {
         <IconAlertTri width={14} height={14} aria-hidden="true" focusable="false" />
         <span>С замком стираются файловые ключи</span>
       </p>
-      <MkPassField
-        id="sec-key-disable"
-        label="Подтверждение"
-        value={disableSecret}
-        onChange={setDisableSecret}
-        placeholder="Текущим мастер-ключом"
-        autoComplete="current-password"
-        inputRef={firstFieldRef}
-        testId="mk-disable-secret"
-      />
+      {isPin ? (
+        <MkPinRow
+          idBase="sec-key-disable"
+          label="Подтвердите пином"
+          hint={`${disableSecret.length}/6`}
+          hintTone={disablePinOk ? 'ok' : disableSecret ? 'bad' : undefined}
+          value={disableSecret}
+          onChange={(next) => {
+            setDisableSecret(next)
+            setErr(null)
+          }}
+          hasError={Boolean(disableSecret) && !disablePinOk}
+          firstRef={firstFieldRef}
+          testId="mk-disable-secret"
+        />
+      ) : (
+        <MkPassField
+          id="sec-key-disable"
+          label="Подтверждение"
+          value={disableSecret}
+          onChange={setDisableSecret}
+          placeholder="Текущим мастер-ключом"
+          autoComplete="current-password"
+          inputRef={firstFieldRef}
+          testId="mk-disable-secret"
+        />
+      )}
       {errLine}
     </MkModal>
   ) : null

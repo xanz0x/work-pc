@@ -8,7 +8,7 @@
    ============================================================ */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { IconCheck, IconClip, IconLock, IconRefresh } from '@/components/icons'
+import { IconCheck, IconCopy, IconEye, IconEyeOff } from '@/components/icons'
 import { useSecrets } from '@/lib/secrets-store'
 import type { ClipTarget, SecretField } from '@/lib/secrets'
 
@@ -100,37 +100,39 @@ export function SecretValue({
 
   return (
     <div className={`vt-val${compact ? ' compact' : ''}`}>
-      <span
-        className={`vt-val-text mono${shown === null ? ' masked' : ''}${field.kind === 'multiline' ? ' multi' : ''}`}
-        data-testid={`secret-value-${field.id}`}
-      >
-        {empty ? '—' : shown === null ? (field.secret ? MASK : field.value) : shown}
-      </span>
-      {shown !== null && left > 0 && <span className="vt-val-left num">{left}с</span>}
-      {field.secret && !empty && (
-        <button
-          className="vt-icon-btn"
-          onClick={reveal}
-          disabled={busy}
-          title={shown === null ? `Показать на ${s.settings.revealSeconds} с` : 'Скрыть'}
-          aria-label={shown === null ? 'Показать значение' : 'Скрыть значение'}
-          data-testid={`reveal-${field.id}`}
+      <div className="vte-well vt-val-well">
+        <span
+          className={`vt-val-text mono${shown === null ? ' masked' : ''}${field.kind === 'multiline' ? ' multi' : ''}`}
+          data-testid={`secret-value-${field.id}`}
         >
-          {shown === null ? <IconLock /> : <IconRefresh />}
-        </button>
-      )}
-      {!empty && (
-        <button
-          className={`vt-icon-btn${copied ? ' ok' : ''}`}
-          onClick={copy}
-          disabled={busy}
-          title="Скопировать без показа"
-          aria-label="Скопировать значение"
-          data-testid={`copy-${field.id}`}
-        >
-          {copied ? <IconCheck /> : <IconClip />}
-        </button>
-      )}
+          {empty ? '—' : shown === null ? (field.secret ? MASK : field.value) : shown}
+        </span>
+        {shown !== null && left > 0 && <span className="vt-val-left num">{left}с</span>}
+        {field.secret && !empty && (
+          <button
+            className="vte-btn"
+            onClick={reveal}
+            disabled={busy}
+            title={shown === null ? `Показать на ${s.settings.revealSeconds} с` : 'Скрыть'}
+            aria-label={shown === null ? 'Показать значение' : 'Скрыть значение'}
+            data-testid={`reveal-${field.id}`}
+          >
+            {shown === null ? <IconEyeOff /> : <IconEye />}
+          </button>
+        )}
+        {!empty && (
+          <button
+            className={`vte-btn${copied ? ' is-ok' : ''}`}
+            onClick={copy}
+            disabled={busy}
+            title="Скопировать без показа"
+            aria-label="Скопировать значение"
+            data-testid={`copy-${field.id}`}
+          >
+            {copied ? <IconCheck /> : <IconCopy />}
+          </button>
+        )}
+      </div>
     </div>
   )
 }

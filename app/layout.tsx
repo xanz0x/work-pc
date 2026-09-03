@@ -1,11 +1,6 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { IBM_Plex_Mono, IBM_Plex_Sans } from 'next/font/google'
-import { StorageAlert } from '@/components/storage-alert'
-import { IndexerProvider } from '@/lib/indexer/context'
-import { RedactedProvider } from '@/lib/redact-context'
-import { SecretsProvider } from '@/lib/secrets-store'
-import { VaultProvider } from '@/lib/vault-store'
 import './globals.css'
 
 const plexSans = IBM_Plex_Sans({
@@ -55,25 +50,9 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased">
-        {/* Красакт объектов под файловым ключом (пп.10.2–10.3) оборачивает
-            весь сейф: поиск в store, палитра, чат и карта читают один set.
-            Второй агент (этап 5) наполняет список из hooks/use-file-keys. */}
-        <RedactedProvider>
-          {/* Единый сейф: корпус, стикеры, разговоры, настройки и события —
-              одно состояние на все четыре экрана, поэтому числа не расходятся. */}
-          <VaultProvider>
-            {/* Настоящий индексатор (NF-1): читает папку в Web Worker,
-                складывает содержимое, чанки и хеши в IndexedDB. */}
-            <IndexerProvider>
-              {/* Менеджер секретов живёт поверх сейфа: без открытого замка
-                  он ничего не расшифровывает и ничего не пишет. */}
-              <SecretsProvider>{children}</SecretsProvider>
-            </IndexerProvider>
-          </VaultProvider>
-        </RedactedProvider>
-        {/* Ошибка записи хранилища видна пользователю (P0-3): «не сохранилось»
-            с повтором, переполнение квоты — отдельный честный экран. */}
-        <StorageAlert />
+        {/* Сейф и его провайдеры живут в app/(app)/layout.tsx: страница входа
+            не должна тянуть состояние сейфа, индексатор и менеджер секретов. */}
+        {children}
         {/* Скрипт аналитики существует только на хостинге Vercel — вне его даёт 404. */}
         {process.env.VERCEL === '1' && <Analytics />}
       </body>

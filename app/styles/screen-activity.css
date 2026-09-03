@@ -1,11 +1,17 @@
-/* ============================================================
-   ЦЕНТР АКТИВНОСТИ (NF-3) · слой «Графит»
-   Приезжает своим чанком вместе с экраном. Классы уникальны (act-*),
-   поэтому лежат в последнем объявленном слое (wf047) и ничего не
-   переопределяют, но и не проигрывают полишу базы.
-   ============================================================ */
+/* AR-2 · слой экрана «activity»: приезжает вместе с чанком экрана.
+   Сгенерирован scripts/split-css.py из app/styles/_monolith.css —
+   правки вносим в монолит, а не здесь. */
 
-@layer wf047 {
+@layer wf048 {
+
+
+
+  /* ============================================================
+     ЦЕНТР АКТИВНОСТИ (NF-3) · слой «Графит»
+     Классы act-* уникальны для components/screen-activity.tsx и
+     приезжают вместе с его чанком.
+     ============================================================ */
+
   .act-page {
     height: 100%;
     min-height: 0;
@@ -20,8 +26,6 @@
     flex-direction: column;
     gap: 22px;
   }
-
-  /* ---------- шапка ---------- */
 
   .act-head {
     display: flex;
@@ -45,8 +49,6 @@
     max-width: 620px;
     margin: 0;
   }
-
-  /* ---------- живая полоса «Сейчас» ---------- */
 
   .act-now {
     padding: 0;
@@ -100,30 +102,6 @@
     border-radius: 50%;
     background: var(--text-3);
     flex: 0 0 7px;
-  }
-
-  .act-live-pill.on {
-    border-color: var(--accent-line);
-    background: rgba(47, 190, 126, 0.07);
-    color: var(--text);
-  }
-
-  .act-live-pill.on .act-pulse {
-    background: var(--accent);
-    box-shadow: 0 0 0 0 rgba(47, 190, 126, 0.5);
-    animation: act-pulse 1.6s ease-out infinite;
-  }
-
-  @keyframes act-pulse {
-    0% {
-      box-shadow: 0 0 0 0 rgba(47, 190, 126, 0.5);
-    }
-    70% {
-      box-shadow: 0 0 0 7px rgba(47, 190, 126, 0);
-    }
-    100% {
-      box-shadow: 0 0 0 0 rgba(47, 190, 126, 0);
-    }
   }
 
   .act-tiles {
@@ -221,6 +199,7 @@
     border-color: rgba(76, 195, 138, 0.3);
     background: rgba(76, 195, 138, 0.08);
   }
+
   .act-tile[data-state='ok'] .act-dot {
     background: var(--ok);
   }
@@ -230,6 +209,7 @@
     border-color: rgba(217, 161, 59, 0.32);
     background: rgba(217, 161, 59, 0.09);
   }
+
   .act-tile[data-state='warn'] .act-dot {
     background: var(--warn);
   }
@@ -238,6 +218,7 @@
   .act-tile[data-state='idle'] .act-tile-ico {
     color: var(--text-3);
   }
+
   .act-tile[data-state='off'] .act-dot {
     background: var(--danger);
   }
@@ -245,17 +226,17 @@
   .act-tile[data-state='live'] {
     background: rgba(47, 190, 126, 0.05);
   }
+
   .act-tile[data-state='live'] .act-tile-ico {
     color: var(--accent);
     border-color: var(--accent-line);
     background: rgba(47, 190, 126, 0.1);
   }
+
   .act-tile[data-state='live'] .act-dot {
     background: var(--accent);
     animation: act-pulse 1.6s ease-out infinite;
   }
-
-  /* ---------- метрики системы ---------- */
 
   .act-metrics {
     padding: 0;
@@ -305,13 +286,6 @@
     line-height: 1.1;
   }
 
-  .act-metric-value.warn {
-    color: var(--warn);
-  }
-  .act-metric-value.ok {
-    color: var(--ok);
-  }
-
   .act-metric-sub {
     font-size: 11px;
     color: var(--text-3r);
@@ -323,13 +297,6 @@
     align-items: flex-end;
   }
 
-  .act-metric-chart.center {
-    flex-direction: column;
-    align-items: stretch;
-    justify-content: center;
-    gap: 8px;
-  }
-
   .act-spark,
   .act-bars {
     width: 100%;
@@ -337,15 +304,16 @@
     display: block;
   }
 
-  /* линия-заливка */
   .act-spark-area {
     stroke: none;
   }
+
   .act-spark-line {
     fill: none;
     stroke-width: 1.6;
     vector-effect: non-scaling-stroke;
   }
+
   .act-spark-flat {
     stroke: var(--border-2);
     stroke-width: 1;
@@ -355,57 +323,43 @@
   .act-spark.tone-accent .act-spark-line {
     stroke: var(--accent);
   }
+
   .act-spark.tone-accent .act-spark-area {
     fill: rgba(47, 190, 126, 0.14);
   }
+
   .act-spark.tone-warn .act-spark-line {
     stroke: var(--warn);
   }
+
   .act-spark.tone-warn .act-spark-area {
     fill: rgba(217, 161, 59, 0.16);
   }
 
-  /* столбики */
-  .act-bars rect.on {
-    fill: var(--accent);
-  }
-  .act-bars rect.off {
-    fill: var(--raise-2);
-  }
-  .act-bars.tone-warn rect.on {
-    fill: var(--warn);
-  }
-  .act-bars.tone-ok rect.on {
-    fill: rgba(76, 195, 138, 0.55);
-  }
-  .act-bars.tone-ok rect.off {
-    fill: var(--raise-1);
-  }
-
-  /* хранилище: полоса + крупный процент */
   .act-metric-bar {
     height: 6px;
     border-radius: 3px;
     background: var(--raise-1);
     overflow: hidden;
   }
+
   .act-metric-bar i {
     display: block;
     height: 100%;
     background: var(--accent);
     transition: width 300ms ease;
   }
+
   .act-metric-bar[data-hot='true'] i {
     background: var(--warn);
   }
+
   .act-metric-bignum {
     font-size: 22px;
     font-weight: 640;
     color: var(--text-2);
     letter-spacing: -0.02em;
   }
-
-  /* ---------- лента истории ---------- */
 
   .act-feed {
     padding: 0;
@@ -466,12 +420,6 @@
     background: rgba(47, 190, 126, 0.08);
   }
 
-  .act-chip.severe[aria-pressed='true'] {
-    border-color: rgba(229, 100, 92, 0.5);
-    background: rgba(229, 100, 92, 0.08);
-    color: var(--danger);
-  }
-
   .act-dd {
     flex: 0 0 auto;
   }
@@ -529,19 +477,24 @@
   .act-row[data-tone='ok'] {
     border-left-color: rgba(76, 195, 138, 0.4);
   }
+
   .act-row[data-tone='ok'] .act-row-ico {
     color: var(--ok);
   }
+
   .act-row[data-tone='warn'] {
     border-left-color: rgba(217, 161, 59, 0.45);
   }
+
   .act-row[data-tone='warn'] .act-row-ico {
     color: var(--warn);
   }
+
   .act-row[data-tone='danger'] {
     border-left-color: var(--danger);
     background: rgba(229, 100, 92, 0.04);
   }
+
   .act-row[data-tone='danger'] .act-row-ico {
     color: var(--danger);
     border-color: rgba(229, 100, 92, 0.3);
@@ -662,8 +615,6 @@
     stroke-width: 1.5;
     fill: none;
   }
-
-  /* ---------- адаптив ---------- */
 
   @media (max-width: 980px) {
     .act-tiles,

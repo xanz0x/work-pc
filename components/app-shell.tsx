@@ -1,5 +1,7 @@
 'use client'
 
+import dynamic from 'next/dynamic'
+
 import {
   Fragment,
   useEffect,
@@ -12,7 +14,7 @@ import {
 } from 'react'
 import { Dropdown } from './dropdown'
 import { NotificationsBell } from './notifications'
-import { CommandPalette } from './command-palette'
+
 import { NumTicker } from './ui/num-ticker'
 import { StatusClock } from './ui/status-clock'
 import { ScreenLock } from './screen-lock'
@@ -29,6 +31,12 @@ import { blockedCount, installNetGuard, subscribeNet } from '@/lib/net'
 import { DB_VERSION } from '@/lib/db/schema'
 import { APP_BUILD } from '@/lib/backup/registry'
 import type { ScreenId } from '@/lib/vault-store'
+
+/* AR-2: командная палитра (Ctrl+K) — отдельный чанк, ssr не нужен. */
+const CommandPalette = dynamic(
+  () => import('./command-palette').then((m) => ({ default: m.CommandPalette })),
+  { ssr: false },
+)
 
 /** «1 запрет», «2 запрета», «5 запретов» — счётчик обязан звучать по-русски. */
 function blockedWord(n: number): string {
@@ -592,7 +600,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         )}
       </footer>
 
-      <CommandPalette />
+      {/* Палитра приезжает своим чанком и только когда её открыли:
+          в первом бандле каркаса её реестр команд больше не лежит. */}
+      {v.palette && <CommandPalette />}
 
       {v.toast && (
         <div className="flash-toast" role="status" aria-live="polite">

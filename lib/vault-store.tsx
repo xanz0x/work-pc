@@ -59,7 +59,7 @@ export {
 export type { Notif, NotifCat, NotifKind, NotifLink } from './store/notifs'
 export type { OnboardingResult, OnboardingState } from './onboarding'
 export type { LockStatus, LockView } from './store/lock'
-export { useNow } from './store/clock'
+export { useCoarseTick, useNow } from './store/clock'
 export { useDataStore } from './store/data'
 export { useLockStore } from './store/lock'
 export { useSettingsStore } from './store/settings'

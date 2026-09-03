@@ -917,35 +917,6 @@
   .vt-fe.is-ct {
     border-left-color: var(--accent-line);
   }
-  .vt-ct {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0;
-    height: 30px;
-    width: 30px;
-    padding: 0;
-    flex: none;
-    border: 1px solid var(--border);
-    border-radius: var(--r);
-    background: transparent;
-    color: var(--text-3);
-    font-family: var(--font-mono);
-    font-size: 10.5px;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition-property: color, border-color, background-color;
-    transition-duration: 130ms;
-  }
-  .vt-ct svg {
-    width: 13px;
-    height: 13px;
-  }
-  .vt-ct:hover {
-    color: var(--text-2);
-    border-color: var(--border-2);
-  }
   .vt-bad {
     color: var(--danger);
   }
@@ -1206,15 +1177,15 @@
     font-size: 12px;
     color: var(--text-3);
   }
+}
+
+@layer wf036 {
+
   .vt-hist-restore { color: var(--accent); }
 
   @media (max-width: 640px) {
     .vt-seed-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
-}
-
-@layer wf036 {
-
 
   /* ============================================================
      ===== VAULT v1.3 · КОМПАКТНЫЙ РЕДАКТОР, VtSelect, ПАПКИ ====
@@ -1356,14 +1327,14 @@
   @media (max-width: 900px) {
     .vt-type-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   }
+}
+
+@layer wf037 {
+
   @media (max-width: 640px) {
 
     .vt-type-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   }
-
-}
-
-@layer wf037 {
 
 
   /* ---------- вид «Истекающие» ---------- */
@@ -1503,6 +1474,10 @@
     align-items: center;
     gap: 10px;
   }
+}
+
+@layer wf038 {
+
   .vt-gen-sep-select { flex: 0 0 168px; }
 }
 
@@ -1751,6 +1726,10 @@
     height: 26px;
     font-size: 11px;
   }
+}
+
+@layer wf043 {
+
   .vt-det .vt-fe.is-multi .vt-fe-main {
     align-items: flex-start;
   }
@@ -1765,10 +1744,6 @@
     flex: 1 1 0%;
     min-width: 0;
   }
-}
-
-@layer wf043 {
-
 
   /* ============================================================
      REDESIGN v4.1 · строки полей как в макете
@@ -1885,6 +1860,32 @@
     color: var(--accent);
     background: var(--raise-1);
   }
+  /* --- Просмотр записи в ритме редактора: значение живёт в такой же
+         «лунке» с приклеенными иконками, что и поле в редакторе --- */
+  .vt-val-well {
+    flex: 1 1 auto;
+    min-width: 0;
+    align-items: center;
+  }
+  .vt-val-well .vt-val-text,
+  .vt-val-well .vt-link {
+    display: flex;
+    align-items: center;
+    min-height: 32px;
+    padding: 0 10px;
+    border-bottom: 0;
+  }
+  .vt-val-well .vt-val-text.multi {
+    display: block;
+    padding: 7px 10px;
+  }
+  .vt-val-well .vte-btn {
+    align-self: stretch;
+  }
+  .vte-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
   .vte-str {
     height: 2px;
     width: 100%;
@@ -1898,18 +1899,15 @@
     background: var(--accent);
     transition: width 180ms ease-out;
   }
+}
+
+@layer wf044 {
+
   /* Замок и удаление живут в самом поле значения: отдельная колонка действий
      пряталась под opacity:0 и оставляла справа мёртвую полосу, а кнопки
      выпрыгивали при наведении. Тип поля — узкий чип, а не широкий селект. */
   .vte-lock {
     color: var(--text-3);
-  }
-  .vte-lock.on {
-    color: var(--accent);
-    background: rgba(47, 190, 126, 0.08);
-  }
-  .vte-lock.on:hover {
-    background: rgba(47, 190, 126, 0.14);
   }
   .vte-del:hover {
     color: var(--danger);
@@ -1954,5 +1952,23 @@
     .vte-kind {
       width: 100px;
     }
+  }
+}
+
+@layer wf045 {
+
+
+  /* Отметка в списке записей менеджера секретов. */
+  .vt-mark {
+    flex-shrink: 0;
+    width: 15px;
+    height: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: var(--bg-input);
+    color: var(--accent-ink, #08110c);
   }
 }
