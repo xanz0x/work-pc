@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState } from 'react'
 import type { ToolRun, TraceStage } from '@/components/chat/types'
+import { trackAction, trackDrop } from '@/lib/telemetry'
 import { isAiErrorCode, type AiErrorCode } from '@/lib/ai-errors'
 import { logJournal } from '@/lib/journal'
 
@@ -302,6 +303,11 @@ export function useAiChat(
 
       const finalize = (errorCode?: AiErrorCode) => {
         const s = st.current
+        /* NF-9: считаем ИСХОД хода — завершился, оборван человеком или упал.
+           Ни текста, ни модели, ни длины: только по единице в счётчик. */
+        if (errorCode) trackDrop('chat.turn.error')
+        else if (ctrl.signal.aborted) trackDrop('chat.turn.aborted')
+        else trackAction('chat.turn')
         abortRef.current = null
         setActive(false)
         setPending(null)

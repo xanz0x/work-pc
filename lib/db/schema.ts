@@ -44,6 +44,8 @@ const LOCAL_EXACT = new Set([
   'wf.vault.keys.migrated',
   'wf.secrets.sek.v1',
   'wf.telemetry.queue',
+  /* NF-9: агрегат телеметрии — только этот браузер, только счётчики. */
+  'wf.telemetry.v1',
   'wf.chat.active',
   'wf.chat.drafts',
   'wf.chat.scroll',

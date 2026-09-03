@@ -66,6 +66,7 @@ import { useBulkRunner } from '@/lib/bulk'
 import { useIntent } from '@/lib/commands'
 import { BulkBar, type BulkAction } from '@/components/bulk-bar'
 import { DialogShell } from '@/components/dialog-shell'
+import { trackAction, trackDrop } from '@/lib/telemetry'
 
 /** Локальный алиас: короче в объявлении состояния доски. */
 const usePersisted = usePersistedState
@@ -1197,6 +1198,8 @@ export function ScreenLibrary() {
                   onClick={() =>
                     void M.runExclusive('index:reindex', () => idxa.reindex(false), {
                       errorMessage: 'Переиндексация не прошла. Прежний индекс на месте.',
+                    }).then((r) => {
+                      if (r.ok) trackAction('files.reindex')
                     })
                   }
                   title="Перечитать папку: изменённые файлы будут прочитаны заново"
@@ -1229,6 +1232,10 @@ export function ScreenLibrary() {
                     if (view === 'notes') setView('all')
                     void M.runExclusive('index:files', () => idxa.indexFiles(list), {
                       errorMessage: 'Файлы не приняты. Сейф остался прежним.',
+                    }).then((r) => {
+                      /* NF-9: счётчик исхода приёма — без имён и размеров. */
+                      if (r.ok) trackAction('files.intake')
+                      else if (r.reason === 'error') trackDrop('files.intake.failed')
                     })
                   }
                   e.target.value = ''

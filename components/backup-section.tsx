@@ -14,6 +14,7 @@
    3. Восстановление сначала показывает состав и только потом пишет.
    ============================================================ */
 
+import { trackAction } from '@/lib/telemetry'
 import { useCallback, useEffect, useState } from 'react'
 import { IconDatabase, IconRefresh, IconTrash } from './icons'
 import { useVault } from '@/lib/vault-store'
@@ -140,6 +141,7 @@ export function BackupSection() {
       return
     }
     const file = snapshotFile(meta, stored)
+    trackAction('backup.export')
     download(file.name, file.text, 'application/json')
   }
 

@@ -16,6 +16,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { LockMethod } from '@/lib/lock-store'
 import { useLockStore } from '@/lib/vault-store'
 import { adoptMasterSession } from '@/hooks/use-file-keys'
+import { trackAction, trackDrop } from '@/lib/telemetry'
 import { IconLockRound } from './icons'
 import { LogoWord } from './screen-lock-logo'
 
@@ -120,9 +121,11 @@ export function ScreenLock() {
       } catch {
         /* без сессии мастера файловые ключи просто недоступны до следующего unlock */
       }
+      trackAction('lock.unlock')
       setOkFlash(true)
       window.setTimeout(() => v.completeUnlock(), 450)
     } else {
+      trackDrop('lock.unlock.failed')
       fail('Ключ не подходит')
     }
   }

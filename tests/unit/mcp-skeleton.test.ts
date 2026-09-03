@@ -22,11 +22,10 @@ vi.mock('@/lib/ai-server', () => ({
   saveMcp: async () => {},
 }))
 
-const { POST } = await import('@/app/ai-api/mcp/[id]/route')
-
 type Body = Record<string, unknown>
 
 async function call(body: Body): Promise<Body> {
+  const { POST } = await import('@/app/ai-api/mcp/[id]/route')
   const req = new Request('http://localhost/ai-api/mcp/notion', {
     method: 'POST',
     body: JSON.stringify(body),

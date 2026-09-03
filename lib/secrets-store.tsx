@@ -20,6 +20,7 @@ import {
 } from 'react'
 import { usePersistedState } from '@/hooks/use-persisted-state'
 import { useVault } from './vault-store'
+import { trackAction } from './telemetry'
 import {
   DEFAULT_SECRETS_SETTINGS,
   EMPTY_SECRETS,
@@ -371,6 +372,7 @@ export function SecretsProvider({ children }: { children: ReactNode }) {
         body: `«${rec.title}» · ${TYPE_META[type].label}. Секретные поля зашифрованы AES-GCM.`,
         link: { kind: 'secret', id: rec.id },
       })
+      trackAction('vault.entry.create')
       return null
     },
     [ready, sealAll, v, write],

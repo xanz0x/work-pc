@@ -28,6 +28,7 @@ import { useIndexActions } from '@/lib/indexer/context'
 import { fmtBytes } from '@/lib/data'
 import { SCOPES } from '@/lib/search'
 import { flushClientErrors } from '@/lib/telemetry-client'
+import { trackAction, trackDrop, trackScreen } from '@/lib/telemetry'
 import { useFlags } from '@/lib/flags'
 import { blockedCount, installNetGuard, subscribeNet } from '@/lib/net'
 import { DB_VERSION } from '@/lib/db/schema'
@@ -171,6 +172,12 @@ export function AppShell({ children }: { children: ReactNode }) {
     void flushClientErrors()
   }, [])
 
+  /* NF-9: локальный счётчик экранов. Ни одного байта наружу без согласия —
+     это просто число «сколько раз открыт экран» в localStorage. */
+  useEffect(() => {
+    trackScreen(v.screen)
+  }, [v.screen])
+
   /* Чанки остальных экранов догружаются на простое браузера: наведение уже
      звало prefetchScreen, но клик по клавиатуре или из палитры прилетал
      «холодным» и на слабой машине ждал сеть. Первый кадр не задет — работа
@@ -283,7 +290,11 @@ export function AppShell({ children }: { children: ReactNode }) {
     if (e.key === 'Enter' && inlineHits[0]) {
       e.preventDefault()
       setSearchOpen(false)
+      trackAction('search.run')
       v.runHit(inlineHits[0])
+    } else if (e.key === 'Enter' && v.query.trim().length > 1) {
+      /* NF-9: «искал и не нашёл» — это обрыв сценария, его и считаем. */
+      trackDrop('search.empty')
     } else if (e.key === 'ArrowDown') {
       // с клавиатуры разворачиваем полноценную палитру
       e.preventDefault()

@@ -41,6 +41,7 @@ import {
 import { buildGraph, clusterLoad, neighborsOf, type Graph } from '../graph'
 import { isAlive, type Note } from '../notes'
 import { logJournal } from '../journal'
+import { trackAction } from '../telemetry'
 import { useCoarseTick } from './clock'
 import { useNotifsStore } from './notifs'
 import { useSettingsStore } from './settings'
@@ -282,6 +283,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       cur && sessionsRef.current.some((s) => s.id === cur && s.demo) ? null : cur,
     )
     setDemoState({ seeded: true, dismissed: true })
+    trackAction('demo.clear')
     flash('Демо-данные убраны. В сейфе остались только ваши объекты.')
   }, [flash, setActiveSessionId, setDemoState, setFiles, setNotes, setSessions])
 

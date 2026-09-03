@@ -2,7 +2,15 @@
 
 /* AR-2: слой стилей настроек приезжает вместе с чанком экрана. */
 import '@/app/styles/screen-settings.css'
-import { useEffect, useMemo, useRef, useState, type ComponentType, type SVGProps } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ComponentType,
+  type SVGProps,
+} from 'react'
 import {
   IconArrowRight,
   IconBell,
@@ -42,6 +50,14 @@ import { BackupSection } from './backup-section'
 import { FlagsSection } from './flags-section'
 import { JournalPanel } from './journal-panel'
 import { UiScaleSection } from './ui-scale-section'
+import {
+  buildPayload,
+  clearTelemetry,
+  sendTelemetry,
+  subscribeTelemetry,
+  telemetrySnapshot,
+  totalEvents,
+} from '@/lib/telemetry'
 
 type Ico = ComponentType<SVGProps<SVGSVGElement>>
 
@@ -149,6 +165,125 @@ const plural = (n: number, one: string, few: string, many: string) => {
  * Пока черновик отличается от сохранённого, подвал держит кнопки активными,
  * и статус-бар каркаса говорит о несохранённых изменениях тем же словом.
  */
+
+/* ============================================================
+   NF-9 · «ЧТО БУДЕТ ОТПРАВЛЕНО»
+   Согласие имеет смысл, только если человек видел ровно тот объект,
+   который уйдёт. Поэтому на экране показан не пересказ, а сам payload —
+   тот же, что уходит на сервер. Выключение согласия стирает накопленное
+   сразу, а не «при следующем запуске».
+   ============================================================ */
+function TelemetryPanel() {
+  const S = useSettingsStore()
+  const { flash } = useToast()
+  const consent = S.settings.toggles.telemetry
+  const state = useSyncExternalStore(subscribeTelemetry, telemetrySnapshot, telemetrySnapshot)
+  const [shown, setShown] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [result, setResult] = useState<string | null>(null)
+
+  const total = totalEvents(state)
+  const payload = useMemo(() => buildPayload(state, Date.now()), [state])
+
+  const was = useRef(consent)
+  useEffect(() => {
+    if (was.current && !consent) {
+      clearTelemetry()
+      setResult(null)
+      flash('Согласие отозвано: накопленная статистика стёрта.')
+    }
+    was.current = consent
+  }, [consent, flash])
+
+  return (
+    <div className="field-block" data-testid="telemetry-panel">
+      <div className="mask-head">
+        <span className="label-mono">Что будет отправлено</span>
+        <span className="label-mono tm-total" data-testid="telemetry-total">
+          {total} {plural(total, 'событие', 'события', 'событий')}
+        </span>
+      </div>
+      <div className="setting-note tm-note">
+        Считаются только счётчики из закрытого списка: какие экраны открывали, какие действия
+        делали и где сценарий оборвался. Ни имён файлов, ни текста запросов, ни идентификатора
+        устройства — отправлять нечему быть уникальным. Пока согласие не дано, агрегат лежит
+        только в этом браузере.
+      </div>
+
+      <div className="tm-counts">
+        <span>
+          экраны <b className="num">{payload.totals.screens}</b>
+        </span>
+        <span>
+          действия <b className="num">{payload.totals.actions}</b>
+        </span>
+        <span>
+          обрывы <b className="num">{payload.totals.drops}</b>
+        </span>
+      </div>
+
+      <button
+        className="btn btn-ghost btn-sm"
+        onClick={() => setShown((v) => !v)}
+        aria-expanded={shown}
+        data-testid="telemetry-payload-toggle"
+      >
+        {shown ? 'Скрыть payload' : 'Показать точный payload'}
+      </button>
+
+      {shown ? (
+        <pre className="tm-json mono" data-testid="telemetry-payload">
+          {JSON.stringify(payload, null, 2)}
+        </pre>
+      ) : null}
+
+      <div className="tm-actions">
+        <button
+          className="btn btn-primary btn-sm"
+          disabled={!consent || total === 0 || busy}
+          title={
+            consent
+              ? 'Отправить показанный payload на локальный сервер приложения'
+              : 'Сначала включите «Отправлять анонимную статистику» и сохраните настройки'
+          }
+          onClick={async () => {
+            setBusy(true)
+            const r = await sendTelemetry(consent)
+            setBusy(false)
+            setResult(r.ok ? 'Отправлено. Счётчики обнулены.' : r.error)
+            if (r.ok) flash('Статистика отправлена, накопленное обнулено.')
+          }}
+          data-testid="telemetry-send"
+        >
+          {busy ? 'Отправляю…' : 'Отправить сейчас'}
+        </button>
+        <button
+          className="btn btn-ghost btn-sm"
+          disabled={total === 0}
+          onClick={() => {
+            clearTelemetry()
+            setResult(null)
+            flash('Накопленная статистика стёрта.')
+          }}
+          data-testid="telemetry-clear"
+        >
+          Очистить накопленное
+        </button>
+      </div>
+
+      <div className="setting-note" data-testid="telemetry-status">
+        {result
+          ? result
+          : consent
+            ? state.lastSentAt
+              ? `Последняя отправка: ${new Date(state.lastSentAt).toLocaleString('ru-RU')} · всего ${state.sent}`
+              : 'Согласие дано. Ничего ещё не отправлялось — отправка только по кнопке.'
+            : 'Согласие не дано: отправка недоступна, накопленное никуда не уходит.'}
+      </div>
+    </div>
+  )
+}
+
 export function ScreenSettings() {
   /* Узкие подписки вместо общего фасада: экран настроек живёт на домене
      настроек, а из остальных берёт ровно то, что показывает. */
@@ -654,6 +789,8 @@ export function ScreenSettings() {
                   <span className="badge badge-ok">спросим заранее</span>
                 )}
               </div>
+
+              <TelemetryPanel />
 
               <div className="field-block">
                 <div className="mask-head">
