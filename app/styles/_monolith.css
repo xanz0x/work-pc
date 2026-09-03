@@ -2130,6 +2130,11 @@ p {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  /* Контекст позиционирования: абсолютные потомки (например, скрытые
+     .sr-only-инпуты выбора файла) обязаны считаться от этой колонки,
+     иначе они цепляются к html и растягивают страницу на всю длину
+     контента — настройки листались в пустоту под «Опасной зоной». */
+  position: relative;
 }
 .lib-layout {
   display: grid;
@@ -3987,12 +3992,15 @@ p {
    ============================================================ */
 /* Рельс разделов слева + колонка контента: длинная страница перестаёт
    быть свитком и получает адресную навигацию. */
-/* Страница настроек: скролл только у контента, панель сохранения — подвал. */
+/* Страница настроек: скролл только у контента, панель сохранения — подвал.
+   height:100% здесь врало: .set-page — flex-ребёнок .main-col рядом с
+   топбаром, поэтому «сто процентов» давали высоту БЕЗ вычета топбара,
+   колонка прокрутки уезжала под статус-бар и скролл проваливался в пустоту. */
 .set-page {
   display: flex;
   flex-direction: column;
+  flex: 1;
   min-height: 0;
-  height: 100%;
   overflow: hidden;
 }
 .set-shell {
@@ -10600,7 +10608,7 @@ button.chip:hover {
    дописывает — прежние правила карты не переопределяются силой.
    ============================================================ */
 
-.map-space { background: #06090f; }
+.map-space { background: #010204; }
 
 .cosmos {
   position: absolute;
@@ -10614,20 +10622,20 @@ button.chip:hover {
   display: block;
 }
 
-/* Глубина: холодный синий низ, чуть теплее к центру */
+/* Глубина: почти чёрная основа, холодные пятна еле угадываются */
 .cos-deep {
   inset: -10%;
   background:
-    radial-gradient(120% 90% at 22% 12%, rgba(30, 52, 84, 0.5), transparent 62%),
-    radial-gradient(90% 80% at 82% 88%, rgba(18, 46, 44, 0.42), transparent 60%),
-    linear-gradient(180deg, #070b13 0%, #05070d 58%, #04060a 100%);
+    radial-gradient(120% 90% at 22% 12%, rgba(30, 52, 84, 0.28), transparent 62%),
+    radial-gradient(90% 80% at 82% 88%, rgba(18, 46, 44, 0.22), transparent 60%),
+    linear-gradient(180deg, #04060a 0%, #020308 58%, #010204 100%);
 }
 
 /* Туманности: три размытых пятна, дышат в разном темпе */
 .cos-neb {
   border-radius: 50%;
   filter: blur(60px);
-  opacity: 0.5;
+  opacity: 0.3;
   mix-blend-mode: screen;
   will-change: transform, opacity;
 }
@@ -10656,12 +10664,12 @@ button.chip:hover {
   animation: cos-drift-a 66s ease-in-out infinite reverse;
 }
 @keyframes cos-drift-a {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.42; }
-  50% { transform: translate3d(3vw, 2vw, 0) scale(1.09); opacity: 0.6; }
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.2; }
+  50% { transform: translate3d(3vw, 2vw, 0) scale(1.09); opacity: 0.3; }
 }
 @keyframes cos-drift-b {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(1.04); opacity: 0.34; }
-  50% { transform: translate3d(-4vw, 3vw, 0) scale(1); opacity: 0.52; }
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.04); opacity: 0.16; }
+  50% { transform: translate3d(-4vw, 3vw, 0) scale(1); opacity: 0.26; }
 }
 
 /* Млечная полоса: диагональная дымка с зернистой маской */
@@ -10906,15 +10914,15 @@ button.chip:hover {
 /* ---------- MAP v2.1 · космос читается, строки связей не режутся ---------- */
 .cos-deep {
   background:
-    radial-gradient(120% 90% at 20% 8%, rgba(42, 74, 118, 0.62), transparent 64%),
-    radial-gradient(96% 84% at 84% 92%, rgba(22, 64, 62, 0.5), transparent 62%),
-    radial-gradient(60% 50% at 62% 34%, rgba(58, 44, 96, 0.34), transparent 70%),
-    linear-gradient(180deg, #0a1120 0%, #070b14 56%, #05080e 100%);
+    radial-gradient(120% 90% at 20% 8%, rgba(42, 74, 118, 0.3), transparent 64%),
+    radial-gradient(96% 84% at 84% 92%, rgba(22, 64, 62, 0.24), transparent 62%),
+    radial-gradient(60% 50% at 62% 34%, rgba(58, 44, 96, 0.16), transparent 70%),
+    linear-gradient(180deg, #04060a 0%, #020308 56%, #010204 100%);
 }
-.cos-neb { opacity: 0.72; filter: blur(48px); }
-.cos-neb.n1 { background: radial-gradient(circle, rgba(47, 190, 126, 0.42), rgba(47, 190, 126, 0) 68%); }
-.cos-neb.n2 { background: radial-gradient(circle, rgba(96, 140, 230, 0.4), rgba(96, 140, 230, 0) 66%); }
-.cos-neb.n3 { background: radial-gradient(circle, rgba(198, 152, 92, 0.3), rgba(198, 152, 92, 0) 70%); }
+.cos-neb { opacity: 0.34; filter: blur(48px); }
+.cos-neb.n1 { background: radial-gradient(circle, rgba(47, 190, 126, 0.22), rgba(47, 190, 126, 0) 68%); }
+.cos-neb.n2 { background: radial-gradient(circle, rgba(96, 140, 230, 0.2), rgba(96, 140, 230, 0) 66%); }
+.cos-neb.n3 { background: radial-gradient(circle, rgba(198, 152, 92, 0.16), rgba(198, 152, 92, 0) 70%); }
 .cos-way { opacity: 0.9; }
 .cos-stars.s1 { opacity: 0.9; }
 .cos-stars.s2 { opacity: 0.78; }
@@ -11211,6 +11219,15 @@ button.chip:hover {
   font-size: 20px;
   letter-spacing: 0.02em;
   margin: 0;
+}
+/* Фирменное лого вместо текстового заголовка. */
+.login-logo {
+  font-size: 22px;
+  letter-spacing: 0.16em;
+}
+.login-logo b {
+  color: var(--accent);
+  font-weight: inherit;
 }
 .login-note {
   margin: 0;
@@ -12793,4 +12810,49 @@ button.chip:hover {
 }
 .cmdk-cmd .cmdk-kind {
   text-transform: lowercase;
+}
+
+/* ------------------------------------------------------------
+   MAP v2.4 · ФОН КАРТЫ ЗАМЕТНО ТЕМНЕЕ
+   Просьба владельца повторно: подложка карты должна быть почти
+   чёрной. Гасим не только градиент, но и то, что раньше его
+   переигрывало — анимации туманностей (они задают opacity в
+   кадрах) и звёздные слои. Свечение узлов и связей не тронуто.
+   ------------------------------------------------------------ */
+.map-space { background: #000102; }
+.cos-deep {
+  background:
+    radial-gradient(120% 90% at 20% 8%, rgba(14, 26, 44, 0.2), transparent 60%),
+    radial-gradient(96% 84% at 84% 92%, rgba(8, 24, 24, 0.16), transparent 58%),
+    radial-gradient(60% 50% at 62% 34%, rgba(20, 14, 34, 0.12), transparent 66%),
+    linear-gradient(180deg, #010204 0%, #010203 56%, #000102 100%);
+}
+.cos-neb {
+  opacity: 0.14;
+  filter: blur(64px);
+}
+.cos-way {
+  opacity: 0.2;
+}
+.cos-stars.s1 {
+  opacity: 0.48;
+}
+.cos-stars.s2 {
+  opacity: 0.36;
+}
+.cos-stars.s3 {
+  opacity: 0.26;
+}
+.cos-vig {
+  background:
+    radial-gradient(130% 110% at 42% 46%, transparent 34%, rgba(0, 0, 2, 0.9) 100%),
+    linear-gradient(180deg, rgba(0, 0, 2, 0.7), transparent 24%, transparent 72%, rgba(0, 0, 2, 0.82));
+}
+@keyframes cos-drift-a {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.1; }
+  50% { transform: translate3d(3vw, 2vw, 0) scale(1.09); opacity: 0.16; }
+}
+@keyframes cos-drift-b {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.04); opacity: 0.08; }
+  50% { transform: translate3d(-4vw, 3vw, 0) scale(1); opacity: 0.14; }
 }

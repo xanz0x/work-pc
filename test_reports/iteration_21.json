@@ -1,0 +1,50 @@
+{
+  "summary": "Frontend-only приёмка волны NF-4/UI-фикс (баги #1..#4): вход, лого, онбординг с PIN/паролем, разблокировка, скролл настроек, фон карты памяти. Два прогона Playwright по preview URL на чистых профилях. Все 4 бага подтверждены как исправленные, регрессов не найдено.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "verified_fixes": [
+    {
+      "bug": "#2 P0 · Онбординг разрешал PIN 4-5 цифр",
+      "status": "FIXED",
+      "evidence": "На шаге 2 две строки по 6 ячеек (data-testid onb-secret-0..5 / onb-secret-repeat-0..5), счётчики n/6, подпись «PIN: ровно 6 цифр — столько же принимает экран разблокировки». Кнопка onb-create-key: 4 цифры → disabled «Введите 6 цифр»; 5 цифр → disabled «Введите 6 цифр»; 6 цифр без повтора → disabled «Повторите PIN»; 6+несовпадение → disabled «Повторите PIN»; 6+6 совпадают → enabled «Создать мастер-ключ». После создания PIN 123456 экран блокировки (Ctrl+Shift+L) разблокируется этим же PIN — библиотека появляется."
+    },
+    {
+      "bug": "#1 P0 · Настройки листались в пустоту ниже «Опасной зоны»",
+      "status": "FIXED",
+      "evidence": "На /settings document.documentElement.scrollHeight - clientHeight = 0 (внешнего скролла нет). Скролл живёт только внутри .scroll-col (sH=5371, cH=917). После scrollTop=scrollHeight «Опасная зона» стоит прямо над подвалом «Отменить/Сохранить» (footer.top=996 при viewport 1080), пустого пространства ниже нет. Регресс проверен на library/chat/vault/activity — везде external scroll = 0."
+    },
+    {
+      "bug": "#3 P1 · Фон карты памяти слишком светлый",
+      "status": "FIXED",
+      "evidence": ".map-space computed background-color = rgb(0,1,2) (почти чёрный), body = rgb(3,5,7), .cos-deep прозрачен и наследует. На карте 17 узлов, кластеры/подписи (ДОКУМЕНТЫ/ФИНАНСЫ/МУЗЫКА/…) читаемы, инспектор узла открывается по клику (WORKFLOW CORE)."
+    },
+    {
+      "bug": "#4 P1 · На /login не было фирменного лого",
+      "status": "FIXED",
+      "evidence": "На /login виден блок [data-testid=login-logo] с текстом «WORKFLOW» (LogoWord), над ним IconLogoMark в круге, overflow=visible, размер 362×34 px, ничего не обрезано. Вход паролем IceKrymTeam13@ → редирект на /."
+    },
+    {
+      "bug": "Онбординг · вкладка Пароль (регресс)",
+      "status": "PASS",
+      "evidence": "Вкладка «Пароль · от 8 символов» показывает поле onb-secret с глазом (onb-secret-eye), индикатор силы .lock-strength появляется при вводе. Валидация: 5 симв → disabled «Минимум 8 символов»; 15 симв без повтора → disabled «Повторите пароль»; несовпадение → disabled «Повторите пароль»; совпадение e2e-master-2026 → enabled «Создать мастер-ключ». После создания пароль e2e-master-2026 разблокирует сейф на screen-lock."
+    }
+  ],
+  "test_report_links": ["/app/test_reports/iteration_21.json"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "components/screen-lock.tsx: ячейки PIN экрана блокировки не имеют data-testid (используется .lock-cells .lock-cell) — работает, но добавить data-testid=\"screen-lock-cell-N\" удешевит e2e и снимет расхождение с онбордингом/настройками, где ячейки уже помечены",
+    "Данные разработчика: раздел «Опасная зона» и её кнопки без data-testid (settings-delete-vault, settings-clear-index) — селекторы приходится ловить по классу .set-danger, что хрупко"
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "не тестировалось (frontend only)", "frontend": "8/8 сценариев из ТЗ пройдено" },
+  "test_credentials": "IceKrymTeam13@ (пароль приложения) валиден; PIN 123456 и пароль e2e-master-2026 создавались в одноразовых профилях Playwright",
+  "seed_data_creation": "Одноразовые профили Playwright: онбординг пройден честно, мастер-ключ создан PIN'ом 123456 в одном прогоне и паролем e2e-master-2026 в другом. Демо-корпус (13 файлов, 33 связи, 4 стикера) наблюдался без изменений — приложение всегда показывает эти дефолты в чистом профиле.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Онбординг перекрывает интерфейс в каждом новом профиле — либо проходите три шага честно (mode local → PIN 6 цифр или Пароль 8+ → demo), либо гасите wf.settings.v1.onboarding через init-скрипт (tests/e2e/onboard.ts). Ячейки экрана блокировки selector: '.lock-cells .lock-cell' (нет data-testid). Кнопка входа login-submit disabled только по busy — page.fill работает сразу. Локальный Ollama не запущен, статус «локальный движок не подключён» это норма. Верификация фона карты: getComputedStyle('.map-space').backgroundColor должен быть rgb(0,1,2).",
+  "rca_of_the_issue": "Все четыре бага волны исправлены и проверены независимо. Отмечу для памяти корни, как их описывал разработчик и как они видны в коде: (#2) валидатор secret в онбординге и security-section теперь общий /^\\d{6}$/ через lib/lock-store validateSecret + одна реализация полей в components/mk-fields.tsx (MkPinRow с PIN_LENGTH=6), поэтому расхождения между настройками и первым запуском больше нет; (#1) .scroll-col получил position: relative, а .set-page — flex:1;min-height:0 — скрытый sr-only file input в #set-backup перестал позиционироваться от html и растягивать страницу на 3552px; (#3) в app/globals.css .map-space окрашен в rgb(0,1,2), .cos-deep оставлен прозрачным чтобы наследовать; (#4) на /login добавлены IconLogoMark и LogoWord внутри h1[data-testid=login-logo]."
+}

@@ -104,7 +104,9 @@ export function readLockBootstrap(): 'off' | 'locked' {
 /** Текст ошибки или null, если ключ проходит политику. */
 export function validateSecret(secret: string, method: LockMethod): string | null {
   if (method === 'pin') {
-    return /^\d{4,8}$/.test(secret) ? null : 'PIN: от 4 до 8 цифр, без других символов'
+    /* Ровно 6 цифр: экран разблокировки принимает только шестизначный PIN,
+       поэтому короче создать нельзя — иначе в сейф не войти. */
+    return /^\d{6}$/.test(secret) ? null : 'PIN: ровно 6 цифр'
   }
   if (secret.length < 8) return 'Пароль: минимум 8 символов'
   if (secret.length > 128) return 'Пароль слишком длинный (максимум 128)'

@@ -591,7 +591,7 @@
      дописывает — прежние правила карты не переопределяются силой.
      ============================================================ */
 
-  .map-space { background: #06090f; }
+  .map-space { background: #010204; }
 
   .cosmos {
     position: absolute;
@@ -605,20 +605,20 @@
     display: block;
   }
 
-  /* Глубина: холодный синий низ, чуть теплее к центру */
+  /* Глубина: почти чёрная основа, холодные пятна еле угадываются */
   .cos-deep {
     inset: -10%;
     background:
-      radial-gradient(120% 90% at 22% 12%, rgba(30, 52, 84, 0.5), transparent 62%),
-      radial-gradient(90% 80% at 82% 88%, rgba(18, 46, 44, 0.42), transparent 60%),
-      linear-gradient(180deg, #070b13 0%, #05070d 58%, #04060a 100%);
+      radial-gradient(120% 90% at 22% 12%, rgba(30, 52, 84, 0.28), transparent 62%),
+      radial-gradient(90% 80% at 82% 88%, rgba(18, 46, 44, 0.22), transparent 60%),
+      linear-gradient(180deg, #04060a 0%, #020308 58%, #010204 100%);
   }
 
   /* Туманности: три размытых пятна, дышат в разном темпе */
   .cos-neb {
     border-radius: 50%;
     filter: blur(60px);
-    opacity: 0.5;
+    opacity: 0.3;
     mix-blend-mode: screen;
     will-change: transform, opacity;
   }
@@ -835,15 +835,15 @@
   /* ---------- MAP v2.1 · космос читается, строки связей не режутся ---------- */
   .cos-deep {
     background:
-      radial-gradient(120% 90% at 20% 8%, rgba(42, 74, 118, 0.62), transparent 64%),
-      radial-gradient(96% 84% at 84% 92%, rgba(22, 64, 62, 0.5), transparent 62%),
-      radial-gradient(60% 50% at 62% 34%, rgba(58, 44, 96, 0.34), transparent 70%),
-      linear-gradient(180deg, #0a1120 0%, #070b14 56%, #05080e 100%);
+      radial-gradient(120% 90% at 20% 8%, rgba(42, 74, 118, 0.3), transparent 64%),
+      radial-gradient(96% 84% at 84% 92%, rgba(22, 64, 62, 0.24), transparent 62%),
+      radial-gradient(60% 50% at 62% 34%, rgba(58, 44, 96, 0.16), transparent 70%),
+      linear-gradient(180deg, #04060a 0%, #020308 56%, #010204 100%);
   }
-  .cos-neb { opacity: 0.72; filter: blur(48px); }
-  .cos-neb.n1 { background: radial-gradient(circle, rgba(47, 190, 126, 0.42), rgba(47, 190, 126, 0) 68%); }
-  .cos-neb.n2 { background: radial-gradient(circle, rgba(96, 140, 230, 0.4), rgba(96, 140, 230, 0) 66%); }
-  .cos-neb.n3 { background: radial-gradient(circle, rgba(198, 152, 92, 0.3), rgba(198, 152, 92, 0) 70%); }
+  .cos-neb { opacity: 0.34; filter: blur(48px); }
+  .cos-neb.n1 { background: radial-gradient(circle, rgba(47, 190, 126, 0.22), rgba(47, 190, 126, 0) 68%); }
+  .cos-neb.n2 { background: radial-gradient(circle, rgba(96, 140, 230, 0.2), rgba(96, 140, 230, 0) 66%); }
+  .cos-neb.n3 { background: radial-gradient(circle, rgba(198, 152, 92, 0.16), rgba(198, 152, 92, 0) 70%); }
   .cos-way { opacity: 0.9; }
   .cos-stars.s3 { opacity: 0.66; }
   .cos-vig {

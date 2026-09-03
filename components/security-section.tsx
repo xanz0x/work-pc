@@ -14,7 +14,8 @@
    ============================================================ */
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { IconAlertTri, IconClose, IconEye, IconEyeOff, IconKey, IconLockRound } from './icons'
+import { IconAlertTri, IconClose, IconKey, IconLockRound } from './icons'
+import { MkPassField, MkPinRow, strengthPw } from './mk-fields'
 import { useVault } from '@/lib/vault-store'
 import type { LockMethod } from '@/lib/lock-store'
 
@@ -93,137 +94,6 @@ function MkModal({
   )
 }
 
-/** Поле ключа: подпись со счётчиком справа, поле и глаз. */
-function MkPassField({
-  id,
-  label,
-  hint,
-  hintTone,
-  value,
-  onChange,
-  placeholder,
-  autoComplete,
-  inputRef,
-  testId,
-  incomplete,
-  children,
-}: {
-  id: string
-  label: string
-  hint?: string
-  hintTone?: 'ok' | 'bad'
-  value: string
-  onChange: (v: string) => void
-  placeholder?: string
-  autoComplete: string
-  inputRef?: React.Ref<HTMLInputElement>
-  testId: string
-  incomplete?: boolean
-  children?: ReactNode
-}) {
-  const [shown, setShown] = useState(false)
-  return (
-    <div className="mk-field">
-      <label className="label-mono mk-label" htmlFor={id}>
-        <span>{label}</span>
-        {hint ? (
-          <span className={`mk-hint num${hintTone ? ` mk-hint-${hintTone}` : ''}`}>{hint}</span>
-        ) : null}
-      </label>
-      <div className="mk-input-wrap">
-        <input
-          ref={inputRef}
-          id={id}
-          className={`lock-input mk-input num${incomplete ? ' is-incomplete' : ''}`}
-          type={shown ? 'text' : 'password'}
-          autoComplete={autoComplete}
-          placeholder={placeholder}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          data-testid={testId}
-        />
-        <button
-          className="mk-eye"
-          type="button"
-          onClick={() => setShown((x) => !x)}
-          aria-label={shown ? 'Скрыть ключ' : 'Показать ключ'}
-          aria-pressed={shown}
-          data-testid={`${testId}-eye`}
-        >
-          {shown ? <IconEye /> : <IconEyeOff />}
-        </button>
-      </div>
-      {children}
-    </div>
-  )
-}
-
-/** Шесть ячеек PIN: подпись со счётчиком, автоперевод фокуса. */
-function MkPinRow({
-  idBase,
-  label,
-  hint,
-  hintTone,
-  value,
-  onChange,
-  hasError,
-  firstRef,
-  testId,
-}: {
-  idBase: string
-  label: string
-  hint: string
-  hintTone?: 'ok' | 'bad'
-  value: string
-  onChange: (v: string) => void
-  hasError: boolean
-  firstRef?: React.Ref<HTMLInputElement>
-  testId: string
-}) {
-  return (
-    <div className="mk-field">
-      <label className="label-mono mk-label" htmlFor={idBase}>
-        <span>{label}</span>
-        <span className={`mk-hint num${hintTone ? ` mk-hint-${hintTone}` : ''}`}>{hint}</span>
-      </label>
-      <div className={`lock-cells mk-cells${hasError ? ' has-error' : ''}`}>
-        {Array.from({ length: 6 }).map((_, i) => (
-          <input
-            key={i}
-            id={i === 0 ? idBase : undefined}
-            ref={i === 0 ? firstRef : undefined}
-            className={`lock-cell num${value[i] ? ' filled' : ''}`}
-            inputMode="numeric"
-            autoComplete="off"
-            maxLength={1}
-            value={value[i] ?? ''}
-            onChange={(e) => {
-              const ch = e.target.value.replace(/\D/g, '').slice(-1)
-              onChange((value.slice(0, i) + ch + value.slice(i + 1)).slice(0, 6))
-              if (ch && i < 5) {
-                const el = e.currentTarget.parentElement?.children[i + 1] as
-                  | HTMLInputElement
-                  | undefined
-                el?.focus()
-              }
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Backspace' && !value[i] && i > 0) {
-                const el = e.currentTarget.parentElement?.children[i - 1] as
-                  | HTMLInputElement
-                  | undefined
-                el?.focus()
-              }
-            }}
-            aria-label={`${label} — цифра ${i + 1}`}
-            data-testid={`${testId}-${i}`}
-          />
-        ))}
-      </div>
-    </div>
-  )
-}
-
 export function SecuritySection() {
   const v = useVault()
   const lock = v.lock
@@ -267,15 +137,6 @@ export function SecuritySection() {
     setErr(null)
   }
 
-  function strengthPw(pw: string): number {
-    let n = 0
-    if (pw.length >= 8) n++
-    if (pw.length >= 12) n++
-    if (/\d/.test(pw) && /[a-zA-Zа-яА-Я]/.test(pw)) n++
-    if (/[^a-zA-Z0-9а-яА-Я]/.test(pw)) n++
-    return Math.min(n, 4)
-  }
-
   async function onCreate(e: React.FormEvent) {
     e.preventDefault()
     setErr(null)
@@ -283,8 +144,8 @@ export function SecuritySection() {
       setErr(s1 !== s2 ? 'Ключи не совпадают' : 'Введите ключ')
       return
     }
-    if (method === 'pin' && !/^\d{4,8}$/.test(s1)) {
-      setErr('Пин: от 4 до 8 цифр')
+    if (method === 'pin' && !/^\d{6}$/.test(s1)) {
+      setErr('Пин: ровно 6 цифр')
       return
     }
     if (method === 'password' && s1.length < 8) {

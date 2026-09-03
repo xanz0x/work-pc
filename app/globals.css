@@ -2027,6 +2027,11 @@
     flex: 1;
     min-height: 0;
     overflow-y: auto;
+    /* Контекст позиционирования: абсолютные потомки (например, скрытые
+       .sr-only-инпуты выбора файла) обязаны считаться от этой колонки,
+       иначе они цепляются к html и растягивают страницу на всю длину
+       контента — настройки листались в пустоту под «Опасной зоной». */
+    position: relative;
   }
   .fcard.sel {
     border-color: var(--accent-line);
@@ -5287,12 +5292,12 @@
 @layer wf038 {
 
   @keyframes cos-drift-a {
-    0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.42; }
-    50% { transform: translate3d(3vw, 2vw, 0) scale(1.09); opacity: 0.6; }
+    0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.2; }
+    50% { transform: translate3d(3vw, 2vw, 0) scale(1.09); opacity: 0.3; }
   }
   @keyframes cos-drift-b {
-    0%, 100% { transform: translate3d(0, 0, 0) scale(1.04); opacity: 0.34; }
-    50% { transform: translate3d(-4vw, 3vw, 0) scale(1); opacity: 0.52; }
+    0%, 100% { transform: translate3d(0, 0, 0) scale(1.04); opacity: 0.16; }
+    50% { transform: translate3d(-4vw, 3vw, 0) scale(1); opacity: 0.26; }
   }
   @keyframes cos-way {
     from { transform: translate3d(-2%, 0, 0) rotate(0.001deg); }
@@ -5535,6 +5540,15 @@
     font-size: 20px;
     letter-spacing: 0.02em;
     margin: 0;
+  }
+  /* Фирменное лого вместо текстового заголовка. */
+  .login-logo {
+    font-size: 22px;
+    letter-spacing: 0.16em;
+  }
+  .login-logo b {
+    color: var(--accent);
+    font-weight: inherit;
   }
   .login-note {
     margin: 0;
@@ -6675,4 +6689,115 @@
 }
 .map-space .node-inspector {
   background: rgba(3, 5, 9, 0.9);
+}
+
+/* ------------------------------------------------------------
+   ПОЛЯ МАСТЕР-КЛЮЧА В БАЗЕ
+   components/mk-fields.tsx рендерится и в настройках, и в онбординге
+   первого запуска, поэтому его правила обязаны быть в базовом слое:
+   в ленивом чанке настроек онбординг остался бы без стилей.
+   ------------------------------------------------------------ */
+.mk-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.mk-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--text-3r);
+}
+.mk-hint {
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: none;
+  color: var(--text-3);
+  transition: color 160ms ease-out;
+}
+.mk-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.mk-input {
+  width: 100%;
+  padding-right: 40px;
+}
+.mk-eye {
+  position: absolute;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: var(--r);
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  transition: color 140ms ease-out;
+}
+.mk-eye svg {
+  width: 15px;
+  height: 15px;
+}
+.mk-eye:hover {
+  color: var(--accent);
+}
+.mk-field .lock-strength {
+  margin: 1px 0 0;
+}
+.mk-cells {
+  justify-content: flex-start;
+  margin-top: 0;
+}
+
+/* ------------------------------------------------------------
+   MAP v2.4 · ФОН КАРТЫ ЗАМЕТНО ТЕМНЕЕ
+   Просьба владельца повторно: подложка карты должна быть почти
+   чёрной. Гасим не только градиент, но и то, что раньше его
+   переигрывало — анимации туманностей (они задают opacity в
+   кадрах) и звёздные слои. Свечение узлов и связей не тронуто.
+   ------------------------------------------------------------ */
+.map-space { background: #000102; }
+.cos-deep {
+  background:
+    radial-gradient(120% 90% at 20% 8%, rgba(14, 26, 44, 0.2), transparent 60%),
+    radial-gradient(96% 84% at 84% 92%, rgba(8, 24, 24, 0.16), transparent 58%),
+    radial-gradient(60% 50% at 62% 34%, rgba(20, 14, 34, 0.12), transparent 66%),
+    linear-gradient(180deg, #010204 0%, #010203 56%, #000102 100%);
+}
+.cos-neb {
+  opacity: 0.14;
+  filter: blur(64px);
+}
+.cos-way {
+  opacity: 0.2;
+}
+.cos-stars.s1 {
+  opacity: 0.48;
+}
+.cos-stars.s2 {
+  opacity: 0.36;
+}
+.cos-stars.s3 {
+  opacity: 0.26;
+}
+.cos-vig {
+  background:
+    radial-gradient(130% 110% at 42% 46%, transparent 34%, rgba(0, 0, 2, 0.9) 100%),
+    linear-gradient(180deg, rgba(0, 0, 2, 0.7), transparent 24%, transparent 72%, rgba(0, 0, 2, 0.82));
+}
+@keyframes cos-drift-a {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.1; }
+  50% { transform: translate3d(3vw, 2vw, 0) scale(1.09); opacity: 0.16; }
+}
+@keyframes cos-drift-b {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.04); opacity: 0.08; }
+  50% { transform: translate3d(-4vw, 3vw, 0) scale(1); opacity: 0.14; }
 }

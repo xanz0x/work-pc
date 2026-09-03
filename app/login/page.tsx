@@ -1,7 +1,8 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { IconLockRound } from '@/components/icons'
+import { IconLogoMark } from '@/components/icons'
+import { LogoWord } from '@/components/screen-lock-logo'
 
 /**
  * Вход паролем приложения. Пароль сверяется на сервере, наружу уходит только
@@ -47,9 +48,11 @@ export default function LoginPage() {
     <main className="login-page">
       <form className="login-card panel" onSubmit={submit} data-testid="login-form">
         <span className="login-mark" aria-hidden="true">
-          <IconLockRound />
+          <IconLogoMark />
         </span>
-        <h1 className="login-title">WorkfloW</h1>
+        <h1 className="login-title" data-testid="login-logo">
+          <LogoWord className="login-logo" />
+        </h1>
         <p className="login-note">
           ИИ-слой закрыт паролем приложения: без входа диалоги, промпт и ключ модели недоступны.
         </p>

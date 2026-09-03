@@ -25,6 +25,7 @@ import { useIndexActions, useIndexSummary } from '@/lib/indexer/context'
 import { logJournal } from '@/lib/journal'
 import { useLockStore, useNavStore, useNotifsStore, useSettingsStore } from '@/lib/vault-store'
 import { IconCheck, IconFolder, IconLockRound, IconShield } from './icons'
+import { MkPassField, MkPinRow, strengthPw } from './mk-fields'
 import '@/app/styles/onboarding.css'
 
 const MODES: PrivacyMode[] = ['local', 'hybrid']
@@ -162,7 +163,9 @@ export function Onboarding() {
   }
 
   const canNext1 = mode !== null && (mode === 'local' || ack)
-  const canCreate = secret.length > 0 && repeat.length > 0 && !L.lock.busy
+  /* PIN — ровно 6 цифр (как требует экран разблокировки), пароль — от 8. */
+  const secretOk = method === 'pin' ? /^\d{6}$/.test(secret) : secret.length >= 8
+  const canCreate = secretOk && secret === repeat && !L.lock.busy
 
   return (
     <div
@@ -300,40 +303,82 @@ export function Onboarding() {
                 ))}
               </div>
 
-              <div className="onb-fields">
-                <label className="onb-field">
-                  <span>{method === 'pin' ? 'PIN' : 'Пароль'}</span>
-                  <input
-                    type="password"
-                    inputMode={method === 'pin' ? 'numeric' : 'text'}
-                    maxLength={method === 'pin' ? 8 : 128}
-                    autoComplete="new-password"
-                    value={secret}
-                    onChange={(e) => {
-                      setSecret(method === 'pin' ? e.target.value.replace(/\D/g, '') : e.target.value)
-                      setError(null)
-                    }}
-                    data-testid="onb-secret"
-                  />
-                </label>
-                <label className="onb-field">
-                  <span>Повторите</span>
-                  <input
-                    type="password"
-                    inputMode={method === 'pin' ? 'numeric' : 'text'}
-                    maxLength={method === 'pin' ? 8 : 128}
-                    autoComplete="new-password"
-                    value={repeat}
-                    onChange={(e) => {
-                      setRepeat(method === 'pin' ? e.target.value.replace(/\D/g, '') : e.target.value)
-                      setError(null)
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && canCreate) void createKey()
-                    }}
-                    data-testid="onb-secret-repeat"
-                  />
-                </label>
+              <div className="onb-keyfields">
+                {method === 'pin' ? (
+                  <>
+                    <MkPinRow
+                      idBase="onb-key-new"
+                      label="Придумайте PIN"
+                      hint={`${secret.length}/6`}
+                      hintTone={secretOk ? 'ok' : secret ? 'bad' : undefined}
+                      value={secret}
+                      onChange={(next) => {
+                        setSecret(next)
+                        setError(null)
+                      }}
+                      hasError={Boolean(secret) && !secretOk}
+                      testId="onb-secret"
+                    />
+                    <MkPinRow
+                      idBase="onb-key-rep"
+                      label="Повторите PIN"
+                      hint={repeat && secret === repeat ? 'совпадает' : `${repeat.length}/6`}
+                      hintTone={repeat && secret === repeat ? 'ok' : undefined}
+                      value={repeat}
+                      onChange={(next) => {
+                        setRepeat(next)
+                        setError(null)
+                      }}
+                      hasError={Boolean(repeat) && secret !== repeat}
+                      testId="onb-secret-repeat"
+                    />
+                  </>
+                ) : (
+                  <>
+                    <MkPassField
+                      id="onb-key-new"
+                      label="Мастер-пароль"
+                      hint={secret ? `${secret.length}/8+` : 'min 8 chars'}
+                      hintTone={secretOk ? 'ok' : secret ? 'bad' : undefined}
+                      value={secret}
+                      onChange={(next) => {
+                        setSecret(next)
+                        setError(null)
+                      }}
+                      placeholder="от 8 символов"
+                      autoComplete="new-password"
+                      incomplete={Boolean(secret) && !secretOk}
+                      testId="onb-secret"
+                    >
+                      {secret.length > 0 && (
+                        <div className={`lock-strength s${strengthPw(secret)}`} aria-hidden="true">
+                          <i />
+                          <i />
+                          <i />
+                          <i />
+                        </div>
+                      )}
+                    </MkPassField>
+                    <MkPassField
+                      id="onb-key-rep"
+                      label="Подтверждение"
+                      hint={repeat && secret === repeat ? 'совпадает' : undefined}
+                      hintTone={repeat && secret === repeat ? 'ok' : undefined}
+                      value={repeat}
+                      onChange={(next) => {
+                        setRepeat(next)
+                        setError(null)
+                      }}
+                      placeholder="Повторите"
+                      autoComplete="new-password"
+                      incomplete={Boolean(repeat) && secret !== repeat}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && canCreate) void createKey()
+                      }}
+                      testId="onb-secret-repeat"
+                    />
+                  </>
+                )}
               </div>
 
               {error && (
@@ -343,7 +388,7 @@ export function Onboarding() {
               )}
               <p className="onb-note">
                 {method === 'pin'
-                  ? 'PIN: от 4 до 8 цифр. Шесть — разумный минимум для локального сейфа.'
+                  ? 'PIN: ровно 6 цифр — столько же принимает экран разблокировки.'
                   : 'Пароль: минимум 8 символов, лучше фраза из четырёх слов.'}
               </p>
 
@@ -395,7 +440,17 @@ export function Onboarding() {
                 onClick={() => void createKey()}
                 data-testid="onb-create-key"
               >
-                {L.lock.busy ? 'Вывожу ключ…' : 'Создать мастер-ключ'}
+                {L.lock.busy
+                  ? 'Вывожу ключ…'
+                  : secretOk
+                    ? secret === repeat
+                      ? 'Создать мастер-ключ'
+                      : method === 'pin'
+                        ? 'Повторите PIN'
+                        : 'Повторите пароль'
+                    : method === 'pin'
+                      ? 'Введите 6 цифр'
+                      : 'Минимум 8 символов'}
               </button>
             </div>
           </>

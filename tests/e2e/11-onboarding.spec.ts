@@ -21,11 +21,17 @@ test('онбординг: три шага, ключ и повторный вхо
   await page.getByTestId('onb-step1-next').click()
   await expect(onb).toHaveAttribute('data-step', '2')
 
-  /* Шаг 2: расхождение PIN — честная ошибка, шаг не сменился. */
-  await page.getByTestId('onb-secret').fill('123456')
-  await page.getByTestId('onb-secret-repeat').fill('123457')
-  await page.getByTestId('onb-create-key').click()
-  await expect(page.getByTestId('onb-key-error')).toBeVisible()
+  /* Шаг 2: PIN — шесть ячеек. Короткий или расходящийся ключ кнопку не пускает. */
+  const fillPin = async (testId: string, digits: string) => {
+    for (let i = 0; i < digits.length; i++) {
+      await page.getByTestId(`${testId}-${i}`).fill(digits[i])
+    }
+  }
+  await fillPin('onb-secret', '1234')
+  await expect(page.getByTestId('onb-create-key')).toBeDisabled()
+  await fillPin('onb-secret', '123456')
+  await fillPin('onb-secret-repeat', '123457')
+  await expect(page.getByTestId('onb-create-key')).toBeDisabled()
   await expect(onb).toHaveAttribute('data-step', '2')
 
   /* Отказ фиксируется явно: одним кликом мимо ключа не проскочить. */
@@ -34,7 +40,7 @@ test('онбординг: три шага, ключ и повторный вхо
   await page.getByTestId('onb-decline-no').click()
   await expect(page.getByTestId('onb-decline-confirm')).toBeHidden()
 
-  await page.getByTestId('onb-secret-repeat').fill('123456')
+  await fillPin('onb-secret-repeat', '123456')
   await page.getByTestId('onb-create-key').click()
   await expect(onb).toHaveAttribute('data-step', '3', { timeout: 60_000 })
 

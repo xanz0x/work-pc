@@ -437,3 +437,25 @@
   text-transform: uppercase;
   color: var(--text-3);
 }
+
+/* ---------- поля мастер-ключа (общие с настройками, components/mk-fields.tsx) ---------- */
+
+.onb-keyfields {
+  display: grid;
+  gap: 16px;
+  margin-top: 16px;
+  max-width: 420px;
+}
+
+.onb-keyfields .mk-cells {
+  gap: 8px;
+}
+
+@media (max-width: 720px) {
+  .onb-keyfields {
+    max-width: 100%;
+  }
+  .onb-keyfields .mk-cells {
+    gap: 6px;
+  }
+}
