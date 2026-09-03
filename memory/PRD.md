@@ -824,3 +824,19 @@ UX-4 accessibility · LG-4/LG-5 · RM-3.
 - Восстановлена среда пода: pnpm 10 + yarn, `/app/.env`, прод-сборка Next.
 - Проверено скриншотами: вход → онбординг → Ctrl+Shift+L → разблокировка через
   `lock-cell-*` → «Настройки» → «Опасная зона» с новыми testid.
+
+## Итерация 23b · уборка файловой системы (2026-06)
+- Удалены артефакты, не относящиеся к проекту: `.screenshots/07_corrupt.png`
+  (случайно закоммиченный скриншот прогона), `test-results/` (вывод Playwright,
+  был в git несмотря на .gitignore), `tsconfig.tsbuildinfo`, локальный `.pnpm-store/`.
+  В `.gitignore` добавлен `.screenshots/`.
+- `test_reports/`: iteration_1..18 → `test_reports/archive/`, в корне каталога —
+  три последних отчёта + новый `README.md` с правилами хранения.
+  Восстановлен потерянный `iteration_22.json`, добавлен `iteration_23.json`.
+- Проверено, что мусора «по существу» нет: скан app/components/lib/hooks на
+  неиспользуемые модули дал 0 сирот; `app/styles/_monolith.css` — источник
+  правды для `scripts/css:split` (удалять нельзя), `backend/` и `frontend/` —
+  обязательные заглушки для supervisor, дубль PDF в `public/` и `docs/audit/`
+  задокументирован как намеренный.
+- Регресс: `npx vitest run` — 24 файла / 181 тест PASS, `/login` → 200.
+- Размер репозитория без node_modules/.next: 7.5 МБ (было ~21 МБ).

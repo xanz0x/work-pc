@@ -50,6 +50,7 @@ yarn.lock
 # Артефакты тестов
 test-results/
 playwright-report/
+.screenshots/
 
 # Локальный store пакетного менеджера и кеши инструментов
 .pnpm-store/

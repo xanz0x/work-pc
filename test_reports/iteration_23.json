@@ -1,0 +1,21 @@
+{
+  "summary": "Закрытие трёх замечаний код-ревью из iter_21/22 + восстановление среды пода. Проверено скриншотами (frontend only).",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": { "ui_bugs": [], "integration_issues": [], "design_issues": [] },
+  "verified_fixes": [
+    { "bug": "lock-cells без data-testid", "status": "FIXED", "evidence": "components/screen-lock.tsx: data-testid=\"lock-cell-{i}\". В браузере найдено 6 элементов [data-testid^=lock-cell-], ввод 6 цифр разблокировал сейф." },
+    { "bug": "«Опасная зона» без data-testid", "status": "FIXED", "evidence": "components/screen-settings.tsx: settings-clear-index, settings-delete-vault, settings-delete-vault-confirm/-cancel. Оба основных найдены на экране настроек." },
+    { "bug": "Триггер и submit «Выключить замок» совпадали по тексту", "status": "FIXED", "evidence": "components/security-section.tsx: submit → «Подтвердить» (testid mk-disable-submit), триггер остался «Выключить замок» (mk-disable-open)." },
+    { "bug": "Среда пода после сброса", "status": "FIXED", "evidence": "pnpm 10 + yarn поставлены, node_modules восстановлены, /app/.env пересобран, next build + supervisorctl restart frontend → /login отвечает 200, tsc --noEmit чист." }
+  ],
+  "housekeeping": [
+    "Удалены артефакты: .screenshots/07_corrupt.png, test-results/, tsconfig.tsbuildinfo, .pnpm-store/",
+    "test_reports: iteration_1..18 перенесены в test_reports/archive/, на верхнем уровне — три последних отчёта",
+    "iteration_22.json восстановлен из текста отчёта прошлой сессии",
+    "Скан на неиспользуемые модули в app/, components/, lib/, hooks/ — сирот нет"
+  ],
+  "action_items": [],
+  "success_rate": { "backend": "не тестировалось (frontend only)", "frontend": "3/3 замечания закрыты" },
+  "test_credentials": "APP_PASSWORD=IceKrymTeam13@, PIN онбординга в одноразовом профиле 111111",
+  "retest_needed": false
+}

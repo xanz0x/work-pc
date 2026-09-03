@@ -314,6 +314,7 @@ vault-core-arch/
 │   └── product/            # исходные задания и планы модулей
 ├── scripts/                # totp-check.ts, генератор PDF-аудита
 ├── tests/api/              # интеграционные тесты /ai-api/*
+├── test_reports/           # отчёты приёмки (свежие + archive/), см. README внутри
 ├── public/                 # иконки приложения (svg/png) + PDF аудита
 ├── AGENTS.md / CLAUDE.md   # правила для ИИ-агентов (Next 16!)
 └── package.json
