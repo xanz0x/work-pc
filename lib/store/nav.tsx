@@ -13,6 +13,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useDeferredValue,
   useEffect,
   useMemo,
   useRef,
@@ -228,7 +229,14 @@ export function NavProvider({ children }: { children: ReactNode }) {
     [D.files, D.liveNotes, D.sessions, redactIds, secretIndex, contentV],
   )
 
-  const hits = useMemo(() => searchAll(query, scope, searchInput), [query, scope, searchInput])
+  /* Пересчёт по отложенному запросу: набор букв не ждёт полного прохода по
+     корпусу, поле остаётся отзывчивым на слабой машине. Результат догоняет
+     ввод в следующем кадре — визуально это та же строка выдачи. */
+  const deferredQuery = useDeferredValue(query)
+  const hits = useMemo(
+    () => searchAll(deferredQuery, scope, searchInput),
+    [deferredQuery, scope, searchInput],
+  )
 
   const matchedFiles = useMemo(() => {
     const ids = new Set<string>()

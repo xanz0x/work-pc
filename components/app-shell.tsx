@@ -148,6 +148,22 @@ export function AppShell({ children }: { children: ReactNode }) {
     void flushClientErrors()
   }, [])
 
+  /* Чанки остальных экранов догружаются на простое браузера: наведение уже
+     звало prefetchScreen, но клик по клавиатуре или из палитры прилетал
+     «холодным» и на слабой машине ждал сеть. Первый кадр не задет — работа
+     стоит в очереди idle. */
+  useEffect(() => {
+    const ids: ScreenId[] = ['library', 'map', 'chat', 'vault', 'activity', 'settings']
+    const warm = () => ids.forEach(prefetchScreen)
+    const ric = window.requestIdleCallback
+    if (typeof ric === 'function') {
+      const id = ric(warm, { timeout: 4000 })
+      return () => window.cancelIdleCallback?.(id)
+    }
+    const t = window.setTimeout(warm, 2500)
+    return () => window.clearTimeout(t)
+  }, [])
+
   /* NF-7: расписание бэкапа. Планировщика в браузере нет, поэтому
      просрочку проверяем при открытии приложения — один раз за сессию и
      только при открытом сейфе: пароль снимка лежит под мастер-ключом. */

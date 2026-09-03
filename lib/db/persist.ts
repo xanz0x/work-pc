@@ -64,6 +64,8 @@ export async function loadPersisted<T>(key: string): Promise<T | undefined> {
 
 /** Последняя запись на ключ побеждает: очередь на ключ, а не общая. */
 const queues = new Map<string, Promise<unknown>>()
+/** Значение, которое ещё не ушло в базу: серия правок сливается в одну запись. */
+const pending = new Map<string, unknown>()
 
 export function savePersisted<T>(key: string, value: T): void {
   if (typeof window === 'undefined') return
@@ -76,11 +78,23 @@ export function savePersisted<T>(key: string, value: T): void {
     }
     return
   }
+  /* Драг стикера или набор в редакторе меняют документ десятки раз за секунду.
+     Раньше каждая правка становилась отдельной транзакцией IndexedDB, хотя
+     промежуточные значения никому не нужны. Теперь уже стоящая в очереди
+     запись просто берёт самое свежее значение. */
+  const queued = pending.has(key)
+  pending.set(key, value)
+  if (queued) return
+
   const prev = queues.get(key) ?? Promise.resolve()
   const next = prev
     .catch(() => {})
     .then(() => storageReady())
-    .then(() => docs.put(key, value))
+    .then(() => {
+      const fresh = pending.has(key) ? (pending.get(key) as T) : value
+      pending.delete(key)
+      return docs.put(key, fresh)
+    })
     .then((ok) => {
       // Другие вкладки узнают об изменении: событий `storage` у IndexedDB нет.
       if (ok) publishDocChange(key)

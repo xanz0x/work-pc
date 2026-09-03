@@ -1,4 +1,3 @@
-import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { IBM_Plex_Mono, IBM_Plex_Sans } from 'next/font/google'
 import './globals.css'
@@ -53,8 +52,9 @@ export default function RootLayout({
         {/* Сейф и его провайдеры живут в app/(app)/layout.tsx: страница входа
             не должна тянуть состояние сейфа, индексатор и менеджер секретов. */}
         {children}
-        {/* Скрипт аналитики существует только на хостинге Vercel — вне его даёт 404. */}
-        {process.env.VERCEL === '1' && <Analytics />}
+        {/* Аналитика Vercel убрана: приложение хостится не на Vercel, скрипт
+            всё равно отдавал 404, а его чанк (~19 kB) висел в первом бандле
+            каждого маршрута. Понадобится Vercel — вернуть @vercel/analytics. */}
       </body>
     </html>
   )

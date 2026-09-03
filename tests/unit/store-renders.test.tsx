@@ -241,8 +241,10 @@ describe('AR-1 · узкие подписки экранов', () => {
     await act(async () => {
       api.setQuery?.('аренда')
     })
-    // Поиск — дело навигации: корпус о нём не знает.
-    expect(navC.renders - navBefore).toBe(1)
+    // Поиск — дело навигации: корпус о нём не знает. Два прохода вместо одного:
+    // строка перерисовывается сразу, а выдача считается на отложенном значении
+    // (useDeferredValue в nav-сторе) — ввод не ждёт прохода по корпусу.
+    expect(navC.renders - navBefore).toBe(2)
     expect(dataC.renders - dataBefore).toBe(0)
 
     navBefore = navC.renders
