@@ -6429,3 +6429,250 @@
     row-gap: 4px;
   }
 }
+/* ------------------------------------------------------------
+   NF-7 · БЭКАП ВСЕГО СЕЙФА и NF-8 · АВТОНОМНЫЙ РЕЖИМ
+   Слой добавлен в конец: базовые правила не переписываются.
+   ------------------------------------------------------------ */
+.bk-mods {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+.bk-mod {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 10px 11px;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--bg-input);
+  cursor: pointer;
+  transition-property: border-color, background-color;
+  transition-duration: 140ms;
+}
+.bk-mod:hover {
+  border-color: var(--border-2);
+}
+.bk-mod > i {
+  flex-shrink: 0;
+  width: 13px;
+  height: 13px;
+  margin-top: 2px;
+  border: 1px solid var(--border-2);
+  border-radius: 3px;
+  transition-property: background-color, border-color;
+  transition-duration: 140ms;
+}
+.bk-mod.on {
+  border-color: color-mix(in oklab, var(--accent) 45%, var(--border));
+}
+.bk-mod.on > i {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.bk-mod-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.bk-mod-text b {
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.bk-mod-text span {
+  font-size: 11px;
+  color: var(--text-3);
+}
+.bk-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+.bk-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--bg-input);
+}
+.bk-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 190px;
+  flex: 1;
+}
+.bk-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.bk-row .bk-actions {
+  margin-top: 0;
+}
+.bk-preview {
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid var(--border-2);
+  border-radius: var(--r);
+  background: var(--panel-2);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.net-log {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
+.net-log-row {
+  display: grid;
+  grid-template-columns: 76px 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 9px;
+  font-size: 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--bg-input);
+}
+.sb-dev {
+  color: var(--text-3);
+  font-size: 10.5px;
+  margin-right: 10px;
+}
+.sb-offline {
+  color: var(--accent);
+}
+.sb-offline .net-dot {
+  background: var(--accent);
+}
+
+/* Приёмка NF-7/NF-8: узкие окна и читаемость журнала запретов. */
+#set-backup .setting-row,
+#set-flags .setting-row {
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+.net-log-row .net-via {
+  color: var(--text-2);
+}
+@media (max-width: 900px) {
+  .bk-mods {
+    grid-template-columns: 1fr;
+  }
+  .bk-row-main {
+    min-width: 140px;
+  }
+  .net-log-row {
+    grid-template-columns: 1fr auto;
+    row-gap: 4px;
+  }
+  #set-backup .vt-seg,
+  #set-flags .vt-seg {
+    margin-left: auto;
+  }
+}
+
+/* ------------------------------------------------------------
+   UX-3 · ПАНЕЛЬ СОБЫТИЙ: компактный вид и метка выключенной категории
+   ------------------------------------------------------------ */
+.notif-tab-short {
+  display: none;
+}
+.notif-tab .notif-off {
+  cursor: help;
+}
+@media (max-width: 420px) {
+  /* Панель шире, чем остаток строки справа от колокольчика, поэтому на
+     узком экране она крепится к самому экрану, а не к кнопке. */
+  .notif-panel {
+    position: fixed;
+    top: 62px;
+    left: 8px;
+    right: 8px;
+    width: auto;
+    max-width: none;
+  }
+  /* Компактный вид: короткие подписи фильтров в одну строку без переноса. */
+  .notif-tab-full {
+    display: none;
+  }
+  .notif-tab-short {
+    display: inline;
+  }
+  .notif-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 6px 6px 7px;
+    gap: 3px;
+    scrollbar-width: none;
+  }
+  .notif-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .notif-tab {
+    flex: 0 0 auto;
+    padding: 0 7px;
+    gap: 4px;
+  }
+  .notif-bar {
+    gap: 10px;
+    padding: 7px 10px;
+    font-size: 11px;
+  }
+  .notif-list {
+    max-height: 60vh;
+  }
+  .notif-foot-hint {
+    display: none;
+  }
+  .notif-extra {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+}
+
+/* ------------------------------------------------------------
+   MAP v2.3 · ТЁМНЫЙ КОСМОС
+   Просьба владельца: задний фон карты намного темнее. Свечение узлов
+   и связей не трогаем — темнеет только подложка, поэтому граф читается
+   лучше, а не хуже: контраст линий к фону вырос. Слой не переписываем —
+   правила добавлены в конец, вне слоёв, поэтому побеждают в каскаде.
+   ------------------------------------------------------------ */
+.cos-deep {
+  background:
+    radial-gradient(120% 90% at 20% 8%, rgba(16, 30, 50, 0.42), transparent 62%),
+    radial-gradient(96% 84% at 84% 92%, rgba(8, 26, 26, 0.34), transparent 60%),
+    radial-gradient(60% 50% at 62% 34%, rgba(22, 16, 38, 0.24), transparent 68%),
+    linear-gradient(180deg, #03050a 0%, #020407 56%, #010204 100%);
+}
+.cos-neb {
+  opacity: 0.34;
+  filter: blur(58px);
+}
+.cos-way {
+  opacity: 0.4;
+}
+.cos-stars.s3 {
+  opacity: 0.5;
+}
+.cos-vig {
+  background:
+    radial-gradient(130% 110% at 42% 46%, transparent 38%, rgba(0, 1, 3, 0.82) 100%),
+    linear-gradient(180deg, rgba(0, 1, 3, 0.6), transparent 24%, transparent 74%, rgba(0, 1, 3, 0.7));
+}
+.map-space .node-inspector {
+  background: rgba(3, 5, 9, 0.9);
+}
