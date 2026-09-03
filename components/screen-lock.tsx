@@ -231,6 +231,7 @@ export function ScreenLock() {
                     onPaste={onCellPaste}
                     onFocus={() => setActiveCell(i)}
                     aria-label={`Цифра пин-кода ${i + 1}`}
+                    data-testid={`lock-cell-${i}`}
                   />
                 ))}
               </div>

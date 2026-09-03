@@ -517,7 +517,7 @@ export function SecuritySection() {
             data-testid="mk-disable-submit"
           >
             <IconAlertTri width={13} height={13} aria-hidden="true" focusable="false" />
-            Выключить замок
+            Подтвердить
           </button>
         </>
       }

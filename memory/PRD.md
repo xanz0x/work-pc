@@ -813,3 +813,14 @@ UX-4 accessibility · LG-4/LG-5 · RM-3.
 шифруется» сохранена. Ярлык типа `multiline` сокращён до «абзац», чтобы чип не
 обрезался. Проверено вручную: переключение замка, индикатор силы пароля и
 удаление поля работают; `tsc` 0 ошибок, unit 181, `next build` зелёная.
+
+## Итерация 23 (2026-06) · закрытие замечаний ревью iter_21/22
+- `components/screen-lock.tsx`: ячейкам PIN добавлен `data-testid="lock-cell-{i}"`
+  (хрупкий селектор `.lock-cells .lock-cell` больше не нужен).
+- `components/screen-settings.tsx`: «Опасная зона» получила `settings-clear-index`,
+  `settings-delete-vault`, `settings-delete-vault-confirm/-cancel`.
+- `components/security-section.tsx`: submit в окне «Выключить замок» переименован
+  в «Подтвердить» — текст больше не совпадает с триггером `mk-disable-open`.
+- Восстановлена среда пода: pnpm 10 + yarn, `/app/.env`, прод-сборка Next.
+- Проверено скриншотами: вход → онбординг → Ctrl+Shift+L → разблокировка через
+  `lock-cell-*` → «Настройки» → «Опасная зона» с новыми testid.

@@ -89,7 +89,18 @@ APP_URL=http://localhost:3000 APP_PASSWORD=IceKrymTeam13@ node scripts/long-dial
   нужен `npx next build && sudo supervisorctl restart frontend`.
 - Из-за прод-сборки cookie входа помечена `Secure`, и `pytest tests/api` по
   `http://localhost:3000` получает 401 на всё после входа. Прогонять их надо по
-  https-адресу preview: `APP_URL=https://login-logo-add.preview.emergentagent.com
+  https-адресу preview: `APP_URL=https://pin-security-fix.preview.emergentagent.com
   python3 -m pytest tests/api -q`. Оставшиеся падения там — среда, а не код:
   нет `/root/.workflow/ai/*` (файлы скиллов лежат в `/app/ai`) и не запущен
   локальный Ollama (503).
+
+## Восстановление пода (2026-06, итерация 23)
+- `/app/.env` снова пропал вместе с подом — восстановлен по списку выше
+  (`APP_PASSWORD=IceKrymTeam13@`, новый `APP_SESSION_SECRET`, TTL 12 ч,
+  `AI_PROXY_URL` + `EMERGENT_LLM_KEY`, `AI_MODEL=claude-sonnet-4-5-20250929`).
+- Зависимости: `npm i -g pnpm@10 yarn && pnpm install --frozen-lockfile`
+  (pnpm 11 требует Node ≥22.13, в поде Node 20 → ставить pnpm 10).
+- После правок обязательно `npx next build && sudo supervisorctl restart frontend`.
+- Новые data-testid: `lock-cell-0..5` (экран блокировки),
+  `settings-clear-index`, `settings-delete-vault`,
+  `settings-delete-vault-confirm`, `settings-delete-vault-cancel`.

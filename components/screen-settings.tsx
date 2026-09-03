@@ -702,6 +702,7 @@ export function ScreenSettings() {
                     className="btn btn-ghost btn-sm"
                     disabled={stats.files === 0}
                     onClick={D.clearIndex}
+                    data-testid="settings-clear-index"
                   >
                     Очистить индекс
                   </button>
@@ -716,7 +717,11 @@ export function ScreenSettings() {
                   </div>
                   {confirmWipe ? (
                     <span className="save-actions">
-                      <button className="btn btn-ghost btn-sm" onClick={() => setConfirmWipe(false)}>
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => setConfirmWipe(false)}
+                        data-testid="settings-delete-vault-cancel"
+                      >
                         Отмена
                       </button>
                       <button
@@ -725,6 +730,7 @@ export function ScreenSettings() {
                           setConfirmWipe(false)
                           D.wipeVault()
                         }}
+                        data-testid="settings-delete-vault-confirm"
                       >
                         Да, стереть
                       </button>
@@ -734,6 +740,7 @@ export function ScreenSettings() {
                       className="btn btn-danger btn-sm"
                       disabled={stats.files === 0}
                       onClick={() => setConfirmWipe(true)}
+                      data-testid="settings-delete-vault"
                     >
                       Удалить сейф
                     </button>
