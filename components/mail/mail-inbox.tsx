@@ -1,24 +1,43 @@
 'use client'
 
-/* Входящие: папки → список → письмо. Один активный ящик; обновление вручную и по таймеру —
-   одним IMAP-соединением (страница + папки), чтобы не плодить логины у провайдера. */
+/* Почтовый клиент одним экраном: рейка (ящики + папки) → список → письмо / паспорт ящика.
+   Скорость: страницы папок и открытые письма кешируются на сессию, верх списка подгружается заранее,
+   сервер держит IMAP-соединение открытым — повторные действия без ожидания. */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { IconInbox, IconRefresh } from '../icons'
+import { IconInbox, IconMail, IconPlus, IconRefresh } from '../icons'
+import { MailAccountPanel } from './mail-account-panel'
+import { MailAccountRow } from './mail-account-row'
 import { MailFolderList } from './mail-folder-list'
 import { MailMsgList } from './mail-msg-list'
 import { MailMsgView } from './mail-msg-view'
 import { isFail, mailApi, type AccountView, type FolderView, type MessageFull, type MessageRow } from '@/lib/mail-client'
-import { REFRESH_KEY, REFRESH_OPTIONS, mergeRows, readRefresh } from '@/lib/mail-format'
+import { REFRESH_KEY, REFRESH_OPTIONS, letterWord, mergeRows, readRefresh } from '@/lib/mail-format'
 import { folderLabel } from '@/lib/mail-read'
 import { useToast } from '@/lib/vault-store'
 
-type Props = { account: AccountView; onAccountPatch: (id: string, patch: Partial<AccountView>) => void }
+type Props = {
+  accounts: AccountView[]
+  active: AccountView | null
+  busyId: string | null
+  enabled: boolean
+  onPickAccount: (id: string) => void
+  onAdd: () => void
+  onTest: (id: string) => void
+  onRemove: (acc: AccountView) => void
+  onCompose: () => void
+  onAccountPatch: (id: string, patch: Partial<AccountView>) => void
+}
 
-const fmtTime = (at: number) => new Date(at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+type PageCache = { rows: MessageRow[]; total: number; cursor: number | null; at: number }
+
+const fmtTime = (at: number) => new Date(at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
 const NET_CODES = new Set(['AUTH_FAILED', 'NEEDS_APP_PASSWORD', 'CONNECT_FAILED', 'TLS_FAILED'])
+const PREFETCH = 4
+const MSG_CACHE_MAX = 60
 
-export function MailInbox({ account, onAccountPatch }: Props) {
+export function MailInbox(p: Props) {
+  const { accounts, active, onAccountPatch } = p
   const { flash } = useToast()
   const [folders, setFolders] = useState<FolderView[] | null>(null)
   const [folder, setFolder] = useState('INBOX')
@@ -34,12 +53,17 @@ export function MailInbox({ account, onAccountPatch }: Props) {
   const [refresh, setRefresh] = useState(60)
   const [syncedAt, setSyncedAt] = useState<number | null>(null)
   const [syncing, setSyncing] = useState(false)
+
   const gen = useRef(0)
   const folderRef = useRef('INBOX')
   const syncingRef = useRef(false)
-  const accId = account.id
-  const accStatus = useRef(account.status)
-  accStatus.current = account.status
+  const pages = useRef(new Map<string, PageCache>())
+  const msgs = useRef(new Map<string, MessageFull>())
+  const prefetching = useRef(new Set<string>())
+  const accStatus = useRef(active?.status)
+  accStatus.current = active?.status
+  const accId = active?.id ?? null
+  const hasImap = !!active?.imap
 
   useEffect(() => setRefresh(readRefresh()), [])
 
@@ -51,91 +75,133 @@ export function MailInbox({ account, onAccountPatch }: Props) {
     setFolders((cur) => cur?.map((f) => (f.path === path ? { ...f, unseen: Math.max(0, (f.unseen ?? 0) + delta) } : f)) ?? null)
   }, [])
 
+  const remember = useCallback((key: string, m: MessageFull) => {
+    const map = msgs.current
+    if (map.size >= MSG_CACHE_MAX) map.delete(map.keys().next().value as string)
+    map.set(key, m)
+  }, [])
+
+  /* Верх списка — заранее, без пометки «прочитано»: клик по письму открывает его мгновенно. */
+  const prefetch = useCallback(
+    async (id: string, path: string, list: MessageRow[]) => {
+      for (const r of list.slice(0, PREFETCH)) {
+        const key = `${path}:${r.uid}`
+        if (msgs.current.has(key) || prefetching.current.has(key) || r.size > 1_500_000) continue
+        prefetching.current.add(key)
+        const res = await mailApi.message(id, path, r.uid, false)
+        prefetching.current.delete(key)
+        if (!isFail(res)) remember(key, res.message)
+      }
+    },
+    [remember],
+  )
+
   const applyFolders = useCallback(
-    (list: FolderView[], at: number) => {
+    (id: string, list: FolderView[], at: number) => {
       setFolders(list)
       const inbox = list.find((f) => f.path.toUpperCase() === 'INBOX')
-      onAccountPatch(accId, {
-        status: { ...accStatus.current, imap: 'ok', error: accStatus.current.smtp === 'fail' ? accStatus.current.error : undefined },
+      const st = accStatus.current
+      if (!st) return
+      onAccountPatch(id, {
+        status: { ...st, imap: 'ok', error: st.smtp === 'fail' ? st.error : undefined },
         imapSync: { at, unseen: inbox?.unseen ?? 0, total: inbox?.total ?? 0 },
       })
     },
-    [accId, onAccountPatch],
+    [onAccountPatch],
   )
 
-  /** Страница писем; from=null — первая (merge: поверх уже загруженных), иначе продолжение. */
   const loadPage = useCallback(
-    async (path: string, from: number | null, merge: boolean, withFolders: boolean) => {
+    async (id: string, path: string, from: number | null, merge: boolean, withFolders: boolean) => {
       const g = gen.current
       setListLoading(true)
-      const r = await mailApi.messages(accId, path, from, { withFolders })
+      const r = await mailApi.messages(id, path, from, { withFolders })
       if (g !== gen.current) return
       setListLoading(false)
       if (isFail(r)) {
         setListError(r.error)
         if (withFolders) setFolders((cur) => cur ?? [])
-        if (NET_CODES.has(r.code)) onAccountPatch(accId, { status: { ...accStatus.current, imap: 'fail', checkedAt: Date.now(), error: `IMAP: ${r.error}` } })
+        if (NET_CODES.has(r.code) && accStatus.current) onAccountPatch(id, { status: { ...accStatus.current, imap: 'fail', checkedAt: Date.now(), error: `IMAP: ${r.error}` } })
         return
       }
       setListError(null)
       setTotal(r.total)
       setSyncedAt(r.syncedAt)
+      let nextRows: MessageRow[] = r.rows
+      let nextCursor = r.nextCursor
+      const prev = pages.current.get(path)
       if (from === null) {
-        setRows((cur) => (merge && cur ? mergeRows(r.rows, cur) : r.rows))
-        setCursor((cur) => (merge && cur !== null ? cur : r.nextCursor))
+        if (merge && prev) {
+          nextRows = mergeRows(r.rows, prev.rows)
+          nextCursor = prev.cursor
+        }
       } else {
-        setRows((cur) => [...(cur ?? []), ...r.rows.filter((n) => !cur?.some((o) => o.uid === n.uid))])
-        setCursor(r.nextCursor)
+        nextRows = [...(prev?.rows ?? []), ...r.rows.filter((n) => !prev?.rows.some((o) => o.uid === n.uid))]
       }
-      if (r.folders) applyFolders(r.folders, r.syncedAt)
-      else if (from === null && r.nextCursor === null) {
-        const unseen = r.rows.filter((x) => !x.seen).length
+      pages.current.set(path, { rows: nextRows, total: r.total, cursor: nextCursor, at: r.syncedAt })
+      setRows(nextRows)
+      setCursor(nextCursor)
+      if (r.folders) applyFolders(id, r.folders, r.syncedAt)
+      else if (from === null && nextCursor === null) {
+        const unseen = nextRows.filter((x) => !x.seen).length
         setFolders((cur) => cur?.map((f) => (f.path === path ? { ...f, unseen, total: r.total } : f)) ?? null)
       }
+      void prefetch(id, path, nextRows)
     },
-    [accId, applyFolders, onAccountPatch],
+    [applyFolders, onAccountPatch, prefetch],
   )
 
   const sync = useCallback(async () => {
-    if (syncingRef.current) return
+    if (!accId || !hasImap || syncingRef.current) return
     syncingRef.current = true
     setSyncing(true)
-    await loadPage(folderRef.current, null, true, true)
+    await loadPage(accId, folderRef.current, null, true, true)
     syncingRef.current = false
     setSyncing(false)
-  }, [loadPage])
+  }, [accId, hasImap, loadPage])
 
-  /* Смена ящика: всё с нуля. */
+  /* Смена ящика: кеши обнуляются, всё с нуля. */
   useEffect(() => {
     gen.current += 1
+    pages.current.clear()
+    msgs.current.clear()
+    prefetching.current.clear()
     folderRef.current = 'INBOX'
     setFolders(null)
     setFolder('INBOX')
     setRows(null)
+    setTotal(0)
     setCursor(null)
     setSelected(null)
     setMessage(null)
     setMsgError(null)
     setListError(null)
-    void loadPage('INBOX', null, false, true)
+    setSyncedAt(null)
+    if (accId && hasImap) void loadPage(accId, 'INBOX', null, false, true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accId])
+  }, [accId, hasImap])
 
   function pickFolder(path: string) {
-    if (path === folder) return
+    if (!accId || path === folder) return
     gen.current += 1
     folderRef.current = path
     setFolder(path)
-    setRows(null)
-    setCursor(null)
     setSelected(null)
     setMessage(null)
     setMsgError(null)
     setListError(null)
-    void loadPage(path, null, false, false)
+    const cached = pages.current.get(path)
+    if (cached) {
+      setRows(cached.rows)
+      setTotal(cached.total)
+      setCursor(cached.cursor)
+      void loadPage(accId, path, null, true, false)
+    } else {
+      setRows(null)
+      setCursor(null)
+      void loadPage(accId, path, null, false, false)
+    }
   }
 
-  /* Таймер: стабильный колбэк через ref, тикает только на видимой вкладке. */
   const syncRef = useRef(sync)
   syncRef.current = sync
   useEffect(() => {
@@ -152,12 +218,28 @@ export function MailInbox({ account, onAccountPatch }: Props) {
   }
 
   async function open(uid: number) {
+    if (!accId) return
     const g = gen.current
-    setSelected(uid)
-    setMsgLoading(true)
-    setMsgError(null)
+    const key = `${folder}:${uid}`
     const row = rows?.find((r) => r.uid === uid)
-    const r = await mailApi.message(accId, folder, uid)
+    setSelected(uid)
+    setMsgError(null)
+    const cached = msgs.current.get(key)
+    if (cached) {
+      setMessage(cached)
+      setMsgLoading(false)
+      if (!cached.seen) {
+        const seenMsg = { ...cached, seen: true }
+        remember(key, seenMsg)
+        setMessage(seenMsg)
+        patchRows(uid, { seen: true })
+        bumpUnseen(folder, -1)
+        void mailApi.flags(accId, folder, uid, { seen: true })
+      }
+      return
+    }
+    setMsgLoading(true)
+    const r = await mailApi.message(accId, folder, uid, true)
     if (g !== gen.current) return
     setMsgLoading(false)
     if (isFail(r)) {
@@ -165,6 +247,7 @@ export function MailInbox({ account, onAccountPatch }: Props) {
       setMsgError(r.error)
       return
     }
+    remember(key, r.message)
     setMessage(r.message)
     if (row && !row.seen && r.message.seen) {
       patchRows(uid, { seen: true })
@@ -173,17 +256,23 @@ export function MailInbox({ account, onAccountPatch }: Props) {
   }
 
   async function flag(uid: number, patch: { seen?: boolean; flagged?: boolean }) {
+    if (!accId) return
+    const key = `${folder}:${uid}`
     const row = rows?.find((r) => r.uid === uid)
     const before = { seen: row?.seen ?? message?.seen ?? true, flagged: row?.flagged ?? message?.flagged ?? false }
     const optimistic = { ...before, ...patch }
     const seenDelta = patch.seen !== undefined && patch.seen !== before.seen ? (patch.seen ? -1 : 1) : 0
-    patchRows(uid, optimistic)
-    if (message?.uid === uid) setMessage((m) => (m ? { ...m, ...optimistic } : m))
+    const apply = (v: { seen: boolean; flagged: boolean }) => {
+      patchRows(uid, v)
+      const c = msgs.current.get(key)
+      if (c) remember(key, { ...c, ...v })
+      if (message?.uid === uid) setMessage((m) => (m ? { ...m, ...v } : m))
+    }
+    apply(optimistic)
     if (seenDelta) bumpUnseen(folder, seenDelta)
     const r = await mailApi.flags(accId, folder, uid, patch)
     if (isFail(r)) {
-      patchRows(uid, before)
-      if (message?.uid === uid) setMessage((m) => (m ? { ...m, ...before } : m))
+      apply(before)
       if (seenDelta) bumpUnseen(folder, -seenDelta)
       flash(r.error)
     }
@@ -193,54 +282,112 @@ export function MailInbox({ account, onAccountPatch }: Props) {
   const title = cur ? folderLabel(cur) : folder === 'INBOX' ? 'Входящие' : folder
 
   return (
-    <section className="mail-inbox" aria-label="Чтение почты" data-testid="mail-inbox">
-      <div className="mail-col-head mail-inbox-head">
-        <span className="mail-inbox-title">
-          <IconInbox width={14} height={14} aria-hidden="true" />
-          <span className="label-mono">{title}</span>
-          <span className="mail-inbox-acc mono" data-testid="mail-inbox-account">
-            {account.email}
+    <div className="mail-client" data-testid="mail-inbox">
+      <aside className="mail-rail" aria-label="Ящики и папки">
+        <div className="mail-rail-sec">
+          <span className="label-mono">Ящики</span>
+          <span className="mail-rail-sec-r">
+            <span className="mail-count num" data-testid="mail-account-count">
+              {accounts.length}
+            </span>
+            <button className="mail-rail-plus" onClick={p.onAdd} disabled={!p.enabled} title="Добавить ящик" aria-label="Добавить ящик" data-testid="mail-add">
+              <IconPlus width={12} height={12} aria-hidden="true" />
+            </button>
           </span>
-        </span>
-        <span className="mail-inbox-tools">
-          <span className="mail-synced mono" data-testid="mail-inbox-synced">
-            {syncing ? 'синхронизация…' : syncedAt ? `обновлено ${fmtTime(syncedAt)}` : ''}
-          </span>
-          <label className="mail-refresh">
-            <span className="label-mono">обновлять</span>
-            <select className="mcp-input" value={refresh} onChange={(e) => changeRefresh(Number(e.target.value))} data-testid="mail-inbox-refresh-interval">
-              {REFRESH_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button className="btn btn-sm btn-ghost" onClick={() => void sync()} disabled={syncing} title="Проверить почту сейчас" data-testid="mail-inbox-refresh">
-            <IconRefresh width={12} height={12} aria-hidden="true" className={syncing ? 'mail-spin' : undefined} />
-            Обновить
-          </button>
-        </span>
-      </div>
-      <div className="mail-inbox-grid">
-        <MailFolderList folders={folders} current={folder} onPick={pickFolder} />
-        <div className="mail-list-col">
-          <MailMsgList
-            rows={rows}
-            total={total}
-            selected={selected}
-            loading={listLoading}
-            more={cursor !== null}
-            error={listError}
-            onPick={(uid) => void open(uid)}
-            onStar={(r) => void flag(r.uid, { flagged: !r.flagged })}
-            onMore={() => void loadPage(folder, cursor, false, false)}
-          />
         </div>
-        <div className="mail-view-col">
-          <MailMsgView message={message} loading={msgLoading} error={msgError} onFlag={(p) => selected !== null && void flag(selected, p)} />
+        <div className="mail-acc-rows" data-testid="mail-account-list">
+          {accounts.map((a) => (
+            <MailAccountRow key={a.id} account={a} active={a.id === accId} onPick={() => p.onPickAccount(a.id)} />
+          ))}
+          {accounts.length === 0 && (
+            <div className="mail-rail-empty" data-testid="mail-empty">
+              Ящиков пока нет.
+              <button className="btn btn-ghost btn-sm" onClick={p.onAdd} disabled={!p.enabled} data-testid="mail-add-empty">
+                <IconPlus width={12} height={12} aria-hidden="true" /> Добавить ящик
+              </button>
+            </div>
+          )}
         </div>
-      </div>
-    </section>
+        {active && hasImap && (
+          <>
+            <div className="mail-rail-sec">
+              <span className="label-mono">Папки</span>
+            </div>
+            <MailFolderList folders={folders} current={folder} onPick={pickFolder} />
+          </>
+        )}
+        {active && !hasImap && (
+          <p className="mail-rail-note" data-testid="mail-inbox-no-imap">
+            IMAP не настроен — ящик только отправляет письма.
+          </p>
+        )}
+      </aside>
+
+      <section className="mail-list-col" aria-label="Список писем">
+        {active && hasImap ? (
+          <>
+            <div className="mail-list-head">
+              <span className="mail-inbox-title">
+                <IconInbox width={13} height={13} aria-hidden="true" />
+                <span className="label-mono">{title}</span>
+                <span className="mail-count num">{rows ? `${total} ${letterWord(total)}` : ''}</span>
+              </span>
+              <span className="mail-inbox-tools">
+                <span className="mail-synced mono" data-testid="mail-inbox-synced" title={syncedAt ? `обновлено ${new Date(syncedAt).toLocaleTimeString('ru-RU')}` : ''}>
+                  {syncing ? 'синхронизация…' : syncedAt ? fmtTime(syncedAt) : ''}
+                </span>
+                <select className="mcp-input mail-refresh-sel" value={refresh} onChange={(e) => changeRefresh(Number(e.target.value))} title="Автообновление" aria-label="Автообновление" data-testid="mail-inbox-refresh-interval">
+                  {REFRESH_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+                <button className="mail-rail-plus" onClick={() => void sync()} disabled={syncing} title="Проверить почту сейчас" aria-label="Обновить" data-testid="mail-inbox-refresh">
+                  <IconRefresh width={12} height={12} aria-hidden="true" className={syncing ? 'mail-spin' : undefined} />
+                </button>
+              </span>
+            </div>
+            <MailMsgList
+              rows={rows}
+              total={total}
+              selected={selected}
+              loading={listLoading}
+              more={cursor !== null}
+              error={listError}
+              onPick={(uid) => void open(uid)}
+              onStar={(r) => void flag(r.uid, { flagged: !r.flagged })}
+              onMore={() => accId && void loadPage(accId, folder, cursor, false, false)}
+            />
+          </>
+        ) : (
+          <div className="mail-view-state" data-testid="mail-list-idle">
+            <span className="mail-empty-ico" aria-hidden="true">
+              <IconMail />
+            </span>
+            <span>{active ? 'Чтение недоступно: у ящика нет IMAP.' : 'Добавьте ящик — настройки найдём сами.'}</span>
+          </div>
+        )}
+      </section>
+
+      <section className="mail-view-col" aria-label="Письмо">
+        {selected !== null ? (
+          <MailMsgView message={message} loading={msgLoading} error={msgError} onFlag={(pt) => void flag(selected, pt)} onBack={() => setSelected(null)} />
+        ) : active ? (
+          <MailAccountPanel account={active} busy={p.busyId === active.id} onTest={() => p.onTest(active.id)} onRemove={() => p.onRemove(active)} onCompose={p.onCompose} />
+        ) : (
+          <div className="mail-view-state" data-testid="mail-msg-view-empty">
+            <span className="mail-empty-ico" aria-hidden="true">
+              <IconMail />
+            </span>
+            <b>Почта в одном окне</b>
+            <span>Gmail, Яндекс, Mail.ru, iCloud, Proton, свой домен — пароль хранится на сервере зашифрованным.</span>
+            <button className="btn btn-primary btn-sm" onClick={p.onAdd} disabled={!p.enabled} data-testid="mail-add-hero">
+              <IconPlus width={12} height={12} aria-hidden="true" /> Добавить ящик
+            </button>
+          </div>
+        )}
+      </section>
+    </div>
   )
 }

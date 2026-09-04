@@ -133,8 +133,8 @@ export const mailApi = {
     if (opts.withFolders) q.set('withFolders', '1')
     return call<MessagePage>(`/ai-api/mail/accounts/${id}/messages?${q}`)
   },
-  message: (id: string, folder: string, uid: number) =>
-    call<{ message: MessageFull }>(`/ai-api/mail/accounts/${id}/messages/${uid}?${new URLSearchParams({ folder })}`),
+  message: (id: string, folder: string, uid: number, markSeen = true) =>
+    call<{ message: MessageFull }>(`/ai-api/mail/accounts/${id}/messages/${uid}?${new URLSearchParams({ folder, markSeen: markSeen ? '1' : '0' })}`),
   flags: (id: string, folder: string, uid: number, patch: { seen?: boolean; flagged?: boolean }) =>
     call<{ ok: true; uid: number; seen: boolean; flagged: boolean }>(`/ai-api/mail/accounts/${id}/messages/${uid}/flags`, {
       method: 'POST',

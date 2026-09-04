@@ -13,9 +13,9 @@ const MAX_TOTAL = 15 * 1024 * 1024
 const EMAIL_RE = /^[^\s@"'<>]+@([a-z0-9-]+\.)+[a-z]{2,}$/i
 const splitAddr = (s: string) => s.split(/[,;\s]+/).map((x) => x.trim()).filter(Boolean)
 
-type Props = { accounts: AccountView[]; fromId: string | null; onFrom: (id: string) => void; onSent: (acc: AccountView) => void }
+type Props = { accounts: AccountView[]; fromId: string | null; onFrom: (id: string) => void; onSent: (acc: AccountView) => void; onClose?: () => void }
 
-export function MailSendForm({ accounts, fromId, onFrom, onSent }: Props) {
+export function MailSendForm({ accounts, fromId, onFrom, onSent, onClose }: Props) {
   const { flash } = useToast()
   const [to, setTo] = useState('')
   const [cc, setCc] = useState('')
@@ -88,7 +88,14 @@ export function MailSendForm({ accounts, fromId, onFrom, onSent }: Props) {
     >
       <div className="mail-col-head">
         <span className="label-mono">Новое письмо</span>
-        {from ? <span className="mail-from-pill mono" data-testid="mail-send-from">{from.email}</span> : <span className="mask-flag">нет ящика</span>}
+        <span className="mail-compose-head-r">
+          {from ? <span className="mail-from-pill mono" data-testid="mail-send-from">{from.email}</span> : <span className="mask-flag">нет ящика</span>}
+          {onClose && (
+            <button type="button" className="mcp-x" onClick={onClose} aria-label="Закрыть" data-testid="mail-compose-close">
+              <IconClose width={11} height={11} aria-hidden="true" />
+            </button>
+          )}
+        </span>
       </div>
 
       <label className="mail-field">

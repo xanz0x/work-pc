@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { IconClip, IconEye, IconEyeOff, IconImage, IconMail } from '../icons'
+import { IconClip, IconClose, IconEye, IconEyeOff, IconImage, IconMail } from '../icons'
 import { Star } from './mail-msg-list'
 import { fmtBytes } from '@/lib/data'
 import type { MessageFull } from '@/lib/mail-client'
@@ -13,6 +13,7 @@ type Props = {
   loading: boolean
   error: string | null
   onFlag: (patch: { seen?: boolean; flagged?: boolean }) => void
+  onBack?: () => void
 }
 
 /** Тело письма живёт в iframe без скриптов; картинки разрешает только CSP, и только по кнопке. */
@@ -35,7 +36,7 @@ function AddrLine({ label, list }: { label: string; list: { name: string; addres
   )
 }
 
-export function MailMsgView({ message: m, loading, error, onFlag }: Props) {
+export function MailMsgView({ message: m, loading, error, onFlag, onBack }: Props) {
   const [images, setImages] = useState(false)
   const doc = useMemo(() => (m ? frameDoc(m, images) : ''), [m, images])
 
@@ -77,6 +78,11 @@ export function MailMsgView({ message: m, loading, error, onFlag }: Props) {
               {m.seen ? <IconEyeOff width={13} height={13} aria-hidden="true" /> : <IconEye width={13} height={13} aria-hidden="true" />}
               {m.seen ? 'Не прочитано' : 'Прочитано'}
             </button>
+            {onBack && (
+              <button className="mcp-x" onClick={onBack} aria-label="Закрыть письмо" title="Закрыть письмо" data-testid="mail-msg-view-close">
+                <IconClose width={11} height={11} aria-hidden="true" />
+              </button>
+            )}
           </div>
         </div>
         <div className="mail-view-meta">

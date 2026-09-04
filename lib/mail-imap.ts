@@ -82,20 +82,48 @@ function classifyImap(e: unknown, acc: MailAccount): MailError {
   return new MailError(code, text[code], code === 'AUTH_FAILED' ? p?.hint : undefined)
 }
 
-export async function withImap<T>(acc: MailAccount, fn: (c: ImapFlow) => Promise<T>): Promise<T> {
+/* ---------- пул соединений ----------
+   Одно живое соединение на ящик, команды в нём imapflow выстраивает в очередь сам. Логин + TLS стоят ~2 с,
+   поэтому соединение держится 90 с после последнего запроса и закрывается само. Пароль живёт только
+   внутри клиента; при смене настроек ящика (fingerprint) старое соединение выбрасывается. */
+
+type Pooled = { client: ImapFlow; fp: string; busy: number; lastUsed: number; connecting: Promise<void> | null; queue: Promise<unknown>; folders: { at: number; list: FolderView[] } | null }
+
+const pool = new Map<string, Pooled>()
+const POOL_IDLE_MS = 90_000
+
+const fingerprint = (acc: MailAccount) => JSON.stringify([acc.imap, acc.user, acc.passwordEnc, acc.bridge])
+
+function dropPooled(id: string, p?: Pooled) {
+  const cur = pool.get(id)
+  if (!cur || (p && cur !== p)) return
+  pool.delete(id)
   try {
-    return await connectOnce(acc, fn)
-  } catch (e) {
-    /* Один повтор на сетевой сбой: провайдеры режут параллельные логины, второй заход обычно проходит. */
-    if (e instanceof MailError && e.code === 'CONNECT_FAILED') return connectOnce(acc, fn)
-    throw e
+    cur.client.close()
+  } catch {
+    /* уже закрыт */
   }
 }
 
-async function connectOnce<T>(acc: MailAccount, fn: (c: ImapFlow) => Promise<T>): Promise<T> {
-  if (!acc.imap) throw new MailError('NO_IMAP', 'У ящика не настроен IMAP — читать письма нельзя. Укажите сервер IMAP в настройках ящика.')
-  const { host, port, security } = acc.imap
-  const client = new ImapFlow({
+/** Ящик удалён — закрыть его соединение немедленно. */
+export const dropImapConnection = (id: string) => dropPooled(id)
+
+function sweepPool() {
+  const now = Date.now()
+  for (const [id, p] of pool) {
+    if (p.busy === 0 && now - p.lastUsed > POOL_IDLE_MS) {
+      pool.delete(id)
+      void Promise.race([p.client.logout(), new Promise((r) => setTimeout(r, 1_500))]).catch(() => undefined).finally(() => p.client.close())
+    }
+  }
+}
+
+const sweeper = globalThis as unknown as { __wsxMailSweeper?: NodeJS.Timeout }
+if (!sweeper.__wsxMailSweeper) sweeper.__wsxMailSweeper = setInterval(sweepPool, 15_000).unref()
+
+function makeClient(acc: MailAccount): ImapFlow {
+  const { host, port, security } = acc.imap!
+  return new ImapFlow({
     host,
     port,
     secure: security === 'ssl',
@@ -107,22 +135,76 @@ async function connectOnce<T>(acc: MailAccount, fn: (c: ImapFlow) => Promise<T>)
     disableAutoIdle: true,
     connectionTimeout: 15_000,
     greetingTimeout: 15_000,
-    socketTimeout: 40_000,
+    socketTimeout: 120_000,
   })
-  try {
-    await client.connect()
-  } catch (e) {
-    client.close()
-    throw classifyImap(e, acc)
+}
+
+async function acquire(acc: MailAccount): Promise<Pooled> {
+  const fp = fingerprint(acc)
+  let p = pool.get(acc.id)
+  if (p && (p.fp !== fp || (!p.connecting && !p.client.usable))) {
+    dropPooled(acc.id, p)
+    p = undefined
   }
+  if (!p) {
+    const client = makeClient(acc)
+    const fresh: Pooled = { client, fp, busy: 0, lastUsed: Date.now(), connecting: null, queue: Promise.resolve(), folders: null }
+    client.on('error', () => dropPooled(acc.id, fresh))
+    client.on('close', () => dropPooled(acc.id, fresh))
+    fresh.connecting = client.connect().finally(() => {
+      fresh.connecting = null
+    })
+    pool.set(acc.id, fresh)
+    p = fresh
+  }
+  if (p.connecting) {
+    try {
+      await p.connecting
+    } catch (e) {
+      dropPooled(acc.id, p)
+      throw classifyImap(e, acc)
+    }
+  }
+  return p
+}
+
+export async function withImap<T>(acc: MailAccount, fn: (c: ImapFlow, p: Pooled) => Promise<T>): Promise<T> {
   try {
-    return await fn(client)
+    return await runOnce(acc, fn)
   } catch (e) {
+    /* Один повтор на сетевой сбой: соединение из пула могло умереть, свежий заход обычно проходит. */
+    if (e instanceof MailError && (e.code === 'CONNECT_FAILED' || e.code === 'READ_FAILED') && !pool.has(acc.id)) return runOnce(acc, fn)
+    throw e
+  }
+}
+
+/** Операции на одном соединении идут строго по очереди: выбранная папка не «уезжает» под соседним запросом. */
+async function runOnce<T>(acc: MailAccount, fn: (c: ImapFlow, p: Pooled) => Promise<T>): Promise<T> {
+  if (!acc.imap) throw new MailError('NO_IMAP', 'У ящика не настроен IMAP — читать письма нельзя. Укажите сервер IMAP в настройках ящика.')
+  const p = await acquire(acc)
+  p.busy += 1
+  const run = p.queue.then(() => fn(p.client, p))
+  p.queue = run.catch(() => undefined)
+  try {
+    return await run
+  } catch (e) {
+    if (!p.client.usable) dropPooled(acc.id, p)
     throw classifyImap(e, acc)
   } finally {
-    await Promise.race([client.logout(), new Promise((r) => setTimeout(r, 2_000))]).catch(() => undefined)
-    client.close()
+    p.busy -= 1
+    p.lastUsed = Date.now()
   }
+}
+
+/** Папка уже выбрана — только NOOP, чтобы подтянуть новые письма; иначе SELECT. */
+async function openFolder(c: ImapFlow, folder: string): Promise<{ exists: number }> {
+  const cur = c.mailbox
+  if (cur && typeof cur === 'object' && cur.path === folder) {
+    await c.noop()
+    return { exists: cur.exists }
+  }
+  const mb = await c.mailboxOpen(folder)
+  return { exists: mb.exists }
 }
 
 /* ---------- преобразования ---------- */

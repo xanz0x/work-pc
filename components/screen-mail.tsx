@@ -1,36 +1,29 @@
 'use client'
 
 /* ============================================================
-   ПОЧТА · экран: ящики + отправка (фаза 1)
-   Слева — карточки ящиков со статусом SMTP/IMAP, справа — форма письма.
-   Добавление — диалог из трёх полей с живыми шагами.
+   ПОЧТА · один экран без прокрутки страницы: рейка ящиков и папок → список → письмо/паспорт ящика.
+   «Написать» и «Добавить ящик» — окна поверх клиента.
    ============================================================ */
 
 import '@/app/styles/screen-mail.css'
 import { useCallback, useEffect, useState } from 'react'
-import { IconAlertTri, IconMail, IconPlus, IconShield } from './icons'
-import { MailAccountCard } from './mail/mail-account-card'
+import { IconAlertTri, IconMail, IconPlus, IconSend } from './icons'
 import { MailAddDialog } from './mail/mail-add-dialog'
+import { MailComposeDialog } from './mail/mail-compose-dialog'
 import { MailInbox } from './mail/mail-inbox'
-import { MailSendForm } from './mail/mail-send-form'
 import { logJournal } from '@/lib/journal'
 import { isFail, mailApi, type AccountView } from '@/lib/mail-client'
 import { useToast } from '@/lib/vault-store'
 
-const boxWord = (n: number) => {
-  const d = n % 10
-  const dd = n % 100
-  if (d === 1 && dd !== 11) return 'ящик'
-  if (d >= 2 && d <= 4 && (dd < 10 || dd >= 20)) return 'ящика'
-  return 'ящиков'
-}
+const ACTIVE_KEY = 'wf.mail.active.v1'
 
 export function ScreenMail() {
   const { flash } = useToast()
   const [accounts, setAccounts] = useState<AccountView[] | null>(null)
   const [enabled, setEnabled] = useState(true)
   const [adding, setAdding] = useState(false)
-  const [fromId, setFromId] = useState<string | null>(null)
+  const [composing, setComposing] = useState(false)
+  const [activeId, setActiveId] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
 
   const reload = useCallback(async () => {
@@ -42,12 +35,24 @@ export function ScreenMail() {
     }
     setEnabled(r.enabled)
     setAccounts(r.accounts)
-    setFromId((cur) => cur && r.accounts.some((a) => a.id === cur) ? cur : r.accounts[0]?.id ?? null)
+    setActiveId((cur) => {
+      const want = cur ?? window.localStorage.getItem(ACTIVE_KEY)
+      return want && r.accounts.some((a) => a.id === want) ? want : r.accounts[0]?.id ?? null
+    })
   }, [flash])
 
   useEffect(() => {
     void reload()
   }, [reload])
+
+  function pick(id: string) {
+    setActiveId(id)
+    window.localStorage.setItem(ACTIVE_KEY, id)
+  }
+
+  const patchAccount = useCallback((id: string, patch: Partial<AccountView>) => {
+    setAccounts((cur) => cur?.map((a) => (a.id === id ? { ...a, ...patch } : a)) ?? null)
+  }, [])
 
   async function test(id: string) {
     setBusyId(id)
@@ -57,7 +62,7 @@ export function ScreenMail() {
       flash(r.error)
       return
     }
-    setAccounts((list) => list?.map((a) => (a.id === id ? r.account : a)) ?? null)
+    patchAccount(id, r.account)
     if (r.checks.smtp === 'ok' && r.checks.imap !== 'fail') flash('Соединение в порядке: SMTP и IMAP отвечают')
     else {
       flash(r.checks.error ?? 'Проверка не пройдена')
@@ -77,105 +82,67 @@ export function ScreenMail() {
   }
 
   const list = accounts ?? []
-  const active = list.find((a) => a.id === fromId) ?? null
-
-  const patchAccount = useCallback((id: string, patch: Partial<AccountView>) => {
-    setAccounts((cur) => cur?.map((a) => (a.id === id ? { ...a, ...patch } : a)) ?? null)
-  }, [])
+  const active = list.find((a) => a.id === activeId) ?? null
 
   return (
     <div className="mail-page" data-testid="mail-screen">
-      <div className="mail-shell">
-        <header className="mail-head">
-          <div>
-            <h1 className="mail-title">Почта</h1>
-            <p className="mail-sub">
-              Ящики подключаются тремя полями — название, адрес, пароль. Настройки SMTP/IMAP приложение ищет само,
-              а пароль хранит на сервере зашифрованным и наружу не отдаёт.
-            </p>
-          </div>
-          <button className="btn btn-primary" onClick={() => setAdding(true)} disabled={!enabled} data-testid="mail-add">
-            <IconPlus width={13} height={13} aria-hidden="true" /> Добавить ящик
+      <header className="mail-bar">
+        <span className="mail-bar-title">
+          <IconMail width={15} height={15} aria-hidden="true" />
+          <h1>Почта</h1>
+          <span className="mail-bar-sub">{accounts === null ? 'загрузка…' : active ? active.email : 'ящики не подключены'}</span>
+        </span>
+        <span className="mail-bar-actions">
+          <button className="btn btn-ghost btn-sm" onClick={() => setAdding(true)} disabled={!enabled} data-testid="mail-add-bar">
+            <IconPlus width={12} height={12} aria-hidden="true" /> Ящик
           </button>
-        </header>
+          <button className="btn btn-primary btn-sm" onClick={() => setComposing(true)} disabled={!enabled || list.length === 0} data-testid="mail-compose-open">
+            <IconSend width={12} height={12} aria-hidden="true" className="mail-rot" /> Написать
+          </button>
+        </span>
+      </header>
 
-        {!enabled && (
-          <div className="mail-banner warn" role="alert" data-testid="mail-disabled">
-            <IconAlertTri width={15} height={15} aria-hidden="true" />
-            <span>
-              Модуль выключен: на сервере не задан <code>MAIL_SECRET</code> (32+ символа). Добавьте переменную в <code>.env</code> и перезапустите сервер.
-            </span>
-          </div>
-        )}
-
-        <div className="mail-grid">
-          <section className="mail-col" aria-label="Почтовые ящики">
-            <div className="mail-col-head">
-              <span className="label-mono">Ящики</span>
-              <span className="mail-count num" data-testid="mail-account-count">
-                {accounts === null ? '…' : `${list.length} ${boxWord(list.length)}`}
-              </span>
-            </div>
-            {accounts !== null && list.length === 0 && (
-              <div className="mail-empty" data-testid="mail-empty">
-                <span className="mail-empty-ico" aria-hidden="true">
-                  <IconMail />
-                </span>
-                <b>Добавьте первый ящик</b>
-                <span>Gmail, Яндекс, Mail.ru, iCloud, свой домен — настройки найдём автоматически.</span>
-                <button className="btn btn-ghost btn-sm" onClick={() => setAdding(true)} disabled={!enabled} data-testid="mail-add-empty">
-                  <IconPlus width={12} height={12} aria-hidden="true" /> Добавить ящик
-                </button>
-              </div>
-            )}
-            <div className="mail-cards" data-testid="mail-account-list">
-              {list.map((a) => (
-                <MailAccountCard
-                  key={a.id}
-                  account={a}
-                  active={a.id === fromId}
-                  busy={busyId === a.id}
-                  onPick={() => setFromId(a.id)}
-                  onTest={() => void test(a.id)}
-                  onRemove={() => void remove(a)}
-                />
-              ))}
-            </div>
-            <p className="mail-note">
-              <IconShield width={13} height={13} aria-hidden="true" />
-              Только TLS. Пароль расшифровывается на время одного соединения и не попадает в журнал и ответы API.
-            </p>
-          </section>
-
-          <section className="mail-col" aria-label="Новое письмо">
-            <MailSendForm
-              accounts={list}
-              fromId={fromId}
-              onFrom={setFromId}
-              onSent={(acc) => setAccounts((cur) => cur?.map((a) => (a.id === acc.id ? acc : a)) ?? null)}
-            />
-          </section>
+      {!enabled && (
+        <div className="mail-banner warn" role="alert" data-testid="mail-disabled">
+          <IconAlertTri width={15} height={15} aria-hidden="true" />
+          <span>
+            Модуль выключен: на сервере не задан <code>MAIL_SECRET</code> (32+ символа). Добавьте переменную в <code>.env</code> и перезапустите сервер.
+          </span>
         </div>
+      )}
 
-        {active && active.imap && <MailInbox key={active.id} account={active} onAccountPatch={patchAccount} />}
-        {active && !active.imap && (
-          <div className="mail-banner" data-testid="mail-inbox-no-imap">
-            <IconAlertTri width={15} height={15} aria-hidden="true" />
-            <span>
-              У ящика «{active.name}» не настроен IMAP — читать письма нельзя, только отправлять. Добавьте сервер IMAP в настройках ящика.
-            </span>
-          </div>
-        )}
-      </div>
+      {accounts !== null && (
+        <MailInbox
+          accounts={list}
+          active={active}
+          busyId={busyId}
+          enabled={enabled}
+          onPickAccount={pick}
+          onAdd={() => setAdding(true)}
+          onTest={(id) => void test(id)}
+          onRemove={(acc) => void remove(acc)}
+          onCompose={() => setComposing(true)}
+          onAccountPatch={patchAccount}
+        />
+      )}
 
       {adding && (
         <MailAddDialog
           onClose={() => setAdding(false)}
           onAdded={(acc) => {
             setAdding(false)
-            setFromId(acc.id)
+            pick(acc.id)
             void reload()
           }}
+        />
+      )}
+      {composing && (
+        <MailComposeDialog
+          accounts={list}
+          fromId={activeId}
+          onFrom={pick}
+          onSent={(acc) => patchAccount(acc.id, acc)}
+          onClose={() => setComposing(false)}
         />
       )}
     </div>

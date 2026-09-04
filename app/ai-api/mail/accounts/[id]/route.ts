@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { mailEnabled } from '@/lib/mail-crypto'
+import { dropImapConnection } from '@/lib/mail-imap'
 import { MailError, normalizeConfig, removeAccount, updateAccount } from '@/lib/mail-server'
 import { requireUser } from '@/lib/request-context'
 import { limitMailAuth } from '@/lib/rate-limit'
@@ -44,5 +45,6 @@ export const PUT = withRoute('/ai-api/mail/accounts/[id]', async (req: NextReque
 export const DELETE = withRoute('/ai-api/mail/accounts/[id]', async (_req: NextRequest, ctx: Ctx) => {
   const { id } = await ctx.params
   if (!ID_RE.test(id) || !(await removeAccount(id))) return notFound()
+  dropImapConnection(id)
   return NextResponse.json({ ok: true })
 })
