@@ -1,0 +1,12 @@
+{
+  "order": [
+    "library",
+    "map",
+    "chat",
+    "vault",
+    "activity",
+    "settings",
+    "admin"
+  ],
+  "hidden": []
+}

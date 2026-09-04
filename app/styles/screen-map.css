@@ -596,6 +596,10 @@
     z-index: 0;
     overflow: hidden;
     pointer-events: none;
+    /* Слои внутри размечены во viewport-единицах и от ширины колонки не
+       зависят: при сворачивании сайдбара размытые туманности и звёздные
+       поля не растрируются заново на каждом шаге анимации. */
+    contain: strict;
   }
   .cosmos > i {
     position: absolute;
@@ -604,7 +608,10 @@
 
   /* Глубина: почти чёрная основа, холодные пятна еле угадываются */
   .cos-deep {
-    inset: -10%;
+    left: -10vw;
+    top: -10vh;
+    width: 120vw;
+    height: 120vh;
     background:
       radial-gradient(120% 90% at 22% 12%, rgba(30, 52, 84, 0.28), transparent 62%),
       radial-gradient(90% 80% at 82% 88%, rgba(18, 46, 44, 0.22), transparent 60%),
@@ -646,7 +653,10 @@
 
   /* Млечная полоса: диагональная дымка с зернистой маской */
   .cos-way {
-    inset: -20%;
+    left: -20vw;
+    top: -20vh;
+    width: 140vw;
+    height: 140vh;
     background: linear-gradient(
       116deg,
       transparent 34%,
@@ -662,7 +672,10 @@
 
   /* Три звёздных слоя: разный размер, скорость и мерцание */
   .cos-stars {
-    inset: -50%;
+    left: -50vw;
+    top: -50vh;
+    width: 200vw;
+    height: 200vh;
     background-repeat: repeat;
     will-change: transform;
   }

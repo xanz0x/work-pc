@@ -885,7 +885,7 @@ export function ScreenMap() {
          остаётся плавным, а браузер перестаёт захлёбываться — прокрутка
          панелей поверх карты снова живая. */
       const budget = drawCost > 12 ? 30 : 15
-      if (now - lastDraw < budget) {
+      if (frozen || now - lastDraw < budget) {
         raf = requestAnimationFrame(tick)
         return
       }
@@ -1353,13 +1353,41 @@ export function ScreenMap() {
       drag = null
       pinch = null
     }
-    const onResize = () => {
+    /* Размер сцены меняет не только окно: сворачивание сайдбара тянет канвас
+       за собой 180 мс подряд. Раньше карта продолжала рисовать полный кадр
+       поверх каждого шага раскладки — анимация меню шла рывками, а бит-мап
+       оставался старого размера и растягивался. Теперь на время движения
+       кадр замирает, а после того как размер устоялся, сцена пересобирается
+       один раз с сохранением выбранного узла. */
+    let frozen = false
+    let settleTimer = 0
+    function relayout() {
+      const keep = selected && !selected.core ? selected.id : null
+      const wasCore = Boolean(selected?.core)
+      /* Пересборку рвём на два кадра: тяжёлый build() не должен ложиться в
+         один синхронный таск с resize() — иначе в конце анимации меню виден
+         единичный спайк ~200 мс. */
       resize()
-      build()
-      fitView()
-      stopSearch()
-      select(core)
+      requestAnimationFrame(() => {
+        build()
+        fitView()
+        stopSearch()
+        const again = keep ? byId.get(keep) : null
+        select(again ?? (wasCore || !keep ? core : null))
+        frozen = false
+        lastDraw = 0
+      })
     }
+    let firstObserve = true
+    const ro = new ResizeObserver(() => {
+      if (firstObserve) {
+        firstObserve = false
+        return
+      }
+      frozen = true
+      window.clearTimeout(settleTimer)
+      settleTimer = window.setTimeout(relayout, 90)
+    })
     /* Не жжём CPU в фоне: сдвигаем начало таймлайна на время простоя. */
     const onVis = () => {
       if (document.hidden) hiddenAt = performance.now()
@@ -1376,7 +1404,7 @@ export function ScreenMap() {
     cv.addEventListener('touchstart', onTouchStart, { passive: true })
     cv.addEventListener('touchmove', onTouchMove, { passive: false })
     cv.addEventListener('touchend', onTouchEnd)
-    addEventListener('resize', onResize)
+    ro.observe(cv)
     document.addEventListener('visibilitychange', onVis)
 
     api.current = {
@@ -1463,7 +1491,8 @@ export function ScreenMap() {
       cv.removeEventListener('touchstart', onTouchStart)
       cv.removeEventListener('touchmove', onTouchMove)
       cv.removeEventListener('touchend', onTouchEnd)
-      removeEventListener('resize', onResize)
+      ro.disconnect()
+      window.clearTimeout(settleTimer)
       document.removeEventListener('visibilitychange', onVis)
       api.current = null
     }

@@ -1,0 +1,59 @@
+[
+  {
+    "name": "Basic",
+    "tagline": "Личный сейф и ИИ-помощник для одного",
+    "color": "graphite",
+    "days": 30,
+    "features": {
+      "ai": true,
+      "mcp": false,
+      "sync": false,
+      "secrets": true,
+      "offline": true,
+      "telemetry": true
+    },
+    "aiDailyLimit": 50,
+    "id": "ae5c5a61bc44d4af",
+    "order": 0,
+    "archived": false,
+    "createdAt": 1788491455030
+  },
+  {
+    "name": "Pro",
+    "tagline": "Синхронизация между устройствами и внешние агенты",
+    "color": "green",
+    "days": 90,
+    "features": {
+      "ai": true,
+      "mcp": true,
+      "sync": true,
+      "secrets": true,
+      "offline": true,
+      "telemetry": true
+    },
+    "aiDailyLimit": 300,
+    "id": "c0f5b07ec334ba48",
+    "order": 1,
+    "archived": false,
+    "createdAt": 1788491455030
+  },
+  {
+    "name": "Enterprise",
+    "tagline": "Без лимитов, весь набор функций на год",
+    "color": "violet",
+    "days": 365,
+    "features": {
+      "ai": true,
+      "mcp": true,
+      "sync": true,
+      "secrets": true,
+      "offline": true,
+      "telemetry": true
+    },
+    "aiDailyLimit": 0,
+    "id": "6fec7d6629d01c1a",
+    "order": 2,
+    "archived": false,
+    "createdAt": 1788491455030
+  }
+]

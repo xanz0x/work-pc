@@ -79,6 +79,11 @@ export function AccountGate({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     await fetch('/ai-api/auth/session', { method: 'DELETE' }).catch(() => null)
+    try {
+      localStorage.removeItem('wf.nav.prefs.v1')
+    } catch {
+      /* приватный режим */
+    }
     window.location.replace('/login')
   }, [])
 

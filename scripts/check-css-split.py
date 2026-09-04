@@ -11,6 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SHELL = [
     'components/app-shell.tsx',
+    'components/sidebar-nav.tsx',
     'components/command-palette.tsx',
     'components/notifications.tsx',
     'components/screen-lock.tsx',

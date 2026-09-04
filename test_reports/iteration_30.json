@@ -1,0 +1,32 @@
+{
+  "summary": "Frontend-only E2E (Playwright, prod build, public URL) для двух задач: (1) кастомизация бокового меню (порядок/скрытие/сброс/сохранение в БД), (2) регрессия лага сайдбара на экране «Карта памяти». Логин admin/IceKrymTeam13@ работает, онбординг гасится init-скриптом. Все 12 функциональных проверок пройдены: порядок меню по умолчанию, открытие screen-map, режим правки (nav-customize), стрелки nav-up-map, скрытие nav-toggle-chat, disabled у nav-toggle-settings, drag&drop (vault→library), персистентность через сервер (localStorage-кэш чистился перед F5, GET /ai-api/prefs/nav вернул сохранённый order+hidden), nav-reset возвращает дефолт и он сохраняется на сервере, режим правки недоступен при свёрнутом сайдбаре, карта после 5 переключений сайдбара видима и корректно перерисована (canvas #net 1856x996, 89.7% пикселей не фоновые). Лаг сайдбара на карте практически устранён (click→2 кадра = 87 мс), но остаётся один блокирующий таск ~190–225 мс на каждое переключение (relayout карты) — минорная перф-заметка.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "performance_notes": [
+      {"screen": "screen-map + .sidebar-toggle", "issue": "На каждое сворачивание/разворачивание сайдбара фиксируется long task 190–225 мс (idle-базлайн на карте: 50–59 мс). Источник — debounce-relayout в ResizeObserver (resize()+build()+fitView() синхронно, screen-map.tsx:1367-1369). Визуально не блокирует (первый кадр через ~87 мс), но на слабом CPU будет заметный подтормаживание в конце анимации.", "priority": "LOW"},
+      {"screen": "screen-map (idle)", "issue": "В простое рендер-цикл карты стабильно генерирует long tasks ~50–59 мс каждые ~450 мс (8 за 3.6 с). Это общий CPU-фон карты, не связан с сайдбаром, но именно он делает любую анимацию рядом дёрганой.", "priority": "LOW"}
+    ]
+  },
+  "test_report_links": ["/app/test_reports/iteration_30.json"],
+  "action_items": [
+    "Опционально (LOW): разнести relayout карты после resize на два кадра (resize+fitView в одном rAF, build() в следующем) или переиспользовать граф вместо полного build(), чтобы убрать спайк 200 мс на переключение сайдбара.",
+    "Опционально (LOW): снизить стоимость кадра рендера карты в простое (long task ~55 мс каждые 450 мс)."
+  ],
+  "critical_code_review_comments": [
+    "components/screen-map.tsx — 1974 строки, значительно больше порога 700: стоит вынести физику/рендер/инспектор в отдельные модули.",
+    "hooks/use-nav-prefs.ts: модульные синглтоны (prefs/fetched/saveTimer) корректны для одного пользователя в табе, но при смене аккаунта без перезагрузки кэш и fetched не сбрасываются — есть resetNavPrefsStore(), но он нигде не вызывается на logout.",
+    "hooks/use-nav-prefs.ts push(): PUT без обработки не-2xx ответа и без UI-состояния ошибки — если сервер отклонит запись, пользователь увидит несохранённый порядок только после F5.",
+    "SidebarNav: при выходе из режима правки editOn не сбрасывается при collapse (editing вычисляется как editOn && !collapsed) — после разворачивания сайдбара пользователь снова окажется в режиме правки; поведение неочевидное, хотя не ломающее."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not tested (по запросу)", "frontend": "100% функциональных проверок (12/12); 1 минорная перф-заметка"},
+  "seed_data_creation": "Изменялся только nav.json пользователя admin; после тестов сброшен к дефолту (order=library,map,chat,vault,activity,settings,admin; hidden=[]) и это подтверждено GET /ai-api/prefs/nav.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "admin / IceKrymTeam13@ (/login), онбординг гасится localStorage 'wf.settings.v1'",
+  "context_for_next_testing_agent": "Init-скрипт с 'wf.settings.v1' обязателен ДО goto, иначе онбординг перекрывает UI. При логине нужно дождаться [data-testid=login-form] и ~1.5с гидрации, иначе fill теряется. Для проверки серверной персистентности перед F5 удаляйте localStorage 'wf.nav.prefs.v1'. Перф-замеры: PerformanceObserver longtask, сравнивать с idle-базлайном на карте (~55 мс).",
+  "rca_of_the_issue": "Баг лагов сайдбара на карте закрыт: app-shell вешает nav-animating на 260 мс (CSS-транзишн), screen-map перешёл на ResizeObserver с freeze кадра и debounce 90 мс, поэтому во время анимации канвас не пересобирается. Остаточный спайк ~200 мс — единичный синхронный relayout (resize+build+fitView) уже ПОСЛЕ анимации, поэтому пользователь видит плавное сворачивание и лишь короткую заминку в конце."
+}

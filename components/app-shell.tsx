@@ -2,16 +2,7 @@
 
 import dynamic from 'next/dynamic'
 
-import {
-  Fragment,
-  useEffect,
-  useRef,
-  useState,
-  useSyncExternalStore,
-  type ComponentType,
-  type ReactNode,
-  type SVGProps,
-} from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { Dropdown } from './dropdown'
 import { NotificationsBell } from './notifications'
 
@@ -20,6 +11,7 @@ import { StatusClock } from './ui/status-clock'
 import { ScreenLock } from './screen-lock'
 import { prefetchScreen } from './screens'
 import { AppSplash } from './app-splash'
+import { SidebarNav } from './sidebar-nav'
 import { initScale, resetScale, stepScale } from '@/lib/ui-scale'
 import { JournalAlert } from './journal-alert'
 import { useEngineStore } from '@/lib/store/engine'
@@ -51,41 +43,15 @@ function blockedWord(n: number): string {
   return 'ЗАПРЕТОВ'
 }
 import {
-  IconChat,
-  IconChevronDown,
   IconChevronLeft,
   IconChipAi,
   IconGear,
-  IconGraph,
-  IconKey,
-  IconLibrary,
   IconLockRound,
   IconLogoMark,
   IconPlus,
-  IconPipeline,
   IconSearch,
   IconUser,
 } from './icons'
-
-type Ico = ComponentType<SVGProps<SVGSVGElement>>
-
-const WORKSPACE: { id: ScreenId; label: string; Icon: Ico }[] = [
-  { id: 'library', label: 'Библиотека', Icon: IconLibrary },
-  { id: 'map', label: 'Карта памяти', Icon: IconGraph },
-  { id: 'chat', label: 'Чат с ИИ', Icon: IconChat },
-]
-
-const SECRETS_NAV: { id: ScreenId; label: string; Icon: Ico }[] = [
-  { id: 'vault', label: 'Менеджер секретов', Icon: IconKey },
-]
-
-const SYSTEM: { id: ScreenId; label: string; Icon: Ico }[] = [
-  { id: 'activity', label: 'Центр активности', Icon: IconPipeline },
-  { id: 'settings', label: 'Настройки', Icon: IconGear },
-]
-
-/** Администрирование — только роли admin; пункт добавляется в рантайме. */
-const ADMIN_NAV: { id: ScreenId; label: string; Icon: Ico } = { id: 'admin', label: 'Администрирование', Icon: IconUser }
 
 /** Плейсхолдер поиска зависит от экрана — но поле всегда одно и то же. */
 const PLACEHOLDER: Record<ScreenId, string> = {
@@ -121,6 +87,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { stats, clusters } = v
 
   const [collapsed, setCollapsed] = useState(false)
+  const [navAnimating, setNavAnimating] = useState(false)
+  const navTimer = useRef<number>(0)
   const [searchOpen, setSearchOpen] = useState(false)
   /* NF-8: обёртка над сетью ставится до первого эффекта — иначе запрет
      опоздает на промис и запрос успеет уйти. */
@@ -230,6 +198,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [searchOpen])
 
   function toggle() {
+    /* Пока анимируется ширина сайдбара (180 мс), гасим дорогие эффекты фона
+       карты — размытый «космос» и backdrop-filter панелей перерисовывались
+       на каждый кадр раскладки и давали рывки. */
+    setNavAnimating(true)
+    window.clearTimeout(navTimer.current)
+    navTimer.current = window.setTimeout(() => setNavAnimating(false), 260)
     setCollapsed((prev) => {
       const next = !prev
       try {
@@ -254,11 +228,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     activity: 0,
     admin: 0,
   }
-
-  const liveClusters = clusters.filter((c) => c.count > 0)
-  /* Кластеры — часть Библиотеки: выпадающий список у пункта меню.
-     Свёрнут по умолчанию, состояние живёт в сессии (не в localStorage). */
-  const [libOpen, setLibOpen] = useState(false)
 
   /* --- честная строка статуса --- */
   const statusText =
@@ -315,7 +284,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <AppSplash done={ready && v.hydrated} />
       {v.lock.status === 'locked' && <ScreenLock />}
       <div
-        className={`app${collapsed ? ' nav-collapsed' : ''}${v.lock.status === 'locked' ? ' lock-behind' : ''}`}
+        className={`app${collapsed ? ' nav-collapsed' : ''}${navAnimating ? ' nav-animating' : ''}${v.lock.status === 'locked' ? ' lock-behind' : ''}`}
         data-testid="app-shell"
         data-app-ready={ready ? '1' : '0'}
       >
@@ -368,105 +337,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <span>Добавить файл</span>
           </button>
 
-          <nav className="nav" aria-label="Основная навигация">
-            <div className="nav-section">Рабочее место</div>
-            {WORKSPACE.filter((w) => w.id !== 'chat' || account.has('ai')).map(({ id, label, Icon }) =>
-              id === 'library' ? (
-                <Fragment key={id}>
-                  <div className="nav-lib-row">
-                    <button
-                      className={`nav-item${v.screen === id ? ' active' : ''}`}
-                      onClick={() => v.go(id)}
-                      onPointerEnter={() => prefetchScreen(id)}
-                      onFocus={() => prefetchScreen(id)}
-                      aria-current={v.screen === id ? 'page' : undefined}
-                      title={label}
-                      data-testid="nav-library"
-                    >
-                      <Icon />
-                      <span>{label}</span>
-                      <b className="nav-count num">{workspaceCount[id]}</b>
-                    </button>
-                    <button
-                      className={`nav-lib-chev${libOpen ? ' open' : ''}`}
-                      onClick={() => setLibOpen((o) => !o)}
-                      aria-expanded={libOpen}
-                      title={libOpen ? 'Свернуть кластеры' : 'Показать кластеры библиотеки'}
-                      aria-label="Кластеры библиотеки"
-                      data-testid="nav-library-toggle"
-                    >
-                      <IconChevronDown />
-                    </button>
-                  </div>
-                  {libOpen &&
-                    liveClusters.map((c) => (
-                      <button
-                        key={c.id}
-                        className="nav-item nav-sub"
-                        onClick={() => v.openCluster(c.id)}
-                        onPointerEnter={() => prefetchScreen('library')}
-                        title={`${c.label} · ${c.count} ${plural(c.count, 'файл', 'файла', 'файлов')}`}
-                        data-testid={`nav-cluster-${c.id}`}
-                      >
-                        <i className="cluster-dot" style={{ background: `rgba(${c.rgb},.9)` }} />
-                        <span>{c.label}</span>
-                        <b className="nav-count num">{c.count}</b>
-                      </button>
-                    ))}
-                </Fragment>
-              ) : (
-                <button
-                  key={id}
-                  className={`nav-item${v.screen === id ? ' active' : ''}`}
-                  onClick={() => v.go(id)}
-                  onPointerEnter={() => prefetchScreen(id)}
-                  onFocus={() => prefetchScreen(id)}
-                  aria-current={v.screen === id ? 'page' : undefined}
-                  title={label}
-                  data-testid={`nav-${id}`}
-                >
-                  <Icon />
-                  <span>{label}</span>
-                  <b className="nav-count num">{workspaceCount[id]}</b>
-                </button>
-              ),
-            )}
-
-            {account.has('secrets') && <div className="nav-section">Секреты</div>}
-            {account.has('secrets') && SECRETS_NAV.map(({ id, label, Icon }) => (
-              <button
-                key={id}
-                className={`nav-item${v.screen === id ? ' active' : ''}`}
-                onClick={() => v.go(id)}
-                onPointerEnter={() => prefetchScreen(id)}
-                onFocus={() => prefetchScreen(id)}
-                aria-current={v.screen === id ? 'page' : undefined}
-                title={label}
-                data-testid="nav-vault"
-              >
-                <Icon />
-                <span>{label}</span>
-                <b className="nav-count num">{workspaceCount[id]}</b>
-              </button>
-            ))}
-
-            <div className="nav-section">Система</div>
-            {[...SYSTEM, ...(account.isAdmin ? [ADMIN_NAV] : [])].map(({ id, label, Icon }) => (
-              <button
-                key={id}
-                className={`nav-item${v.screen === id ? ' active' : ''}`}
-                onClick={() => v.go(id)}
-                onPointerEnter={() => prefetchScreen(id)}
-                onFocus={() => prefetchScreen(id)}
-                aria-current={v.screen === id ? 'page' : undefined}
-                title={label}
-                data-testid={`nav-${id}`}
-              >
-                <Icon />
-                <span>{label}</span>
-              </button>
-            ))}
-          </nav>
+          <SidebarNav counts={workspaceCount} clusters={clusters} collapsed={collapsed} />
 
           <div className="sidebar-foot">
             <button

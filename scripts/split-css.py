@@ -51,7 +51,7 @@ SHELL_FILES = [
     'components/app-shell.tsx', 'components/command-palette.tsx',
     'components/notifications.tsx', 'components/screen-lock.tsx',
     'components/screen-lock-logo.tsx', 'components/dropdown.tsx',
-    'components/mk-fields.tsx', 'components/onboarding.tsx',
+    'components/mk-fields.tsx', 'components/onboarding.tsx', 'components/sidebar-nav.tsx',
     'components/storage-alert.tsx', 'components/screen-boundary.tsx',
     'components/icons.tsx', 'components/ui', 'app/layout.tsx', 'app/(app)',
     'app/login', 'app/error.tsx', 'app/global-error.tsx', 'app/not-found.tsx',
