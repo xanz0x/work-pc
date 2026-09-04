@@ -14,6 +14,9 @@ import { randomBytes } from 'node:crypto'
 import { decryptSecret, encryptSecret } from './mail-crypto'
 import { sanitizeMailHtml } from './mail-html'
 import { requireUser } from './request-context'
+import { MID_RE, mtRows, sortRows, spRows, type TempRow } from './temp-mail-parse'
+
+const asStr = (v: unknown): string => (typeof v === 'string' ? v : '')
 import { userDir } from './users-server'
 
 export type TempKind = 'mailtm' | 'temp' | 'gmail' | 'outlook'
@@ -49,7 +52,7 @@ export type TempBox = {
 
 export type TempBoxView = Omit<TempBox, 'secretEnc' | 'accountId'>
 
-export type TempRow = { mid: string; subject: string; from: string; date: string | null }
+export type { TempRow }
 export type TempFull = { mid: string; subject: string; from: string; date: string | null; html: string | null; text: string | null }
 
 export type TempErrorCode = 'NO_KEY' | 'PROVIDER' | 'NOT_FOUND' | 'INVALID_ARGS' | 'RATE_LIMITED' | 'NOT_SUPPORTED'
@@ -171,7 +174,7 @@ async function mtToken(address: string, password: string): Promise<string> {
 /** Токен mail.tm живёт недолго: при 401 берём новый по сохранённым логину и паролю. */
 async function mtCall(box: TempBox, pathname: string, init: RequestInit = {}): Promise<unknown> {
   const s = mtSecret(box)
-  const run = (token: string) => jsonFetch(`${MT}${pathname}`, { ...init, headers: { ...(init.headers ?? {}), Authorization: `Bearer ${token}`, accept: 'application/json' } })
+  const run = (token: string) => jsonFetch(`${MT}${pathname}`, { ...init, headers: { ...(init.headers ?? {}), Authorization: `Bearer ${token}` } })
   let r = await run(s.token)
   if (r.status === 401) {
     const token = await mtToken(box.address, s.password)
@@ -186,8 +189,9 @@ async function mtCall(box: TempBox, pathname: string, init: RequestInit = {}): P
 }
 
 async function mtCreate(): Promise<TempBox> {
-  const d = (await jsonFetch(`${MT}/domains`)).body as { 'hydra:member'?: { domain: string; isActive: boolean }[] } | null
-  const domain = d?.['hydra:member']?.find((x) => x.isActive)?.domain
+  const raw = (await jsonFetch(`${MT}/domains`)).body
+  const list = (Array.isArray(raw) ? raw : ((raw as { 'hydra:member'?: unknown[] } | null)?.['hydra:member'] ?? [])) as { domain?: string; isActive?: boolean }[]
+  const domain = list.find((x) => x.isActive && x.domain)?.domain ?? list.find((x) => x.domain)?.domain
   if (!domain) throw new TempError('PROVIDER', 'mail.tm не отдал ни одного рабочего домена.')
   const password = randomBytes(18).toString('base64url')
   for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -284,40 +288,18 @@ export async function removeTempBox(id: string): Promise<boolean> {
   return true
 }
 
-const asStr = (v: unknown): string => (typeof v === 'string' ? v : '')
-
-function mtRows(body: unknown): TempRow[] {
-  const list = (body as { 'hydra:member'?: unknown[] } | null)?.['hydra:member'] ?? []
-  return list.map((raw) => {
-    const m = raw as { id?: string; subject?: string; from?: { address?: string; name?: string }; createdAt?: string }
-    const name = asStr(m.from?.name).trim()
-    return { mid: asStr(m.id), subject: asStr(m.subject), from: name || asStr(m.from?.address) || '—', date: m.createdAt ? new Date(m.createdAt).toISOString() : null }
-  })
-}
-
-function spRows(body: unknown): TempRow[] {
-  const list = (body as { messages?: unknown[] } | null)?.messages ?? []
-  return list.map((raw) => {
-    const m = raw as { mid?: string; textSubject?: string; textFrom?: string; textDate?: string }
-    const d = m.textDate ? new Date(m.textDate) : null
-    return { mid: asStr(m.mid), subject: asStr(m.textSubject), from: asStr(m.textFrom) || '—', date: d && !Number.isNaN(d.getTime()) ? d.toISOString() : null }
-  })
-}
-
 export async function tempInbox(id: string): Promise<{ box: TempBoxView; rows: TempRow[] }> {
   const box = await getBox(id)
   let rows: TempRow[]
   if (box.kind === 'mailtm') rows = mtRows(await mtCall(box, '/messages'))
   else if (box.kind === 'temp') rows = spRows(await sonjj(spInboxPath.temp, { email: box.address }))
   else rows = spRows(await sonjj(spInboxPath[box.kind], { email: box.address, timestamp: String(box.timestamp ?? 0) }))
-  rows.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+  rows = sortRows(rows)
   box.lastSyncAt = Date.now()
   box.count = rows.length
   await upsert(box)
   return { box: toTempView(box), rows }
 }
-
-const MID_RE = /^[A-Za-z0-9_.:@+=-]{1,200}$/
 
 export async function tempMessage(id: string, mid: string): Promise<TempFull> {
   if (!MID_RE.test(mid)) throw new TempError('INVALID_ARGS', 'Идентификатор письма указан неверно.')

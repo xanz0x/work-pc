@@ -171,3 +171,7 @@ APP_URL=http://localhost:3000 APP_PASSWORD=IceKrymTeam13@ node scripts/long-dial
 ## Временная почта (итерация 37)
 - Ключ SmailPro/Sonjj: `SONJJ_API_KEY` в `/app/.env` (получить в https://my.sonjj.com → раздел API, оплата кредитами). Сейчас НЕ задан: генераторы Gmail/Outlook/SmailPro отвечают 503 NO_KEY, бесплатный mail.tm работает без ключа.
 - Тесты: `python3 -m pytest tests/api/test_mail_temp.py -q`; тест лимита включается `RUN_TEMP_RATE_LIMIT=1` и только последним.
+
+## Доставка письма во временный ящик (для регрессов, итерация 38)
+- MX домена uberip.com = `in.mail.tm`, порт 25 из пода открыт, приём без авторизации: письмо можно отправить python smtplib напрямую.
+- Готовый тест: `python3 -m pytest tests/api/test_mail_temp_delivery.py -q` (письмо доходит за ~5 с). formsubmit.co НЕ доставляет.

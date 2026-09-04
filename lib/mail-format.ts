@@ -45,8 +45,23 @@ export function readRefresh(): number {
   return REFRESH_OPTIONS.some((o) => o.value === n) ? n : 60
 }
 
-/** Свежая страница поверх уже загруженных: новые письма сверху, флаги обновляются, старые страницы остаются. */
-export function mergeRows<T extends { uid: number }>(fresh: T[], old: T[]): T[] {
+const CODE_TOKEN = /\b(?=[A-Z0-9]*\d)[A-Z0-9]{4,8}\b|\b\d{4,8}\b/g
+const CODE_WORDS = /код|code|otp|pin|пароль|verification|подтвержд/i
+const CODE_ANY = /(?<![\d.,:/-])(\d{4,8})(?![\d.,:/-])/
+
+/** Код подтверждения из письма: сперва токен, рядом с которым стоят слова «код/code/OTP», иначе отдельное 4–8-значное число. */
+export function extractCode(html: string | null, text: string | null): string | null {
+  const raw = `${text ?? ''}\n${(html ?? '').replace(/<(style|script)[\s\S]*?<\/\1>/gi, ' ').replace(/<[^>]+>/g, ' ')}`
+  const body = raw.replace(/&nbsp;|&#160;/gi, ' ').replace(/[\u00a0\u200b]/g, ' ')
+  for (const m of body.matchAll(CODE_TOKEN)) {
+    const before = body.slice(Math.max(0, (m.index ?? 0) - 60), m.index)
+    if (CODE_WORDS.test(before)) return m[0]
+  }
+  const any = body.match(CODE_ANY)
+  return any ? any[1] : null
+}
+
+/** Свежая страница поверх уже загруженных: новые письма сверху, флаги обновляются, старые страницы остаются. */export function mergeRows<T extends { uid: number }>(fresh: T[], old: T[]): T[] {
   if (fresh.length === 0) return fresh
   const minFresh = Math.min(...fresh.map((r) => r.uid))
   return [...fresh, ...old.filter((r) => r.uid < minFresh)]

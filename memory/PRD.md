@@ -1302,3 +1302,9 @@ UX-4 accessibility · LG-4/LG-5 · RM-3.
 - Файлы: `lib/temp-mail.ts`, `lib/temp-mail-route.ts`, `app/ai-api/mail/temp/**` (список/создать, удалить/продлить, входящие, письмо), `components/mail/mail-temp-rail.tsx`, `components/mail/mail-temp-pane.tsx`; раздел «Временные» в рейке экрана «Почта», удаление в два клика.
 - Без ключа Sonjj платные генераторы честно отдают 503 NO_KEY; бесплатный работает. Тесты: `tests/api/test_mail_temp.py` (15), vitest 247/247, отчёт `test_reports/iteration_37.json` (backend 100%, frontend 100%).
 - НЕ ПРОВЕРЕНО: реальная доставка письма во временный ящик (нет исходящего SMTP — Ethereal наружу не отправляет).
+
+### Итерация 38 · фикс временной почты (баги пользователя)
+- Причина «письма не приходят»: mail.tm при `Accept: application/json` отдаёт ПЛОСКИЙ массив, а код читал только `hydra:member`. Заголовок снят, разбор понимает оба формата (`lib/temp-mail-parse.ts`), то же применено к списку доменов.
+- Таймер: вместо голого времени — «обновлено ЧЧ:ММ:СС» + тикающий счётчик «след. проверка через N с» (`mail-temp-next`).
+- Новое: кнопка «Код NNNNNN» (`mail-temp-code`) в письме временного ящика — вытаскивает код подтверждения (`extractCode` в `lib/mail-format.ts`).
+- Проверено вживую: тест-агент нашёл способ доставки (SMTP на MX mail.tm, `in.mail.tm:25` из пода) — письмо дошло за ~5 с, прочитано, код скопирован. Тесты: vitest 258/258, `tests/api/test_mail_temp.py` + `test_mail_temp_delivery.py` 17 passed, отчёт `test_reports/iteration_38.json` (100%/100%).

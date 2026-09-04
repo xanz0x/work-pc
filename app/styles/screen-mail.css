@@ -1163,6 +1163,18 @@
     flex: 0 0 auto;
   }
 
+  .mail-temp-next {
+    font-size: 10px;
+    color: var(--text-3);
+    white-space: nowrap;
+  }
+
+  .mail-temp-code {
+    flex: 0 0 auto;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.06em;
+  }
+
   .mail-rail-sec-r {
     display: inline-flex;
     align-items: center;

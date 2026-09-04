@@ -1,0 +1,35 @@
+{
+  "summary": "Итерация 38 · проверка двух дефектов подмодуля «Временная почта» + регрессы. НАШЁЛСЯ РАБОЧИЙ СПОСОБ ДОСТАВКИ ПИСЬМА: прямое SMTP-соединение с MX домена mail.tm (uberip.com → MX in.mail.tm, порт 25 из пода открыт, авторизация/SPF не нужны). Реальное письмо с кодом доставлено и прочитано в UI. БАГ 1 (таймер) и БАГ 2 (письма не приходят) подтверждены как исправленные. Backend: 17 passed / 1 skipped (tests/api/test_mail_temp.py + новый test_mail_temp_delivery.py). Unit: 11/11 (tests/unit/temp-mail.test.ts). Frontend: все проверенные сценарии зелёные.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": { "ui_bugs": [], "integration_issues": [], "design_issues": [] },
+  "test_report_links": [
+    "/app/tests/api/test_mail_temp_delivery.py",
+    "/app/tests/api/test_mail_temp.py",
+    "/app/tests/unit/temp-mail.test.ts",
+    "/app/test_reports/pytest/iteration_38.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "mtCall действительно уходит без заголовка Accept: application/json (только Authorization + init.headers) — причина БАГа 2 устранена; mtRows корректно разбирает и hydra-объект, и плоский массив (покрыто unit-тестами).",
+    "mtCreate читает домены только из body['hydra:member'] (lib/temp-mail.ts:192) — там заголовок Accept тоже не задан, значит mail.tm может ответить плоским массивом и создание ящика упадёт с «не отдал ни одного рабочего домена». Стоит применить тот же двухформатный разбор, что и в mtRows.",
+    "tempMessage для SmailPro делает лишний полный tempInbox(id) ради subject/from (лишний сетевой запрос + запись temp.json на каждое открытие письма) — можно кэшировать строки списка.",
+    "Мелочь: в mail-temp-pane.tsx счётчик mail-temp-next скрывается в момент синхронизации (syncing), из-за чего в UI на ~1 с остаётся только «проверяем…»; поведение допустимое, но при частых проверках выглядит как мигание."
+  ],
+  "updated_files": ["/app/tests/api/test_mail_temp_delivery.py"],
+  "success_rate": { "backend": "100% (17/17 выполненных, 1 skip — тест лимита выключен флагом)", "frontend": "100% проверенных сценариев" },
+  "seed_data_creation": "Письмо доставлено настоящим SMTP на ящик efc753416b87@uberip.com (id 91030592): тема «TEST_QA verification <hex>» от qa-bot@uberip-qa.example.com с кодом 482913. В том же ящике есть письмо Vercel «317884 is your Vercel sign up code» — на нём проверена кнопка mail-temp-code. Лишний ящик a0f16a5e удалён из UI; осталось 2 ящика mail.tm (91030592 efc753416b87@uberip.com — не удалять, нужен для регрессов; 84968612 f001446911fa@uberip.com, пустой).",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "admin / IceKrymTeam13@ (форма /login: login, password)",
+  "verified_scenarios": [
+    "БАГ 1 · таймер: mail-temp-synced = «обновлено 22:13:38», mail-temp-next тикает 12→11→…→2 (10 уменьшений подряд), затем «проверяем…» и подпись обновляется на «обновлено 22:13:53» — автообновление раз в 15 с реально работает. Во втором прогоне зафиксирован цикл 13→10→сброс на 15 при смене штампа 22:12:06→22:12:14.",
+    "БАГ 2 · доставка: письмо, отправленное напрямую на in.mail.tm:25, появилось в inbox за ~5 с; GET /ai-api/mail/temp/:id/inbox отдаёт rows и box.count == len(rows), secretEnc/accountId/_id в ответе отсутствуют; письмо открывается (тема, отправитель, дата, тело в iframe mail-temp-frame рендерится корректно — HTML Vercel виден полностью).",
+    "Кнопка кода: в открытом письме Vercel есть mail-temp-code с подписью «Код 317884»; клик в headless показал тост «Код: 317884» (буфер недоступен — сработала ветка отката). extractCode покрыт unit-тестами.",
+    "Регресс платных генераторов: mail-temp-kind-gmail / -temp / -outlook → 503 + тост «Генераторы SmailPro выключены: … SONJJ_API_KEY …», число ящиков не меняется (3→3).",
+    "Регресс удаления: mail-temp-row-delete-a0f16a5e в два клика удалил ящик, строка исчезла.",
+    "Регресс переключения: временный → Read QA (подзаголовок «Почта» меняется на qtf2kannuu6gjlxb@ethereal.email) → обратно на временный (efc753416b87@uberip.com). Подзаголовок корректен в обе стороны.",
+    "Регресс обычной почты: 4 письма во «Входящих», письмо открывается (mail-msg-view), звезда false→true, «Не прочитано»→«Прочитано», «Написать» открывает модальное окно поверх (поля От/Кому/Тема/Текст, кнопки Вложить/Отправить)."
+  ],
+  "context_for_next_testing_agent": "СПОСОБ ДОСТАВКИ ПИСЬМА НА mail.tm (нужен для будущих регрессов): MX домена uberip.com = in.mail.tm, порт 25 из пода открыт, приём без авторизации и без SPF-проверки. Готовый тест: /app/tests/api/test_mail_temp_delivery.py (python smtplib → smtp.send_message, затем поллинг /ai-api/mail/temp/:id/inbox до 90 с; на практике письмо доходит за ~5 с). Прогон: `APP_URL=https://compose-speedup.preview.emergentagent.com python3 -m pytest tests/api/test_mail_temp.py tests/api/test_mail_temp_delivery.py -q`. formsubmit.co действительно не доставляет — не тратить время. Онбординг гасится записью localStorage wf.settings.v1={onboarding:{at:1700000000000,...}} на /login до входа. В UI-скриптах не проверять mail-temp-next на строгую монотонность: каждые 15 с значение сбрасывается на 15, надо считать число уменьшений и смену штампа mail-temp-synced. Ящик 91030592 (efc753416b87@uberip.com) содержит два письма с кодами — удобен для проверки mail-temp-code без новой отправки.",
+  "rca_of_the_issue": "БАГ 2: mail.tm при заголовке Accept: application/json отдаёт плоский массив писем, а код читал только body['hydra:member'] → список всегда пуст. Фикс (снятие заголовка + двухформатный разбор в mtRows) подтверждён живой доставкой письма. БАГ 1: подпись показывала только время последней синхронизации без секунд и без обратного отсчёта, поэтому выглядела как замерший таймер; теперь есть «обновлено ЧЧ:ММ:СС» + тикающий mail-temp-next. Остаточный риск того же класса — mtCreate, где домены читаются только из hydra-формата."
+}

@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { IconClock, IconCopy, IconInbox, IconMail, IconRefresh, IconTrash } from '../icons'
 import { isFail, tempApi, TEMP_LABEL, type TempBoxView, type TempFull, type TempRow } from '@/lib/mail-client'
-import { fmtMailDate, fmtMailDateFull } from '@/lib/mail-format'
+import { fmtMailDate, fmtMailDateFull, extractCode } from '@/lib/mail-format'
 import { escapeHtml } from '@/lib/mail-html'
 import { useToast } from '@/lib/vault-store'
 
@@ -133,7 +133,17 @@ export function MailTempPane({ box, onBox, onRemove }: Props) {
   }
 
   const doc = useMemo(() => (msg ? frameDoc(msg) : ''), [msg])
+  const code = useMemo(() => (msg ? extractCode(msg.html, msg.text) : null), [msg])
   const remain = left(box.expiresAt, now)
+
+  async function copyCode(value: string) {
+    try {
+      await navigator.clipboard.writeText(value)
+      flash(`Код ${value} скопирован`)
+    } catch {
+      flash(`Код: ${value}`)
+    }
+  }
 
   return (
     <>
@@ -143,10 +153,15 @@ export function MailTempPane({ box, onBox, onRemove }: Props) {
             <IconInbox width={13} height={13} aria-hidden="true" />
             <span className="label-mono">Временный</span>
             <span className="mail-count num">{rows ? rows.length : ''}</span>
+            {box.lastSyncAt && (
+              <span className="mail-temp-next mono" data-testid="mail-temp-next">
+                {syncing ? 'проверяем…' : `след. проверка через ${Math.max(0, Math.ceil((box.lastSyncAt + REFRESH_MS - now) / 1000))} с`}
+              </span>
+            )}
           </span>
           <span className="mail-inbox-tools">
-            <span className="mail-synced mono" data-testid="mail-temp-synced">
-              {syncing ? 'обновляем…' : box.lastSyncAt ? new Date(box.lastSyncAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : ''}
+            <span className="mail-synced mono" data-testid="mail-temp-synced" title="время последней проверки ящика">
+              {syncing ? 'проверяем…' : box.lastSyncAt ? `обновлено ${new Date(box.lastSyncAt).toLocaleTimeString('ru-RU')}` : ''}
             </span>
             <button className="mail-rail-plus" onClick={() => void load()} disabled={syncing} title="Проверить сейчас" aria-label="Обновить" data-testid="mail-temp-refresh">
               <IconRefresh width={12} height={12} aria-hidden="true" className={syncing ? 'mail-spin' : undefined} />
@@ -221,6 +236,11 @@ export function MailTempPane({ box, onBox, onRemove }: Props) {
             <header className="mail-view-head">
               <div className="mail-view-title">
                 <h2 data-testid="mail-temp-msg-subject">{msg.subject || '(без темы)'}</h2>
+                {code && (
+                  <button className="btn btn-sm btn-primary mail-temp-code" onClick={() => void copyCode(code)} title="Скопировать код подтверждения" data-testid="mail-temp-code">
+                    <IconCopy width={12} height={12} aria-hidden="true" /> Код {code}
+                  </button>
+                )}
               </div>
               <div className="mail-view-meta">
                 <span className="mail-avatar" aria-hidden="true">
