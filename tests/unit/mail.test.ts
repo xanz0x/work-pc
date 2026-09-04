@@ -35,6 +35,14 @@ describe('почта · встроенная таблица провайдеро
     expect(providerByDomain('unknown-domain.io')).toBeNull()
   })
 
+  it('Proton: Bridge по умолчанию и SMTP-токен как альтернатива для своего домена', () => {
+    const p = providerByDomain('pm.me')!
+    expect(p.hint.kind).toBe('bridge')
+    expect(p.alt?.config.smtp).toEqual({ host: 'smtp.protonmail.ch', port: 587, security: 'starttls' })
+    expect(p.alt?.config.imap).toBeNull()
+    expect(p.alt?.hint.url).toContain('proton.me')
+  })
+
   it('шаблон «hotmail.*» матчит только под-домены с точкой', () => {
     expect(matchesDomain('hotmail.*', 'hotmail.de')).toBe(true)
     expect(matchesDomain('hotmail.*', 'hotmailx.de')).toBe(false)

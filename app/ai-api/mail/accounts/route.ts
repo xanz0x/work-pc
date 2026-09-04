@@ -39,6 +39,7 @@ export const POST = withRoute('/ai-api/mail/accounts', async (req: NextRequest) 
       password: typeof body.password === 'string' ? body.password : '',
       user: typeof body.user === 'string' ? body.user : undefined,
       config,
+      source: typeof body.source === 'string' ? body.source : undefined,
     })
     if (!r.ok) {
       const status = r.code === 'INVALID_ARGS' ? 400 : 422

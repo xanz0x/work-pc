@@ -12,8 +12,8 @@ import tls from 'node:tls'
 import { randomBytes } from 'node:crypto'
 import nodemailer from 'nodemailer'
 import { decryptSecret, encryptSecret } from './mail-crypto'
-import { discover, isLoopback, splitEmail, type Source } from './mail-discovery'
-import { providerByDomain, type AuthHint, type Endpoint, type MailConfig } from './mail-providers'
+import { BRIDGE_PORTS, discover, isLoopback, splitEmail, type Source } from './mail-discovery'
+import { PROTON_TOKEN_HINT, providerByDomain, type AuthHint, type Endpoint, type MailConfig } from './mail-providers'
 import { requireUser } from './request-context'
 import { userDir } from './users-server'
 
@@ -28,6 +28,8 @@ export type MailAccount = {
   imap: Endpoint | null
   user: string
   passwordEnc: string
+  /** Ящик через Proton Bridge: разрешены порты 1025/1143 и самоподписанный сертификат Bridge. */
+  bridge: boolean
   discovery: { source: Source | 'manual'; at: number }
   status: { smtp: CheckState; imap: CheckState; checkedAt: number; error?: string }
   createdAt: number
@@ -118,7 +120,7 @@ async function upsert(acc: MailAccount): Promise<void> {
 const HOST_RE = /^(?=.{1,253}$)([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)*[a-z0-9]([a-z0-9-]*[a-z0-9])?$/i
 const PUBLIC_PORTS = new Set([25, 465, 587, 143, 993])
 
-export function normalizeEndpoint(raw: unknown, kind: 'smtp' | 'imap'): Endpoint {
+export function normalizeEndpoint(raw: unknown, kind: 'smtp' | 'imap', bridge = false): Endpoint {
   const o = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
   const host = String(o.host ?? '').trim().toLowerCase()
   const port = Number(o.port)
@@ -127,23 +129,29 @@ export function normalizeEndpoint(raw: unknown, kind: 'smtp' | 'imap'): Endpoint
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new MailError('INVALID_ARGS', `Порт ${kind.toUpperCase()} указан неверно.`)
   if (!security) throw new MailError('INVALID_ARGS', `Шифрование ${kind.toUpperCase()}: ssl, starttls или none.`)
   const loop = isLoopback(host)
-  if (!loop && !PUBLIC_PORTS.has(port)) throw new MailError('INVALID_ARGS', `Порт ${port} не разрешён: допустимы 25, 465, 587, 143, 993.`)
+  if (!loop && !PUBLIC_PORTS.has(port) && !(bridge && BRIDGE_PORTS.has(port))) {
+    throw new MailError('INVALID_ARGS', `Порт ${port} не разрешён: допустимы 25, 465, 587, 143, 993${bridge ? ', для Bridge — 1025, 1143' : ''}.`)
+  }
   if (!loop && security === 'none') throw new MailError('INVALID_ARGS', 'Без шифрования можно подключаться только к 127.0.0.1 (Proton Bridge).')
   return { host, port, security }
 }
 
-export function normalizeConfig(raw: unknown): MailConfig {
+export type ServerConfig = MailConfig & { bridge: boolean }
+
+export function normalizeConfig(raw: unknown): ServerConfig {
   const o = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
-  const smtp = normalizeEndpoint(o.smtp, 'smtp')
-  const imap = o.imap === null || o.imap === undefined || o.imap === '' ? null : normalizeEndpoint(o.imap, 'imap')
-  return { smtp, imap }
+  const bridge = o.bridge === true
+  const smtp = normalizeEndpoint(o.smtp, 'smtp', bridge)
+  const imap = o.imap === null || o.imap === undefined || o.imap === '' ? null : normalizeEndpoint(o.imap, 'imap', bridge)
+  return { smtp, imap, bridge }
 }
 
 /* ---------- проверки соединения ---------- */
 
-const tlsOpts = (host: string) => ({ servername: net.isIP(host) ? undefined : host, rejectUnauthorized: !isLoopback(host) })
+/* Сертификат проверяется всегда, кроме loopback и ящиков Bridge: у Bridge он самоподписанный. */
+const tlsOpts = (host: string, bridge = false) => ({ servername: net.isIP(host) ? undefined : host, rejectUnauthorized: !isLoopback(host) && !bridge })
 
-function transportFor(smtp: Endpoint, user: string, pass: string) {
+function transportFor(smtp: Endpoint, user: string, pass: string, bridge = false) {
   return nodemailer.createTransport({
     host: smtp.host,
     port: smtp.port,
@@ -151,7 +159,7 @@ function transportFor(smtp: Endpoint, user: string, pass: string) {
     requireTLS: smtp.security === 'starttls',
     ignoreTLS: smtp.security === 'none',
     auth: { user, pass },
-    tls: tlsOpts(smtp.host),
+    tls: tlsOpts(smtp.host, bridge),
     connectionTimeout: 10_000,
     greetingTimeout: 10_000,
     socketTimeout: 20_000,
@@ -178,23 +186,29 @@ const MESSAGES: Record<MailErrorCode, string> = {
   SEND_FAILED: 'Письмо не отправлено.',
 }
 
-/** Ошибка соединения с учётом провайдера: Gmail → пароль приложения, Proton → Bridge. */
-function refine(code: MailErrorCode, email: string): MailError {
+/** Ошибка соединения с учётом провайдера: Gmail → пароль приложения, Proton → Bridge или SMTP-токен. */
+function refine(code: MailErrorCode, email: string, host = ''): MailError {
   const p = providerByDomain(splitEmail(email)?.domain ?? '')
+  if (p?.hint.kind === 'bridge' && /protonmail\.ch$/.test(host)) {
+    if (code === 'AUTH_FAILED') return new MailError('AUTH_FAILED', 'Proton отклонил SMTP-токен: проверьте токен, платный план и что адрес — на вашем собственном домене.', PROTON_TOKEN_HINT)
+    return new MailError(code, MESSAGES[code], PROTON_TOKEN_HINT)
+  }
+  if (p?.hint.kind === 'bridge' && code !== 'AUTH_FAILED') {
+    return new MailError('NEEDS_BRIDGE', `${MESSAGES.NEEDS_BRIDGE} Сервер не увидел Bridge по адресу ${host}.`, p.hint)
+  }
   if (p && code === 'AUTH_FAILED') {
     if (p.hint.kind === 'app-password') return new MailError('NEEDS_APP_PASSWORD', `${MESSAGES.AUTH_FAILED} ${p.hint.title}.`, p.hint)
     if (p.hint.kind === 'oauth') return new MailError('NEEDS_OAUTH', MESSAGES.NEEDS_OAUTH, p.hint)
   }
-  if (p?.hint.kind === 'bridge' && code !== 'AUTH_FAILED') return new MailError('NEEDS_BRIDGE', MESSAGES.NEEDS_BRIDGE, p.hint)
   return new MailError(code, MESSAGES[code], p?.hint)
 }
 
-export async function verifySmtp(smtp: Endpoint, user: string, pass: string, email: string): Promise<void> {
-  const t = transportFor(smtp, user, pass)
+export async function verifySmtp(smtp: Endpoint, user: string, pass: string, email: string, bridge = false): Promise<void> {
+  const t = transportFor(smtp, user, pass, bridge)
   try {
     await t.verify()
   } catch (e) {
-    throw refine(classify(e), email)
+    throw refine(classify(e), email, smtp.host)
   } finally {
     t.close()
   }
@@ -203,7 +217,7 @@ export async function verifySmtp(smtp: Endpoint, user: string, pass: string, ema
 const imapQuote = (s: string) => `"${s.replace(/[\\"]/g, (c) => `\\${c}`)}"`
 
 /** Минимальная проверка IMAP: приветствие → (STARTTLS) → LOGIN → LOGOUT. */
-export function verifyImap(imap: Endpoint, user: string, pass: string, email: string, ms = 12_000): Promise<void> {
+export function verifyImap(imap: Endpoint, user: string, pass: string, email: string, bridge = false, ms = 12_000): Promise<void> {
   return new Promise((resolve, reject) => {
     let sock: net.Socket | tls.TLSSocket
     let buf = ''
@@ -214,7 +228,7 @@ export function verifyImap(imap: Endpoint, user: string, pass: string, email: st
       settled = true
       clearTimeout(timer)
       sock?.destroy()
-      reject(refine(code, email))
+      reject(refine(code, email, imap.host))
     }
     const ok = () => {
       if (settled) return
@@ -247,7 +261,7 @@ export function verifyImap(imap: Endpoint, user: string, pass: string, email: st
         if (!/^a0 /i.test(line)) return
         if (!/^a0 OK/i.test(line)) return fail('TLS_FAILED')
         sock.removeAllListeners('data')
-        const upgraded = tls.connect({ socket: sock, ...tlsOpts(imap.host) }, () => {
+        const upgraded = tls.connect({ socket: sock, ...tlsOpts(imap.host, bridge) }, () => {
           stage = 'login'
           upgraded.write(`a1 LOGIN ${imapQuote(user)} ${imapQuote(pass)}\r\n`)
         })
@@ -273,7 +287,7 @@ export function verifyImap(imap: Endpoint, user: string, pass: string, email: st
     }
 
     if (imap.security === 'ssl') {
-      sock = tls.connect({ host: imap.host, port: imap.port, ...tlsOpts(imap.host) })
+      sock = tls.connect({ host: imap.host, port: imap.port, ...tlsOpts(imap.host, bridge) })
       sock.on('error', (e: NodeJS.ErrnoException) => fail(/CERT|certificate|handshake|SSL|TLS/i.test(String(e.code ?? e.message)) ? 'TLS_FAILED' : 'CONNECT_FAILED'))
     } else {
       sock = net.connect({ host: imap.host, port: imap.port })
@@ -289,10 +303,10 @@ export function verifyImap(imap: Endpoint, user: string, pass: string, email: st
 export type Checks = { smtp: CheckState; imap: CheckState; error?: string; code?: MailErrorCode; hint?: AuthHint }
 
 /** SMTP обязан пройти; IMAP проверяется и отмечается, но отправку не блокирует. */
-export async function runChecks(cfg: MailConfig, user: string, pass: string, email: string): Promise<Checks> {
-  const out: Checks = { smtp: 'unknown', imap: cfg.imap ? 'unknown' : 'unknown' }
+export async function runChecks(cfg: ServerConfig, user: string, pass: string, email: string): Promise<Checks> {
+  const out: Checks = { smtp: 'unknown', imap: 'unknown' }
   try {
-    await verifySmtp(cfg.smtp, user, pass, email)
+    await verifySmtp(cfg.smtp, user, pass, email, cfg.bridge)
     out.smtp = 'ok'
   } catch (e) {
     const err = e as MailError
@@ -300,7 +314,7 @@ export async function runChecks(cfg: MailConfig, user: string, pass: string, ema
   }
   if (cfg.imap) {
     try {
-      await verifyImap(cfg.imap, user, pass, email)
+      await verifyImap(cfg.imap, user, pass, email, cfg.bridge)
       out.imap = 'ok'
     } catch (e) {
       const err = e as MailError
@@ -315,7 +329,7 @@ export async function runChecks(cfg: MailConfig, user: string, pass: string, ema
 
 /* ---------- сценарии ---------- */
 
-export type CreateInput = { name: string; email: string; password: string; user?: string; config?: MailConfig | null }
+export type CreateInput = { name: string; email: string; password: string; user?: string; config?: ServerConfig | null; source?: string }
 
 export type CreateResult =
   | { ok: true; account: AccountView; checks: Checks; source: Source | 'manual' }
@@ -327,8 +341,9 @@ export async function createAccount(input: CreateInput): Promise<CreateResult> {
   if (!splitEmail(email)) return { ok: false, code: 'INVALID_ARGS', error: 'Адрес почты указан неверно.', checks: empty }
   if (!input.password) return { ok: false, code: 'INVALID_ARGS', error: 'Введите пароль.', checks: empty }
 
-  let cfg = input.config ?? null
-  let source: Source | 'manual' = 'manual'
+  const SOURCES: (Source | 'manual')[] = ['builtin', 'ispdb', 'autoconfig', 'srv', 'mx', 'autodiscover', 'guess', 'manual']
+  let cfg: ServerConfig | null = input.config ?? null
+  let source: Source | 'manual' = SOURCES.includes(input.source as Source) ? (input.source as Source) : 'manual'
   let user = (input.user ?? '').trim() || email
   let providerId: string | null = providerByDomain(splitEmail(email)!.domain)?.id ?? null
 
@@ -339,7 +354,7 @@ export async function createAccount(input: CreateInput): Promise<CreateResult> {
       const p = providerByDomain(splitEmail(email)!.domain)
       return { ok: false, code: 'NO_CONFIG', error: MESSAGES.NO_CONFIG, hint: p?.hint, checks: empty }
     }
-    cfg = best.config
+    cfg = { ...best.config, bridge: d?.hint.kind === 'bridge' }
     source = best.source
     if (!input.user && best.user) user = best.user
     providerId = best.providerId ?? d?.provider?.id ?? null
@@ -359,6 +374,7 @@ export async function createAccount(input: CreateInput): Promise<CreateResult> {
     imap: cfg.imap,
     user,
     passwordEnc: encryptSecret(input.password),
+    bridge: cfg.bridge,
     discovery: { source, at: Date.now() },
     status: { smtp: checks.smtp, imap: checks.imap, checkedAt: Date.now(), error: checks.error },
     createdAt: Date.now(),
@@ -369,7 +385,7 @@ export async function createAccount(input: CreateInput): Promise<CreateResult> {
   return { ok: true, account: toView(acc), checks, source }
 }
 
-export type UpdateInput = Partial<{ name: string; user: string; password: string; config: MailConfig }>
+export type UpdateInput = Partial<{ name: string; user: string; password: string; config: ServerConfig }>
 
 export async function updateAccount(id: string, patch: UpdateInput): Promise<{ account: AccountView; checks: Checks; saved: boolean } | null> {
   const acc = await getRaw(id)
@@ -381,9 +397,10 @@ export async function updateAccount(id: string, patch: UpdateInput): Promise<{ a
   if (patch.config) {
     next.smtp = patch.config.smtp
     next.imap = patch.config.imap
+    next.bridge = patch.config.bridge
     next.discovery = { source: 'manual', at: Date.now() }
   }
-  const checks = await runChecks({ smtp: next.smtp, imap: next.imap }, next.user, decryptSecret(next.passwordEnc), next.email)
+  const checks = await runChecks({ smtp: next.smtp, imap: next.imap, bridge: next.bridge }, next.user, decryptSecret(next.passwordEnc), next.email)
   /* Новый пароль или хосты, с которыми SMTP не проходит, не сохраняем — старые остаются рабочими. */
   if (checks.smtp !== 'ok') return { account: toView(acc), checks, saved: false }
   next.status = { smtp: checks.smtp, imap: checks.imap, checkedAt: Date.now(), error: checks.error }
@@ -394,7 +411,7 @@ export async function updateAccount(id: string, patch: UpdateInput): Promise<{ a
 export async function testAccount(id: string): Promise<{ account: AccountView; checks: Checks } | null> {
   const acc = await getRaw(id)
   if (!acc) return null
-  const checks = await runChecks({ smtp: acc.smtp, imap: acc.imap }, acc.user, decryptSecret(acc.passwordEnc), acc.email)
+  const checks = await runChecks({ smtp: acc.smtp, imap: acc.imap, bridge: acc.bridge }, acc.user, decryptSecret(acc.passwordEnc), acc.email)
   acc.status = { smtp: checks.smtp, imap: checks.imap, checkedAt: Date.now(), error: checks.error }
   await upsert(acc)
   return { account: toView(acc), checks }
@@ -408,7 +425,7 @@ export const MAX_ATTACH_BYTES = 15 * 1024 * 1024
 export async function sendMail(id: string, msg: SendInput): Promise<{ messageId: string; accepted: number; account: AccountView } | null> {
   const acc = await getRaw(id)
   if (!acc) return null
-  const t = transportFor(acc.smtp, acc.user, decryptSecret(acc.passwordEnc))
+  const t = transportFor(acc.smtp, acc.user, decryptSecret(acc.passwordEnc), acc.bridge)
   try {
     const info = await t.sendMail({
       from: { name: acc.name, address: acc.email },
@@ -430,7 +447,7 @@ export async function sendMail(id: string, msg: SendInput): Promise<{ messageId:
     return { messageId: String(info.messageId ?? ''), accepted: info.accepted?.length ?? msg.to.length + (msg.cc?.length ?? 0), account: toView(acc) }
   } catch (e) {
     const code = classify(e)
-    const err = refine(code, acc.email)
+    const err = refine(code, acc.email, acc.smtp.host)
     acc.status = { ...acc.status, smtp: code === 'AUTH_FAILED' ? 'fail' : acc.status.smtp, checkedAt: Date.now(), error: err.message }
     await upsert(acc)
     throw new MailError(code === 'AUTH_FAILED' ? err.code : 'SEND_FAILED', `${MESSAGES.SEND_FAILED} ${err.message}`, err.hint)

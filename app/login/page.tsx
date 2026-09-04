@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { IconKey, IconLockRound } from '@/components/icons'
+import { MeteorLayer } from '@/components/screen-lock'
 import { LogoWord } from '@/components/screen-lock-logo'
 import { PlanBadge } from '@/components/plan-badge'
 import { KEY_RE, loginProblem, normalizeKey, type PlanRef } from '@/lib/users'
@@ -104,112 +106,139 @@ export default function LoginPage() {
   const canRegister = mode === 'login' || (keyInfo !== null && password.length >= 8 && password === again && login.trim().length >= 3)
 
   return (
-    <main className="login-page">
-      <form className={`login-card panel${mode === 'register' ? ' is-register' : ''}`} onSubmit={submit} data-testid="login-form">
-        <h1 className="login-title" data-testid="login-logo">
-          <LogoWord className="login-logo" />
-        </h1>
-        <p className="login-note">
-          {mode === 'login'
-            ? 'Личный сейф под учётной записью: данные, диалоги и ключи каждого пользователя отделены.'
-            : 'Регистрация только по ключу лицензии: его выдаёт администратор. Ключ определяет тариф и срок доступа.'}
-        </p>
-        <div className="autolock-seg login-mode" role="tablist">
-          <button type="button" role="tab" aria-selected={mode === 'login'} className={mode === 'login' ? 'active' : ''} onClick={() => switchMode('login')} data-testid="login-tab-login">
-            Вход
-          </button>
-          <button type="button" role="tab" aria-selected={mode === 'register'} className={mode === 'register' ? 'active' : ''} onClick={() => switchMode('register')} data-testid="login-tab-register">
-            Регистрация
-          </button>
+    <main className={`lock-screen login-scene${err ? ' has-error' : ''}`} data-testid="login-page">
+      <div className="lock-floor" aria-hidden="true">
+        <i />
+      </div>
+      <MeteorLayer />
+
+      <p className="lock-engrave num">{mode === 'login' ? 'SESSION · ВХОД В УЧЁТНУЮ ЗАПИСЬ' : 'SESSION · РЕГИСТРАЦИЯ ПО КЛЮЧУ'}</p>
+
+      <form className={`lock-card login-card${mode === 'register' ? ' is-register' : ''}`} onSubmit={submit} data-testid="login-form">
+        <i className="lock-edge" aria-hidden="true" />
+        <div className="lock-head">
+          <div className="lock-mark" aria-hidden="true">
+            {mode === 'login' ? <IconLockRound /> : <IconKey />}
+            <i className="lock-pulse" />
+            <i className="lock-pulse p2" />
+          </div>
+          <h1 className="login-title" data-testid="login-logo">
+            <LogoWord className="lock-logo" />
+          </h1>
+          <p className="lock-tagline">local ai workspace · {mode === 'login' ? 'личный сейф под учётной записью' : 'доступ по ключу лицензии'}</p>
         </div>
 
-        {mode === 'register' && (
-          <label className="login-field login-key-field">
-            <span className="label-mono">ключ лицензии</span>
-            <input
-              className={`input input-mono login-key${keyInfo ? ' ok' : keyErr ? ' bad' : ''}`}
-              placeholder="WSX-XXXX-XXXX-XXXX-XXXX"
-              value={key}
-              onChange={(e) => setKey(e.target.value.trim() ? normalizeKey(e.target.value) : '')}
-              onPaste={(e) => {
-                e.preventDefault()
-                setKey(normalizeKey(e.clipboardData.getData('text')))
-              }}
-              autoComplete="off"
-              spellCheck={false}
-              maxLength={23}
-              data-testid="login-key"
-            />
-            <div className="login-key-state" aria-live="polite">
-              {keyBusy && <span className="label-mono">проверяю…</span>}
-              {!keyBusy && keyInfo && (
-                <span className="login-key-ok" data-testid="login-key-plan">
-                  <PlanBadge plan={keyInfo.plan} />
-                  <span>
-                    <b>{keyInfo.days} дн.</b> · {keyInfo.tagline}
-                  </span>
-                </span>
-              )}
-              {!keyBusy && keyErr && (
-                <span className="login-err" role="alert" data-testid="login-key-error">
-                  {keyErr}
-                </span>
-              )}
-            </div>
-          </label>
-        )}
+        <div className="lock-well login-well">
+          <div className="autolock-seg login-mode" role="tablist">
+            <button type="button" role="tab" aria-selected={mode === 'login'} className={mode === 'login' ? 'active' : ''} onClick={() => switchMode('login')} data-testid="login-tab-login">
+              Вход
+            </button>
+            <button type="button" role="tab" aria-selected={mode === 'register'} className={mode === 'register' ? 'active' : ''} onClick={() => switchMode('register')} data-testid="login-tab-register">
+              Регистрация
+            </button>
+          </div>
 
-        <label className="login-field">
-          <span className="label-mono">{mode === 'login' ? 'логин · пусто = администратор' : 'логин'}</span>
-          <input
-            className="input input-mono"
-            type="text"
-            autoComplete="username"
-            autoCapitalize="none"
-            spellCheck={false}
-            ref={loginRef}
-            value={login}
-            onChange={(e) => setLogin(e.target.value.toLowerCase())}
-            maxLength={32}
-            data-testid="login-login"
-          />
-        </label>
-        <label className="login-field">
-          <span className="label-mono">пароль</span>
-          <input
-            className="input input-mono"
-            type="password"
-            autoFocus
-            autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-            ref={passRef}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            data-testid="login-password"
-          />
-        </label>
-        {mode === 'register' && (
+          {mode === 'register' && (
+            <label className="login-field login-key-field">
+              <span className="label-mono">ключ лицензии</span>
+              <input
+                className={`lock-input login-key${keyInfo ? ' ok' : keyErr ? ' bad' : ''}`}
+                placeholder="WSX-XXXX-XXXX-XXXX-XXXX"
+                value={key}
+                onChange={(e) => setKey(e.target.value.trim() ? normalizeKey(e.target.value) : '')}
+                onPaste={(e) => {
+                  e.preventDefault()
+                  setKey(normalizeKey(e.clipboardData.getData('text')))
+                }}
+                autoComplete="off"
+                spellCheck={false}
+                maxLength={23}
+                data-testid="login-key"
+              />
+              <div className="login-key-state" aria-live="polite">
+                {keyBusy && <span className="label-mono">проверяю…</span>}
+                {!keyBusy && keyInfo && (
+                  <span className="login-key-ok" data-testid="login-key-plan">
+                    <PlanBadge plan={keyInfo.plan} />
+                    <span>
+                      <b>{keyInfo.days} дн.</b> · {keyInfo.tagline}
+                    </span>
+                  </span>
+                )}
+                {!keyBusy && keyErr && (
+                  <span className="login-err" role="alert" data-testid="login-key-error">
+                    {keyErr}
+                  </span>
+                )}
+              </div>
+            </label>
+          )}
+
           <label className="login-field">
-            <span className="label-mono">пароль ещё раз</span>
+            <span className="label-mono">{mode === 'login' ? 'логин · пусто = администратор' : 'логин'}</span>
             <input
-              className={`input input-mono${mismatch ? ' bad' : ''}`}
-              type="password"
-              autoComplete="new-password"
-              value={again}
-              onChange={(e) => setAgain(e.target.value)}
-              data-testid="login-password-again"
+              className="lock-input"
+              type="text"
+              autoComplete="username"
+              autoCapitalize="none"
+              spellCheck={false}
+              ref={loginRef}
+              value={login}
+              onChange={(e) => setLogin(e.target.value.toLowerCase())}
+              maxLength={32}
+              data-testid="login-login"
             />
           </label>
-        )}
-        {err ? (
-          <p className="login-err" role="alert" data-testid="login-error">
-            {err}
+          <label className="login-field">
+            <span className="label-mono">пароль</span>
+            <input
+              className="lock-input"
+              type="password"
+              autoFocus
+              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+              ref={passRef}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              data-testid="login-password"
+            />
+          </label>
+          {mode === 'register' && (
+            <label className="login-field">
+              <span className="label-mono">пароль ещё раз</span>
+              <input
+                className={`lock-input${mismatch ? ' bad' : ''}`}
+                type="password"
+                autoComplete="new-password"
+                value={again}
+                onChange={(e) => setAgain(e.target.value)}
+                data-testid="login-password-again"
+              />
+            </label>
+          )}
+
+          <button type="submit" className="lock-submit login-submit" disabled={busy || !canRegister} data-testid="login-submit">
+            {busy ? 'Проверяю…' : mode === 'login' ? 'Войти' : keyInfo ? `Создать аккаунт · ${keyInfo.plan.name}` : 'Создать аккаунт'}
+          </button>
+
+          <p className={`lock-status num${err ? ' err' : ''}`} role={err ? 'alert' : 'status'} data-testid={err ? 'login-error' : undefined}>
+            {err ?? (mode === 'login' ? 'Сессия живёт 12 часов · cookie httpOnly' : 'Ключ выдаёт администратор · определяет тариф и срок')}
           </p>
-        ) : null}
-        <button type="submit" className="btn btn-primary login-submit" disabled={busy || !canRegister} data-testid="login-submit">
-          {busy ? 'Проверяю…' : mode === 'login' ? 'Войти' : keyInfo ? `Создать аккаунт · ${keyInfo.plan.name}` : 'Создать аккаунт'}
-        </button>
-        <p className="login-foot mono">сессия живёт 12 часов · cookie httpOnly</p>
+        </div>
       </form>
+
+      <footer className="lock-statusline num">
+        <span>SESSION</span>
+        <span className="sb-sep ls-aux">·</span>
+        <span className="ls-aux">AES-256</span>
+        <span className="sb-sep ls-aux">·</span>
+        <span className="ls-aux">ДАННЫЕ КАЖДОГО ПОЛЬЗОВАТЕЛЯ ОТДЕЛЕНЫ</span>
+        <span className="ls-grow" />
+        <span className="ls-attempts">{mode === 'login' ? 'ВХОД' : 'РЕГИСТРАЦИЯ'}</span>
+        <span className="sb-sep ls-aux">·</span>
+        <span className="ls-net ls-aux">
+          <i className="net-dot" />ONLINE · 0 УТЕЧЕК
+        </span>
+      </footer>
     </main>
   )
 }

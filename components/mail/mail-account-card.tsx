@@ -53,6 +53,7 @@ export function MailAccountCard({ account: a, active, busy, onPick, onTest, onRe
           <span className="mail-card-top">
             <b className="mail-card-name">{a.name}</b>
             <i className="mail-provider">{providerName(a.provider)}</i>
+            {a.bridge && <i className="mail-provider">Bridge</i>}
             {active && (
               <span className="mail-active-flag">
                 <IconCheck width={10} height={10} aria-hidden="true" /> от кого

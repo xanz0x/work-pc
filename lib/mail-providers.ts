@@ -28,6 +28,17 @@ export type Provider = {
   mx: string[]
   config: MailConfig
   hint: AuthHint
+  /** Альтернативный способ подключения (Proton: SMTP-токен вместо Bridge). */
+  alt?: { id: string; label: string; config: MailConfig; hint: AuthHint }
+}
+
+/** Proton для платных планов со своим доменом: прямой SMTP по токену, без IMAP. */
+export const PROTON_TOKEN_HINT: AuthHint = {
+  kind: 'app-password',
+  title: 'SMTP-токен Proton — для платных планов со своим доменом',
+  text: 'Работает без Bridge: Proton принимает письма напрямую на smtp.protonmail.ch. Нужен платный план (Mail Plus/Professional/Business) и адрес на вашем собственном домене — @proton.me и @pm.me не подходят. Токен создаётся в Settings → IMAP/SMTP → SMTP tokens и показывается один раз. Чтение почты (IMAP) этим способом недоступно.',
+  url: 'https://account.proton.me/u/0/mail/imap-smtp',
+  urlLabel: 'Создать SMTP-токен',
 }
 
 export const PLAIN_HINT: AuthHint = {
@@ -133,9 +144,15 @@ export const PROVIDERS: Provider[] = [
     hint: {
       kind: 'bridge',
       title: 'Proton работает только через Proton Bridge',
-      text: 'У Proton нет публичного IMAP/SMTP. Установите Proton Bridge на этот компьютер, войдите в него и используйте пароль, который выдал Bridge (не пароль аккаунта). Сервер приложения должен работать на той же машине, что и Bridge.',
+      text: 'У Proton нет публичного IMAP/SMTP. Bridge — программа Proton, которая поднимает локальный почтовый сервер (127.0.0.1:1025 SMTP, 127.0.0.1:1143 IMAP) и выдаёт свой пароль — его и вводите, не пароль аккаунта. Сервер WorkSpaceX должен видеть Bridge: работать на том же компьютере либо знать адрес машины с Bridge (ручные настройки).',
       url: 'https://proton.me/mail/bridge',
       urlLabel: 'Скачать Proton Bridge',
+    },
+    alt: {
+      id: 'proton-token',
+      label: 'SMTP-токен · свой домен',
+      config: { smtp: starttls('smtp.protonmail.ch', 587), imap: null },
+      hint: PROTON_TOKEN_HINT,
     },
   },
   {

@@ -1244,3 +1244,22 @@ UX-4 accessibility · LG-4/LG-5 · RM-3.
 - P2: вложения из библиотеки — библиотека хранит только метаданные и текстовый индекс, байтов файлов нет; сейчас вложения с диска.
 - P3 (фаза 4): ИИ поверх почты — сводки, черновики ответов, стикеры из писем. Отправка писем ИИ/по расписанию (пароль доступен серверу).
 - P3: e2e Playwright-сценарий диалога с моком discovery; экспорт/импорт ящиков; тумблер функции `mail` в админке.
+
+## Итерация 32 (2026-06): экран входа в стиле замка + Proton «по-настоящему»
+- **/login** (`app/login/page.tsx`, `@layer wf052 .login-scene` в globals.css): переиспользует сцену экрана блокировки — `lock-screen`
+  (пол-решётка `lock-floor`, метеоры `MeteorLayer` экспортирован из `screen-lock.tsx`), гравировка `lock-engrave`, двухзонная `lock-card`
+  (кольцо-пульс с замком/ключом, `LogoWord`, tagline) и `lock-well` с сегментом Вход/Регистрация, полями `lock-input`, кнопкой `lock-submit`,
+  статусной строкой `lock-status` (ошибка — `login-error`) и футером `lock-statusline`. data-testid сохранены. Мобильный ≤480px — компактный логотип.
+- **Proton**: провайдер получил `alt` — «SMTP-токен · свой домен» (smtp.protonmail.ch:587 STARTTLS, без IMAP, `PROTON_TOKEN_HINT`: платный план +
+  собственный домен, токен в Settings → IMAP/SMTP). Discovery для bridge-провайдера пробует Bridge с сервера (`probeBridge` → `Discovery.bridge
+  {reachable, smtp, imap, serverHost}`) и отдаёт `alt`. Сервер: `ServerConfig.bridge` — разрешает порты 1025/1143 на любом хосте и
+  самоподписанный сертификат Bridge (`tlsOpts(host, bridge)`); `refine()` различает Bridge (NEEDS_BRIDGE с адресом) и токен (AUTH_FAILED с
+  подсказкой про токен/домен); `MailAccount.bridge` хранится, карточка показывает бейдж «Bridge». POST принимает `source` для подписи источника.
+- **UI диалога**: сегмент `mail-mode` (Bridge / SMTP-токен), статус `mail-bridge-status` (найден → зелёный; не найден → варианты: WorkSpaceX
+  на той же машине, `ssh -R 1025/1143`, адрес машины с Bridge в ручных настройках, либо токен), предупреждение `mail-own-domain-warning`
+  для @proton.me/@pm.me в режиме токена, подписи пароля «Пароль из Proton Bridge» / «SMTP-токен».
+- Приёмка: vitest 234/234, tsc 0, eslint 0 ошибок; тест-агент iteration_32 — pytest `test_mail.py` 20/20 + `test_mail_proton_iter32.py` 6/6,
+  UI login + Proton PASS; замечание про логотип на 390px исправлено (медиазапрос ≤480px).
+### Бэклог
+- Proton: живая проверка с реальным Bridge/токеном (в среде нет Proton-аккаунта); фаза 3 — OAuth2 Google/Microsoft.
+- Общий таймаут discovery вместо per-probe (замечание тест-агента), правка ящика из карточки, чтение почты (фаза 2).

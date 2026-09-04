@@ -12,7 +12,7 @@
    scripts/check-css-split.py).
    ============================================================ */
 
-@layer wf001, wf002, wf003, wf004, wf005, wf006, wf007, wf008, wf009, wf010, wf011, wf012, wf013, wf014, wf015, wf016, wf017, wf018, wf019, wf020, wf021, wf022, wf023, wf024, wf025, wf026, wf027, wf028, wf029, wf030, wf031, wf032, wf033, wf034, wf035, wf036, wf037, wf038, wf039, wf040, wf041, wf042, wf043, wf044, wf045, wf046, wf047, wf048, wf049, wf050, wf051;
+@layer wf001, wf002, wf003, wf004, wf005, wf006, wf007, wf008, wf009, wf010, wf011, wf012, wf013, wf014, wf015, wf016, wf017, wf018, wf019, wf020, wf021, wf022, wf023, wf024, wf025, wf026, wf027, wf028, wf029, wf030, wf031, wf032, wf033, wf034, wf035, wf036, wf037, wf038, wf039, wf040, wf041, wf042, wf043, wf044, wf045, wf046, wf047, wf048, wf049, wf050, wf051, wf052;
 
 @theme inline {
   --color-background: var(--bg);
@@ -7389,5 +7389,126 @@
      ============================================================ */
   .app.nav-animating .cosmos > i {
     animation-play-state: paused;
+  }
+}
+
+@layer wf052 {
+  /* ============================================================
+     LOGIN · сцена входа в языке экрана замка: пол-решётка, метеоры,
+     гравировка, двухзонная карточка (кольцо-пульс / колодец полей).
+     ============================================================ */
+  .login-scene .lock-card {
+    width: min(404px, calc(100vw - 48px));
+    padding: 0;
+    overflow: hidden;
+  }
+  .login-scene .login-title {
+    margin: 0;
+    font-size: inherit;
+  }
+  .login-scene .login-well {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    text-align: left;
+    padding: 18px 24px 18px;
+  }
+  .login-scene .login-mode {
+    margin-bottom: 2px;
+    border-radius: 6px;
+    background: var(--bg-2);
+  }
+  .login-scene .login-mode button {
+    height: 30px;
+    border-radius: 4px;
+  }
+  .login-scene .login-mode button.active {
+    background: var(--raise-1);
+    box-shadow: inset 0 0 0 1px var(--border-2);
+  }
+  .login-scene .login-field {
+    gap: 6px;
+  }
+  .login-scene .login-field .label-mono {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+  .login-scene .lock-input {
+    width: 100%;
+    height: 42px;
+    font-family: var(--font-plex-mono), 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 13px;
+    letter-spacing: 0.02em;
+    transition: border-color 0.15s ease;
+  }
+  .login-scene .lock-input.ok {
+    border-color: var(--accent-line);
+  }
+  .login-scene .lock-input.bad {
+    border-color: rgba(229, 100, 92, 0.55);
+  }
+  .login-scene .login-key-state {
+    min-height: 16px;
+    font-size: 11.5px;
+    color: var(--text-2);
+  }
+  .login-scene .login-key-ok {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .login-scene .login-err {
+    font-size: 11.5px;
+  }
+  .login-scene .login-submit {
+    height: 42px;
+    margin-top: 2px;
+    font-weight: 560;
+  }
+  .login-scene .lock-status {
+    margin-top: 0;
+    text-align: center;
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+  .login-scene .lock-status.err {
+    color: var(--danger);
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 12px;
+  }
+  .login-scene .lock-well,
+  .login-scene .login-submit,
+  .login-scene .login-mode {
+    animation: rise-in 0.44s var(--ease-quart) both 0.2s;
+  }
+  @media (max-width: 768px) {
+    .login-scene .lock-logo {
+      display: inline;
+      width: auto;
+      height: auto;
+      background: none;
+      border: 0;
+      font-size: 18px;
+      letter-spacing: 0.1em;
+      animation: none;
+    }
+    .login-scene .lock-logo::after {
+      content: none;
+    }
+  }
+  @media (max-width: 480px) {
+    .login-scene .lock-card {
+      width: calc(100vw - 24px);
+    }
+    .login-scene .lock-head {
+      padding: 24px 18px 16px;
+    }
+    .login-scene .login-well {
+      padding: 16px 16px 16px;
+    }
   }
 }

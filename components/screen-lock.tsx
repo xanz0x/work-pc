@@ -48,7 +48,7 @@ const METEOR_LAYOUT: MeteorStyle[] = [
   { left: '88%', delay: '5.9s', dur: '6.3s' },
 ]
 
-function MeteorLayer() {
+export function MeteorLayer() {
   return (
     <div className="lock-meteors" aria-hidden="true">
       {METEOR_LAYOUT.map((m, i) => (

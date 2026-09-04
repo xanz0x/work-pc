@@ -8,6 +8,7 @@
 
 import { promises as dns } from 'node:dns'
 import net from 'node:net'
+import os from 'node:os'
 import tls from 'node:tls'
 import {
   PLAIN_HINT,
@@ -37,6 +38,10 @@ export type Discovery = {
   provider: { id: string; name: string } | null
   hint: AuthHint
   candidates: Candidate[]
+  /** Проверка Bridge с сервера: виден ли локальный почтовый сервер Proton. */
+  bridge?: { reachable: boolean; smtp: boolean; imap: boolean; serverHost: string }
+  /** Альтернативный способ подключения провайдера (Proton: SMTP-токен). */
+  alt?: { id: string; label: string; config: MailConfig; hint: AuthHint }
   ms: number
 }
 
@@ -183,10 +188,12 @@ async function fetchText(url: string, ms: number): Promise<string | null> {
 }
 
 const ALLOWED_PORTS = new Set([25, 465, 587, 143, 993])
+/** Порты Proton Bridge: разрешены только для проб Bridge и ящиков с флагом bridge. */
+export const BRIDGE_PORTS = new Set([1025, 1143])
 
-/** TCP-проба: TLS-handshake для 465/993, баннер для 587/143. */
+/** TCP-проба: TLS-handshake для 465/993, баннер для 587/143 и портов Bridge. */
 export function probe(host: string, port: number, ms = 3000): Promise<boolean> {
-  if (!ALLOWED_PORTS.has(port)) return Promise.resolve(false)
+  if (!ALLOWED_PORTS.has(port) && !BRIDGE_PORTS.has(port)) return Promise.resolve(false)
   return new Promise((resolve) => {
     let done = false
     const finish = (ok: boolean) => {
@@ -317,6 +324,15 @@ async function fromGuess(domain: string): Promise<Candidate | null> {
 
 /* ---------- цепочка ---------- */
 
+/** Виден ли Proton Bridge с сервера: баннеры SMTP «220» и IMAP «* OK» на loopback. */
+export async function probeBridge(cfg: MailConfig): Promise<NonNullable<Discovery['bridge']>> {
+  const [smtp, imap] = await Promise.all([
+    probe(cfg.smtp.host, cfg.smtp.port, 1500),
+    cfg.imap ? probe(cfg.imap.host, cfg.imap.port, 1500) : Promise.resolve(false),
+  ])
+  return { reachable: smtp, smtp, imap, serverHost: os.hostname() }
+}
+
 export async function discover(emailRaw: string): Promise<Discovery | null> {
   const t0 = Date.now()
   const parts = splitEmail(emailRaw)
@@ -334,9 +350,13 @@ export async function discover(emailRaw: string): Promise<Discovery | null> {
 
   const builtin = providerByDomain(domain)
   if (builtin) {
-    return done(builtin, [
+    const d = done(builtin, [
       { source: 'builtin', confidence: CONFIDENCE.builtin, providerId: builtin.id, config: builtin.config, user: email },
     ])
+    if (builtin.alt) d.alt = builtin.alt
+    if (builtin.hint.kind === 'bridge') d.bridge = await probeBridge(builtin.config)
+    d.ms = Date.now() - t0
+    return d
   }
 
   const [ispdb, autoconfig, srv, mx] = await Promise.all([

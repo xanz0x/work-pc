@@ -664,6 +664,88 @@
     fill: none;
   }
 
+  .mail-mode {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    padding: 3px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg-2);
+  }
+
+  .mail-mode button {
+    height: 30px;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text-3);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 560;
+    cursor: pointer;
+    transition:
+      background-color 150ms ease,
+      color 150ms ease;
+  }
+
+  .mail-mode button:hover {
+    color: var(--text);
+  }
+
+  .mail-mode button.active {
+    background: var(--raise-1);
+    color: var(--text);
+    box-shadow: inset 0 0 0 1px var(--border-2);
+  }
+
+  .mail-bridge {
+    display: flex;
+    gap: 9px;
+    padding: 10px 12px;
+    border-radius: var(--r);
+    border: 1px solid var(--border-2);
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--text-2);
+    animation: mail-in 200ms ease-out both;
+  }
+
+  .mail-bridge > svg {
+    flex: 0 0 12px;
+    margin-top: 3px;
+    stroke: currentColor;
+    fill: none;
+  }
+
+  .mail-bridge b {
+    color: var(--text);
+  }
+
+  .mail-bridge code {
+    font-family: var(--font-plex-mono), 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    padding: 1px 5px;
+    border-radius: 2px;
+    background: var(--bg-2);
+    color: var(--text);
+    white-space: nowrap;
+  }
+
+  .mail-bridge.st-ok {
+    color: var(--ok);
+    border-color: rgba(76, 195, 138, 0.35);
+    background: rgba(76, 195, 138, 0.06);
+  }
+
+  .mail-bridge.st-warn {
+    border-color: rgba(217, 161, 59, 0.4);
+    background: rgba(217, 161, 59, 0.06);
+  }
+
+  .mail-bridge.st-warn > svg {
+    stroke: var(--warn);
+  }
+
   .mail-manual-toggle {
     align-self: flex-start;
     background: none;

@@ -14,6 +14,7 @@ export type AccountView = {
   smtp: Endpoint
   imap: Endpoint | null
   user: string
+  bridge?: boolean
   discovery: { source: string; at: number }
   status: { smtp: CheckState; imap: CheckState; checkedAt: number; error?: string }
   createdAt: number
@@ -29,10 +30,14 @@ export type Discovery = {
   provider: { id: string; name: string } | null
   hint: AuthHint
   candidates: Candidate[]
+  bridge?: { reachable: boolean; smtp: boolean; imap: boolean; serverHost: string }
+  alt?: { id: string; label: string; config: MailConfig; hint: AuthHint }
   ms: number
 }
 
 export type Checks = { smtp: CheckState; imap: CheckState; error?: string; code?: string; hint?: AuthHint }
+
+export type ClientConfig = MailConfig & { bridge?: boolean }
 
 export type ApiFail = { ok: false; code: string; error: string; hint?: AuthHint; checks?: Checks; candidate?: MailConfig; retryAfter?: number }
 
@@ -77,9 +82,9 @@ export type Attachment = { name: string; type: string; dataBase64: string; size:
 export const mailApi = {
   discover: (email: string) => call<Discovery>('/ai-api/mail/discover', { method: 'POST', body: JSON.stringify({ email }) }),
   list: () => call<{ enabled: boolean; accounts: AccountView[] }>('/ai-api/mail/accounts'),
-  create: (body: { name: string; email: string; password: string; user?: string; config?: MailConfig | null }) =>
+  create: (body: { name: string; email: string; password: string; user?: string; config?: ClientConfig | null; source?: string }) =>
     call<CreateOk>('/ai-api/mail/accounts', { method: 'POST', body: JSON.stringify(body) }),
-  update: (id: string, body: Partial<{ name: string; user: string; password: string; config: MailConfig }>) =>
+  update: (id: string, body: Partial<{ name: string; user: string; password: string; config: ClientConfig }>) =>
     call<{ account: AccountView; checks: Checks }>(`/ai-api/mail/accounts/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
   remove: (id: string) => call<{ ok: true }>(`/ai-api/mail/accounts/${id}`, { method: 'DELETE' }),
   test: (id: string) => call<{ account: AccountView; checks: Checks }>(`/ai-api/mail/accounts/${id}/test`, { method: 'POST' }),

@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from 'react'
 import { DialogShell } from '../dialog-shell'
 import { IconAlertTri, IconCheck, IconClose, IconExternal, IconRefresh } from '../icons'
 import { logJournal } from '@/lib/journal'
-import { SOURCE_LABEL, isFail, mailApi, type AccountView, type AuthHint, type Discovery, type MailConfig } from '@/lib/mail-client'
+import { SOURCE_LABEL, isFail, mailApi, type AccountView, type AuthHint, type ClientConfig, type Discovery, type MailConfig } from '@/lib/mail-client'
 import { SECURITY_LABEL, endpointLabel, type Endpoint, type Security } from '@/lib/mail-providers'
 
 type Step = 'idle' | 'run' | 'ok' | 'fail' | 'skip'
@@ -85,6 +85,8 @@ export function MailAddDialog({ onClose, onAdded }: { onClose: () => void; onAdd
   const [disc, setDisc] = useState<Discovery | null>(null)
   const [discState, setDiscState] = useState<'idle' | 'loading' | 'done' | 'none' | 'error'>('idle')
   const [manual, setManual] = useState(false)
+  /* Proton: Bridge (по умолчанию) или прямой SMTP-токен для своего домена. */
+  const [altMode, setAltMode] = useState(false)
   const [smtp, setSmtp] = useState<EpFields>(epToFields(null))
   const [imap, setImap] = useState<EpFields | null>(epToFields(null))
   const [phase, setPhase] = useState<'form' | 'checking' | 'done' | 'failed'>('form')
@@ -107,6 +109,7 @@ export function MailAddDialog({ onClose, onAdded }: { onClose: () => void; onAdd
         return
       }
       setDisc(r)
+      setAltMode(false)
       const best = r.candidates[0]
       setDiscState(best ? 'done' : 'none')
       if (best) {
@@ -119,7 +122,24 @@ export function MailAddDialog({ onClose, onAdded }: { onClose: () => void; onAdd
   }, [email])
 
   const best = disc?.candidates[0] ?? null
-  const hint = disc?.hint ?? null
+  const alt = disc?.alt ?? null
+  const useAlt = altMode && alt !== null
+  const hint = useAlt ? alt.hint : disc?.hint ?? null
+  const isBridge = !useAlt && disc?.hint.kind === 'bridge'
+  const ownDomainNeeded = useAlt && /(^|\.)(proton\.me|pm\.me|protonmail\.com|protonmail\.ch)$/.test(domainOf(email))
+  const effective: ClientConfig | null = useAlt ? alt.config : best ? { ...best.config, bridge: isBridge } : null
+
+  function pickMode(toAlt: boolean) {
+    setAltMode(toAlt)
+    const cfg = toAlt ? alt?.config : best?.config
+    if (cfg) {
+      setSmtp(epToFields(cfg.smtp))
+      setImap(cfg.imap ? epToFields(cfg.imap) : null)
+    }
+    setErr(null)
+    setPhase('form')
+    setSteps(STEPS_IDLE)
+  }
   const oauthBlocked = hint?.kind === 'oauth' && !manual
   const canSubmit = phase !== 'checking' && EMAIL_RE.test(email.trim()) && password.length > 0 && !oauthBlocked && (!manual || (smtp.host.trim() && smtp.port))
 
@@ -138,8 +158,12 @@ export function MailAddDialog({ onClose, onAdded }: { onClose: () => void; onAdd
     setErr(null)
     setPhase('checking')
     setSteps({ discover: manual ? 'skip' : best ? 'ok' : 'run', smtp: 'run', imap: 'idle' })
-    const config: MailConfig | null = manual ? { smtp: fieldsToEp(smtp), imap: imap ? fieldsToEp(imap) : null } : null
-    const r = await mailApi.create({ name, email: email.trim(), password, user: login.trim() || undefined, config })
+    const config: ClientConfig | null = manual
+      ? { smtp: fieldsToEp(smtp), imap: imap ? fieldsToEp(imap) : null, bridge: isBridge }
+      : useAlt
+        ? { ...alt.config, bridge: false }
+        : null
+    const r = await mailApi.create({ name, email: email.trim(), password, user: login.trim() || undefined, config, source: !manual && useAlt ? 'builtin' : undefined })
     if (isFail(r)) {
       const c = r.checks
       setSteps({
@@ -168,7 +192,9 @@ export function MailAddDialog({ onClose, onAdded }: { onClose: () => void; onAdd
     discState === 'loading'
       ? `Ищем настройки для ${domainOf(email)}…`
       : discState === 'done' && best
-        ? `${endpointLabel(best.config.smtp)} · ${best.config.imap ? endpointLabel(best.config.imap) : 'IMAP не найден'} · источник: ${SOURCE_LABEL[best.source] ?? best.source}`
+        ? useAlt
+          ? `${endpointLabel(alt.config.smtp)} · без IMAP · источник: встроенный (SMTP-токен)`
+          : `${endpointLabel(best.config.smtp)} · ${best.config.imap ? endpointLabel(best.config.imap) : 'IMAP не найден'} · источник: ${SOURCE_LABEL[best.source] ?? best.source}`
         : discState === 'none'
           ? `Настройки для ${domainOf(email)} не нашлись — укажите хосты вручную`
           : discState === 'error'
@@ -205,14 +231,55 @@ export function MailAddDialog({ onClose, onAdded }: { onClose: () => void; onAdd
           {disc?.provider && <i className="mail-provider">{disc.provider.name}</i>}
         </div>
 
+        {alt && disc?.provider && (
+          <div className="mail-mode" role="radiogroup" aria-label="Способ подключения" data-testid="mail-mode">
+            <button type="button" role="radio" aria-checked={!useAlt} className={!useAlt ? 'active' : ''} onClick={() => pickMode(false)} data-testid="mail-mode-bridge">
+              Proton Bridge
+            </button>
+            <button type="button" role="radio" aria-checked={useAlt} className={useAlt ? 'active' : ''} onClick={() => pickMode(true)} data-testid="mail-mode-alt">
+              {alt.label}
+            </button>
+          </div>
+        )}
+
         {hint && hint.kind !== 'plain' && <HintPlaque hint={hint} testId="mail-auth-hint" />}
 
+        {isBridge && disc?.bridge && (
+          <div className={`mail-bridge st-${disc.bridge.reachable ? 'ok' : 'warn'}`} role="status" data-testid="mail-bridge-status">
+            {disc.bridge.reachable ? (
+              <>
+                <IconCheck width={12} height={12} aria-hidden="true" />
+                <span>
+                  Bridge найден на сервере: SMTP {best ? endpointLabel(best.config.smtp) : ''} ✓{disc.bridge.imap ? ` · IMAP ${best?.config.imap ? endpointLabel(best.config.imap) : ''} ✓` : ' · IMAP не отвечает'}. Введите пароль из окна Bridge.
+                </span>
+              </>
+            ) : (
+              <>
+                <IconAlertTri width={12} height={12} aria-hidden="true" />
+                <span>
+                  <b>Bridge на сервере «{disc.bridge.serverHost}» не найден.</b> Bridge слушает только свой компьютер (127.0.0.1), а письма отправляет сервер WorkSpaceX.
+                  Варианты: запустить WorkSpaceX на том же компьютере, где стоит Bridge; пробросить Bridge на сервер (например, <code>ssh -R 1025:127.0.0.1:1025 -R 1143:127.0.0.1:1143</code>) или указать адрес машины с Bridge в ручных настройках — порты 1025/1143 и его самоподписанный сертификат принимаются; либо переключиться на «{alt?.label}».
+                </span>
+              </>
+            )}
+          </div>
+        )}
+
+        {ownDomainNeeded && (
+          <div className="mail-bridge st-warn" role="status" data-testid="mail-own-domain-warning">
+            <IconAlertTri width={12} height={12} aria-hidden="true" />
+            <span>
+              Для SMTP-токена нужен адрес на <b>вашем собственном домене</b>, подключённом к Proton. Адрес @{domainOf(email)} этим способом отправлять не может — используйте Bridge.
+            </span>
+          </div>
+        )}
+
         <label className="mail-field">
-          <span className="label-mono">{hint?.kind === 'app-password' ? 'Пароль приложения' : hint?.kind === 'bridge' ? 'Пароль из Proton Bridge' : 'Пароль'}</span>
+          <span className="label-mono">{useAlt ? 'SMTP-токен' : hint?.kind === 'app-password' ? 'Пароль приложения' : hint?.kind === 'bridge' ? 'Пароль из Proton Bridge' : 'Пароль'}</span>
           <input className="mcp-input mono" type="password" value={password} autoComplete="new-password" onChange={(e) => setPassword(e.target.value)} data-testid="mail-password" />
         </label>
 
-        <button className="mail-manual-toggle" onClick={() => (manual ? setManual(false) : prefillManual(best?.config ?? null))} aria-expanded={manual} data-testid="mail-manual-toggle">
+        <button className="mail-manual-toggle" onClick={() => (manual ? setManual(false) : prefillManual(effective))} aria-expanded={manual} data-testid="mail-manual-toggle">
           {manual ? 'Скрыть ручные настройки' : 'Настроить вручную'}
         </button>
 
@@ -224,7 +291,9 @@ export function MailAddDialog({ onClose, onAdded }: { onClose: () => void; onAdd
             </label>
             <EndpointFields id="smtp" label="SMTP" value={smtp} onChange={(v) => v && setSmtp(v)} />
             <EndpointFields id="imap" label="IMAP" value={imap} onChange={setImap} optional />
-            <p className="setting-note">Без шифрования — только для 127.0.0.1 (Proton Bridge). Разрешённые порты: 25, 465, 587, 143, 993.</p>
+            <p className="setting-note">
+              Без шифрования — только для 127.0.0.1. Разрешённые порты: 25, 465, 587, 143, 993{isBridge ? '; для Bridge — ещё 1025 и 1143, сертификат Bridge принимается' : ''}.
+            </p>
           </div>
         )}
 
@@ -251,7 +320,7 @@ export function MailAddDialog({ onClose, onAdded }: { onClose: () => void; onAdd
             <b>{err.error}</b>
             {err.hint && err.hint.kind !== 'plain' && err.hint.kind !== hint?.kind && <HintPlaque hint={err.hint} testId="mail-error-hint" />}
             {!manual && err.code !== 'RATE_LIMITED' && (
-              <button className="btn btn-sm btn-ghost" onClick={() => prefillManual(best?.config ?? null)} data-testid="mail-error-manual">
+              <button className="btn btn-sm btn-ghost" onClick={() => prefillManual(effective)} data-testid="mail-error-manual">
                 Настроить вручную
               </button>
             )}

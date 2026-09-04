@@ -1,0 +1,33 @@
+{
+  "summary": "Итерация 32 · протестированы (1) новый lock-style /login и (2) Proton flows (Bridge + SMTP-токен) на бэкенде и во фронте, плюс регресс test_mail.py (20/20 PASS). Написан отдельный pytest /app/tests/api/test_mail_proton_iter32.py (6 тестов, 6/6 PASS): discover @proton.me → provider proton, hint.kind='bridge', candidates[0]=builtin 127.0.0.1:1025/1143, bridge={reachable:false,smtp:false,imap:false,serverHost:'agent-env-...'}, alt={id:proton-token, config.smtp smtp.protonmail.ch:587 starttls, config.imap:null}; для gmail — ни bridge, ни alt; POST /ai-api/mail/accounts {email:@proton.me,password:p} без config → 422 NEEDS_BRIDGE, body содержит 127.0.0.1; с config smtp.protonmail.ch:587 starttls + bridge:false + password:'bad' → 422 AUTH_FAILED (hint про SMTP-токен); config с портами 1025/1143 БЕЗ bridge → 400 INVALID_ARGS; те же 1025/1143 С bridge:true → пропускает валидацию, 422 NEEDS_BRIDGE/CONNECT_FAILED (за ~2-10 s). UI (1440x900): login-page имеет class 'lock-screen login-scene', engraving 'SESSION · ВХОД В УЧЁТНУЮ ЗАПИСЬ', logo 'WORKSPACEX', tabs login-tab-login/register, поля login-login/login-password, submit 'Войти'. Wrong password → login-error 'Логин или пароль не подошли.'. Register tab → engraving меняется на 'РЕГИСТРАЦИЯ ПО КЛЮЧУ', поля login-key/login-password-again появляются, submit disabled без ключа. admin/IceKrymTeam13@ → редирект на /, app-shell виден. Мобильный 390x800: карточка занимает всю ширину, но логотип WORKSPACEX упирается в правый край и обрезается слева (виден как 'KSPACEX' + зелёная 'X'). UI-диалог Proton (после skip onboarding через localStorage): mail-discover-status='127.0.0.1:1025 · 127.0.0.1:1143 · источник: встроенный', mail-mode с mail-mode-bridge (class active) и mail-mode-alt ('SMTP-токен · свой домен'), mail-auth-hint 'Proton работает только через Proton Bridge', mail-bridge-status class 'mail-bridge st-warn' с текстом 'Bridge на сервере «...» не найден. ... ssh -R 1025:127.0.0.1:1025 -R 1143:127.0.0.1:1143 ...', label 'Пароль из Proton Bridge' присутствует; submit 'x' → mail-add-error 'Proton доступен только через Proton Bridge на этой машине. Сервер не увидел Bridge по адресу 127.0.0.1.' (~1.2s). Переключение на mail-mode-alt: hint меняется на 'SMTP-токен Proton — для платных планов со своим доменом', ссылка 'Создать SMTP-токен' видна, mail-own-domain-warning виден с текстом про @proton.me и рекомендацией Bridge, mail-discover-status → 'smtp.protonmail.ch:587 · без IMAP · источник: встроенный (SMTP-токен)'. submit 'badtoken' → mail-add-error 'Proton отклонил SMTP-токен: проверьте токен, платный план и что адрес — на вашем собственном домене.' (~6s). Функциональных дефектов не найдено. Единственная UI-мелочь — обрезка логотипа на 390px.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/login на 390x800 (мобильный)", "issues": ["Логотип 'WORKSPACEX' в шапке карточки шире карточки — видна только правая часть 'KSPACEX', левая обрезана. Нужен либо меньший font-size / letter-spacing на мобилке, либо перенос."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/tests/api/test_mail.py",
+    "/app/tests/api/test_mail_proton_iter32.py",
+    "/app/test_reports/pytest/iteration_32_mail.xml",
+    "/app/test_reports/pytest/iteration_32_proton.xml"
+  ],
+  "action_items": [
+    "На /login при ширине <=390px уменьшить размер логотипа WORKSPACEX (или letter-spacing), чтобы он полностью помещался в карточку."
+  ],
+  "critical_code_review_comments": [
+    "mail-discovery.ts:probe() — при таймауте 1500 ms и последовательных пробах Proton bridge на серверах, где нет loopback SMTP, discover будет упираться в ~3 s ожидания даже когда сразу ясно, что 127.0.0.1:1025 закрыт (ECONNREFUSED приходит мгновенно, но таймер 1.5s всё равно устанавливается). Уже сейчас Promise.all(probe smtp, probe imap) быстро завершается по 'error', но при добавлении новых loopback-проверок лучше выйти на общий таймаут вместо per-probe.",
+    "mail-providers.ts alt для Proton — только один провайдер имеет 'alt', но UI mail-mode рендерится condicionally. Стоит зафиксировать в комментарии, что segmented mail-mode появляется только когда провайдер имеет alt (сейчас единственный проверяемый invariant в тестах — Proton). Иначе при добавлении второго провайдера с alt легко забыть проверить, что UI/бэкенд обрабатывают выбор."
+  ],
+  "updated_files": [
+    "/app/tests/api/test_mail_proton_iter32.py"
+  ],
+  "success_rate": {"backend": "100% (26/26 = 20 регресс + 6 новых)", "frontend": "100% (все требуемые проверки login + Proton bridge/alt пройдены; 1 minor design nit на мобилке)"},
+  "test_credentials": "admin / IceKrymTeam13@ ; ethereal: dzzbuk33bcyzyoqm@ethereal.email / 22FNUDY5JhDHu75uaE",
+  "seed_data_creation": "Никаких ящиков не создавалось (Proton-сценарии заведомо ошибочные, до записи в БД не доходят). Регресс test_mail.py сам создаёт и удаляет свои временные ethereal-ящики.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Новый файл /app/tests/api/test_mail_proton_iter32.py требует APP_URL=https://mailbox-provisioner.preview.emergentagent.com. NEEDS_BRIDGE возвращается быстро (~1s), потому что probeBridge на agent-env сразу видит ECONNREFUSED. AUTH_FAILED через smtp.protonmail.ch:587 занимает 2-6 s (реальный SMTP AUTH). Порт 1025/1143 разрешён нормализацией только при config.bridge:true — в POST /ai-api/mail/accounts надо явно передавать этот флаг. На /login при <=390px есть design nit с обрезанием логотипа."
+}
