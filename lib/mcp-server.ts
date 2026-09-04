@@ -247,6 +247,45 @@ export async function revokeToken(owner: Owner, id: string): Promise<boolean> {
   return true
 }
 
+/** Стирает запись токена целиком (в отличие от отзыва, который её оставляет). */
+export async function deleteToken(owner: Owner, id: string): Promise<boolean> {
+  await load(owner)
+  const rec = G.tokens.find((t) => t.id === id && t.owner === owner)
+  if (!rec) return false
+  G.tokens = G.tokens.filter((t) => t !== rec)
+  await saveTokens()
+  await audit(owner, {
+    kind: 'token-revoked',
+    tokenId: id,
+    tokenName: rec.name,
+    tool: null,
+    ok: true,
+    detail: rec.revokedAt
+      ? 'Запись отозванного токена удалена из списка'
+      : 'Токен удалён владельцем: запись стёрта, дальнейшие вызовы отклоняются',
+  })
+  return true
+}
+
+/** Убирает все отозванные и истёкшие токены владельца. Возвращает их число. */
+export async function purgeInactiveTokens(owner: Owner): Promise<number> {
+  await load(owner)
+  const now = Date.now()
+  const gone = G.tokens.filter((t) => t.owner === owner && (t.revokedAt || t.expiresAt <= now))
+  if (gone.length === 0) return 0
+  G.tokens = G.tokens.filter((t) => !gone.includes(t))
+  await saveTokens()
+  await audit(owner, {
+    kind: 'token-revoked',
+    tokenId: gone[0].id,
+    tokenName: gone.length === 1 ? gone[0].name : `${gone.length} токенов`,
+    tool: null,
+    ok: true,
+    detail: `Список очищен: удалено неактивных токенов — ${gone.length}`,
+  })
+  return gone.length
+}
+
 export type AuthResult =
   | { ok: true; token: OwnedToken }
   | { ok: false; code: 'TOKEN_MISSING' | 'TOKEN_INVALID' | 'TOKEN_EXPIRED' | 'TOKEN_REVOKED' }

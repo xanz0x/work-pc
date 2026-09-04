@@ -1205,3 +1205,10 @@ UX-4 accessibility · LG-4/LG-5 · RM-3.
 - `app-shell.toggle()` шлёт `window` событие `wf:nav-animating` (true/false); `screen-map` на true полностью останавливает rAF-цикл (cancelAnimationFrame, `paused`), на false — одна пересборка `relayout()` (resize → rAF → build/fitView с сохранением выбранного узла) и перезапуск цикла (`loopOn`).
 - `@layer wf050` теперь только ставит `animation-play-state: paused` слоям космоса на время анимации.
 Итог замера: idle long tasks — нет; collapse/expand — нет long task'ов; кадры 16–17 мс ср., макс 17–33 (было 250–500).
+
+## Сессия «Токены MCP: дизайн + удаление» (2026-06, сделано)
+- `lib/mcp-server.ts`: `deleteToken(owner,id)` (стирает запись; аудит kind `token-revoked` с пояснением) и `purgeInactiveTokens(owner)` (все отозванные/истёкшие, возвращает число).
+- `app/mcp/admin/tokens/route.ts` DELETE: `?id=` отзыв (как раньше), `?id=&purge=1` удалить запись, `?inactive=1` очистить неактивные.
+- `components/mcp-tokens.tsx`: единый механизм подтверждения `arm(key)` (5 с) для отзыва/удаления/очистки; у каждой строки кнопка «Удалить» (`mcp-token-delete`, у активных — рядом с «Отозвать»); в шапке списка «Очистить неактивные · N» (`mcp-token-purge`) когда есть неактивные; «скрыть» у выданного токена — иконка-крестик.
+- Дизайн (screen-settings.css, слой NF-10): отступы между блоками (шапка списка не липнет к блоку выданного токена), карточка выдачи с r-panel, чекбоксы областей 15px (danger — красный accent), блок выданного токена с лёгким акцентным фоном и появлением, строки токенов: цветная левая кайма по статусу (ok/warn/text-3), имя + id-плашка mono lowercase + статус-пилюля с точкой, мета-строка mono, кнопки btn-sm, «Удалить» приглушена до hover.
+- Проверено на preview: выдача → отзыв → очистка → удаление, счётчик обновляется. tsc 0, eslint 0 ошибок, next build ok. e2e 21-mcp-external совместим (revoke без изменений).

@@ -1,9 +1,9 @@
 'use client'
 
-/* NF-10 · токены MCP: выдача с областями и сроком, список, отзыв. */
+/* NF-10 · токены MCP: выдача с областями и сроком, список, отзыв и удаление. */
 
 import { useCallback, useEffect, useState } from 'react'
-import { IconCopy, IconKey } from './icons'
+import { IconClose, IconCopy, IconKey, IconTrash } from './icons'
 import {
   SCOPES,
   TOKEN_TTL_OPTIONS,
@@ -31,6 +31,14 @@ const fmtDate = (at: number) =>
 
 const STATUS_LABEL = { active: 'активен', expired: 'истёк', revoked: 'отозван' } as const
 
+const pluralTokens = (n: number) => {
+  const d = n % 10
+  const dd = n % 100
+  if (d === 1 && dd !== 11) return 'токен'
+  if (d >= 2 && d <= 4 && (dd < 10 || dd >= 20)) return 'токена'
+  return 'токенов'
+}
+
 export function McpTokens() {
   const { flash } = useToast()
   const copy = useCopy()
@@ -40,7 +48,18 @@ export function McpTokens() {
   const [ttl, setTtl] = useState(24)
   const [busy, setBusy] = useState(false)
   const [issued, setIssued] = useState<{ token: string; name: string } | null>(null)
-  const [confirmRevoke, setConfirmRevoke] = useState<string | null>(null)
+  /* Одно подтверждение на действие: «revoke:<id>», «delete:<id>» или «purge». */
+  const [confirm, setConfirm] = useState<string | null>(null)
+
+  function arm(key: string): boolean {
+    if (confirm === key) {
+      setConfirm(null)
+      return true
+    }
+    setConfirm(key)
+    setTimeout(() => setConfirm((c) => (c === key ? null : c)), 5000)
+    return false
+  }
 
   const reload = useCallback(async () => {
     const r = await fetch('/mcp/admin/tokens').catch(() => null)
@@ -77,16 +96,28 @@ export function McpTokens() {
   }
 
   async function revoke(id: string) {
-    if (confirmRevoke !== id) {
-      setConfirmRevoke(id)
-      setTimeout(() => setConfirmRevoke((c) => (c === id ? null : c)), 5000)
-      return
-    }
-    setConfirmRevoke(null)
+    if (!arm(`revoke:${id}`)) return
     const r = await fetch(`/mcp/admin/tokens?id=${id}`, { method: 'DELETE' })
     flash(r.ok ? 'Токен отозван: агент больше не пройдёт' : 'Токен не найден')
     await reload()
   }
+
+  async function remove(id: string) {
+    if (!arm(`delete:${id}`)) return
+    const r = await fetch(`/mcp/admin/tokens?id=${id}&purge=1`, { method: 'DELETE' })
+    flash(r.ok ? 'Токен удалён из списка' : 'Токен не найден')
+    await reload()
+  }
+
+  async function purge() {
+    if (!arm('purge')) return
+    const r = await fetch('/mcp/admin/tokens?inactive=1', { method: 'DELETE' })
+    const n = r.ok ? ((await r.json()) as { removed: number }).removed : 0
+    flash(n > 0 ? `Удалено ${n} ${pluralTokens(n)}` : 'Неактивных токенов нет')
+    await reload()
+  }
+
+  const inactive = tokens?.filter((t) => tokenStatus(t) !== 'active').length ?? 0
 
   return (
     <div className="mcp-tokens">
@@ -153,8 +184,8 @@ export function McpTokens() {
         <div className="mcp-issued" role="status" data-testid="mcp-issued">
           <div className="mask-head">
             <span className="label-mono">Токен «{issued.name}» — показывается один раз</span>
-            <button className="mcp-x" onClick={() => setIssued(null)} aria-label="Скрыть" data-testid="mcp-issued-hide">
-              скрыть
+            <button className="mcp-x" onClick={() => setIssued(null)} aria-label="Скрыть" title="Скрыть" data-testid="mcp-issued-hide">
+              <IconClose width={12} height={12} aria-hidden="true" />
             </button>
           </div>
           <code data-testid="mcp-issued-token">{issued.token}</code>
@@ -167,22 +198,40 @@ export function McpTokens() {
         </div>
       )}
 
-      <div className="mask-head">
+      <div className="mask-head mcp-list-head">
         <span className="label-mono">Выданные токены</span>
         <span className="mask-flag" data-testid="mcp-token-count">
           {tokens === null ? '…' : `${tokens.length}`}
         </span>
+        {inactive > 0 && (
+          <button
+            className={`btn btn-sm ${confirm === 'purge' ? 'btn-danger' : 'btn-ghost'} mcp-purge`}
+            onClick={() => void purge()}
+            title="Удалить все отозванные и истёкшие токены"
+            data-testid="mcp-token-purge"
+          >
+            <IconTrash width={12} height={12} aria-hidden="true" />
+            {confirm === 'purge' ? `Удалить ${inactive} неактивн.?` : `Очистить неактивные · ${inactive}`}
+          </button>
+        )}
       </div>
       <div className="mcp-token-list" data-testid="mcp-token-list">
         {tokens?.length === 0 && <p className="jr-empty">Токенов пока нет — агенту нечем пройти.</p>}
         {tokens?.map((t) => {
           const st = tokenStatus(t)
+          const revokeKey = `revoke:${t.id}`
+          const deleteKey = `delete:${t.id}`
           return (
             <div key={t.id} className={`mcp-token st-${st}`} data-testid="mcp-token-row" data-token-id={t.id}>
               <div className="mcp-token-text">
-                <b>
-                  {t.name} <span className="label-mono">· {t.id}</span>
-                </b>
+                <div className="mcp-token-head">
+                  <b className="mcp-token-name">{t.name}</b>
+                  <code className="mcp-token-id">{t.id}</code>
+                  <span className={`mcp-status st-${st}`} data-testid="mcp-token-status">
+                    <i aria-hidden="true" />
+                    {STATUS_LABEL[st]}
+                  </span>
+                </div>
                 <span className="mcp-token-scopes">
                   {t.scopes.map((s) => (
                     <i key={s} className={`mcp-chip${s === 'secrets:write' ? ' danger' : ''}`}>
@@ -190,23 +239,32 @@ export function McpTokens() {
                     </i>
                   ))}
                 </span>
-                <span className="label-mono">
-                  до {fmtDate(t.expiresAt)} · вызовов {t.calls}
+                <span className="mcp-token-meta">
+                  {st === 'expired' ? 'истёк' : 'до'} {fmtDate(t.expiresAt)} · вызовов {t.calls}
                   {t.lastUsedAt ? ` · последний ${fmtDate(t.lastUsedAt)}` : ' · не использовался'}
                 </span>
               </div>
-              <span className={`mcp-status label-mono st-${st}`} data-testid="mcp-token-status">
-                {STATUS_LABEL[st]}
-              </span>
-              {st === 'active' && (
+              <div className="mcp-token-actions">
+                {st === 'active' && (
+                  <button
+                    className={`btn btn-sm ${confirm === revokeKey ? 'btn-danger' : 'btn-ghost'}`}
+                    onClick={() => void revoke(t.id)}
+                    data-testid="mcp-token-revoke"
+                  >
+                    {confirm === revokeKey ? 'Точно отозвать?' : 'Отозвать'}
+                  </button>
+                )}
                 <button
-                  className={`btn ${confirmRevoke === t.id ? 'btn-danger' : 'btn-ghost'}`}
-                  onClick={() => void revoke(t.id)}
-                  data-testid="mcp-token-revoke"
+                  className={`btn btn-sm mcp-del ${confirm === deleteKey ? 'btn-danger' : 'btn-ghost'}`}
+                  onClick={() => void remove(t.id)}
+                  title={st === 'active' ? 'Удалить: токен перестанет работать и исчезнет из списка' : 'Удалить запись из списка'}
+                  aria-label={`Удалить токен ${t.name}`}
+                  data-testid="mcp-token-delete"
                 >
-                  {confirmRevoke === t.id ? 'Точно отозвать?' : 'Отозвать'}
+                  <IconTrash width={12} height={12} aria-hidden="true" />
+                  {confirm === deleteKey ? 'Точно удалить?' : 'Удалить'}
                 </button>
-              )}
+              </div>
             </div>
           )
         })}

@@ -1,1 +1,7 @@
 {"kind":"token-issued","tokenId":"10dc8ffb","tokenName":"Без имени","tool":null,"ok":true,"detail":"Области: search, read · срок 24 ч","seq":1,"at":1788493728252}
+{"kind":"token-issued","tokenId":"a191a1ee","tokenName":"curl-test","tool":null,"ok":true,"detail":"Области: search · срок 1 ч","seq":2,"at":1788494715442}
+{"kind":"token-revoked","tokenId":"a191a1ee","tokenName":"curl-test","tool":null,"ok":true,"detail":"Токен отозван владельцем: дальнейшие вызовы отклоняются","seq":3,"at":1788494715731}
+{"kind":"token-revoked","tokenId":"a191a1ee","tokenName":"curl-test","tool":null,"ok":true,"detail":"Запись отозванного токена удалена из списка","seq":4,"at":1788494715989}
+{"kind":"token-issued","tokenId":"137aa200","tokenName":"Claude на ноутбуке","tool":null,"ok":true,"detail":"Области: search, read · срок 24 ч","seq":5,"at":1788494748000}
+{"kind":"token-revoked","tokenId":"137aa200","tokenName":"Claude на ноутбуке","tool":null,"ok":true,"detail":"Токен отозван владельцем: дальнейшие вызовы отклоняются","seq":6,"at":1788494749176}
+{"kind":"token-revoked","tokenId":"137aa200","tokenName":"Claude на ноутбуке","tool":null,"ok":true,"detail":"Запись отозванного токена удалена из списка","seq":7,"at":1788494750282}
