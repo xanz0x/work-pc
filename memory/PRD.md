@@ -1193,3 +1193,15 @@ UX-4 accessibility · LG-4/LG-5 · RM-3.
    - `components/sidebar-nav.tsx`: обычный режим — кликабельные пункты (счётчики, кластеры библиотеки как раньше); режим правки (кнопка `nav-customize`, только в развёрнутом сайдбаре) — drag&drop за рукоятку, стрелки вверх/вниз, глаз скрыть/показать, «Сбросить». data-testid: `nav-customize`, `nav-row-<id>`, `nav-up-<id>`, `nav-down-<id>`, `nav-toggle-<id>`, `nav-reset`.
    - Стили — `@layer wf049` в globals.css (+ монолит для css:split).
    - Тесты: `tests/unit/nav-prefs.test.ts` (5), vitest 224/224. tsc 0, eslint 0 ошибок.
+
+## Сессия «Лаги меню на карте — доводка» (2026-06, сделано)
+Повторная жалоба: меню при открытой карте всё ещё лагало. Профилирование через PerformanceObserver(longtask) на preview:
+- база: toggle давал один long task 400–500 мс, в простое — long task'и 50–70 мс каждые ~0.5 с;
+- `.cosmos { display:none }` → toggle 0 long task'ов (виновник — космос целиком); `visibility:hidden` на время анимации не помогало — перерисовка при показе;
+- `backdrop-filter:none` у `.map-space .glass` → long task'и в простое исчезают полностью.
+Фиксы:
+- `.cosmos`: бокс больше не зависит от ширины колонки — `left:0; top:0; width:130vw; height:100%` (ширина во vw, высота сцены при toggle не меняется), `contain:strict`; лишнее справа срезает overflow сцены. Размытые слои не раскладываются/не растрируются заново. `.cos-neb.n2` привязан к `left:43vw` вместо `right`.
+- `.map-space .glass`: `backdrop-filter` убран (размытие поверх живого канваса пересчитывалось каждый кадр карты), фон уплотнён до rgba(9,13,20,.9).
+- `app-shell.toggle()` шлёт `window` событие `wf:nav-animating` (true/false); `screen-map` на true полностью останавливает rAF-цикл (cancelAnimationFrame, `paused`), на false — одна пересборка `relayout()` (resize → rAF → build/fitView с сохранением выбранного узла) и перезапуск цикла (`loopOn`).
+- `@layer wf050` теперь только ставит `animation-play-state: paused` слоям космоса на время анимации.
+Итог замера: idle long tasks — нет; collapse/expand — нет long task'ов; кадры 16–17 мс ср., макс 17–33 (было 250–500).

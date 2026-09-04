@@ -5439,8 +5439,11 @@
 
   /* Панели над космосом: чуть плотнее стекло, чтобы текст читался поверх звёзд */
   .map-space .glass {
-    background: rgba(9, 13, 20, 0.72);
-    backdrop-filter: blur(16px) saturate(120%);
+    /* Без backdrop-filter: размытие поверх живого канваса пересчитывалось
+       на каждый кадр карты и держало главный поток в long task'ах 50–70 мс
+       даже в простое. Плотнее фон — та же читаемость. */
+    background: rgba(9, 13, 20, 0.9);
+    backdrop-filter: none;
   }
   .cos-stars.s1 { opacity: 0.9; }
   .cos-stars.s2 { opacity: 0.78; }
@@ -7385,12 +7388,6 @@
      и была причиной рывков при открытии/закрытии меню поверх карты.
      ============================================================ */
   .app.nav-animating .cosmos > i {
-    animation-play-state: paused !important;
-  }
-  .app.nav-animating .map-space .glass {
-    backdrop-filter: none !important;
-  }
-  .app.nav-animating .float-panel {
-    will-change: auto;
+    animation-play-state: paused;
   }
 }

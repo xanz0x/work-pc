@@ -1360,6 +1360,8 @@ export function ScreenMap() {
        кадр замирает, а после того как размер устоялся, сцена пересобирается
        один раз с сохранением выбранного узла. */
     let frozen = false
+    let paused = false
+    let loopOn = false
     let settleTimer = 0
     function relayout() {
       const keep = selected && !selected.core ? selected.id : null
@@ -1376,6 +1378,11 @@ export function ScreenMap() {
         select(again ?? (wasCore || !keep ? core : null))
         frozen = false
         lastDraw = 0
+        if (!loopOn && !paused) {
+          loopOn = true
+          last = performance.now()
+          raf = requestAnimationFrame(tick)
+        }
       })
     }
     let firstObserve = true
@@ -1384,10 +1391,27 @@ export function ScreenMap() {
         firstObserve = false
         return
       }
+      if (paused) return
       frozen = true
       window.clearTimeout(settleTimer)
       settleTimer = window.setTimeout(relayout, 90)
     })
+    /* Каркас сворачивает сайдбар: на время его анимации rAF-цикл карты
+       останавливается целиком — ни JS, ни перерисовки канваса, главный поток
+       свободен под раскладку. По окончании — одна пересборка и запуск. */
+    const onNavAnim = (e: Event) => {
+      const active = Boolean((e as CustomEvent<boolean>).detail)
+      if (active) {
+        paused = true
+        frozen = true
+        window.clearTimeout(settleTimer)
+        cancelAnimationFrame(raf)
+        loopOn = false
+      } else if (paused) {
+        paused = false
+        relayout()
+      }
+    }
     /* Не жжём CPU в фоне: сдвигаем начало таймлайна на время простоя. */
     const onVis = () => {
       if (document.hidden) hiddenAt = performance.now()
@@ -1406,6 +1430,7 @@ export function ScreenMap() {
     cv.addEventListener('touchend', onTouchEnd)
     ro.observe(cv)
     document.addEventListener('visibilitychange', onVis)
+    addEventListener('wf:nav-animating', onNavAnim)
 
     api.current = {
       zoomIn: () => zoomStep(1.25),
@@ -1473,6 +1498,7 @@ export function ScreenMap() {
     build()
     fitView()
     select(core)
+    loopOn = true
     raf = requestAnimationFrame(tick)
 
     /* Карта показывает поиск сама: первая волна через мгновение после сборки,
@@ -1492,6 +1518,7 @@ export function ScreenMap() {
       cv.removeEventListener('touchmove', onTouchMove)
       cv.removeEventListener('touchend', onTouchEnd)
       ro.disconnect()
+      removeEventListener('wf:nav-animating', onNavAnim)
       window.clearTimeout(settleTimer)
       document.removeEventListener('visibilitychange', onVis)
       api.current = null

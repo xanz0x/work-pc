@@ -200,10 +200,15 @@ export function AppShell({ children }: { children: ReactNode }) {
   function toggle() {
     /* Пока анимируется ширина сайдбара (180 мс), гасим дорогие эффекты фона
        карты — размытый «космос» и backdrop-filter панелей перерисовывались
-       на каждый кадр раскладки и давали рывки. */
+       на каждый кадр раскладки и давали рывки. Карте отдельно сообщаем
+       событием: она полностью останавливает свой rAF-цикл на это время. */
     setNavAnimating(true)
+    window.dispatchEvent(new CustomEvent('wf:nav-animating', { detail: true }))
     window.clearTimeout(navTimer.current)
-    navTimer.current = window.setTimeout(() => setNavAnimating(false), 260)
+    navTimer.current = window.setTimeout(() => {
+      setNavAnimating(false)
+      window.dispatchEvent(new CustomEvent('wf:nav-animating', { detail: false }))
+    }, 260)
     setCollapsed((prev) => {
       const next = !prev
       try {

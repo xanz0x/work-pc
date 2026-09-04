@@ -1,12 +1,12 @@
 {
   "order": [
+    "admin",
     "library",
     "map",
     "chat",
     "vault",
     "activity",
-    "settings",
-    "admin"
+    "settings"
   ],
   "hidden": []
 }

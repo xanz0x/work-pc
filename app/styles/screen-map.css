@@ -591,14 +591,19 @@
   .map-space { background: #010204; }
 
   .cosmos {
+    /* Бокс космоса не зависит от ширины колонки: ширина во viewport-единицах,
+       лишнее справа срезает overflow сцены (высота сцены при toggle не меняется).
+       Поэтому при сворачивании сайдбара размытые туманности и звёздные поля
+       не раскладываются и не растрируются заново — раньше именно эта
+       перерисовка (blur 60px на всю сцену на каждом кадре) давала рывки. */
     position: absolute;
-    inset: 0;
+    top: 0;
+    left: 0;
+    width: 130vw;
+    height: 100%;
     z-index: 0;
     overflow: hidden;
     pointer-events: none;
-    /* Слои внутри размечены во viewport-единицах и от ширины колонки не
-       зависят: при сворачивании сайдбара размытые туманности и звёздные
-       поля не растрируются заново на каждом шаге анимации. */
     contain: strict;
   }
   .cosmos > i {
@@ -637,7 +642,7 @@
   .cos-neb.n2 {
     width: 54vw;
     height: 40vw;
-    right: -10vw;
+    left: 43vw;
     top: 18%;
     background: radial-gradient(circle, rgba(84, 124, 214, 0.28), rgba(84, 124, 214, 0) 66%);
     animation: cos-drift-b 58s ease-in-out infinite;
