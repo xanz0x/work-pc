@@ -319,7 +319,7 @@ export function MailInbox(p: Props) {
         </div>
         <div className="mail-acc-rows" data-testid="mail-account-list">
           {accounts.map((a) => (
-            <MailAccountRow key={a.id} account={a} active={a.id === accId} onPick={() => p.onPickAccount(a.id)} />
+            <MailAccountRow key={a.id} account={a} active={a.id === accId} onPick={() => p.onPickAccount(a.id)} onRemove={() => p.onRemove(a)} />
           ))}
           {accounts.length === 0 && (
             <div className="mail-rail-empty" data-testid="mail-empty">
