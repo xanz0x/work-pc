@@ -51,7 +51,7 @@ cd /app && npm i -g pnpm@10 && pnpm install --frozen-lockfile
 #   AI_MODEL=claude-sonnet-4-5-20250929, NEXT_PUBLIC_AI_MODEL_LABEL, AI_DIR=/root/.workflow/ai, MAIL_SECRET (32+ hex)
 npx next build && sudo supervisorctl restart frontend      # прод-сборка, ~2 мин; dev-режим НЕ использовать
 ```
-Проверка: `curl -s -o /dev/null -w "%{http_code}" https://compose-speedup.preview.emergentagent.com/login` → 200.
+Проверка: `curl -s -o /dev/null -w "%{http_code}" https://email-switcher-2.preview.emergentagent.com/login` → 200.
 
 ## 1. Что уже сделано (кратко)
 - **Почта, фаза 1** — ящики, автопоиск (builtin → ISPDB → autoconfig → SRV → MX → Autodiscover → перебор), живая проверка SMTP (обязательно) + IMAP,

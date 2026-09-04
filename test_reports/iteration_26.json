@@ -33,7 +33,7 @@
   "action_items": [],
   "updated_files": [],
   "success_rate": { "backend": "5/5 (100%) + unit 5/5 (100%)", "frontend": "1/1 e2e (100%)" },
-  "test_credentials": "APP_URL=https://compose-speedup.preview.emergentagent.com; APP_PASSWORD=IceKrymTeam13@; PIN=123456",
+  "test_credentials": "APP_URL=https://email-switcher-2.preview.emergentagent.com; APP_PASSWORD=IceKrymTeam13@; PIN=123456",
   "seed_data_creation": "pytest создал spaceId=64a87901... с двумя устройствами A/B (B отозван), ops.jsonl из 2 записей (ct='c1','c2'). e2e создаёт одноразовые пространства в изолированных контекстах браузера — не пересекаются с прод-данными. MCP-токен 'sync-e2e' в вкладке A ttl=1h.",
   "retest_needed": false,
   "should_main_agent_self_test": false,
