@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { IconKey, IconLockRound } from '@/components/icons'
+import { IconKey, IconLockRound, IconUser } from '@/components/icons'
 import { MeteorLayer } from '@/components/screen-lock'
 import { LogoWord } from '@/components/screen-lock-logo'
 import { PlanBadge } from '@/components/plan-badge'
@@ -141,6 +141,8 @@ export default function LoginPage() {
           {mode === 'register' && (
             <label className="login-field login-key-field">
               <span className="label-mono">ключ лицензии</span>
+              <span className="lf-row">
+              <IconKey className="lf-ico" aria-hidden="true" />
               <input
                 className={`lock-input login-key${keyInfo ? ' ok' : keyErr ? ' bad' : ''}`}
                 placeholder="WSX-XXXX-XXXX-XXXX-XXXX"
@@ -155,6 +157,7 @@ export default function LoginPage() {
                 maxLength={23}
                 data-testid="login-key"
               />
+              </span>
               <div className="login-key-state" aria-live="polite">
                 {keyBusy && <span className="label-mono">проверяю…</span>}
                 {!keyBusy && keyInfo && (
@@ -176,6 +179,8 @@ export default function LoginPage() {
 
           <label className="login-field">
             <span className="label-mono">{mode === 'login' ? 'логин · пусто = администратор' : 'логин'}</span>
+            <span className="lf-row">
+            <IconUser className="lf-ico" aria-hidden="true" />
             <input
               className="lock-input"
               type="text"
@@ -188,9 +193,12 @@ export default function LoginPage() {
               maxLength={32}
               data-testid="login-login"
             />
+            </span>
           </label>
           <label className="login-field">
             <span className="label-mono">пароль</span>
+            <span className="lf-row">
+            <IconLockRound className="lf-ico" aria-hidden="true" />
             <input
               className="lock-input"
               type="password"
@@ -201,10 +209,13 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               data-testid="login-password"
             />
+            </span>
           </label>
           {mode === 'register' && (
             <label className="login-field">
               <span className="label-mono">пароль ещё раз</span>
+              <span className="lf-row">
+              <IconLockRound className="lf-ico" aria-hidden="true" />
               <input
                 className={`lock-input${mismatch ? ' bad' : ''}`}
                 type="password"
@@ -213,6 +224,7 @@ export default function LoginPage() {
                 onChange={(e) => setAgain(e.target.value)}
                 data-testid="login-password-again"
               />
+              </span>
             </label>
           )}
 
