@@ -91,6 +91,13 @@ export function limitMailAuth(key: string): number {
   return bump(mailAuth, key, MINUTE, 5)
 }
 
+const mailRead = new Map<string, Win>()
+
+/** Почта: чтение по IMAP (папки, списки, письма, флаги) — 60 запросов в минуту на ящик. */
+export function limitMailRead(key: string): number {
+  return bump(mailRead, key, MINUTE, 60)
+}
+
 /** NF-10: внешний агент — 60 вызовов в минуту на один токен. */
 export function limitMcp(tokenId: string): number {
   return bump(mcp, tokenId, MINUTE, envInt('MCP_RATE_PER_MIN', 60))

@@ -1270,3 +1270,19 @@ UX-4 accessibility · LG-4/LG-5 · RM-3.
   Причина «плоских полосок»: базовый `.lock-input { flex: 1 }` в колонке сжимал поле до 19px.
 - Сцена `/login` — flex-колонка с auto-полями: центр при запасе высоты, иначе прижата к верху и скроллится (регистрация на 800px не обрезается);
   фон/метеоры/статус-строка fixed + pointer-events:none.
+
+## Итерация 34 (2026-06): Почта, фаза 2 — чтение по IMAP (сделано, приёмка iteration_34: backend 100%, frontend 95% → замечания закрыты)
+Решения владельца: только чтение (папки, список, письмо, флаги) + панель «Входящие»; обновление и вручную, и по таймеру с выбором интервала.
+- Зависимости (согласованы): `imapflow`, `mailparser` (+`@types/mailparser`).
+- `lib/mail-imap.ts` — `withImap` (один клиент на запрос, TLS/STARTTLS/Bridge, таймауты 15 с, повтор при CONNECT_FAILED), `listFolders`
+  (LIST + STATUS unseen/messages, INBOX первым, служебные по смыслу), `listMessages` (страницы по seq от новых к старым, ENVELOPE+FLAGS+size+bodyStructure,
+  `withFolders` — папки в том же соединении), `getMessage` (download → mailparser, HTML через `sanitizeMailHtml`, вложения списком, markSeen), `setFlags`.
+- `lib/mail-html.ts` — санитайзер: script/iframe/form/svg/on*/javascript:/data: (кроме картинок)/@import/expression вырезаются; вторая линия — iframe `sandbox` + CSP
+  на клиенте (`img-src 'none'` до нажатия «Показать картинки»).
+- API: `folders`, `messages`, `messages/[uid]`, `messages/[uid]/flags` под `withRoute`, лимит `limitMailRead` 60/мин на ящик; ошибки IMAP → 503 с JSON-кодом
+  (502 прокси превью подменяет своей страницей; send тоже переведён на 503). Карточка ящика «живая»: `imapSync {at,unseen,total}`, статус IMAP по факту.
+- UI: `components/mail/mail-inbox.tsx` + `mail-folder-list.tsx` + `mail-msg-list.tsx` + `mail-msg-view.tsx`; панель `mail-inbox` под сеткой для активного ящика
+  («от кого»); ящик без IMAP — баннер `mail-inbox-no-imap`. Автообновление 0/30/60/300 с (`wf.mail.refresh.v1`, по умолчанию 60), только на видимой вкладке;
+  свежая страница сливается с уже загруженными (`mergeRows`). Непрочитанные полностью загруженной папки считаются по строкам (STATUS у Ethereal запаздывает).
+- Тесты: `tests/unit/mail-read.test.ts` (13), `tests/api/test_mail_read.py` (14, по https-превью). CSS — внутри `screen-mail.css` (@layer wf051).
+- Бэклог фазы 2: письма как узлы карты, скачивание вложений, cid-картинки, IMAP SEARCH. Далее по NEXT_SESSION: правка ящика из карточки, P2/P3.

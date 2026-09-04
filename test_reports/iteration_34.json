@@ -1,0 +1,41 @@
+{
+  "summary": "Mail PHASE 2 (IMAP reading) verified end-to-end on the public preview URL. Backend: re-ran tests/api/test_mail_read.py (13/13 pass, rate-limit test run last) and phase-1 regression tests/api/test_mail.py (20/20 pass) — folders shape/INBOX-first/counters, account.status.imap=ok + imapSync + no passwordEnc, message page shape/desc order/limit+cursor, cursor=-1 → 400, unknown folder → 404, message body + auto mark-seen + sanitized html + attachments, uid=abc → 400, uid=4000000000 → 404, flags round-trip, 401 without cookie, unknown id → 404, 60/min → 429 with retryAfter. Frontend: login → Почта → mail-inbox panel renders under the grid; header (account, synced time, interval select default 60, refresh button); folder list (INBOX 'Входящие' first, Черновики/Отправленные/Спам/Корзина), empty folder state, folder switching; message rows with data-unread/unread class, star toggle optimistic + persisted after refresh, message view (subject/from/date/sandboxed srcdoc iframe with body text and 0 <script>, attachments 'a.txt 16 Б' for uid 1), open marks read (row loses data-unread, INBOX badge decrements), mail-msg-view-seen toggles 'Не прочитано'/'Прочитано' and row unread state, manual refresh updates synced time + shows 'синхронизация…', interval persisted in localStorage wf.mail.refresh.v1 and survives reload, 30s auto-refresh fired at ~35s, account card shows '1 непрочит.' / 'всё прочитано'. New mail sent to self appeared at top of the list (3 из 3 письма) and opened correctly. Phase-1 regression in UI: mail-account-test and compose/send form still present.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /ai-api/mail/accounts/:id/folders and /messages", "issue": "Intermittent 503 CONNECT_FAILED after exactly 15.0s (connectionTimeout) when several IMAP calls hit Ethereal close together (observed 19:41:54 messages, 19:42:37 folders in frontend.err.log). No retry: the UI surfaces an error and the account status is flipped to imap='fail' after a purely transient connect timeout. Note the UI's sync() opens TWO parallel IMAP connections (folders + messages) on every manual/auto refresh, which doubles connection churn on providers with connection limits — consider serialising both calls over one imapflow connection and/or one retry before marking the account failed."},
+      {"endpoint": "GET /ai-api/mail/accounts/:id/folders", "issue": "folders[].unseen (IMAP LIST RETURN STATUS) can lag behind actual flags on Ethereal by tens of seconds, so it disagrees with the flags returned by /messages fetched at the same moment (see RCA). Server code itself is correct; only the displayed counter is affected."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "MailFolderList / MailInbox", "issue": "On initial load the INBOX unseen badge (mail-folder-unseen-INBOX) can be absent (0) while the list clearly contains unread rows (data-unread=true, bold) — reproduced twice: right after an external flag change and right after a new mail was delivered. Cause is the stale IMAP STATUS unseen counter (see rca_of_the_issue); recommend deriving the current folder's unseen from the loaded rows when the whole folder is loaded (nextCursor === null) and using STATUS only for other folders.", "selector": "[data-testid='mail-folder-unseen-INBOX']", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Почта (mail-inbox)", "issues": ["Folders/list/view are fine, but when nothing is selected the right column keeps its full height and the 'Выберите письмо из списка' placeholder sits far below the list — a lot of dead space on 1920px.", "The accounts card (left column of the upper grid) has a large empty area under the single account row while the compose card next to it is much taller — visible imbalance."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/tests/api/test_mail_read.py",
+    "/app/tests/api/test_mail.py",
+    "/app/test_reports/pytest/iteration_33_mail_read.xml",
+    "/app/test_reports/pytest/iteration_33_mail_phase1.xml"
+  ],
+  "action_items": [
+    "Make the folder unseen badge consistent with the loaded rows (derive from rows when the folder is fully loaded), otherwise the badge intermittently shows nothing while bold unread rows are visible.",
+    "Harden transient IMAP connect timeouts: one retry (or don't set account.status.imap='fail' on a single CONNECT_FAILED) and avoid two parallel IMAP connections per refresh in MailInbox.sync()."
+  ],
+  "critical_code_review_comments": [
+    "components/mail/mail-inbox.tsx: the auto-refresh effect lists `sync` and `syncing` in deps, and `sync`→`loadFolders` depends on `account.status`, which is replaced by onAccountPatch on every sync — the interval is torn down and recreated after each cycle. It works (verified: 30s interval fired at ~35s), but any frequent parent-driven account patch would keep resetting the timer; consider a ref-based timer with a stable callback.",
+    "MailInbox.sync() fires listFolders and listMessages concurrently → 2 IMAP logins per refresh; on providers with connection/rate limits this is the direct cause of the observed 15s CONNECT_FAILED 503s."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (33/33 pytest: 13 read + 20 phase-1)", "frontend": "95% (all phase-2 UI flows pass; unseen badge staleness is the only defect)"},
+  "seed_data_creation": "Reused account a2fa8b81 (not deleted). Sent one self-mail 'QA iter33 new mail' to qtf2kannuu6gjlxb@ethereal.email (INBOX now has 3 messages: uid1 'Тест WorkSpaceX' left UNREAD + flagged/starred, uid2 'final' read, uid3 'QA iter33 new mail' read).",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "admin / IceKrymTeam13@ at https://inbox-sync-15.preview.emergentagent.com/login (data-testid login-login, login-password, login-submit)",
+  "context_for_next_testing_agent": "Playwright: after login wait for [data-testid='app-shell'][data-app-ready='1'] BEFORE clicking nav-mail — waiting only for [data-testid='app-shell'] makes the nav click hang 30s (shell blocks interaction until ready). Folders+messages take 3-6s each (live Ethereal IMAP); use 60s waits for mail-folders / mail-msg-list. Read routes are limited to 60/min per account: run tests/api/test_mail_read.py::test_read_rate_limit_60_per_minute LAST and wait ~60s before UI runs. The browser tool starts a fresh profile each run, so localStorage persistence must be checked with an in-run page.reload(). UI pagination ('Показать ещё', mail-msg-more) was NOT exercised — INBOX has only 3 messages so nextCursor is null; cursor paging is covered by API tests. mail-inbox-no-imap banner not testable (no IMAP-less account exists).",
+  "rca_of_the_issue": "Unseen badge mismatch: listFolders() takes unseen from `c.list({statusQuery:{unseen:true}})` (IMAP LIST RETURN STATUS), while the row flags come from a separate FETCH in listMessages(). On Ethereal the STATUS unseen counter is eventually consistent — measured lag of ~30s after a flag change / new delivery: at 19:40:10 uid1 was set \\Seen-off via API, at 19:40:40 folders still reported unseen=0 while /messages reported uid1 seen=false; at 19:41+ folders reported unseen=1. Same pattern right after the new self-sent mail arrived (rows showed 2 unread, badge 0). Reproduction: POST flags {seen:false} then immediately GET /folders + /messages and compare. Mitigation: for the currently opened folder compute unseen from the loaded rows when nextCursor === null (or re-sync folders after flag mutations)."
+}

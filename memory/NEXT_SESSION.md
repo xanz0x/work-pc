@@ -1,6 +1,6 @@
 # Инструкция для следующего чата — с чего продолжать
 
-Обновлено: 2026-06 · после итерации 33 (почта фаза 1 + новый экран входа).
+Обновлено: 2026-06 · после итерации 34 (почта фаза 2 — чтение по IMAP).
 
 ## 0. Первые 5 минут: восстановить среду (под мог сброситься)
 Признаки сброса: нет `/app/node_modules`, нет `/app/.env`, `sudo supervisorctl status frontend` → ERROR.
@@ -13,7 +13,7 @@ cd /app && npm i -g pnpm@10 && pnpm install --frozen-lockfile
 #   AI_MODEL=claude-sonnet-4-5-20250929, NEXT_PUBLIC_AI_MODEL_LABEL, AI_DIR=/root/.workflow/ai, MAIL_SECRET (32+ hex)
 npx next build && sudo supervisorctl restart frontend      # прод-сборка, ~2 мин; dev-режим НЕ использовать
 ```
-Проверка: `curl -s -o /dev/null -w "%{http_code}" https://mailbox-provisioner.preview.emergentagent.com/login` → 200.
+Проверка: `curl -s -o /dev/null -w "%{http_code}" https://inbox-sync-15.preview.emergentagent.com/login` → 200.
 
 ## 1. Что уже сделано (кратко)
 - **Почта, фаза 1** — ящики, автопоиск (builtin → ISPDB → autoconfig → SRV → MX → Autodiscover → перебор), живая проверка SMTP (обязательно) + IMAP,
@@ -21,18 +21,21 @@ npx next build && sudo supervisorctl restart frontend      # прод-сборк
   Proton: режимы Bridge (сервер пробует 127.0.0.1:1025/1143) и «SMTP-токен · свой домен» (smtp.protonmail.ch:587).
   Файлы: `lib/mail-{providers,discovery,crypto,server,client}.ts`, `app/ai-api/mail/**`, `components/screen-mail.tsx`, `components/mail/*`, `app/styles/screen-mail.css` (@layer wf051).
 - **/login** — сцена в стиле экрана замка (`lock-screen login-scene`, @layer wf052 в `app/globals.css`), поля-колодцы с иконками.
-- Тесты: `npx vitest run` — 234/234; `tests/api/test_mail.py` (20) + `test_mail_proton_iter32.py` (6); отчёты `test_reports/iteration_31..32.json`.
+- **Почта, фаза 2 (чтение)** — см. §2 ниже: imapflow/mailparser, 4 маршрута чтения, панель «Входящие».
+- Тесты: `npx vitest run` — 247/247; `tests/api/test_mail.py` (20) + `test_mail_proton_iter32.py` (6) + `test_mail_read.py` (14); отчёты `test_reports/iteration_31..34.json`.
 
 ## 2. С чего продолжать — приоритеты
-### P1 · Почта фаза 2: чтение (IMAP)
-1. `pnpm add imapflow mailparser` (+ `@types/mailparser`). Единственные новые зависимости, согласованы владельцем.
-2. `lib/mail-imap.ts`: `withImap(account, fn)` — подключение по `acc.imap` (учитывать `acc.bridge` → `tls.rejectUnauthorized=false`, порты 1143), пароль через `decryptSecret`, таймауты 15 с, один клиент на запрос (без пула на старте).
-3. API: `GET /ai-api/mail/accounts/:id/folders`, `GET …/messages?folder=INBOX&cursor=&limit=30` (ENVELOPE+FLAGS+size, без тел),
-   `GET …/messages/:uid?folder=` (тело text/html через mailparser, вложения — список; html санитизировать: без скриптов, картинки через прокси/выкл.),
-   `POST …/messages/:uid/flags` (seen/flagged). Все с `withRoute`, лимит 60/мин на ящик (`limitMailRead` в `lib/rate-limit.ts`).
-4. UI: в `screen-mail.tsx` третья колонка/вкладка «Входящие»: список папок → список писем (виртуализация не нужна до 30 писем) → просмотр. testid: `mail-folder-*`, `mail-msg-row-*`, `mail-msg-view`.
-5. Статус IMAP на карточке становится «живым»: последняя синхронизация, непрочитанные.
-6. Письма как узлы карты памяти — отдельная задача после чтения (см. `lib/data.ts`, узлы карты `components/screen-map.tsx`).
+### P1 · Почта фаза 2 — чтение: СДЕЛАНО (итерация 34)
+Что есть: `lib/mail-imap.ts` (imapflow, один клиент на запрос, повтор при CONNECT_FAILED), `lib/mail-html.ts` (санитайзер),
+`lib/mail-read.ts` (страницы/порядок папок), `lib/mail-read-route.ts` (guard: 503 MAIL_DISABLED / 404 / 429 60-в-мин),
+API `GET …/folders`, `GET …/messages?folder&cursor&limit[&withFolders=1]`, `GET …/messages/:uid?folder[&markSeen=0]`,
+`POST …/messages/:uid/flags {folder,seen?,flagged?}`; UI `components/mail/mail-inbox.tsx` (+ folder-list / msg-list / msg-view),
+панель `mail-inbox` под сеткой экрана «Почта» для активного ящика; тело письма — iframe sandbox + CSP, картинки по кнопке.
+Автообновление: select `mail-inbox-refresh-interval` (0/30/60/300, localStorage `wf.mail.refresh.v1`), кнопка `mail-inbox-refresh`.
+Тесты: `tests/unit/mail-read.test.ts` (13), `tests/api/test_mail_read.py` (14), отчёт `test_reports/iteration_34.json`.
+Ошибки IMAP отдаются как 503 (не 502: прокси превью подменяет 502 своей страницей) — то же сделано в send.
+Осталось из фазы 2 (P1, по порядку): письма как узлы карты памяти (`lib/data.ts`, `components/screen-map.tsx`);
+скачивание вложений (`c.download(uid, part)` — сейчас только список); cid-картинки (inline) в письме; поиск по папке (IMAP SEARCH).
 
 ### P1 · Правка ящика из карточки
 Кнопка «Изменить» в `mail-account-card.tsx` → тот же `MailAddDialog` в режиме edit (prefill name/user/hosts, пароль пустой = не менять) → `mailApi.update`. Серверный `PUT` уже готов: при неработающем пароле/хостах возвращает 422 и ничего не сохраняет.

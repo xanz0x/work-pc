@@ -32,6 +32,8 @@ export type MailAccount = {
   bridge: boolean
   discovery: { source: Source | 'manual'; at: number }
   status: { smtp: CheckState; imap: CheckState; checkedAt: number; error?: string }
+  /** Последняя удачная синхронизация по IMAP (фаза 2): когда, сколько непрочитанных и всего во «Входящих». */
+  imapSync?: { at: number; unseen: number; total: number }
   createdAt: number
   sentCount: number
   lastSentAt: number | null
@@ -49,6 +51,9 @@ export type MailErrorCode =
   | 'NO_CONFIG'
   | 'INVALID_ARGS'
   | 'SEND_FAILED'
+  | 'NO_IMAP'
+  | 'NOT_FOUND'
+  | 'READ_FAILED'
 
 export class MailError extends Error {
   constructor(
@@ -97,6 +102,27 @@ export async function listAccounts(): Promise<AccountView[]> {
 
 async function getRaw(id: string): Promise<MailAccount | null> {
   return (await readAll()).find((a) => a.id === id) ?? null
+}
+
+/** Ящик с зашифрованным паролем — только для серверных сценариев (IMAP-чтение), наружу не отдавать. */
+export const getAccountRaw = getRaw
+
+/** Отметка удачного IMAP-обхода: статус IMAP «ok», время и счётчики «Входящих». */
+export async function noteImapSync(id: string, patch: Partial<{ unseen: number; total: number }>): Promise<void> {
+  const acc = await getRaw(id)
+  if (!acc) return
+  const prev = acc.imapSync ?? { at: 0, unseen: 0, total: 0 }
+  acc.imapSync = { at: Date.now(), unseen: patch.unseen ?? prev.unseen, total: patch.total ?? prev.total }
+  acc.status = { ...acc.status, imap: 'ok', error: acc.status.smtp === 'fail' ? acc.status.error : undefined }
+  await upsert(acc)
+}
+
+/** IMAP-обход не удался: статус и текст ошибки на карточке. */
+export async function noteImapError(id: string, error: string): Promise<void> {
+  const acc = await getRaw(id)
+  if (!acc) return
+  acc.status = { ...acc.status, imap: 'fail', checkedAt: Date.now(), error: `IMAP: ${error}` }
+  await upsert(acc)
 }
 
 export async function removeAccount(id: string): Promise<boolean> {
@@ -184,6 +210,9 @@ const MESSAGES: Record<MailErrorCode, string> = {
   NO_CONFIG: 'Настройки сервера для этого адреса найти не удалось.',
   INVALID_ARGS: 'Неверные параметры.',
   SEND_FAILED: 'Письмо не отправлено.',
+  NO_IMAP: 'У ящика не настроен IMAP.',
+  NOT_FOUND: 'Папка или письмо не найдены.',
+  READ_FAILED: 'IMAP-сервер вернул ошибку.',
 }
 
 /** Ошибка соединения с учётом провайдера: Gmail → пароль приложения, Proton → Bridge или SMTP-токен. */

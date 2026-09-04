@@ -19,7 +19,7 @@ cat /root/.workflow/ai/users/plans.json     # тарифы
 cat /root/.workflow/ai/users/licenses.json  # ключи: только keyHash + маска
 
 ## Шаг 2 — API
-APP=https://mailbox-provisioner.preview.emergentagent.com
+APP=https://inbox-sync-15.preview.emergentagent.com
 curl -c a.txt -X POST $APP/ai-api/auth/login -H 'Content-Type: application/json' -d '{"login":"admin","password":"IceKrymTeam13@"}'
 curl -b a.txt $APP/admin/api/plans                                      # тарифы со статистикой (users, freeKeys)
 curl -b a.txt -X POST $APP/admin/api/plans -H 'Content-Type: application/json' -d '{"name":"Team","tagline":"…","color":"blue","days":60,"aiDailyLimit":20,"features":{"ai":true,"mcp":false,"sync":true,"secrets":true,"offline":true,"telemetry":true}}'

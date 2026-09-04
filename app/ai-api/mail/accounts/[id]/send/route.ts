@@ -49,7 +49,7 @@ export const POST = withRoute('/ai-api/mail/accounts/[id]/send', async (req: Nex
     if (!r) return NextResponse.json({ code: 'NOT_FOUND', error: 'Ящик не найден.' }, { status: 404 })
     return NextResponse.json({ ok: true, messageId: r.messageId, account: r.account, recipients: r.accepted })
   } catch (e) {
-    if (e instanceof MailError) return NextResponse.json({ code: e.code, error: e.message, hint: e.hint }, { status: 502 })
+    if (e instanceof MailError) return NextResponse.json({ code: e.code, error: e.message, hint: e.hint }, { status: 503 })
     throw e
   }
 })

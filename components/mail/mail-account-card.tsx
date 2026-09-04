@@ -68,6 +68,14 @@ export function MailAccountCard({ account: a, active, busy, onPick, onTest, onRe
             <Dot label="IMAP" state={imapState} hint={endpointLabel(a.imap)} />
             <span className="mail-meta-sep">·</span>
             <span>{SOURCE_LABEL[a.discovery.source] ?? a.discovery.source}</span>
+            {a.imapSync && (
+              <>
+                <span className="mail-meta-sep">·</span>
+                <span className={a.imapSync.unseen ? 'mail-unseen-live' : undefined} title={`Синхронизация ${fmt(a.imapSync.at)} · всего ${a.imapSync.total}`} data-testid="mail-account-unseen">
+                  {a.imapSync.unseen ? `${a.imapSync.unseen} непрочит.` : 'всё прочитано'}
+                </span>
+              </>
+            )}
             {a.sentCount > 0 && (
               <>
                 <span className="mail-meta-sep">·</span>

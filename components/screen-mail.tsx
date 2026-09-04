@@ -11,6 +11,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { IconAlertTri, IconMail, IconPlus, IconShield } from './icons'
 import { MailAccountCard } from './mail/mail-account-card'
 import { MailAddDialog } from './mail/mail-add-dialog'
+import { MailInbox } from './mail/mail-inbox'
 import { MailSendForm } from './mail/mail-send-form'
 import { logJournal } from '@/lib/journal'
 import { isFail, mailApi, type AccountView } from '@/lib/mail-client'
@@ -76,6 +77,11 @@ export function ScreenMail() {
   }
 
   const list = accounts ?? []
+  const active = list.find((a) => a.id === fromId) ?? null
+
+  const patchAccount = useCallback((id: string, patch: Partial<AccountView>) => {
+    setAccounts((cur) => cur?.map((a) => (a.id === id ? { ...a, ...patch } : a)) ?? null)
+  }, [])
 
   return (
     <div className="mail-page" data-testid="mail-screen">
@@ -150,6 +156,16 @@ export function ScreenMail() {
             />
           </section>
         </div>
+
+        {active && active.imap && <MailInbox key={active.id} account={active} onAccountPatch={patchAccount} />}
+        {active && !active.imap && (
+          <div className="mail-banner" data-testid="mail-inbox-no-imap">
+            <IconAlertTri width={15} height={15} aria-hidden="true" />
+            <span>
+              У ящика «{active.name}» не настроен IMAP — читать письма нельзя, только отправлять. Добавьте сервер IMAP в настройках ящика.
+            </span>
+          </div>
+        )}
       </div>
 
       {adding && (

@@ -17,10 +17,43 @@ export type AccountView = {
   bridge?: boolean
   discovery: { source: string; at: number }
   status: { smtp: CheckState; imap: CheckState; checkedAt: number; error?: string }
+  imapSync?: { at: number; unseen: number; total: number }
   createdAt: number
   sentCount: number
   lastSentAt: number | null
 }
+
+export type Addr = { name: string; address: string }
+
+export type FolderView = { path: string; name: string; delimiter: string; specialUse: string | null; total: number | null; unseen: number | null }
+
+export type MessageRow = {
+  uid: number
+  seq: number
+  subject: string
+  from: Addr | null
+  to: Addr[]
+  date: string | null
+  size: number
+  seen: boolean
+  flagged: boolean
+  answered: boolean
+  hasAttachments: boolean
+}
+
+export type AttachmentView = { filename: string; contentType: string; size: number; cid: string | null; inline: boolean }
+
+export type MessageFull = Omit<MessageRow, 'seq' | 'hasAttachments'> & {
+  folder: string
+  cc: Addr[]
+  replyTo: Addr[]
+  html: string | null
+  text: string | null
+  attachments: AttachmentView[]
+  truncated: boolean
+}
+
+export type MessagePage = { folder: string; total: number; rows: MessageRow[]; nextCursor: number | null; syncedAt: number; folders?: FolderView[] }
 
 export type Candidate = { source: string; confidence: number; providerId: string | null; config: MailConfig; user?: string }
 
@@ -92,6 +125,20 @@ export const mailApi = {
     call<{ ok: true; messageId: string; account: AccountView; recipients: number }>(`/ai-api/mail/accounts/${id}/send`, {
       method: 'POST',
       body: JSON.stringify(body),
+    }),
+  folders: (id: string) => call<{ folders: FolderView[]; syncedAt: number }>(`/ai-api/mail/accounts/${id}/folders`),
+  messages: (id: string, folder: string, cursor: number | null = null, opts: { limit?: number; withFolders?: boolean } = {}) => {
+    const q = new URLSearchParams({ folder, limit: String(opts.limit ?? 30) })
+    if (cursor) q.set('cursor', String(cursor))
+    if (opts.withFolders) q.set('withFolders', '1')
+    return call<MessagePage>(`/ai-api/mail/accounts/${id}/messages?${q}`)
+  },
+  message: (id: string, folder: string, uid: number) =>
+    call<{ message: MessageFull }>(`/ai-api/mail/accounts/${id}/messages/${uid}?${new URLSearchParams({ folder })}`),
+  flags: (id: string, folder: string, uid: number, patch: { seen?: boolean; flagged?: boolean }) =>
+    call<{ ok: true; uid: number; seen: boolean; flagged: boolean }>(`/ai-api/mail/accounts/${id}/messages/${uid}/flags`, {
+      method: 'POST',
+      body: JSON.stringify({ folder, ...patch }),
     }),
 }
 
