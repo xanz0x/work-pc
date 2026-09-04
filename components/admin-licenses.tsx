@@ -1,6 +1,6 @@
 'use client'
 
-/* Ключи лицензий: выдача под тариф (показываются один раз), список с фильтром, отзыв. */
+/* Ключи лицензий: выдача под тариф (показываются один раз), таблица с фильтром, отзыв. */
 
 import '@/app/styles/plans.css'
 import { useCallback, useEffect, useState } from 'react'
@@ -26,7 +26,7 @@ export function AdminLicenses({ plans, onChanged }: { plans: PlanStats[]; onChan
   const [days, setDays] = useState<number | 'plan'>('plan')
   const [count, setCount] = useState(1)
   const [note, setNote] = useState('')
-  const [issued, setIssued] = useState<string[]>([])
+  const [issued, setIssued] = useState<{ keys: string[]; plan: string; days: number } | null>(null)
   const [filter, setFilter] = useState<Filter>('free')
   const [busy, setBusy] = useState(false)
 
@@ -47,7 +47,7 @@ export function AdminLicenses({ plans, onChanged }: { plans: PlanStats[]; onChan
     const r = await adminFetch<{ keys: string[] }>('/admin/api/licenses', { method: 'POST', body: JSON.stringify({ planId: plan.id, days: effDays, note, count }) })
     setBusy(false)
     if (!r.ok) return flash(r.error)
-    setIssued(r.data.keys)
+    setIssued({ keys: r.data.keys, plan: plan.name, days: effDays })
     setNote('')
     await reload()
     onChanged()
@@ -66,107 +66,131 @@ export function AdminLicenses({ plans, onChanged }: { plans: PlanStats[]; onChan
   for (const l of list) counts[state(l)] += 1
 
   return (
-    <section className="panel adm-card" data-testid="admin-licenses">
-      <div className="mask-head">
-        <span className="label-mono">Ключи лицензий · ключ = тариф + срок, активируется при регистрации или продлении</span>
-      </div>
-
-      <div className="keys-issue">
-        <div className="adm-field">
-          <label className="label-mono">Тариф</label>
-          <select className="mcp-input" value={plan?.id ?? ''} onChange={(e) => setPlanId(e.target.value)} data-testid="admin-license-plan">
-            {active.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} · {p.days} дн.
-              </option>
-            ))}
-            {active.length === 0 && <option value="">нет активных тарифов</option>}
-          </select>
+    <div className="keys-page" data-testid="admin-licenses">
+      <section className={`panel keys-issue-panel${plan ? ` plan-${plan.color}` : ''}`}>
+        <div className="adm-sec-title">
+          <span>Выдать ключи</span>
+          <small>ключ = тариф + срок · активируется при регистрации или продлении · показывается один раз</small>
         </div>
-        <div className="adm-field">
-          <label className="label-mono">Срок</label>
-          <select className="mcp-input" value={days} onChange={(e) => setDays(e.target.value === 'plan' ? 'plan' : Number(e.target.value))} data-testid="admin-license-days">
-            <option value="plan">Как в тарифе ({plan?.days ?? '—'} дн.)</option>
-            {LICENSE_TERMS.map((t) => (
-              <option key={t.days} value={t.days}>
-                {t.label}
-              </option>
-            ))}
-          </select>
+        <div className="keys-issue">
+          <div className="adm-field">
+            <label className="label-mono">Тариф</label>
+            <select className="mcp-input" value={plan?.id ?? ''} onChange={(e) => setPlanId(e.target.value)} data-testid="admin-license-plan">
+              {active.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} · {p.days} дн.
+                </option>
+              ))}
+              {active.length === 0 && <option value="">нет активных тарифов</option>}
+            </select>
+          </div>
+          <div className="adm-field">
+            <label className="label-mono">Срок</label>
+            <select className="mcp-input" value={days} onChange={(e) => setDays(e.target.value === 'plan' ? 'plan' : Number(e.target.value))} data-testid="admin-license-days">
+              <option value="plan">Как в тарифе ({plan?.days ?? '—'} дн.)</option>
+              {LICENSE_TERMS.map((t) => (
+                <option key={t.days} value={t.days}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="adm-field">
+            <label className="label-mono">Заметка · кому</label>
+            <input className="mcp-input" placeholder="Например: Иван, отдел продаж" value={note} onChange={(e) => setNote(e.target.value)} maxLength={80} data-testid="admin-license-note" />
+          </div>
+          <div className="adm-field">
+            <label className="label-mono">Штук</label>
+            <input className="mcp-input" type="number" min={1} max={25} value={count} onChange={(e) => setCount(Math.max(1, Math.min(25, Number(e.target.value) || 1)))} data-testid="admin-license-count" />
+          </div>
+          <button className="btn btn-primary" disabled={busy || !plan} onClick={() => void issue()} data-testid="admin-license-issue">
+            <IconKey width={12} height={12} aria-hidden="true" /> Выдать
+          </button>
         </div>
-        <div className="adm-field">
-          <label className="label-mono">Заметка · кому</label>
-          <input className="mcp-input" placeholder="Например: Иван, отдел продаж" value={note} onChange={(e) => setNote(e.target.value)} maxLength={80} data-testid="admin-license-note" />
-        </div>
-        <div className="adm-field">
-          <label className="label-mono">Штук</label>
-          <input className="mcp-input" type="number" min={1} max={25} value={count} onChange={(e) => setCount(Math.max(1, Math.min(25, Number(e.target.value) || 1)))} data-testid="admin-license-count" />
-        </div>
-        <button className="btn btn-primary" disabled={busy || !plan} onClick={() => void issue()} data-testid="admin-license-issue">
-          <IconKey width={12} height={12} aria-hidden="true" /> Выдать
-        </button>
-      </div>
-
-      {issued.length > 0 && (
-        <div className="keys-issued" data-testid="admin-license-issued">
-          <div className="mask-head">
-            <span className="label-mono">
-              {issued.length === 1 ? 'Ключ показывается один раз' : `${issued.length} ключей — показываются один раз`} · передайте пользователю
+        {plan && (
+          <div className="keys-preview">
+            <PlanBadge plan={plan} />
+            <span>
+              {effDays} дн. · ИИ {plan.aiDailyLimit || '∞'} / сутки · {Object.values(plan.features).filter(Boolean).length} из {Object.keys(plan.features).length} функций
             </span>
-            <button className="mcp-x" onClick={() => setIssued([])} data-testid="admin-license-hide">
-              скрыть
-            </button>
           </div>
-          <div className="keys-issued-list">
-            {issued.map((k) => (
-              <code key={k} data-testid="admin-license-key">
-                {k}
-              </code>
+        )}
+        {issued && (
+          <div className="keys-issued" data-testid="admin-license-issued">
+            <div className="mask-head">
+              <span className="label-mono">
+                {issued.keys.length === 1 ? 'Ключ' : `${issued.keys.length} ключей`} · {issued.plan} · {issued.days} дн. · показываются один раз — передайте пользователю
+              </span>
+              <button className="mcp-x" onClick={() => setIssued(null)} data-testid="admin-license-hide">
+                скрыть
+              </button>
+            </div>
+            <div className="keys-issued-list">
+              {issued.keys.map((k) => (
+                <code key={k} data-testid="admin-license-key">
+                  {k}
+                </code>
+              ))}
+            </div>
+            <div className="adm-actions">
+              <button className="btn btn-ghost" onClick={() => void navigator.clipboard?.writeText(issued.keys.join('\n')).then(() => flash(issued.keys.length === 1 ? 'Ключ скопирован' : 'Ключи скопированы'))} data-testid="admin-license-copy">
+                <IconCopy width={12} height={12} aria-hidden="true" /> Копировать {issued.keys.length > 1 ? 'все' : ''}
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
+
+      <section className="panel adm-users">
+        <div className="mask-head">
+          <span className="label-mono">Ключи · {list.length}</span>
+          <div className="adm-tabs" role="tablist">
+            {FILTERS.map((f) => (
+              <button key={f.id} role="tab" aria-selected={filter === f.id} className={filter === f.id ? 'active' : ''} onClick={() => setFilter(f.id)} data-testid={`admin-license-filter-${f.id}`}>
+                {f.label} <span className="adm-count">{counts[f.id]}</span>
+              </button>
             ))}
           </div>
-          <div className="tm-actions">
-            <button className="btn btn-ghost" onClick={() => void navigator.clipboard?.writeText(issued.join('\n')).then(() => flash(issued.length === 1 ? 'Ключ скопирован' : 'Ключи скопированы'))} data-testid="admin-license-copy">
-              <IconCopy width={12} height={12} aria-hidden="true" /> Копировать {issued.length > 1 ? 'все' : ''}
-            </button>
-          </div>
         </div>
-      )}
-
-      <div className="keys-filter">
-        <div className="adm-tabs" role="tablist">
-          {FILTERS.map((f) => (
-            <button key={f.id} role="tab" aria-selected={filter === f.id} className={filter === f.id ? 'active' : ''} onClick={() => setFilter(f.id)} data-testid={`admin-license-filter-${f.id}`}>
-              {f.label} <span className="adm-count">{counts[f.id]}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="keys-table" data-testid="admin-license-list">
-        {shown.length === 0 && <p className="jr-empty">{filter === 'free' ? 'Свободных ключей нет — выдайте первый.' : 'Пусто.'}</p>}
-        {shown.map((l) => {
-          const st = state(l)
-          return (
-            <div key={l.id} className={`key-row ${st}`} data-testid="admin-license-row" data-state={st}>
-              <code>{l.mask}</code>
-              <PlanBadge plan={{ id: l.planId, name: l.planName, color: l.planColor }} />
-              <span className="key-note">
-                {l.days} дн. · {l.note || 'без заметки'} · выдан {fmtDate(l.createdAt)}
-                {l.usedBy ? ` · активировал ${l.usedByLogin ?? '—'} ${fmtDate(l.usedAt)}` : ''}
-                {l.revokedAt ? ` · отозван ${fmtDate(l.revokedAt)}` : ''}
-              </span>
-              <span className={`key-state ${st}`}>{st === 'free' ? 'свободен' : st === 'used' ? 'активирован' : 'отозван'}</span>
-              {st === 'free' ? (
-                <button className="btn btn-ghost" onClick={() => void revoke(l.id)} data-testid="admin-license-revoke">
-                  Отозвать
-                </button>
-              ) : (
-                <span />
-              )}
+        <div className="adm-table keys-table" role="table" data-testid="admin-license-list">
+          {shown.length > 0 && (
+            <div className="adm-thead key-row" role="row">
+              <span>ключ</span>
+              <span>тариф</span>
+              <span>срок</span>
+              <span>заметка · история</span>
+              <span>статус</span>
+              <span />
             </div>
-          )
-        })}
-      </div>
-    </section>
+          )}
+          {shown.length === 0 && <p className="adm-empty">{filter === 'free' ? 'Свободных ключей нет — выдайте первый.' : 'Пусто.'}</p>}
+          {shown.map((l) => {
+            const st = state(l)
+            return (
+              <div key={l.id} className={`key-row ${st}`} role="row" data-testid="admin-license-row" data-state={st}>
+                <code>{l.mask}</code>
+                <span>
+                  <PlanBadge plan={{ id: l.planId, name: l.planName, color: l.planColor }} />
+                </span>
+                <span className="adm-cell-v">{l.days} дн.</span>
+                <span className="adm-cell-v key-note">
+                  {l.note || <i className="dim">без заметки</i>} · выдан {fmtDate(l.createdAt)}
+                  {l.usedBy ? ` · активировал @${l.usedByLogin ?? '—'} ${fmtDate(l.usedAt)}` : ''}
+                  {l.revokedAt ? ` · отозван ${fmtDate(l.revokedAt)}` : ''}
+                </span>
+                <span className={`key-state ${st}`}>{st === 'free' ? 'свободен' : st === 'used' ? 'активирован' : 'отозван'}</span>
+                <span className="key-act">
+                  {st === 'free' && (
+                    <button className="btn btn-ghost" onClick={() => void revoke(l.id)} data-testid="admin-license-revoke">
+                      Отозвать
+                    </button>
+                  )}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      </section>
+    </div>
   )
 }

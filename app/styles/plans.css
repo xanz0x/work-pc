@@ -137,8 +137,8 @@
   /* --- карточки тарифов --- */
   .plans-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 14px;
   }
   .plan-card {
     position: relative;
@@ -253,7 +253,6 @@
   .plan-actions {
     display: flex;
     gap: 6px;
-    margin-top: auto;
     flex-wrap: wrap;
   }
   .plan-actions .btn {
@@ -346,14 +345,49 @@
   }
 
   /* --- выдача ключей --- */
+  .keys-page {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .keys-issue-panel {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px 16px 16px;
+    overflow: hidden;
+  }
+  .keys-issue-panel::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 2px;
+    background: rgb(var(--plan-c, 168 176 188));
+    transition: background-color 0.2s ease;
+  }
   .keys-issue {
     display: grid;
-    grid-template-columns: 1.4fr 1fr 1.6fr 80px auto;
-    gap: 8px;
+    grid-template-columns: 1.3fr 1fr 1.8fr 90px auto;
+    gap: 10px;
     align-items: end;
   }
   .keys-issue .adm-field > label {
     font-size: 10px;
+  }
+  .keys-issue .mcp-input {
+    height: 34px;
+  }
+  .keys-issue .btn {
+    height: 34px;
+  }
+  .keys-preview {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 11.5px;
+    color: var(--text-3);
+    font-family: var(--font-mono);
   }
   .keys-issued {
     display: flex;
@@ -366,37 +400,29 @@
     animation: plan-in 0.22s ease-out;
   }
   .keys-issued-list {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 6px;
   }
   .keys-issued-list code {
     font-family: var(--font-mono);
     font-size: 13px;
     letter-spacing: 0.1em;
     color: var(--text);
-    padding: 6px 10px;
+    padding: 7px 10px;
     border-radius: var(--r);
     background: var(--bg-input);
     border: 1px solid var(--border);
     user-select: all;
+    text-align: center;
   }
-  .keys-filter {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    flex-wrap: wrap;
-  }
-  .keys-table {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-  .key-row {
+  .keys-table .key-row {
     display: grid;
-    grid-template-columns: 200px auto 1fr auto auto;
+    grid-template-columns: 220px 120px 64px minmax(0, 1fr) 100px 88px;
     gap: 12px;
     align-items: center;
+  }
+  .key-row:not(.adm-thead) {
     padding: 8px 12px;
     border-radius: var(--r);
     border: 1px solid var(--border);
@@ -408,13 +434,18 @@
     font-family: var(--font-mono);
     letter-spacing: 0.08em;
     color: var(--text);
+    font-size: 12px;
   }
   .key-row.used,
   .key-row.revoked {
-    opacity: 0.6;
+    opacity: 0.62;
   }
   .key-row.revoked code {
     text-decoration: line-through;
+  }
+  .key-row .dim {
+    font-style: normal;
+    color: var(--text-3);
   }
   .key-row .key-state {
     font-family: var(--font-mono);
@@ -429,6 +460,10 @@
   }
   .key-row .key-state.revoked {
     color: var(--danger);
+  }
+  .key-act {
+    display: flex;
+    justify-content: flex-end;
   }
   .key-row .btn {
     height: 26px;
@@ -474,18 +509,69 @@
     font-size: 10.5px;
     color: var(--text-3);
   }
+  .adm-lic-meta .warn {
+    color: var(--warn);
+  }
+  .adm-lic-meta .danger {
+    color: var(--danger);
+  }
 
-  @media (max-width: 960px) {
-    .keys-issue,
+  /* --- вкладка тарифов --- */
+  .plans-page {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .plans-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .plan-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: auto;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
+  .plan-foot .label-mono {
+    font-size: 10px;
+    color: var(--text-3);
+    white-space: nowrap;
+  }
+
+  @media (max-width: 1100px) {
+    .keys-issue {
+      grid-template-columns: 1fr 1fr;
+    }
+    .keys-issue .btn {
+      grid-column: 1 / -1;
+    }
+    .keys-table .key-row {
+      grid-template-columns: 200px 110px 1fr 88px;
+    }
+    .keys-table .key-row > :nth-child(3),
+    .keys-table .key-row > :nth-child(5) {
+      display: none;
+    }
     .plan-editor-grid,
     .plan-editor-row {
       grid-template-columns: 1fr;
     }
-    .key-row {
+  }
+  @media (max-width: 760px) {
+    .keys-issue {
+      grid-template-columns: 1fr;
+    }
+    .keys-table .key-row {
       grid-template-columns: 1fr auto;
     }
-    .key-row .key-note,
-    .key-row .plan-badge {
+    .keys-table .key-row > :nth-child(2),
+    .keys-table .key-row > :nth-child(4) {
       display: none;
     }
   }

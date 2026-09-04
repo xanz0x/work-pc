@@ -40,16 +40,23 @@ export function AdminPlans({ plans, onChanged }: Props) {
   const archivedCount = plans.filter((p) => p.archived).length
 
   return (
-    <section className="screen-admin-plans" data-testid="admin-plans">
-      <div className="mask-head">
-        <span className="label-mono">
-          Тарифы · {plans.length - archivedCount} активных{archivedCount ? ` · ${archivedCount} в архиве` : ''}
-        </span>
-        {archivedCount > 0 && (
-          <label className="label-mono adm-check">
-            <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} data-testid="admin-plans-show-archived" /> показать архив
-          </label>
-        )}
+    <section className="plans-page" data-testid="admin-plans">
+      <div className="plans-head">
+        <div className="adm-sec-title">
+          <span>
+            Тарифы · {plans.length - archivedCount} активных{archivedCount ? ` · ${archivedCount} в архиве` : ''}
+          </span>
+        </div>
+        <div className="adm-tools">
+          {archivedCount > 0 && (
+            <label className="label-mono adm-check">
+              <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} data-testid="admin-plans-show-archived" /> показать архив
+            </label>
+          )}
+          <button className={`btn ${editing === 'new' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setEditing(editing === 'new' ? null : 'new')} data-testid="plan-new">
+            <IconPlus width={12} height={12} aria-hidden="true" /> Новый тариф
+          </button>
+        </div>
       </div>
 
       {editing && (
@@ -95,30 +102,25 @@ export function AdminPlans({ plans, onChanged }: Props) {
                 </span>
               ))}
             </div>
-            <div className="plan-actions">
-              <button className="btn btn-ghost" onClick={() => setEditing(p)} data-testid="plan-edit">
-                Настроить
-              </button>
-              <button className="btn btn-ghost" onClick={() => void toggleArchive(p)} data-testid="plan-archive">
-                {p.archived ? 'Вернуть' : 'В архив'}
-              </button>
-              {p.users === 0 && p.freeKeys === 0 && (
-                <button className={`btn ${confirm === p.id ? 'btn-danger' : 'btn-ghost'}`} onClick={() => void remove(p)} data-testid="plan-delete">
-                  {confirm === p.id ? 'Точно удалить?' : 'Удалить'}
+            <div className="plan-foot">
+              <div className="plan-actions">
+                <button className="btn btn-ghost" onClick={() => setEditing(p)} data-testid="plan-edit">
+                  Настроить
                 </button>
-              )}
-              <span className="label-mono" style={{ marginLeft: 'auto', alignSelf: 'center' }}>
-                свободных ключей: {p.freeKeys}
-              </span>
+                <button className="btn btn-ghost" onClick={() => void toggleArchive(p)} data-testid="plan-archive">
+                  {p.archived ? 'Вернуть' : 'В архив'}
+                </button>
+                {p.users === 0 && p.freeKeys === 0 && (
+                  <button className={`btn ${confirm === p.id ? 'btn-danger' : 'btn-ghost'}`} onClick={() => void remove(p)} data-testid="plan-delete">
+                    {confirm === p.id ? 'Точно удалить?' : 'Удалить'}
+                  </button>
+                )}
+              </div>
+              <span className="label-mono">ключей: {p.freeKeys}</span>
             </div>
           </article>
         ))}
-        {editing !== 'new' && (
-          <button className="plan-new" onClick={() => setEditing('new')} data-testid="plan-new">
-            <IconPlus aria-hidden="true" />
-            Новый тариф
-          </button>
-        )}
+        {shown.length === 0 && <p className="adm-empty">Тарифов нет — создайте первый.</p>}
       </div>
     </section>
   )

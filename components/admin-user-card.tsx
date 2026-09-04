@@ -1,11 +1,11 @@
 'use client'
 
-/* Карточка пользователя в админке: роль, функции, лимит ИИ, лицензия, пароль, сессии, удаление. */
+/* Карточка пользователя в админке: данные, функции и лимит, тариф и лицензия, безопасность. */
 
 import { useState } from 'react'
 import { IconCopy } from './icons'
 import { PlanBadge } from './plan-badge'
-import { adminFetch, fmtDate, genPassword } from './admin-shared'
+import { adminFetch, fmtDate, fmtDay, fmtLeft, genPassword } from './admin-shared'
 import { FEATURES, LICENSE_TERMS, accessState, type FeatureId, type Features, type PlanStats, type Role, type UserView } from '@/lib/users'
 import { useToast } from '@/lib/vault-store'
 
@@ -13,19 +13,16 @@ type Props = { user: UserView; plans: PlanStats[]; selfId: string; onChanged: ()
 
 /** Полоска остатка лицензии: зелёная → жёлтая (≤7 дн.) → красная (истекла). */
 function LicenseBar({ until }: { until: number | null }) {
-  if (!until) return <span className="label-mono">Лицензии нет — пользователь ждёт ключ или продления.</span>
-  const left = until - Date.now()
-  const daysLeft = Math.ceil(left / 86_400_000)
-  const tone = left <= 0 ? 'danger' : daysLeft <= 7 ? 'warn' : ''
-  const pct = left <= 0 ? 0 : Math.min(100, Math.max(4, (daysLeft / 90) * 100))
+  const left = fmtLeft(until)
+  const pct = left.days <= 0 ? 0 : Math.min(100, Math.max(4, (left.days / 90) * 100))
   return (
     <div className="adm-field" data-testid="admin-card-license-bar">
-      <div className={`adm-lic-bar ${tone}`}>
+      <div className={`adm-lic-bar ${left.tone}`}>
         <i style={{ width: `${pct}%` }} />
       </div>
       <div className="adm-lic-meta">
-        <span>{left <= 0 ? 'истекла' : `осталось ${daysLeft} дн.`}</span>
-        <span>до {fmtDate(until)}</span>
+        <span className={left.tone}>{until ? (left.days > 0 ? `осталось ${left.days} дн.` : 'истекла') : 'лицензии нет'}</span>
+        <span>{until ? `до ${fmtDay(until)}` : 'ждёт ключ или продления'}</span>
       </div>
     </div>
   )
@@ -97,32 +94,40 @@ export function AdminUserCard({ user: u, plans, selfId, onChanged, onDeleted }: 
         </span>
       </div>
 
-      <div className="adm-field">
-        <label className="label-mono">Имя</label>
-        <input className="mcp-input" value={name} onChange={(e) => setName(e.target.value)} data-testid="admin-card-name" />
-      </div>
-
-      <div className="adm-field">
-        <label className="label-mono">Роль</label>
-        <div className="autolock-seg" role="radiogroup">
-          {(['user', 'admin'] as Role[]).map((r) => (
-            <button
-              key={r}
-              role="radio"
-              aria-checked={u.role === r}
-              className={u.role === r ? 'active' : ''}
-              disabled={self}
-              onClick={() => void patch({ role: r })}
-              data-testid={`admin-card-role-${r}`}
-            >
-              {r === 'admin' ? 'Администратор' : 'Пользователь'}
-            </button>
-          ))}
+      <section className="adm-sec">
+        <div className="adm-sec-title">
+          <span>Данные</span>
+          <small>с {fmtDay(u.createdAt)}</small>
         </div>
-      </div>
+        <div className="adm-field">
+          <label className="label-mono">Имя</label>
+          <input className="mcp-input" value={name} onChange={(e) => setName(e.target.value)} data-testid="admin-card-name" />
+        </div>
+        <div className="adm-field">
+          <label className="label-mono">Роль</label>
+          <div className="autolock-seg" role="radiogroup">
+            {(['user', 'admin'] as Role[]).map((r) => (
+              <button
+                key={r}
+                role="radio"
+                aria-checked={u.role === r}
+                className={u.role === r ? 'active' : ''}
+                disabled={self}
+                onClick={() => void patch({ role: r })}
+                data-testid={`admin-card-role-${r}`}
+              >
+                {r === 'admin' ? 'Администратор' : 'Пользователь'}
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
 
-      <div className="adm-field">
-        <label className="label-mono">Функции</label>
+      <section className="adm-sec">
+        <div className="adm-sec-title">
+          <span>Функции и лимит</span>
+          <small>{u.plan ? `по тарифу ${u.plan.name}, можно переопределить` : 'вручную'}</small>
+        </div>
         <div className="adm-toggles">
           {FEATURES.map((f) => (
             <label key={f.id} className={`mcp-scope${features[f.id] ? ' on' : ''}`} title={f.note} data-testid={`admin-feature-${f.id}`}>
@@ -133,24 +138,28 @@ export function AdminUserCard({ user: u, plans, selfId, onChanged, onDeleted }: 
             </label>
           ))}
         </div>
-      </div>
+        <div className="adm-limit">
+          <input className="mcp-input adm-num" type="number" min={0} value={limit} onChange={(e) => setLimit(e.target.value)} data-testid="admin-card-limit" />
+          <span className="label-mono">
+            запросов к ИИ в сутки · 0 = без лимита
+            <br />
+            сегодня {u.aiCallsToday} · всего {u.aiCallsTotal}
+          </span>
+        </div>
+        <div className="adm-actions">
+          <button className="btn btn-primary" disabled={!dirty} onClick={() => void patch({ features, aiDailyLimit: Number(limit), name })} data-testid="admin-card-save">
+            Сохранить изменения
+          </button>
+        </div>
+      </section>
 
-      <div className="adm-field adm-inline">
-        <label className="label-mono">Лимит ИИ в сутки (0 — без лимита)</label>
-        <input className="mcp-input adm-num" type="number" min={0} value={limit} onChange={(e) => setLimit(e.target.value)} data-testid="admin-card-limit" />
-        <span className="label-mono">сегодня {u.aiCallsToday} · всего {u.aiCallsTotal}</span>
-      </div>
-
-      <div className="tm-actions">
-        <button className="btn btn-primary" disabled={!dirty} onClick={() => void patch({ features, aiDailyLimit: Number(limit), name })} data-testid="admin-card-save">
-          Сохранить изменения
-        </button>
-      </div>
-
-      <div className="adm-field adm-sep">
-        <label className="label-mono">Тариф и лицензия</label>
+      <section className="adm-sec">
+        <div className="adm-sec-title">
+          <span>Тариф и лицензия</span>
+          {u.role === 'admin' && <small>админу не нужны</small>}
+        </div>
         {u.role === 'admin' ? (
-          <span className="label-mono">Администратору тариф и лицензия не нужны — доступ бессрочный.</span>
+          <span className="label-mono">Доступ администратора бессрочный и не зависит от тарифа.</span>
         ) : (
           <>
             <div className="adm-plan-row">
@@ -191,11 +200,16 @@ export function AdminUserCard({ user: u, plans, selfId, onChanged, onDeleted }: 
             </div>
           </>
         )}
-      </div>
+      </section>
 
-      <div className="adm-field adm-sep">
-        <label className="label-mono">Безопасность · сессий {u.sessions} · последний вход {fmtDate(u.lastLoginAt)}</label>
-        <div className="adm-inline wrap">
+      <section className="adm-sec">
+        <div className="adm-sec-title">
+          <span>Безопасность</span>
+          <small>
+            сессий {u.sessions} · вход {fmtDate(u.lastLoginAt)}
+          </small>
+        </div>
+        <div className="adm-actions">
           <button
             className={`btn ${confirm === 'reset' ? 'btn-danger' : 'btn-ghost'}`}
             onClick={() =>
@@ -235,7 +249,7 @@ export function AdminUserCard({ user: u, plans, selfId, onChanged, onDeleted }: 
             </button>
           </div>
         )}
-      </div>
+      </section>
 
       {err && (
         <p className="mk-err" role="alert" data-testid="admin-card-error">
