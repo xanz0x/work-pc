@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { IconLogoMark } from '@/components/icons'
 import { LogoWord } from '@/components/screen-lock-logo'
 
@@ -21,6 +21,13 @@ export default function LoginPage() {
      заполнить поле до гидратации, и тогда React-state пуст, а поле — нет. */
   const passRef = useRef<HTMLInputElement>(null)
   const emailRef = useRef<HTMLInputElement>(null)
+
+  /* Заглушка холодного старта html.lock-pending живёт для сейфа в (app);
+     на странице входа сейфа нет, поэтому снимаем её, если браузер её повесил
+     (полный переход сюда с уже включённым замком иначе прячет форму). */
+  useEffect(() => {
+    document.documentElement.classList.remove('lock-pending')
+  }, [])
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
