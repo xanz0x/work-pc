@@ -162,7 +162,7 @@ export type TempBoxView = {
   count: number
 }
 
-export type TempRow = { mid: string; subject: string; from: string; date: string | null }
+export type TempRow = { mid: string; subject: string; from: string; date: string | null; intro?: string }
 export type TempFull = TempRow & { html: string | null; text: string | null }
 
 export const tempApi = {

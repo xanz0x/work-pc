@@ -45,9 +45,9 @@ export function readRefresh(): number {
   return REFRESH_OPTIONS.some((o) => o.value === n) ? n : 60
 }
 
-const CODE_TOKEN = /\b(?=[A-Z0-9]*\d)[A-Z0-9]{4,8}\b|\b\d{4,8}\b/g
+const CODE_TOKEN = /(?<![A-Za-z0-9])(?:(?=[A-Z0-9]*\d)[A-Z0-9]{4,8}|\d{4,8})(?![A-Za-z0-9])/g
 const CODE_WORDS = /код|code|otp|pin|пароль|verification|подтвержд/i
-const CODE_ANY = /(?<![\d.,:/-])(\d{4,8})(?![\d.,:/-])/
+const CODE_ANY = /(?<![A-Za-z0-9.,:/-])(\d{4,8})(?![A-Za-z0-9.,:/-])/
 
 /** Код подтверждения из письма: сперва токен, рядом с которым стоят слова «код/code/OTP», иначе отдельное 4–8-значное число. */
 export function extractCode(html: string | null, text: string | null): string | null {
@@ -59,6 +59,12 @@ export function extractCode(html: string | null, text: string | null): string | 
   }
   const any = body.match(CODE_ANY)
   return any ? any[1] : null
+}
+
+/** Код прямо из темы письма — показываем в списке только когда тема явно про код. */
+export function subjectCode(subject: string): string | null {
+  if (!CODE_WORDS.test(subject)) return null
+  return extractCode(null, subject)
 }
 
 /** Свежая страница поверх уже загруженных: новые письма сверху, флаги обновляются, старые страницы остаются. */export function mergeRows<T extends { uid: number }>(fresh: T[], old: T[]): T[] {

@@ -1,0 +1,34 @@
+{
+  "summary": "Итерация 39 · frontend-only проверка новой вёрстки списка писем временного ящика и логики извлечения кода. Все 6 сценариев из запроса пройдены зелёными на публичном URL (1920x800). Unit-тесты tests/unit/temp-mail.test.ts — 12/12 passed. Консольных ошибок в браузере не зафиксировано ни в одном прогоне. Бэкенд по запросу не тестировался.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Список временных писем", "issues": ["Тема письма Vercel обрезается пилюлей кода: «317884 is your Vercel sign up c…» — читаемо, но пилюля забирает ~55px строки; при длинных темах с кодом теряется хвост темы (косметика, не блокер)."]},
+      {"screen": "Обычный ящик · шапка списка", "issues": ["Автообновление сделано нативным <select> (mail-inbox-refresh-interval), визуально выбивается из остального UI — предсущее поведение, к текущему изменению отношения не имеет."]}
+    ]
+  },
+  "test_report_links": ["/app/tests/unit/temp-mail.test.ts"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "mail-temp-pane.tsx (315 строк) держит и список, и карточку письма, и паспорт ящика — при дальнейшем росте стоит вынести элемент списка (.mail-temp-item + пилюля) в отдельный компонент.",
+    "Пилюля кода в списке считается только по теме (subjectCode), тогда как кнопка mail-temp-code в карточке берёт код из тела — из-за этого у письма TEST_QA в списке пилюли нет, а в карточке код 482913 есть. Поведение соответствует ТЗ, но пользователю расхождение может показаться непоследовательным.",
+    "Счётчик mail-temp-next исчезает на момент синхронизации (syncing) — в цикле видно значение '-' на 1 секунду (мигание), как и отмечалось в iteration_38."
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "не тестировался (по запросу)", "frontend": "100% (6/6 сценариев)" },
+  "seed_data_creation": "Для регресса удаления создан временный ящик mail.tm id ad027232 и удалён двумя кликами по корзине (счётчик вернулся к 2). Ящики 91030592 и 84968612 не тронуты.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "admin / IceKrymTeam13@ (форма /login: login-login, login-password, login-submit)",
+  "context_for_next_testing_agent": "Логин: goto /login (wait_until='domcontentloaded'), затем localStorage.setItem('wf.settings.v1', JSON.stringify({onboarding:{at:1700000000000}})) до отправки формы — онбординг больше не появляется. Экран почты: [data-testid=nav-mail]. Обычный ящик выбирается через [data-testid^=mail-account-row-]:not([data-testid*=delete]), письма — mail-msg-open-<uid>, карточка — mail-msg-view. Временный ящик: mail-temp-row-91030592 (4 письма: 3x TEST_QA verification <hex> с кодом 482913 в теле, 1x Vercel с 317884 в теме; mid'ы 6a9b43ba6953ce75cb33a6dd / 6a9b430b57aab320657d319c / 6a9b41d668e6ff7cca223c7f / 6a9b3e7b5a3a3b962a98a360), пустой — 84968612. В headless clipboard недоступен → тост показывает fallback-текст 'Код: 317884'. mail-temp-next в headless-цикле корректно убывает 15→0 и штамп mail-temp-synced меняется (проверено 20-секундным опросом).",
+  "detailed_results": {
+    "1_list_layout": "PASS — 4 карточки mail-temp-open-<mid>, у каждой аватар-инициал (Q/Q/Q/V), отправитель, время (22:18/22:15/22:10/21:56), тема, серый предпросмотр (intro). Подпись-итог: «4 письма · письма живут, пока жив ящик». Пилюля ровно ОДНА — mail-temp-pill-6a9b3e7b5a3a3b962a98a360 = 317884; у писем TEST_QA verification c6040a/e12d9c/f7dd96 пилюли нет (ложное срабатывание исправлено).",
+    "2_pill_click": "PASS — тост flash-toast «Код: 317884» (содержит 317884); карточка НЕ выбрана: aria-current=None, .mail-temp-item.on = 0, mail-temp-msg не открылся.",
+    "3_open_letter": "PASS — тема «TEST_QA verification c6040a», отправитель qa-bot@uberip-qa.example.com, дата «04 сентября 2026 г. в 22:18», iframe mail-temp-frame виден и содержит 482913, кнопка mail-temp-code «Код 482913», клик даёт тост «Код: 482913».",
+    "4_head_and_timer": "PASS — .mail-temp-list-head читается полностью: «ВХОДЯЩИЕ | 4 письма | 22:34:13 | +15 с», ни один дочерний элемент не обрезан (scrollWidth<=clientWidth). Обратный отсчёт 10→2, затем сброс на 15 и штамп mail-temp-synced изменился 22:34:48 → 22:35:03 (автообновление работает).",
+    "5_empty_state": "PASS — mail-temp-empty с «Ждём первое письмо» + пояснение; блок начинается ровно под шапкой (head y+h=156, empty y=156), наложений нет, mail-temp-list отсутствует.",
+    "6_regression": "PASS — обычный ящик Read QA: 4 строки, открытие письма «QA iter35 compose», iframe виден; переключение временный ↔ обычный в обе стороны без ошибок; создание ящика mailtm (2→3) и удаление двумя кликами по корзине (первый клик → «Точно?», второй → удалён, счётчик 3→2, тост «Временный ящик удалён»). Страница не прокручивается при 1920x800 (scrollHeight=clientHeight=800) во всех состояниях."
+  }
+}

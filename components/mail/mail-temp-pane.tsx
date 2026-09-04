@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { IconClock, IconCopy, IconInbox, IconMail, IconRefresh, IconTrash } from '../icons'
 import { isFail, tempApi, TEMP_LABEL, type TempBoxView, type TempFull, type TempRow } from '@/lib/mail-client'
-import { fmtMailDate, fmtMailDateFull, extractCode } from '@/lib/mail-format'
+import { fmtMailDate, fmtMailDateFull, extractCode, letterWord, subjectCode } from '@/lib/mail-format'
 import { escapeHtml } from '@/lib/mail-html'
 import { useToast } from '@/lib/vault-store'
 
@@ -148,21 +148,25 @@ export function MailTempPane({ box, onBox, onRemove }: Props) {
   return (
     <>
       <section className="mail-list-col" aria-label="Входящие временного ящика">
-        <div className="mail-list-head">
+        <div className="mail-list-head mail-temp-list-head">
           <span className="mail-inbox-title">
             <IconInbox width={13} height={13} aria-hidden="true" />
-            <span className="label-mono">Временный</span>
-            <span className="mail-count num">{rows ? rows.length : ''}</span>
-            {box.lastSyncAt && (
-              <span className="mail-temp-next mono" data-testid="mail-temp-next">
-                {syncing ? 'проверяем…' : `след. проверка через ${Math.max(0, Math.ceil((box.lastSyncAt + REFRESH_MS - now) / 1000))} с`}
-              </span>
-            )}
+            <span className="label-mono">Входящие</span>
+            <span className="mail-count num">{rows ? `${rows.length} ${letterWord(rows.length)}` : ''}</span>
           </span>
           <span className="mail-inbox-tools">
-            <span className="mail-synced mono" data-testid="mail-temp-synced" title="время последней проверки ящика">
-              {syncing ? 'проверяем…' : box.lastSyncAt ? `обновлено ${new Date(box.lastSyncAt).toLocaleTimeString('ru-RU')}` : ''}
+            <span
+              className="mail-synced mono"
+              data-testid="mail-temp-synced"
+              title={box.lastSyncAt ? `последняя проверка ${new Date(box.lastSyncAt).toLocaleTimeString('ru-RU')}` : 'ящик ещё не проверялся'}
+            >
+              {syncing ? 'проверяем…' : box.lastSyncAt ? new Date(box.lastSyncAt).toLocaleTimeString('ru-RU') : ''}
             </span>
+            {box.lastSyncAt && (
+              <span className="mail-temp-next mono" data-testid="mail-temp-next" title="до следующей автоматической проверки">
+                {syncing ? '…' : `+${Math.max(0, Math.ceil((box.lastSyncAt + REFRESH_MS - now) / 1000))} с`}
+              </span>
+            )}
             <button className="mail-rail-plus" onClick={() => void load()} disabled={syncing} title="Проверить сейчас" aria-label="Обновить" data-testid="mail-temp-refresh">
               <IconRefresh width={12} height={12} aria-hidden="true" className={syncing ? 'mail-spin' : undefined} />
             </button>
@@ -177,22 +181,67 @@ export function MailTempPane({ box, onBox, onRemove }: Props) {
             Открываем ящик…
           </div>
         ) : rows.length === 0 ? (
-          <div className="mail-list-state" data-testid="mail-temp-empty">
-            Писем пока нет. Адрес уже работает — отправьте на него письмо, список обновляется каждые 15 секунд.
+          <div className="mail-temp-idle" data-testid="mail-temp-empty">
+            <span className="mail-temp-idle-ico" aria-hidden="true">
+              <IconInbox width={20} height={20} />
+            </span>
+            <b>Ждём первое письмо</b>
+            <span>Адрес уже работает. Вставьте его в форму регистрации — письмо появится здесь само, ящик проверяется каждые 15 секунд.</span>
           </div>
         ) : (
-          <div className="mail-rows" role="list" data-testid="mail-temp-list">
-            {rows.map((r) => (
-              <div key={r.mid} role="listitem" className={`mail-row${r.mid === sel ? ' on' : ''}`}>
-                <button className="mail-row-main" onClick={() => void open(r.mid)} aria-current={r.mid === sel ? 'true' : undefined} data-testid={`mail-temp-open-${r.mid}`}>
-                  <span className="mail-row-top">
-                    <span className="mail-row-from">{r.from}</span>
-                    <span className="mail-row-date mono">{fmtMailDate(r.date)}</span>
-                  </span>
-                  <span className="mail-row-subj">{r.subject || '(без темы)'}</span>
-                </button>
-              </div>
-            ))}
+          <div className="mail-temp-items" role="list" data-testid="mail-temp-list">
+            {rows.map((r) => {
+              const on = r.mid === sel
+              const pill = subjectCode(r.subject)
+              return (
+                <div key={r.mid} role="listitem" className={`mail-temp-item${on ? ' on' : ''}`}>
+                  <div
+                    className="mail-temp-item-main"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => void open(r.mid)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        void open(r.mid)
+                      }
+                    }}
+                    aria-current={on ? 'true' : undefined}
+                    data-testid={`mail-temp-open-${r.mid}`}
+                  >
+                    <span className="mail-temp-ava" aria-hidden="true">
+                      {(r.from || '?').replace(/^[^a-zA-Zа-яА-Я0-9]+/, '').slice(0, 1).toUpperCase()}
+                    </span>
+                    <span className="mail-temp-item-body">
+                      <span className="mail-temp-item-top">
+                        <span className="mail-temp-item-from">{r.from}</span>
+                        {pill && (
+                          <button
+                            className="mail-temp-pill mono"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              void copyCode(pill)
+                            }}
+                            title={`Скопировать код ${pill}`}
+                            data-testid={`mail-temp-pill-${r.mid}`}
+                          >
+                            <IconCopy width={10} height={10} aria-hidden="true" /> {pill}
+                          </button>
+                        )}
+                        <time className="mail-temp-item-date mono" dateTime={r.date ?? undefined}>
+                          {fmtMailDate(r.date)}
+                        </time>
+                      </span>
+                      <span className="mail-temp-item-subj">{r.subject || '(без темы)'}</span>
+                      {r.intro && <span className="mail-temp-item-intro">{r.intro}</span>}
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
+            <div className="mail-temp-items-foot mono">
+              {rows.length} {letterWord(rows.length)} · письма живут, пока жив ящик
+            </div>
           </div>
         )}
       </section>

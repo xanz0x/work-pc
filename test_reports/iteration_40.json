@@ -1,0 +1,34 @@
+{
+  "summary": "Итерация 40 · frontend-only регресс после переноса пилюли кода в верхнюю строку карточки и смены строки письма с <button> на div role=button tabIndex=0. Проверено на публичном URL (1920x800): открытие письма мышью, Enter и Space; пилюля кода (тост + не открывает письмо); полнота темы письма Vercel; счётчик mail-temp-next с «…» и возвратом к «+N с»; смена штампа mail-temp-synced; пустой ящик; переключение временный↔обычный ящик; обычная почта (открытие письма, звезда, прочитано); отсутствие прокрутки страницы. Все 8 проверок зелёные, консольных ошибок нет. Бэкенд по запросу не тестировался.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "A11y: вложение <button> (mail-temp-pill) внутрь элемента с role=\"button\" — невалидная ARIA-структура (interactive content внутри роли button); часть скринридеров не озвучит вложенную кнопку. Функционально всё работает (проверено), но корректнее сделать контейнер строки не role=button, а держать отдельную кнопку «открыть письмо» на всю область + пилюлю рядом (siblings).",
+    "Div role=button не имеет aria-label/aria-describedby: озвучивается конкатенацией отправителя, кода-пилюли, времени, темы и intro — длинно. Стоит добавить aria-label вида «Письмо от X, тема Y».",
+    "mail-temp-pane.tsx — 328 строк и держит список, карточку письма и паспорт ящика; элемент списка стоит вынести в отдельный компонент (замечание сохраняется с iteration_39)."
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "не тестировался (по запросу)", "frontend": "100% (8/8 проверок)" },
+  "seed_data_creation": "Нового seed не создавалось. Ящики 91030592 и 84968612 не тронуты. В обычном ящике Read QA письмо «QA iter35 compose» переключалось звездой/прочитано и возвращено в исходное состояние (со звездой, прочитано, бейдж непрочитанных снова пуст).",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "admin / IceKrymTeam13@ (форма /login: login-login, login-password, login-submit)",
+  "context_for_next_testing_agent": "Логин: goto /login (wait_until='domcontentloaded'), затем localStorage.setItem('wf.settings.v1', JSON.stringify({onboarding:{at:1700000000000}})) до отправки формы. Экран почты — [data-testid=nav-mail]. Временный ящик mail-temp-row-91030592 (4 письма, mid'ы: 6a9b43ba6953ce75cb33a6dd, 6a9b430b57aab320657d319c, 6a9b41d668e6ff7cca223c7f, 6a9b3e7b5a3a3b962a98a360 — последний Vercel с пилюлей 317884), пустой — mail-temp-row-84968612. Карточка письма: внешний div .mail-temp-item получает класс on, внутренний [data-testid=mail-temp-open-<mid>] имеет role=button, tabIndex=0 и aria-current=true — проверять класс через inner.closest('.mail-temp-item'). Кнопки в карточке обычного письма: mail-msg-view-star / mail-msg-view-seen / mail-msg-view-close (label — действие: 'Не прочитано' = пометить непрочитанным). В headless clipboard недоступен → тост flash-toast показывает fallback 'Код: 317884'.",
+  "detailed_results": {
+    "1_click_open": "PASS — клик по mail-temp-open-6a9b43ba6953ce75cb33a6dd открыл mail-temp-msg, iframe mail-temp-frame присутствует, aria-current=true, .mail-temp-item.on = true. Карточки: role=button, tabindex=0 у всех 4.",
+    "2_keyboard_enter": "PASS — focus на mail-temp-open-6a9b430b57aab320657d319c (activeElement совпал), Enter открыл письмо «TEST_QA verification e12d9c», aria-current=true, класс on выставлен.",
+    "3_keyboard_space": "PASS — Space открыл третье письмо (aria-current=true), window.scrollY=0 (preventDefault работает, страница не прыгает).",
+    "4_pill": "PASS — пилюля ровно одна (mail-temp-pill-6a9b3e7b5a3a3b962a98a360 = 317884); клик даёт тост 'Код: 317884', при этом aria-current=None, .mail-temp-item.on = 0, mail-temp-msg не открылся. Тема Vercel в карточке видна ПОЛНОСТЬЮ: '317884 is your Vercel sign up code', scrollWidth=clientWidth=293 (обрезка из iteration_39 устранена).",
+    "5_counter": "PASS — при ручном mail-temp-refresh значение mail-temp-next проходит через '…' (элемент не исчезает), затем снова '+15 с' и убывает. За 20-секундный опрос собраны значения от '+15 с' до '+2 с'.",
+    "6_autosync": "PASS — штамп mail-temp-synced менялся (22:43:47 → 'проверяем…' → 22:43:57), автопроверка идёт по циклу ~15 с.",
+    "7_empty_and_switch": "PASS — mail-temp-row-84968612 показывает mail-temp-empty (1 шт., mail-temp-list отсутствует); возврат на 91030592 отрисовывает список; переключение на обычный ящик Read QA работает.",
+    "8_regular_mail": "PASS — 4 письма mail-msg-open-<uid>, открытие даёт mail-msg-view с темой/отправителем/датой/iframe; mail-msg-view-star и mail-msg-view-seen переключаются (метки меняются 'Со звездой'↔'Звезда', 'Не прочитано'↔'Прочитано', бейдж непрочитанных в сайдбаре обновляется и сохраняется после перезагрузки). Прокрутки страницы нет: scrollHeight=clientHeight=800 во всех состояниях."
+  },
+  "rca_of_the_issue": "Не требуется — регрессий не обнаружено."
+}

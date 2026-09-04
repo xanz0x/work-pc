@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { extractCode } from '@/lib/mail-format'
+import { extractCode, subjectCode } from '@/lib/mail-format'
 import { mtRows, sortRows, spRows } from '@/lib/temp-mail-parse'
 
 describe('временная почта · разбор ответов провайдеров', () => {
@@ -55,6 +55,13 @@ describe('временная почта · код подтверждения', (
 
   it('игнорирует даты, суммы и годы в тексте без кода', () => {
     expect(extractCode(null, 'Счёт на 1 200,50 от 12.03.2026')).toBe(null)
+  })
+
+  it('не путает код с частью hex-строки или слова', () => {
+    expect(subjectCode('TEST_QA verification c6040a')).toBe(null)
+    expect(extractCode(null, 'verification c6040a')).toBe(null)
+    expect(subjectCode('317884 is your Vercel sign up code')).toBe('317884')
+    expect(subjectCode('Заказ 12345 отправлен')).toBe(null)
   })
 
   it('пустое письмо — без кода', () => {

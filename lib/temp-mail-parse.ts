@@ -1,7 +1,7 @@
 /* ВРЕМЕННАЯ ПОЧТА · разбор ответов провайдеров. Чистые функции: mail.tm отдаёт коллекцию
    и hydra-объектом, и плоским массивом (зависит от заголовка Accept), SmailPro — {messages:[…]}. */
 
-export type TempRow = { mid: string; subject: string; from: string; date: string | null }
+export type TempRow = { mid: string; subject: string; from: string; date: string | null; intro?: string }
 
 export const MID_RE = /^[A-Za-z0-9_.:@+=-]{1,200}$/
 
@@ -17,8 +17,14 @@ const iso = (v: unknown): string | null => {
 export function mtRows(body: unknown): TempRow[] {
   const list = Array.isArray(body) ? body : ((body as { 'hydra:member'?: unknown[] } | null)?.['hydra:member'] ?? [])
   return list.map((raw) => {
-    const m = raw as { id?: string; subject?: string; from?: { address?: string; name?: string }; createdAt?: string }
-    return { mid: asStr(m.id), subject: asStr(m.subject), from: asStr(m.from?.name).trim() || asStr(m.from?.address) || '—', date: iso(m.createdAt) }
+    const m = raw as { id?: string; subject?: string; intro?: string; from?: { address?: string; name?: string }; createdAt?: string }
+    return {
+      mid: asStr(m.id),
+      subject: asStr(m.subject),
+      from: asStr(m.from?.name).trim() || asStr(m.from?.address) || '—',
+      date: iso(m.createdAt),
+      intro: asStr(m.intro).trim().slice(0, 140) || undefined,
+    }
   })
 }
 
