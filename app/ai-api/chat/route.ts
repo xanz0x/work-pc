@@ -10,6 +10,8 @@ import {
   type LlmToolCall,
   type SessionFile,
 } from '@/lib/ai-server'
+import { currentUser, runWithUser, userFromHeaders } from '@/lib/request-context'
+import { countAiCall } from '@/lib/users-server'
 import { requestId, type AiErrorCode } from '@/lib/ai-errors'
 import { log } from '@/lib/log'
 import { countLatency, countTokens, countTurn, trackError } from '@/lib/metrics'
@@ -159,7 +161,10 @@ async function buildSystem(
   return { system: sys, tools }
 }
 
-export async function POST(req: NextRequest) {
+/** Пользователь из proxy.ts поднимается в контекст: диалоги и навыки берутся из его каталога. */
+export const POST = (req: NextRequest) => runWithUser(userFromHeaders(req.headers), () => handleChat(req))
+
+async function handleChat(req: NextRequest) {
   /* request-id рождается в proxy.ts и связывает лог, метрики и ответ (AR-5). */
   const rid = req.headers.get('x-request-id') ?? requestId()
   const t0 = Date.now()
@@ -189,6 +194,16 @@ export async function POST(req: NextRequest) {
     )
     resp.headers.set('Retry-After', String(Math.max(1, Math.ceil(limit.retryAfter))))
     return resp
+  }
+
+  /* Суточный лимит учётной записи, выданный администратором (0 — без лимита). */
+  const who = currentUser()
+  if (who) {
+    const quota = await countAiCall(who.uid)
+    if (!quota.ok) {
+      log('warn', 'chat.user-limited', { rid, route: '/ai-api/chat', status: 429, count: quota.used })
+      return fail('RATE_LIMITED', `Исчерпан суточный лимит запросов к ИИ для вашей учётной записи (${quota.limit} в сутки).`, 429, {})
+    }
   }
 
   /* Форма тела проверяется после гейтов движка: локальный движок отвечает

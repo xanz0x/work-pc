@@ -29,7 +29,7 @@ import { useDataStore } from './data'
 import { useLockStore } from './lock'
 import { useNotifsStore } from './notifs'
 
-export type ScreenId = 'library' | 'map' | 'chat' | 'vault' | 'settings' | 'activity'
+export type ScreenId = 'library' | 'map' | 'chat' | 'vault' | 'settings' | 'activity' | 'admin'
 export type Focus = { id: string; at: number } | null
 
 export type NavCtx = {

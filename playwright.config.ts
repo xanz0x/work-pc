@@ -11,8 +11,11 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   reporter: [['list']],
+  globalSetup: './tests/e2e/global-setup.ts',
   use: {
     baseURL: process.env.APP_URL ?? 'http://localhost:3000',
+    /* Cookie администратора для сценариев, заходящих на «/» напрямую. */
+    storageState: 'test-results/.auth/admin.json',
     viewport: { width: 1440, height: 900 },
     trace: 'off',
     screenshot: 'only-on-failure',

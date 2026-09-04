@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { bridgePoll, bridgeResult } from '@/lib/mcp-server'
+import { bridgePoll, bridgeResult, ownerOf } from '@/lib/mcp-server'
+import { requireUser } from '@/lib/request-context'
 import { withRoute } from '@/lib/route-log'
 
 export const runtime = 'nodejs'
@@ -10,7 +11,7 @@ export const dynamic = 'force-dynamic'
 
 export const GET = withRoute('/mcp/admin/bridge', async (req: NextRequest) => {
   const wait = Math.min(20_000, Math.max(0, Number(req.nextUrl.searchParams.get('wait')) || 0))
-  return NextResponse.json(await bridgePoll(wait))
+  return NextResponse.json(await bridgePoll(ownerOf(requireUser()), wait))
 })
 
 export const POST = withRoute('/mcp/admin/bridge', async (req: NextRequest) => {

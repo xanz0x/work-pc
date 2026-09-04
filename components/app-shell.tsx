@@ -24,6 +24,7 @@ import { initScale, resetScale, stepScale } from '@/lib/ui-scale'
 import { JournalAlert } from './journal-alert'
 import { useEngineStore } from '@/lib/store/engine'
 import { useVault } from '@/lib/vault-store'
+import { useAccount } from '@/lib/account'
 import { useIndexActions } from '@/lib/indexer/context'
 import { fmtBytes } from '@/lib/data'
 import { SCOPES } from '@/lib/search'
@@ -83,6 +84,9 @@ const SYSTEM: { id: ScreenId; label: string; Icon: Ico }[] = [
   { id: 'settings', label: 'Настройки', Icon: IconGear },
 ]
 
+/** Администрирование — только роли admin; пункт добавляется в рантайме. */
+const ADMIN_NAV: { id: ScreenId; label: string; Icon: Ico } = { id: 'admin', label: 'Администрирование', Icon: IconUser }
+
 /** Плейсхолдер поиска зависит от экрана — но поле всегда одно и то же. */
 const PLACEHOLDER: Record<ScreenId, string> = {
   library: 'Поиск по смыслу: «договор аренды»',
@@ -91,6 +95,7 @@ const PLACEHOLDER: Record<ScreenId, string> = {
   vault: 'Поиск по секретам: type: tag: favorite:',
   settings: 'Поиск по настройкам',
   activity: 'Поиск по событиям сейфа',
+  admin: 'Поиск по пользователям',
 }
 
 const plural = (n: number, one: string, few: string, many: string) => {
@@ -109,6 +114,7 @@ const plural = (n: number, one: string, few: string, many: string) => {
  */
 export function AppShell({ children }: { children: ReactNode }) {
   const v = useVault()
+  const account = useAccount()
   /* NF-2: скорость движка — из его же ответа, а не из выдуманной метрики. */
   const engine = useEngineStore()
   const idxa = useIndexActions()
@@ -246,6 +252,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     vault: v.secretIndex.length,
     settings: 0,
     activity: 0,
+    admin: 0,
   }
 
   const liveClusters = clusters.filter((c) => c.count > 0)
@@ -363,7 +370,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           <nav className="nav" aria-label="Основная навигация">
             <div className="nav-section">Рабочее место</div>
-            {WORKSPACE.map(({ id, label, Icon }) =>
+            {WORKSPACE.filter((w) => w.id !== 'chat' || account.has('ai')).map(({ id, label, Icon }) =>
               id === 'library' ? (
                 <Fragment key={id}>
                   <div className="nav-lib-row">
@@ -425,8 +432,8 @@ export function AppShell({ children }: { children: ReactNode }) {
               ),
             )}
 
-            <div className="nav-section">Секреты</div>
-            {SECRETS_NAV.map(({ id, label, Icon }) => (
+            {account.has('secrets') && <div className="nav-section">Секреты</div>}
+            {account.has('secrets') && SECRETS_NAV.map(({ id, label, Icon }) => (
               <button
                 key={id}
                 className={`nav-item${v.screen === id ? ' active' : ''}`}
@@ -444,7 +451,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             ))}
 
             <div className="nav-section">Система</div>
-            {SYSTEM.map(({ id, label, Icon }) => (
+            {[...SYSTEM, ...(account.isAdmin ? [ADMIN_NAV] : [])].map(({ id, label, Icon }) => (
               <button
                 key={id}
                 className={`nav-item${v.screen === id ? ' active' : ''}`}
@@ -502,13 +509,22 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
             </div>
 
-            <button className="profile-row" title="Локальный профиль">
+            <button
+              className="profile-row"
+              title="Выйти из учётной записи"
+              onClick={() => void account.logout()}
+              data-testid="profile-logout"
+            >
               <span className="avatar">
                 <IconUser />
               </span>
               <span className="pr-text">
-                <span className="pr-name">Локальный профиль</span>
-                <span className="pr-sub mono">сейф · AES-256</span>
+                <span className="pr-name" data-testid="profile-name">
+                  {account.user?.name ?? 'Профиль'}
+                </span>
+                <span className="pr-sub mono" data-testid="profile-email">
+                  {account.user?.email} · {account.isAdmin ? 'админ' : 'выйти'}
+                </span>
               </span>
             </button>
           </div>

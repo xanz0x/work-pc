@@ -5,13 +5,13 @@
    ============================================================ */
 
 import {
-  DB_NAME,
   DB_VERSION,
   DOC_STORE,
   JOURNAL_STORE,
   META_STORE,
   type Doc,
 } from './schema'
+import { dbName } from './scope'
 
 function req<T>(r: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -66,7 +66,7 @@ export function openDb(): Promise<IDBDatabase> {
   if (!idbAvailable()) return Promise.reject(new Error('IndexedDB недоступен'))
   if (dbPromise) return dbPromise
   dbPromise = new Promise<IDBDatabase>((resolve, reject) => {
-    const open = indexedDB.open(DB_NAME, DB_VERSION)
+    const open = indexedDB.open(dbName(), DB_VERSION)
     open.onupgradeneeded = (e) => {
       const tx = open.transaction
       if (tx) upgrade(open.result, tx, e.oldVersion)

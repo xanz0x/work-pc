@@ -50,6 +50,8 @@ import { SecretsSection } from './secrets-section'
 import { BackupSection } from './backup-section'
 import { FlagsSection } from './flags-section'
 import { McpSection } from './mcp-section'
+import { useAccount } from '@/lib/account'
+import type { FeatureId } from '@/lib/users'
 import { SyncSection } from './sync-section'
 import { JournalPanel } from './journal-panel'
 import { UiScaleSection } from './ui-scale-section'
@@ -118,7 +120,17 @@ const PRIVACY_TOGGLES: { id: ToggleId; title: string; note: string }[] = [
   },
 ]
 
-const SECTIONS: { id: string; label: string; Icon: Ico }[] = [
+/** Раздел привязан к функции: если админ её выключил — раздела нет ни в рельсе, ни на странице. */
+const SECTION_FEATURE: Record<string, FeatureId> = {
+  engine: 'ai',
+  secrets: 'secrets',
+  backup: 'offline',
+  flags: 'offline',
+  mcp: 'mcp',
+  sync: 'sync',
+}
+
+const ALL_SECTIONS: { id: string; label: string; Icon: Ico }[] = [
   { id: 'engine', label: 'Движок ИИ', Icon: IconChipAi },
   { id: 'ui', label: 'Интерфейс', Icon: IconScale },
   { id: 'pipeline', label: 'Конвейер', Icon: IconPipeline },
@@ -307,6 +319,11 @@ export function ScreenSettings() {
   /* LG-5: переиндексация — мутация: двойной клик даёт один прогон. */
   const M = useMutations()
   const d = S.draftSettings
+  const account = useAccount()
+  const SECTIONS = useMemo(
+    () => ALL_SECTIONS.filter((sec) => !SECTION_FEATURE[sec.id] || account.has(SECTION_FEATURE[sec.id])),
+    [account],
+  )
   const [active, setActive] = useState('engine')
   const scrollRef = useRef<HTMLDivElement>(null)
   const [confirmWipe, setConfirmWipe] = useState(false)
@@ -511,7 +528,7 @@ export function ScreenSettings() {
               </div>
             </div>
 
-            <section className="sec panel" id="set-engine">
+            {account.has('ai') && <section className="sec panel" id="set-engine">
               <div className="sec-head">
                 <span className="sec-icon">
                   <IconChipAi />
@@ -598,7 +615,7 @@ export function ScreenSettings() {
                   колокольчик сообщат об этом сразу после сохранения.
                 </div>
               )}
-            </section>
+            </section>}
 
             <UiScaleSection />
 
@@ -835,11 +852,11 @@ export function ScreenSettings() {
             </section>
 
             <SecuritySection />
-            <SecretsSection />
-            <BackupSection />
-            <FlagsSection />
-            <McpSection />
-            <SyncSection />
+            {account.has('secrets') && <SecretsSection />}
+            {account.has('offline') && <BackupSection />}
+            {account.has('offline') && <FlagsSection />}
+            {account.has('mcp') && <McpSection />}
+            {account.has('sync') && <SyncSection />}
             <JournalPanel />
 
             <section className="sec panel danger-zone" id="set-danger">

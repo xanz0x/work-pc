@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { MAX_OPS_PER_PUSH, authFromHeaders, isSealed, pullOps, pushOps } from '@/lib/sync-server'
+import { ownerOf } from '@/lib/mcp-server'
+import { requireUser } from '@/lib/request-context'
 import { withRoute } from '@/lib/route-log'
 
 export const runtime = 'nodejs'
@@ -10,7 +12,7 @@ export const dynamic = 'force-dynamic'
 const deny = () => NextResponse.json({ code: 'SYNC_AUTH', error: 'Устройство не опознано или отозвано.' }, { status: 403 })
 
 export const GET = withRoute('/sync/ops', async (req: NextRequest) => {
-  const auth = await authFromHeaders(req.headers)
+  const auth = await authFromHeaders(ownerOf(requireUser()), req.headers)
   if (!auth) return deny()
   const since = Math.max(0, Number(req.nextUrl.searchParams.get('since')) || 0)
   const wait = Math.min(20_000, Math.max(0, Number(req.nextUrl.searchParams.get('wait')) || 0))
@@ -18,7 +20,7 @@ export const GET = withRoute('/sync/ops', async (req: NextRequest) => {
 })
 
 export const POST = withRoute('/sync/ops', async (req: NextRequest) => {
-  const auth = await authFromHeaders(req.headers)
+  const auth = await authFromHeaders(ownerOf(requireUser()), req.headers)
   if (!auth) return deny()
   const b = (await req.json().catch(() => ({}))) as { ops?: unknown }
   const ops = Array.isArray(b.ops) ? b.ops : null

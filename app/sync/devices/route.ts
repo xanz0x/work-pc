@@ -8,6 +8,8 @@ import {
   registerDevice,
   revokeDevice,
 } from '@/lib/sync-server'
+import { ownerOf } from '@/lib/mcp-server'
+import { requireUser } from '@/lib/request-context'
 import { withRoute } from '@/lib/route-log'
 
 export const runtime = 'nodejs'
@@ -16,7 +18,7 @@ export const dynamic = 'force-dynamic'
 /* Устройства пространства синхронизации. Маршрут закрыт сессией (proxy.ts),
    а внутри — ещё и токеном устройства: сессия общая на весь сейф, токен — свой. */
 
-const syncAuth = (req: NextRequest) => authFromHeaders(req.headers)
+const syncAuth = (req: NextRequest) => authFromHeaders(ownerOf(requireUser()), req.headers)
 
 const deny = () => NextResponse.json({ code: 'SYNC_AUTH', error: 'Устройство не опознано или отозвано.' }, { status: 403 })
 
@@ -28,7 +30,7 @@ export const POST = withRoute('/sync/devices', async (req: NextRequest) => {
   if (!/^[a-f0-9]{64}$/.test(b.spacePass)) {
     return NextResponse.json({ code: 'INVALID_ARGS', error: 'Неверная форма запроса.' }, { status: 400 })
   }
-  const r = await registerDevice(b.spaceId, b.spacePass, b.deviceId, b.label)
+  const r = await registerDevice(ownerOf(requireUser()), b.spaceId, b.spacePass, b.deviceId, b.label)
   if (!r.ok) return NextResponse.json({ code: r.code, error: 'Фраза не подходит к этому пространству.' }, { status: 403 })
   return NextResponse.json({ token: r.token, created: r.created })
 })

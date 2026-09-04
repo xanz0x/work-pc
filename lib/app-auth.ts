@@ -4,7 +4,22 @@
  * и в middleware, и в серверных маршрутах.
  */
 
+import type { NextResponse } from 'next/server'
+
 export const SESSION_COOKIE = 'wf_session'
+/** Открытый id пользователя: нужен интерфейсу до первого запроса, чтобы выбрать локальную базу. */
+export const UID_COOKIE = 'wf_uid'
+
+export function setSessionCookies(res: NextResponse, token: string, expires: Date, uid: string): void {
+  const secure = process.env.NODE_ENV === 'production'
+  res.cookies.set({ name: SESSION_COOKIE, value: token, httpOnly: true, sameSite: 'lax', secure, path: '/', expires })
+  res.cookies.set({ name: UID_COOKIE, value: uid, httpOnly: false, sameSite: 'lax', secure, path: '/', expires })
+}
+
+export function clearSessionCookies(res: NextResponse): void {
+  res.cookies.set({ name: SESSION_COOKIE, value: '', path: '/', maxAge: 0 })
+  res.cookies.set({ name: UID_COOKIE, value: '', path: '/', maxAge: 0 })
+}
 
 const enc = new TextEncoder()
 
@@ -37,24 +52,27 @@ export async function sha256(text: string): Promise<string> {
   return toB64Url(new Uint8Array(await crypto.subtle.digest('SHA-256', enc.encode(text))))
 }
 
+/**
+ * Сессия v2: `sid.exp.hmac`. Подпись защищает от подделки, а сам sid
+ * сверяется с серверным списком — так сессию можно завершить досрочно.
+ */
 export async function issueSession(
   secret: string,
   ttlMs: number,
+  sid: string,
 ): Promise<{ token: string; expires: Date }> {
   const exp = Date.now() + ttlMs
-  return { token: `${exp}.${await hmac(secret, `wf1.${exp}`)}`, expires: new Date(exp) }
+  return { token: `${sid}.${exp}.${await hmac(secret, `wf2.${sid}.${exp}`)}`, expires: new Date(exp) }
 }
 
-export async function verifySession(
-  secret: string,
-  token: string | undefined | null,
-): Promise<boolean> {
-  if (!token) return false
-  const dot = token.indexOf('.')
-  if (dot < 1) return false
-  const exp = Number(token.slice(0, dot))
-  if (!Number.isFinite(exp) || exp <= Date.now()) return false
-  return equalConst(token.slice(dot + 1), await hmac(secret, `wf1.${exp}`))
+/** Проверка подписи и срока. Возвращает sid или null; жива ли сессия — решает users-server. */
+export async function verifySession(secret: string, token: string | undefined | null): Promise<string | null> {
+  if (!token) return null
+  const [sid, expStr, sig] = token.split('.')
+  if (!sid || !expStr || !sig) return null
+  const exp = Number(expStr)
+  if (!Number.isFinite(exp) || exp <= Date.now()) return null
+  return equalConst(sig, await hmac(secret, `wf2.${sid}.${exp}`)) ? sid : null
 }
 
 export function sessionTtlMs(): number {

@@ -1,0 +1,42 @@
+{
+  "summary": "NF-12 · Аккаунты и админ-панель — сквозная приёмка на preview. Pytest tests/api/test_admin.py: 10/10 PASS (~4.6с). Unit tests/unit/users.test.ts: 9/9 PASS. E2E tests/e2e/23-admin-accounts.spec.ts: 1/1 PASS (~9.5с). Все требования из ревью подтверждены: логин админа одним паролем (совместимость), регистрация нового пользователя с access='license', выдача/погашение/отзыв ключа лицензии WSX-XXXX-XXXX-XXXX-XXXX (регистронезависимо, mask заканчивается на последние 4 знака), 403 LICENSE_REQUIRED/FEATURE_DISABLED/ADMIN_ONLY/PASSWORD_CHANGE_REQUIRED, 409 SELF/LEGACY, изоляция сессий между пользователем и админом, сброс пароля с mustChangePassword, terminate-sessions, PATCH status:'blocked' → 401 при следующем запросе и 403 BLOCKED при повторном логине, DELETE удаляет пользователя. UI: /login с login-password (без email) → nav-admin + profile-email 'админ'; экран screen-admin с admin-overview, admin-user-list, admin-create-* формой, admin-created-creds, admin-license-issue/-key (regex ^WSX(-[A-Z2-9]{4}){4}$), admin-feature-secrets тумблер после save + reload скрывает nav-vault у пользователя (при этом у админа nav-vault остаётся), admin-card-block (двойной клик) → admin-user-access='заблокирован' → reload пользователя редиректит на /login → login-error 'заблокирована', admin-card-delete (двойной клик) удаляет строку. Контекст B: временный пароль → wall-password-next/-again/-submit → access-wall='license' → неверный ключ → wall-error → верный ключ → онбординг с нуля, nav-admin отсутствует.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": { "ui_bugs": [], "integration_issues": [], "design_issues": [] },
+  "verified_requirements": [
+    "POST /ai-api/auth/login {password} без email → 200, user.role='admin', cookies wf_session (httpOnly) + wf_uid",
+    "GET /ai-api/auth/session → authed:true, access:'ok'; DELETE стирает cookie, повторный GET authed:false",
+    "POST /ai-api/auth/register {email,password≥8,name} → 200 user.role='user'; невалидный email/короткий пароль → 400; дубль → 409",
+    "Новый пользователь: session.access='license'; /ai-api/sessions → 403 LICENSE_REQUIRED; /admin/api/* → 403; без cookie → 401",
+    "Админ POST /admin/api/licenses {days:30,note} → key ^WSX(-[A-Z2-9]{4}){4}$, view.mask заканчивается на последние 4 знака",
+    "Пользователь POST /ai-api/auth/license {key.toLowerCase()} → 200; неверный → 400 INVALID; повтор → 400 USED",
+    "После погашения access='ok', licenseUntil>0, /ai-api/sessions → 200",
+    "Изоляция: диалог пользователя не виден в GET /ai-api/sessions админа, GET /ai-api/sessions/<id> админом → 404",
+    "PATCH /admin/api/users/<id> {features:{ai:false},aiDailyLimit:3} → /ai-api/sessions 403 FEATURE_DISABLED, /mcp/admin/tokens по-прежнему 200; вернуть ai:true → 200",
+    "reset-password: старые сессии → 401, вход новым паролем → mustChangePassword:true, /ai-api/sessions → 403 PASSWORD_CHANGE_REQUIRED, /ai-api/auth/password {next} → 200 → доступ вернулся",
+    "terminate-sessions: ended≥1, сессии → 401; status:'blocked' → 401 + login 403 BLOCKED; status:'active' → снова 200",
+    "SELF/LEGACY: PATCH status:'blocked' самому себе → 409, DELETE самого себя → 409, PATCH role:'user' последнего админа → LAST_ADMIN, DELETE первого админа → LEGACY",
+    "DELETE /admin/api/users/<id> → пользователя нет в списке, вход тем же email → 401",
+    "GET /admin/api/overview → users≥2, awaitingLicense≥1",
+    "UI админ: nav-admin, profile-email='админ', screen-admin, admin-overview, admin-user-list, admin-create-open/-email/-name/-password/-days/-submit, admin-created-creds, admin-license-issue/-key",
+    "UI пользователь: login-email+login-password → access-wall data-access='password' → wall-password-next/-again/-submit → data-access='license' → wall-error на неверном ключе → wall-license-key+wall-license-submit → onboarding, nav-admin отсутствует",
+    "Тумблер secrets: admin-feature-secrets + admin-card-save → у пользователя после reload nav-vault отсутствует, у админа сохраняется",
+    "Блокировка: admin-card-block (2×) → admin-user-access='заблокирован'; reload у пользователя → /login; повторный вход → login-error 'заблокирована'",
+    "Удаление: admin-card-delete (2×) → admin-user-row с email исчезает из списка"
+  ],
+  "critical_code_review_comments": [],
+  "test_report_links": [
+    "/app/tests/api/test_admin.py",
+    "/app/tests/e2e/23-admin-accounts.spec.ts",
+    "/app/tests/unit/users.test.ts",
+    "/app/test_reports/pytest/iter27_admin.xml"
+  ],
+  "action_items": [],
+  "updated_files": [],
+  "success_rate": { "backend": "10/10 pytest + 9/9 unit (100%)", "frontend": "1/1 e2e (100%)" },
+  "test_credentials": "APP_URL=https://token-permissions.preview.emergentagent.com; admin=IceKrymTeam13@ (login-password без email); e2e-<ts>@test.local создаются одноразово",
+  "seed_data_creation": "pytest создаёт e2e-пользователя user-<hex6>@test.local с временным паролем, выдаёт ему лицензию на 30 дней, затем сбрасывает пароль/блокирует/удаляет. e2e создаёт e2e-<Date.now()>@test.local в отдельных контекстах браузера, в конце удаляется через admin-card-delete.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Полный набор аккаунтов и админки проходит 100% против preview. Пароль админа IceKrymTeam13@ остаётся стабильным. При проверке блокировки после reload обязательно дождаться networkidle перед fill формы /login (гидратация), иначе submit уйдёт нативным GET (уже учтено в 23-admin-accounts.spec.ts).",
+  "rca of the issue": "Отклонений нет — приёмка чистая."
+}

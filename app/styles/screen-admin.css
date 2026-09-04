@@ -1,0 +1,231 @@
+/* ===== ЭКРАН «АДМИНИСТРИРОВАНИЕ» + ворота аккаунта ===== */
+@layer wf048 {
+  .screen-admin {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .adm-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 8px;
+  }
+  .adm-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px 14px;
+  }
+  .adm-stat b {
+    font-size: 22px;
+    font-weight: 640;
+    color: var(--text);
+  }
+  .adm-stat .label-mono {
+    font-size: 10.5px;
+    color: var(--text-3);
+  }
+  .adm-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(320px, 1fr);
+    gap: 16px;
+    align-items: start;
+  }
+  .adm-users,
+  .adm-card,
+  .adm-hint,
+  .adm-create {
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .adm-hint {
+    font-size: 12.5px;
+    color: var(--text-2);
+  }
+  .adm-search {
+    height: 30px;
+    width: 220px;
+    font-size: 12px;
+  }
+  .adm-table {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .adm-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) auto auto auto auto auto;
+    gap: 12px;
+    align-items: center;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    background: var(--bg-input);
+    color: var(--text-2);
+    font: inherit;
+    font-size: 11.5px;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.12s ease, background-color 0.12s ease;
+  }
+  .adm-row:hover {
+    border-color: var(--border-3);
+  }
+  .adm-row.active {
+    border-color: var(--accent-line);
+    background: var(--raise-1);
+  }
+  .adm-row .label-mono {
+    font-size: 10.5px;
+    color: var(--text-3);
+    white-space: nowrap;
+  }
+  .adm-who {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  .adm-who b {
+    color: var(--text);
+    font-size: 12.5px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .adm-acc {
+    font-size: 10.5px;
+    font-family: var(--font-mono);
+    white-space: nowrap;
+  }
+  .adm-acc.st-ok {
+    color: var(--ok);
+  }
+  .adm-acc.st-license,
+  .adm-acc.st-password {
+    color: var(--warn);
+  }
+  .adm-acc.st-blocked {
+    color: var(--danger);
+  }
+  .adm-side {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .adm-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .adm-field > label {
+    font-size: 10.5px;
+    color: var(--text-3);
+  }
+  .adm-inline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .adm-inline.wrap {
+    flex-wrap: wrap;
+  }
+  .adm-inline .mcp-input {
+    height: 32px;
+    font-size: 12px;
+  }
+  .adm-num {
+    width: 110px;
+  }
+  .adm-toggles {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .adm-toggles .mcp-scope {
+    padding: 8px 10px;
+  }
+  .adm-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .adm-check {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+  }
+  select.mcp-input {
+    appearance: auto;
+  }
+
+  /* ворота аккаунта */
+  .acc-splash {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    color: var(--text-3);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    background: var(--bg);
+  }
+  .acc-wall {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: var(--bg);
+  }
+  .acc-card {
+    width: min(460px, 100%);
+    padding: 26px 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .acc-card h1 {
+    margin: 4px 0 0;
+    font-size: 20px;
+    font-weight: 640;
+    color: var(--text);
+  }
+  .acc-card p {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--text-2);
+  }
+  .acc-card form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .acc-key {
+    font-family: var(--font-mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .acc-logout {
+    align-self: flex-start;
+  }
+  @media (max-width: 960px) {
+    .adm-body {
+      grid-template-columns: 1fr;
+    }
+    .adm-row {
+      grid-template-columns: 1fr auto;
+    }
+    .adm-row .label-mono:not(.adm-who .label-mono) {
+      display: none;
+    }
+    .adm-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+}

@@ -1117,3 +1117,29 @@ UX-4 accessibility · LG-4/LG-5 · RM-3.
   сейчас UI об этом предупреждает). Ключ синхронизации под мастер-ключом при включённом замке.
 - P3: синхронизация разговоров чата (`wf.chat.v1`) и записей менеджера секретов отдельной областью.
 - P3: компакция `ops.jsonl` в снапшот при большом журнале.
+
+---
+
+## Аккаунты и админ-панель (2026-06-04, сделано)
+- Учётные записи: email + пароль (scrypt), саморегистрация на /login; новый пользователь получает доступ
+  только по ключу лицензии `WSX-XXXX-XXXX-XXXX-XXXX` на срок (7/30/90/365 дн.), который выдаёт админ.
+  Первый админ сеется из `ADMIN_EMAIL` + `APP_PASSWORD` (вход одним паролем без email сохранён).
+- Сессии серверные (`AI_DIR/users/sessions.json`), cookie `wf_session` подписана HMAC; админ может
+  завершить сессии, заблокировать, сбросить пароль (смена при первом входе), удалить с данными.
+- Тумблеры функций на пользователя: ai, mcp, sync, secrets, offline, telemetry + суточный лимит ИИ.
+  Сервер режет в `proxy.ts` (FEATURE_DISABLED / LICENSE_REQUIRED / PASSWORD_CHANGE_REQUIRED /
+  BLOCKED / ADMIN_ONLY), интерфейс скрывает экраны и разделы (`useAccount().has`).
+- Изоляция: сервер — `AI_DIR/users/<uid>/` (диалоги, навыки, MCP-аудит, синк-пространства с owner),
+  токены MCP хранят owner; браузер — IndexedDB `workflow-<uid>` и префикс `u:<uid>:` в localStorage
+  (`lib/db/scope.ts`). Первый админ остаётся на старых именах (legacyStore) — миграция не нужна.
+- Экран `/admin` (только admin): сводка, список пользователей, карточка (роль, функции, лимит, лицензия,
+  пароль, сессии, блок, удаление), ключи лицензий. Файлы: `lib/users.ts`, `lib/users-server.ts`,
+  `lib/request-context.ts`, `lib/account.tsx`, `app/ai-api/auth/*`, `app/admin/api/*`,
+  `components/screen-admin.tsx`, `admin-user-card.tsx`, `admin-licenses.tsx`.
+- Тесты: `tests/api/test_admin.py` (10), `tests/unit/users.test.ts` (9), `tests/e2e/23-admin-accounts.spec.ts`;
+  `tests/e2e/global-setup.ts` даёт cookie админа старым сценариям. Тест-агент — 100% (iteration_27).
+
+### Бэклог
+- P2: email-подтверждение и восстановление пароля по письму (нужен SMTP-провайдер).
+- P2: аудит действий админа в журнале безопасности (сейчас — только серверный лог).
+- P3: миграция локальной базы первого админа на схему `workflow-<uid>`.

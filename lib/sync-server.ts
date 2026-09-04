@@ -26,7 +26,7 @@ type Device = {
   revokedAt: number | null
 }
 
-type SpaceFile = { passHash: string; createdAt: number; devices: Device[] }
+type SpaceFile = { passHash: string; createdAt: number; devices: Device[]; owner?: string }
 
 export type Envelope = { seq: number; dev: string; at: number; ct: string; iv: string }
 
@@ -72,7 +72,7 @@ async function loadSpace(id: string): Promise<Space | null> {
 
 async function saveSpace(s: Space): Promise<void> {
   await fs.mkdir(dir(s.id), { recursive: true })
-  const file: SpaceFile = { passHash: s.passHash, createdAt: s.createdAt, devices: s.devices }
+  const file: SpaceFile = { passHash: s.passHash, createdAt: s.createdAt, devices: s.devices, owner: s.owner }
   await fs.writeFile(path.join(dir(s.id), 'space.json'), `${JSON.stringify(file, null, 2)}\n`, 'utf8')
 }
 
@@ -95,22 +95,27 @@ const view = (d: Device): DeviceView => ({
  * Есть — пароль обязан совпасть; иначе это чужой ключ или опечатка во фразе.
  */
 export async function registerDevice(
+  owner: string,
   spaceId: string,
   spacePass: string,
   deviceId: string,
   label: { ct: string; iv: string },
-): Promise<{ ok: true; token: string; created: boolean } | { ok: false; code: 'WRONG_PASS' | 'REVOKED' }> {
+): Promise<{ ok: true; token: string; created: boolean } | { ok: false; code: 'WRONG_PASS' | 'REVOKED' | 'FOREIGN' }> {
   const passHash = await sha256(`wsx-sync.pass.${spacePass}`)
   let space = await loadSpace(spaceId)
   let created = false
   if (!space) {
-    space = { id: spaceId, passHash, createdAt: Date.now(), devices: [], ops: [], seq: 0, wake: [] }
+    space = { id: spaceId, passHash, createdAt: Date.now(), devices: [], ops: [], seq: 0, wake: [], owner }
     SPACES.set(spaceId, space)
     created = true
   } else if (!equalConst(space.passHash, passHash)) {
     log('warn', 'sync.wrong-pass', { where: spaceId.slice(0, 8) })
     return { ok: false, code: 'WRONG_PASS' }
+  } else if ((space.owner ?? owner) !== owner) {
+    /* Пространство другого аккаунта: даже с верной фразой чужие данные не отдаём. */
+    return { ok: false, code: 'FOREIGN' }
   }
+  space.owner ??= owner
   const existing = space.devices.find((d) => d.id === deviceId)
   if (existing?.revokedAt) return { ok: false, code: 'REVOKED' }
   const token = randomHex(24)
@@ -132,6 +137,7 @@ export type Auth = { space: Space; device: Device }
 
 /** Проверка устройства: заголовки → пространство и незаотозванное устройство. */
 export async function authDevice(
+  owner: string,
   spaceId: string | null,
   deviceId: string | null,
   token: string | null,
@@ -140,6 +146,7 @@ export async function authDevice(
   const space = await loadSpace(spaceId)
   const device = space?.devices.find((d) => d.id === deviceId)
   if (!space || !device || device.revokedAt) return null
+  if ((space.owner ?? owner) !== owner) return null
   if (!equalConst(device.tokenHash, await sha256(`wsx-sync.token.${token}`))) return null
   device.lastSeenAt = Date.now()
   return { space, device }
@@ -150,8 +157,8 @@ export function listDevices(space: Space): DeviceView[] {
 }
 
 /** Заголовки клиента: X-Sync-Space / X-Sync-Device / X-Sync-Token. */
-export function authFromHeaders(h: Headers): Promise<Auth | null> {
-  return authDevice(h.get('x-sync-space'), h.get('x-sync-device'), h.get('x-sync-token'))
+export function authFromHeaders(owner: string, h: Headers): Promise<Auth | null> {
+  return authDevice(owner, h.get('x-sync-space'), h.get('x-sync-device'), h.get('x-sync-token'))
 }
 
 export async function revokeDevice(space: Space, id: string): Promise<boolean> {

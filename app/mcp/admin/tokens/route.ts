@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { issueToken, listTokens, revokeToken } from '@/lib/mcp-server'
+import { issueToken, listTokens, ownerOf, revokeToken } from '@/lib/mcp-server'
+import { requireUser } from '@/lib/request-context'
 import { TOKEN_TTL_OPTIONS, isScope, type Scope } from '@/lib/permissions'
 import { withRoute } from '@/lib/route-log'
 
@@ -8,7 +9,7 @@ export const dynamic = 'force-dynamic'
 
 /* Управление токенами из интерфейса. Маршрут закрыт сессией в proxy.ts. */
 
-export const GET = withRoute('/mcp/admin/tokens', async () => NextResponse.json(await listTokens()))
+export const GET = withRoute('/mcp/admin/tokens', async () => NextResponse.json(await listTokens(ownerOf(requireUser()))))
 
 export const POST = withRoute('/mcp/admin/tokens', async (req: NextRequest) => {
   const body = (await req.json().catch(() => ({}))) as {
@@ -25,14 +26,14 @@ export const POST = withRoute('/mcp/admin/tokens', async (req: NextRequest) => {
     )
   }
   const uniq = [...new Set(scopes)] as Scope[]
-  const { token, view } = await issueToken(String(body.name ?? ''), uniq, ttl)
+  const { token, view } = await issueToken(ownerOf(requireUser()), String(body.name ?? ''), uniq, ttl)
   /* Секрет показывается ровно один раз: на сервере остаётся только хеш. */
   return NextResponse.json({ token, view })
 })
 
 export const DELETE = withRoute('/mcp/admin/tokens', async (req: NextRequest) => {
   const id = req.nextUrl.searchParams.get('id') ?? ''
-  const ok = /^[a-z0-9]{8}$/.test(id) && (await revokeToken(id))
+  const ok = /^[a-z0-9]{8}$/.test(id) && (await revokeToken(ownerOf(requireUser()), id))
   if (!ok) return NextResponse.json({ code: 'NOT_FOUND', error: 'Токен не найден или уже отозван.' }, { status: 404 })
   return NextResponse.json({ ok: true })
 })

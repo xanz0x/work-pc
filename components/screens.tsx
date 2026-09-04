@@ -51,6 +51,7 @@ const LOADERS: Record<ScreenId, Loader> = {
     import('@/components/screen-settings').then((m) => ({ default: m.ScreenSettings })),
   activity: () =>
     import('@/components/screen-activity').then((m) => ({ default: m.ScreenActivity })),
+  admin: () => import('@/components/screen-admin').then((m) => ({ default: m.ScreenAdmin })),
 }
 
 /** Заглушка на время загрузки чанка: ритм экрана скелетоном, без прыжка вёрстки. */
@@ -88,6 +89,7 @@ export const SCREENS: Record<ScreenId, ComponentType> = {
   vault: dynamic(withRetry(LOADERS.vault), { ssr: false, loading: ScreenLoading }),
   settings: dynamic(withRetry(LOADERS.settings), { ssr: false, loading: ScreenLoading }),
   activity: dynamic(withRetry(LOADERS.activity), { ssr: false, loading: ScreenLoading }),
+  admin: dynamic(withRetry(LOADERS.admin), { ssr: false, loading: ScreenLoading }),
 }
 
 const warmed = new Set<ScreenId>()

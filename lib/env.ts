@@ -37,6 +37,7 @@ export const ENV_SPEC: Spec[] = [
   { name: 'AI_RATE_PER_MIN', required: false, kind: 'int', note: 'ходов в минуту с IP (10)' },
   { name: 'AI_RATE_PER_DAY', required: false, kind: 'int', note: 'ходов в сутки с IP (200)' },
   { name: 'MCP_RATE_PER_MIN', required: false, kind: 'int', note: 'вызовов MCP в минуту на токен (60)' },
+  { name: 'ADMIN_EMAIL', required: false, kind: 'string', note: 'email первого администратора (admin@workspacex.local)' },
   { name: 'LOG_LEVEL', required: false, kind: 'string', note: 'debug | info | warn | error' },
 ]
 

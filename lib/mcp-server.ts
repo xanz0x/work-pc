@@ -27,17 +27,26 @@ import {
   type TokenView,
 } from './permissions'
 
-const ROOT = path.join(process.env.AI_DIR?.trim() || path.join(process.cwd(), 'ai'), 'mcp-access')
-const TOKENS_FILE = path.join(ROOT, 'tokens.json')
-const AUDIT_FILE = path.join(ROOT, 'audit.jsonl')
-const CURSOR_FILE = path.join(ROOT, 'cursor.json')
+const AI_ROOT = process.env.AI_DIR?.trim() || path.join(process.cwd(), 'ai')
+/** Токены всех пользователей — в одном файле (Bearer не знает владельца заранее). */
+const TOKENS_FILE = path.join(AI_ROOT, 'mcp-access', 'tokens.json')
+
+/**
+ * Владелец: первый админ хранит аудит и очередь под старым каталогом,
+ * остальные — под AI_DIR/users/<id>/mcp-access.
+ */
+export type Owner = string
+export const LEGACY_OWNER = 'legacy'
+export const ownerOf = (u: { uid: string; legacy: boolean }): Owner => (u.legacy ? LEGACY_OWNER : u.uid)
+const ownerDir = (o: Owner) =>
+  o === LEGACY_OWNER ? path.join(AI_ROOT, 'mcp-access') : path.join(AI_ROOT, 'users', o, 'mcp-access')
 
 /** Сколько ждём ответа вкладки на одно задание. */
 export const JOB_TIMEOUT_MS = 25_000
 /** Вкладка считается подключённой, если опрашивала мост недавно. */
 const BRIDGE_ALIVE_MS = 30_000
 
-type TokenRecord = TokenView & { hash: string }
+type TokenRecord = TokenView & { hash: string; owner?: Owner }
 
 export type AuditKind = 'call' | 'denied' | 'token-issued' | 'token-revoked' | 'approval'
 
@@ -67,34 +76,43 @@ type Pending = PendingView & {
 
 type Waiter = { resolve: (v: { ok: boolean; payload: unknown }) => void; timer: NodeJS.Timeout }
 
-type State = {
+type OwnerState = {
   loaded: boolean
-  tokens: TokenRecord[]
   audit: AuditEntry[]
   auditSeq: number
   deliveredSeq: number
   queue: Job[]
-  waiters: Map<string, Waiter>
-  pending: Map<string, Pending>
   bridgeWake: (() => void)[]
   lastBridgeAt: number
 }
 
+type Global = {
+  tokensLoaded: boolean
+  tokens: TokenRecord[]
+  owners: Map<Owner, OwnerState>
+  waiters: Map<string, Waiter>
+  pending: Map<string, Pending & { owner: Owner }>
+}
+
 /* Одно состояние на процесс: маршруты Next компилируются в разные модули,
    поэтому держим его на globalThis, как принято для singletons в Node. */
-const g = globalThis as unknown as { __wsxMcp?: State }
-const S: State = (g.__wsxMcp ??= {
-  loaded: false,
+const g = globalThis as unknown as { __wsxMcp?: Global }
+const G: Global = (g.__wsxMcp ??= {
+  tokensLoaded: false,
   tokens: [],
-  audit: [],
-  auditSeq: 0,
-  deliveredSeq: 0,
-  queue: [],
+  owners: new Map(),
   waiters: new Map(),
   pending: new Map(),
-  bridgeWake: [],
-  lastBridgeAt: 0,
 })
+
+function stateOf(owner: Owner): OwnerState {
+  let st = G.owners.get(owner)
+  if (!st) {
+    st = { loaded: false, audit: [], auditSeq: 0, deliveredSeq: 0, queue: [], bridgeWake: [], lastBridgeAt: 0 }
+    G.owners.set(owner, st)
+  }
+  return st
+}
 
 async function readJson<T>(p: string, fallback: T): Promise<T> {
   try {
@@ -104,70 +122,87 @@ async function readJson<T>(p: string, fallback: T): Promise<T> {
   }
 }
 
-async function load(): Promise<void> {
-  if (S.loaded) return
-  await fs.mkdir(ROOT, { recursive: true })
-  S.tokens = await readJson<TokenRecord[]>(TOKENS_FILE, [])
-  const cursor = await readJson<{ deliveredSeq: number }>(CURSOR_FILE, { deliveredSeq: 0 })
+async function loadTokens(): Promise<void> {
+  if (G.tokensLoaded) return
+  await fs.mkdir(path.dirname(TOKENS_FILE), { recursive: true })
+  G.tokens = await readJson<TokenRecord[]>(TOKENS_FILE, [])
+  /* Токены до аккаунтов принадлежат первому админу. */
+  for (const t of G.tokens) t.owner ??= LEGACY_OWNER
+  G.tokensLoaded = true
+}
+
+async function load(owner: Owner): Promise<OwnerState> {
+  await loadTokens()
+  const S = stateOf(owner)
+  if (S.loaded) return S
+  const dir = ownerDir(owner)
+  await fs.mkdir(dir, { recursive: true })
+  const cursor = await readJson<{ deliveredSeq: number }>(path.join(dir, 'cursor.json'), { deliveredSeq: 0 })
   S.deliveredSeq = cursor.deliveredSeq
   try {
-    const lines = (await fs.readFile(AUDIT_FILE, 'utf8')).split('\n').filter(Boolean)
+    const lines = (await fs.readFile(path.join(dir, 'audit.jsonl'), 'utf8')).split('\n').filter(Boolean)
     S.audit = lines.map((l) => JSON.parse(l) as AuditEntry)
   } catch {
     S.audit = []
   }
   S.auditSeq = S.audit.reduce((m, e) => Math.max(m, e.seq), 0)
   S.loaded = true
+  return S
 }
 
 async function saveTokens(): Promise<void> {
-  await fs.writeFile(TOKENS_FILE, `${JSON.stringify(S.tokens, null, 2)}\n`, 'utf8')
+  await fs.mkdir(path.dirname(TOKENS_FILE), { recursive: true })
+  await fs.writeFile(TOKENS_FILE, `${JSON.stringify(G.tokens, null, 2)}\n`, 'utf8')
 }
 
 function uid(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
 }
 
-function wakeBridge(): void {
+function wakeBridge(S: OwnerState): void {
   const list = S.bridgeWake.splice(0)
   for (const fn of list) fn()
 }
 
 /* ---------- аудит ---------- */
 
-async function audit(e: Omit<AuditEntry, 'seq' | 'at'>): Promise<void> {
-  await load()
+async function audit(owner: Owner, e: Omit<AuditEntry, 'seq' | 'at'>): Promise<void> {
+  const S = await load(owner)
   const entry: AuditEntry = { ...e, seq: ++S.auditSeq, at: Date.now() }
   S.audit.push(entry)
   if (S.audit.length > 2000) S.audit.splice(0, S.audit.length - 2000)
   try {
-    await fs.appendFile(AUDIT_FILE, `${JSON.stringify(entry)}\n`, 'utf8')
+    await fs.appendFile(path.join(ownerDir(owner), 'audit.jsonl'), `${JSON.stringify(entry)}\n`, 'utf8')
   } catch (err) {
     log('error', 'mcp.audit-failed', { reason: err instanceof Error ? err.message : 'неизвестно' })
   }
   log(e.ok ? 'info' : 'warn', `mcp.${e.kind}`, { where: e.tool ?? undefined, code: e.tokenId ?? undefined })
-  wakeBridge()
+  wakeBridge(S)
 }
 
 /* ---------- токены ---------- */
 
 function view(t: TokenRecord): TokenView {
-  const { hash: _hash, ...rest } = t
+  const { hash: _hash, owner: _owner, ...rest } = t
   void _hash
+  void _owner
   return rest
 }
 
-export async function listTokens(): Promise<TokenView[]> {
-  await load()
-  return S.tokens.map(view).sort((a, b) => b.createdAt - a.createdAt)
+export type OwnedToken = TokenView & { owner: Owner }
+
+export async function listTokens(owner: Owner): Promise<TokenView[]> {
+  await loadTokens()
+  return G.tokens.filter((t) => t.owner === owner).map(view).sort((a, b) => b.createdAt - a.createdAt)
 }
 
 export async function issueToken(
+  owner: Owner,
   name: string,
   scopes: Scope[],
   ttlHours: number,
 ): Promise<{ token: string; view: TokenView }> {
-  await load()
+  await load(owner)
   const { id, secret } = newTokenParts()
   const now = Date.now()
   const rec: TokenRecord = {
@@ -180,10 +215,11 @@ export async function issueToken(
     lastUsedAt: null,
     calls: 0,
     hash: await hashSecret(secret),
+    owner,
   }
-  S.tokens.push(rec)
+  G.tokens.push(rec)
   await saveTokens()
-  await audit({
+  await audit(owner, {
     kind: 'token-issued',
     tokenId: id,
     tokenName: rec.name,
@@ -194,13 +230,13 @@ export async function issueToken(
   return { token: formatToken(id, secret), view: view(rec) }
 }
 
-export async function revokeToken(id: string): Promise<boolean> {
-  await load()
-  const rec = S.tokens.find((t) => t.id === id)
+export async function revokeToken(owner: Owner, id: string): Promise<boolean> {
+  await load(owner)
+  const rec = G.tokens.find((t) => t.id === id && t.owner === owner)
   if (!rec || rec.revokedAt) return false
   rec.revokedAt = Date.now()
   await saveTokens()
-  await audit({
+  await audit(owner, {
     kind: 'token-revoked',
     tokenId: id,
     tokenName: rec.name,
@@ -212,18 +248,19 @@ export async function revokeToken(id: string): Promise<boolean> {
 }
 
 export type AuthResult =
-  | { ok: true; token: TokenView }
+  | { ok: true; token: OwnedToken }
   | { ok: false; code: 'TOKEN_MISSING' | 'TOKEN_INVALID' | 'TOKEN_EXPIRED' | 'TOKEN_REVOKED' }
 
 /** Проверка Bearer-токена. Каждый провал — запись в аудит. */
 export async function authenticate(header: string | null): Promise<AuthResult> {
-  await load()
+  await loadTokens()
   const raw = header?.startsWith('Bearer ') ? header.slice(7) : null
   if (!raw) return { ok: false, code: 'TOKEN_MISSING' }
   const parsed = parseToken(raw)
-  const rec = parsed ? S.tokens.find((t) => t.id === parsed.id) : undefined
+  const rec = parsed ? G.tokens.find((t) => t.id === parsed.id) : undefined
+  const owner = rec?.owner ?? LEGACY_OWNER
   if (!parsed || !rec || !equalConst(rec.hash, await hashSecret(parsed.secret))) {
-    await audit({
+    await audit(owner, {
       kind: 'denied',
       tokenId: parsed?.id ?? null,
       tokenName: rec?.name ?? 'неизвестный',
@@ -234,31 +271,32 @@ export async function authenticate(header: string | null): Promise<AuthResult> {
     return { ok: false, code: 'TOKEN_INVALID' }
   }
   if (rec.revokedAt) {
-    await audit({ kind: 'denied', tokenId: rec.id, tokenName: rec.name, tool: null, ok: false, detail: 'Токен отозван' })
+    await audit(owner, { kind: 'denied', tokenId: rec.id, tokenName: rec.name, tool: null, ok: false, detail: 'Токен отозван' })
     return { ok: false, code: 'TOKEN_REVOKED' }
   }
   if (rec.expiresAt <= Date.now()) {
-    await audit({ kind: 'denied', tokenId: rec.id, tokenName: rec.name, tool: null, ok: false, detail: 'Срок токена истёк' })
+    await audit(owner, { kind: 'denied', tokenId: rec.id, tokenName: rec.name, tool: null, ok: false, detail: 'Срок токена истёк' })
     return { ok: false, code: 'TOKEN_EXPIRED' }
   }
-  return { ok: true, token: view(rec) }
+  return { ok: true, token: { ...view(rec), owner } }
 }
 
 async function touch(tokenId: string): Promise<void> {
-  const rec = S.tokens.find((t) => t.id === tokenId)
+  const rec = G.tokens.find((t) => t.id === tokenId)
   if (!rec) return
   rec.lastUsedAt = Date.now()
   rec.calls += 1
   await saveTokens().catch(() => {})
 }
 
-export async function auditDenied(token: TokenView, tool: McpToolName, detail: string): Promise<void> {
-  await audit({ kind: 'denied', tokenId: token.id, tokenName: token.name, tool, ok: false, detail })
+export async function auditDenied(token: OwnedToken, tool: McpToolName, detail: string): Promise<void> {
+  await audit(token.owner, { kind: 'denied', tokenId: token.id, tokenName: token.name, tool, ok: false, detail })
 }
 
 /* ---------- очередь заданий для вкладки ---------- */
 
-export function bridgeAlive(): boolean {
+export function bridgeAlive(owner: Owner): boolean {
+  const S = stateOf(owner)
   return S.bridgeWake.length > 0 || Date.now() - S.lastBridgeAt < BRIDGE_ALIVE_MS
 }
 
@@ -267,13 +305,13 @@ export function bridgeAlive(): boolean {
  * или бросает код ошибки: NO_BRIDGE (вкладка не открыта) / BRIDGE_TIMEOUT.
  */
 export async function runTool(
-  token: TokenView,
+  token: OwnedToken,
   tool: McpToolName,
   args: Record<string, unknown>,
 ): Promise<{ ok: boolean; payload: unknown }> {
-  await load()
-  if (!bridgeAlive()) {
-    await audit({
+  const S = await load(token.owner)
+  if (!bridgeAlive(token.owner)) {
+    await audit(token.owner, {
       kind: 'call',
       tokenId: token.id,
       tokenName: token.name,
@@ -286,16 +324,16 @@ export async function runTool(
   const job: Job = { id: uid('job'), tool, args, tokenName: token.name }
   const result = await new Promise<{ ok: boolean; payload: unknown }>((resolve) => {
     const timer = setTimeout(() => {
-      S.waiters.delete(job.id)
+      G.waiters.delete(job.id)
       S.queue = S.queue.filter((j) => j.id !== job.id)
       resolve({ ok: false, payload: 'BRIDGE_TIMEOUT' })
     }, JOB_TIMEOUT_MS)
-    S.waiters.set(job.id, { resolve, timer })
+    G.waiters.set(job.id, { resolve, timer })
     S.queue.push(job)
-    wakeBridge()
+    wakeBridge(S)
   })
   await touch(token.id)
-  await audit({
+  await audit(token.owner, {
     kind: 'call',
     tokenId: token.id,
     tokenName: token.name,
@@ -317,8 +355,8 @@ export type BridgePoll = {
 }
 
 /** Опрос моста: отдаём сразу, если есть работа, иначе ждём до `waitMs`. */
-export async function bridgePoll(waitMs: number): Promise<BridgePoll> {
-  await load()
+export async function bridgePoll(owner: Owner, waitMs: number): Promise<BridgePoll> {
+  const S = await load(owner)
   S.lastBridgeAt = Date.now()
   expirePending()
   const hasWork = () => S.queue.length > 0 || S.auditSeq > S.deliveredSeq
@@ -340,16 +378,18 @@ export async function bridgePoll(waitMs: number): Promise<BridgePoll> {
   const fresh = S.audit.filter((e) => e.seq > S.deliveredSeq)
   if (fresh.length) {
     S.deliveredSeq = S.auditSeq
-    await fs.writeFile(CURSOR_FILE, JSON.stringify({ deliveredSeq: S.deliveredSeq }), 'utf8').catch(() => {})
+    await fs
+      .writeFile(path.join(ownerDir(owner), 'cursor.json'), JSON.stringify({ deliveredSeq: S.deliveredSeq }), 'utf8')
+      .catch(() => {})
   }
-  return { jobs, audit: fresh, pending: listPending(), serverAt: Date.now() }
+  return { jobs, audit: fresh, pending: listPending(owner), serverAt: Date.now() }
 }
 
 export function bridgeResult(jobId: string, ok: boolean, payload: unknown): boolean {
-  const w = S.waiters.get(jobId)
+  const w = G.waiters.get(jobId)
   if (!w) return false
   clearTimeout(w.timer)
-  S.waiters.delete(jobId)
+  G.waiters.delete(jobId)
   w.resolve({ ok, payload })
   return true
 }
@@ -358,9 +398,9 @@ export function bridgeResult(jobId: string, ok: boolean, payload: unknown): bool
 
 function expirePending(): void {
   const now = Date.now()
-  for (const p of S.pending.values()) {
+  for (const p of G.pending.values()) {
     if (p.status === 'pending' && now - p.createdAt > APPROVAL_TTL_MS) p.status = 'expired'
-    if (now - p.createdAt > APPROVAL_TTL_MS * 3) S.pending.delete(p.id)
+    if (now - p.createdAt > APPROVAL_TTL_MS * 3) G.pending.delete(p.id)
   }
 }
 
@@ -368,19 +408,20 @@ function pendingView(p: Pending): PendingView {
   return { id: p.id, tool: p.tool, summary: p.summary, tokenName: p.tokenName, createdAt: p.createdAt, status: p.status }
 }
 
-export function listPending(): PendingView[] {
+export function listPending(owner: Owner): PendingView[] {
   expirePending()
-  return [...S.pending.values()].filter((p) => p.status === 'pending').map(pendingView)
+  return [...G.pending.values()].filter((p) => p.status === 'pending' && p.owner === owner).map(pendingView)
 }
 
 /** Агент просит опасную операцию: заводим запрос и ждём человека. */
 export async function requestApproval(
-  token: TokenView,
+  token: OwnedToken,
   tool: McpToolName,
   args: Record<string, unknown>,
 ): Promise<PendingView> {
-  await load()
-  const p: Pending = {
+  await load(token.owner)
+  const p: Pending & { owner: Owner } = {
+    owner: token.owner,
     id: uid('appr'),
     tool,
     args,
@@ -390,9 +431,9 @@ export async function requestApproval(
     createdAt: Date.now(),
     status: 'pending',
   }
-  S.pending.set(p.id, p)
+  G.pending.set(p.id, p)
   await touch(token.id)
-  await audit({
+  await audit(token.owner, {
     kind: 'approval',
     tokenId: token.id,
     tokenName: token.name,
@@ -409,30 +450,31 @@ export function approvalState(
   tokenId: string,
 ): { status: ApprovalStatus | 'unknown'; result?: { ok: boolean; payload: unknown } } {
   expirePending()
-  const p = S.pending.get(id)
+  const p = G.pending.get(id)
   if (!p || p.tokenId !== tokenId) return { status: 'unknown' }
   return { status: p.status, result: p.result }
 }
 
 /** Задание для вкладки при одобрении: те же аргументы, что прислал агент. */
-export function pendingJob(id: string): Job | null {
-  const p = S.pending.get(id)
-  if (!p || p.status !== 'pending') return null
+export function pendingJob(owner: Owner, id: string): Job | null {
+  const p = G.pending.get(id)
+  if (!p || p.status !== 'pending' || p.owner !== owner) return null
   return { id: p.id, tool: p.tool, args: p.args, tokenName: p.tokenName }
 }
 
 /** Решение человека из интерфейса. При одобрении вкладка уже выполнила запись. */
 export async function decideApproval(
+  owner: Owner,
   id: string,
   decision: 'approve' | 'reject',
   result?: { ok: boolean; payload: unknown },
 ): Promise<boolean> {
-  await load()
-  const p = S.pending.get(id)
-  if (!p || p.status !== 'pending') return false
+  await load(owner)
+  const p = G.pending.get(id)
+  if (!p || p.status !== 'pending' || p.owner !== owner) return false
   p.status = decision === 'approve' ? 'approved' : 'rejected'
   p.result = decision === 'approve' ? result : { ok: false, payload: 'REJECTED' }
-  await audit({
+  await audit(owner, {
     kind: 'approval',
     tokenId: p.tokenId,
     tokenName: p.tokenName,
@@ -450,14 +492,9 @@ export async function decideApproval(
 
 /** Для тестов: сброс состояния в памяти. */
 export function resetMcpState(): void {
-  S.loaded = false
-  S.tokens = []
-  S.audit = []
-  S.auditSeq = 0
-  S.deliveredSeq = 0
-  S.queue = []
-  S.waiters.clear()
-  S.pending.clear()
-  S.bridgeWake = []
-  S.lastBridgeAt = 0
+  G.tokensLoaded = false
+  G.tokens = []
+  G.owners.clear()
+  G.waiters.clear()
+  G.pending.clear()
 }

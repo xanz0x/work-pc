@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { decideApproval, listPending, pendingJob } from '@/lib/mcp-server'
+import { decideApproval, listPending, ownerOf, pendingJob } from '@/lib/mcp-server'
+import { requireUser } from '@/lib/request-context'
 import { withRoute } from '@/lib/route-log'
 
 export const runtime = 'nodejs'
@@ -11,11 +12,11 @@ export const dynamic = 'force-dynamic'
 export const GET = withRoute('/mcp/admin/pending', async (req: NextRequest) => {
   const id = req.nextUrl.searchParams.get('id')
   if (id) {
-    const job = pendingJob(id)
+    const job = pendingJob(ownerOf(requireUser()), id)
     if (!job) return NextResponse.json({ code: 'NOT_FOUND', error: 'Запрос не ждёт решения.' }, { status: 404 })
     return NextResponse.json(job)
   }
-  return NextResponse.json(listPending())
+  return NextResponse.json(listPending(ownerOf(requireUser())))
 })
 
 export const POST = withRoute('/mcp/admin/pending', async (req: NextRequest) => {
@@ -29,6 +30,7 @@ export const POST = withRoute('/mcp/admin/pending', async (req: NextRequest) => 
     return NextResponse.json({ code: 'INVALID_ARGS', error: 'Нужны id и decision.' }, { status: 400 })
   }
   const done = await decideApproval(
+    ownerOf(requireUser()),
     body.id,
     body.decision,
     body.decision === 'approve' ? { ok: body.ok === true, payload: body.payload } : undefined,

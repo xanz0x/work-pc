@@ -110,10 +110,10 @@ describe('слепой сервер', () => {
     const keys = await keysFromEntropy(ent)
     const other = await keysFromEntropy(crypto.getRandomValues(new Uint8Array(16)))
     const label = await (await import('@/lib/sync/crypto')).sealJson(keys.key, 'Ноутбук Ирины')
-    const reg = await srv.registerDevice(keys.spaceId, keys.spacePass, 'aaaaaaaaaaaaaaaa', label)
+    const reg = await srv.registerDevice('u1', keys.spaceId, keys.spacePass, 'aaaaaaaaaaaaaaaa', label)
     expect(reg.ok).toBe(true)
     if (!reg.ok) return
-    const auth = await srv.authDevice(keys.spaceId, 'aaaaaaaaaaaaaaaa', reg.token)
+    const auth = await srv.authDevice('u1', keys.spaceId, 'aaaaaaaaaaaaaaaa', reg.token)
     expect(auth).not.toBeNull()
 
     const ops: Op[] = [{ col: 'notes', id: 'n1', ts: 1, dev: 'aaaaaaaaaaaaaaaa', n: 1, set: { title: 'СОВЕРШЕННО СЕКРЕТНО' } }]
@@ -130,12 +130,12 @@ describe('слепой сервер', () => {
     expect(await openOps(other.key, pulled.ops[0])).toBeNull()
     expect(await openOps(keys.key, pulled.ops[0])).toEqual(ops)
 
-    const wrong = await srv.registerDevice(keys.spaceId, other.spacePass, 'cccccccccccccccc', label)
+    const wrong = await srv.registerDevice('u1', keys.spaceId, other.spacePass, 'cccccccccccccccc', label)
     expect(wrong).toEqual({ ok: false, code: 'WRONG_PASS' })
-    expect(await srv.authDevice(keys.spaceId, 'aaaaaaaaaaaaaaaa', 'bad')).toBeNull()
+    expect(await srv.authDevice('u1', keys.spaceId, 'aaaaaaaaaaaaaaaa', 'bad')).toBeNull()
 
     expect(await srv.revokeDevice(auth!.space, 'aaaaaaaaaaaaaaaa')).toBe(true)
-    expect(await srv.authDevice(keys.spaceId, 'aaaaaaaaaaaaaaaa', reg.token)).toBeNull()
-    expect(await srv.registerDevice(keys.spaceId, keys.spacePass, 'aaaaaaaaaaaaaaaa', label)).toEqual({ ok: false, code: 'REVOKED' })
+    expect(await srv.authDevice('u1', keys.spaceId, 'aaaaaaaaaaaaaaaa', reg.token)).toBeNull()
+    expect(await srv.registerDevice('u1', keys.spaceId, keys.spacePass, 'aaaaaaaaaaaaaaaa', label)).toEqual({ ok: false, code: 'REVOKED' })
   })
 })

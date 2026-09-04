@@ -66,7 +66,7 @@ describe('permissions', () => {
 
 describe('mcp-server', () => {
   it('выдача → проверка → отзыв, всё в аудите', async () => {
-    const { token, view } = await srv.issueToken('Тест', ['search'], 1)
+    const { token, view } = await srv.issueToken('legacy', 'Тест', ['search'], 1)
     expect(view.scopes).toEqual(['search'])
     const ok = await srv.authenticate(`Bearer ${token}`)
     expect(ok.ok).toBe(true)
@@ -75,22 +75,22 @@ describe('mcp-server', () => {
     expect(bad).toEqual({ ok: false, code: 'TOKEN_INVALID' })
     expect(await srv.authenticate(null)).toEqual({ ok: false, code: 'TOKEN_MISSING' })
 
-    expect(await srv.revokeToken(view.id)).toBe(true)
+    expect(await srv.revokeToken('legacy', view.id)).toBe(true)
     const revoked = await srv.authenticate(`Bearer ${token}`)
     expect(revoked).toEqual({ ok: false, code: 'TOKEN_REVOKED' })
 
-    const poll = await srv.bridgePoll(0)
+    const poll = await srv.bridgePoll('legacy', 0)
     const kinds = poll.audit.map((a) => a.kind)
     expect(kinds).toEqual(['token-issued', 'denied', 'token-revoked', 'denied'])
     /* Повторный опрос ничего не отдаёт: аудит доставляется один раз. */
-    expect((await srv.bridgePoll(0)).audit).toEqual([])
+    expect((await srv.bridgePoll('legacy', 0)).audit).toEqual([])
   })
 
   it('без открытой вкладки вызов честно падает и остаётся в аудите', async () => {
     srv.resetMcpState()
-    const { view } = await srv.issueToken('Без моста', ['search'], 1)
-    await expect(srv.runTool(view, 'search', { query: 'x' })).rejects.toThrow('NO_BRIDGE')
-    const poll = await srv.bridgePoll(0)
+    const { view } = await srv.issueToken('legacy', 'Без моста', ['search'], 1)
+    await expect(srv.runTool({ ...view, owner: 'legacy' }, 'search', { query: 'x' })).rejects.toThrow('NO_BRIDGE')
+    const poll = await srv.bridgePoll('legacy', 0)
     const call = poll.audit.find((a) => a.kind === 'call')
     expect(call?.ok).toBe(false)
     expect(call?.detail).toContain('не открыта')
@@ -98,33 +98,33 @@ describe('mcp-server', () => {
 
   it('задание доходит до моста и результат возвращается агенту', async () => {
     srv.resetMcpState()
-    const { view } = await srv.issueToken('Мост', ['search'], 1)
-    await srv.bridgePoll(0) // вкладка «подключилась»
-    const p = srv.runTool(view, 'search', { query: 'договор' })
-    const poll = await srv.bridgePoll(0)
+    const { view } = await srv.issueToken('legacy', 'Мост', ['search'], 1)
+    await srv.bridgePoll('legacy', 0) // вкладка «подключилась»
+    const p = srv.runTool({ ...view, owner: 'legacy' }, 'search', { query: 'договор' })
+    const poll = await srv.bridgePoll('legacy', 0)
     expect(poll.jobs).toHaveLength(1)
     expect(poll.jobs[0].tool).toBe('search')
     expect(srv.bridgeResult(poll.jobs[0].id, true, { hits: [] })).toBe(true)
     expect(await p).toEqual({ ok: true, payload: { hits: [] } })
-    const after = await srv.bridgePoll(0)
+    const after = await srv.bridgePoll('legacy', 0)
     expect(after.audit.find((a) => a.kind === 'call')?.ok).toBe(true)
   })
 
   it('опасная операция ждёт человека; отказ — окончателен', async () => {
     srv.resetMcpState()
-    const { view } = await srv.issueToken('Секреты', ['secrets:write'], 1)
-    const pending = await srv.requestApproval(view, 'create_secret', {
+    const { view } = await srv.issueToken('legacy', 'Секреты', ['secrets:write'], 1)
+    const pending = await srv.requestApproval({ ...view, owner: 'legacy' }, 'create_secret', {
       title: 'X',
       fields: [{ name: 'Пароль', value: 'p' }],
     })
-    expect(srv.listPending()).toHaveLength(1)
+    expect(srv.listPending('legacy')).toHaveLength(1)
     expect(srv.approvalState(pending.id, view.id).status).toBe('pending')
     /* Чужой токен не видит чужой запрос. */
     expect(srv.approvalState(pending.id, 'other').status).toBe('unknown')
 
-    expect(await srv.decideApproval(pending.id, 'reject')).toBe(true)
+    expect(await srv.decideApproval('legacy', pending.id, 'reject')).toBe(true)
     expect(srv.approvalState(pending.id, view.id).status).toBe('rejected')
-    expect(srv.listPending()).toHaveLength(0)
-    expect(await srv.decideApproval(pending.id, 'approve', { ok: true, payload: 1 })).toBe(false)
+    expect(srv.listPending('legacy')).toHaveLength(0)
+    expect(await srv.decideApproval('legacy', pending.id, 'approve', { ok: true, payload: 1 })).toBe(false)
   })
 })

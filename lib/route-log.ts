@@ -6,6 +6,7 @@
 
 import { log, newRequestId } from './log'
 import { countLatency, trackError } from './metrics'
+import { runWithUser, userFromHeaders } from './request-context'
 
 type Handler<Req extends Request, Ctx> = (req: Req, ctx: Ctx, rid: string) => Promise<Response>
 
@@ -14,7 +15,7 @@ export function withRoute<Req extends Request, Ctx>(route: string, handler: Hand
     const rid = req.headers.get('x-request-id') ?? newRequestId()
     const t0 = Date.now()
     try {
-      const res = await handler(req, ctx, rid)
+      const res = await runWithUser(userFromHeaders(req.headers), () => handler(req, ctx, rid))
       const ms = Date.now() - t0
       countLatency(ms)
       log(res.status >= 500 ? 'error' : res.status >= 400 ? 'warn' : 'info', 'request.done', {

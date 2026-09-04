@@ -1,4 +1,5 @@
 import { StorageAlert } from '@/components/storage-alert'
+import { AccountGate, FeatureOn } from '@/lib/account'
 import { IndexerProvider } from '@/lib/indexer/context'
 import { McpBridge } from '@/lib/mcp-bridge'
 import { RedactedProvider } from '@/lib/redact-context'
@@ -13,7 +14,9 @@ import { VaultProvider } from '@/lib/vault-store'
  */
 export default function AppLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <>
+    <AccountGate>
+      {/* Аккаунт известен до первого чтения сторов: от него зависят локальная
+          база IndexedDB, префикс localStorage и набор разрешённых функций. */}
       {/* Редакт объектов под файловым ключом оборачивает весь сейф:
           поиск в store, палитра, чат и карта читают один set. */}
       <RedactedProvider>
@@ -29,15 +32,19 @@ export default function AppLayout({ children }: Readonly<{ children: React.React
               {children}
               {/* NF-10: мост к MCP-серверу — выполняет задания внешних агентов
                   через те же сторы и пишет их аудит в журнал безопасности. */}
-              <McpBridge />
+              <FeatureOn id="mcp">
+                <McpBridge />
+              </FeatureOn>
               {/* NF-11: E2EE-синхронизация — сливает файлы, стикеры и ленту между устройствами. */}
-              <SyncProvider />
+              <FeatureOn id="sync">
+                <SyncProvider />
+              </FeatureOn>
             </SecretsProvider>
           </IndexerProvider>
         </VaultProvider>
       </RedactedProvider>
       {/* Ошибка записи хранилища видна пользователю (P0-3). */}
       <StorageAlert />
-    </>
+    </AccountGate>
   )
 }

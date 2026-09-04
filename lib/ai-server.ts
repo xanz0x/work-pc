@@ -1,5 +1,6 @@
 import { promises as fs } from 'fs'
 import path from 'path'
+import { currentUser } from './request-context'
 
 /**
  * Файловый слой AI-папки: скиллы, MCP-конфиги и сессии лежат на диске и
@@ -7,7 +8,14 @@ import path from 'path'
  * переменной AI_DIR: приватные диалоги по умолчанию живут вне репозитория.
  */
 
-const ROOT = process.env.AI_DIR?.trim() || path.join(process.cwd(), 'ai')
+const AI_ROOT = process.env.AI_DIR?.trim() || path.join(process.cwd(), 'ai')
+
+/** Каталог текущего пользователя: первый админ — сам AI_DIR, остальные — AI_DIR/users/<id>. */
+function ROOT_OF(): string {
+  const u = currentUser()
+  if (!u || u.legacy) return AI_ROOT
+  return path.join(AI_ROOT, 'users', u.uid)
+}
 
 export type SkillFile = {
   id: string
@@ -102,20 +110,20 @@ async function listJson<T>(dir: string): Promise<T[]> {
 /* ---------- скиллы ---------- */
 
 export async function listSkills(): Promise<SkillFile[]> {
-  const all = await listJson<SkillFile>(path.join(ROOT, 'skills'))
+  const all = await listJson<SkillFile>(path.join(ROOT_OF(), 'skills'))
   return all.sort((a, b) => Number(b.builtin) - Number(a.builtin) || a.name.localeCompare(b.name, 'ru'))
 }
 
 export async function getSkill(id: string): Promise<SkillFile | null> {
-  return readJson<SkillFile>(path.join(ROOT, 'skills', `${safeId(id)}.json`))
+  return readJson<SkillFile>(path.join(ROOT_OF(), 'skills', `${safeId(id)}.json`))
 }
 
 export async function saveSkill(s: SkillFile): Promise<void> {
-  await writeJson(path.join(ROOT, 'skills', `${safeId(s.id)}.json`), s)
+  await writeJson(path.join(ROOT_OF(), 'skills', `${safeId(s.id)}.json`), s)
 }
 
 export async function deleteSkill(id: string): Promise<void> {
-  await fs.unlink(path.join(ROOT, 'skills', `${safeId(id)}.json`)).catch(() => {})
+  await fs.unlink(path.join(ROOT_OF(), 'skills', `${safeId(id)}.json`)).catch(() => {})
 }
 
 /* ---------- MCP ---------- */
@@ -126,31 +134,31 @@ function maskMcp(m: McpFile): McpFile {
 }
 
 export async function listMcp(): Promise<McpFile[]> {
-  return (await listJson<McpFile>(path.join(ROOT, 'mcp'))).map(maskMcp)
+  return (await listJson<McpFile>(path.join(ROOT_OF(), 'mcp'))).map(maskMcp)
 }
 
 export async function getMcp(id: string): Promise<McpFile | null> {
-  const m = await readJson<McpFile>(path.join(ROOT, 'mcp', `${safeId(id)}.json`))
+  const m = await readJson<McpFile>(path.join(ROOT_OF(), 'mcp', `${safeId(id)}.json`))
   return m ? maskMcp(m) : null
 }
 
 export async function saveMcp(m: McpFile): Promise<void> {
-  await writeJson(path.join(ROOT, 'mcp', `${safeId(m.id)}.json`), maskMcp(m))
+  await writeJson(path.join(ROOT_OF(), 'mcp', `${safeId(m.id)}.json`), maskMcp(m))
 }
 
 /* ---------- системный промпт ---------- */
 
 export async function getSystemPrompt(): Promise<string> {
   try {
-    return await fs.readFile(path.join(ROOT, 'system.md'), 'utf8')
+    return await fs.readFile(path.join(ROOT_OF(), 'system.md'), 'utf8')
   } catch {
     return 'Ты — ИИ-ассистент хранилища WorkSpaceX. Отвечай по-русски, кратко.'
   }
 }
 
 export async function saveSystemPrompt(text: string): Promise<void> {
-  await fs.mkdir(ROOT, { recursive: true })
-  await fs.writeFile(path.join(ROOT, 'system.md'), text, 'utf8')
+  await fs.mkdir(ROOT_OF(), { recursive: true })
+  await fs.writeFile(path.join(ROOT_OF(), 'system.md'), text, 'utf8')
 }
 
 /* ---------- сессии ---------- */
@@ -164,7 +172,7 @@ export type SessionMeta = {
 }
 
 export async function listSessions(): Promise<SessionMeta[]> {
-  const all = await listJson<SessionFile>(path.join(ROOT, 'sessions'))
+  const all = await listJson<SessionFile>(path.join(ROOT_OF(), 'sessions'))
   return all
     .map((s) => ({
       id: s.id,
@@ -177,13 +185,13 @@ export async function listSessions(): Promise<SessionMeta[]> {
 }
 
 export async function getSession(id: string): Promise<SessionFile | null> {
-  return readJson<SessionFile>(path.join(ROOT, 'sessions', `${safeId(id)}.json`))
+  return readJson<SessionFile>(path.join(ROOT_OF(), 'sessions', `${safeId(id)}.json`))
 }
 
 export async function saveSession(s: SessionFile): Promise<void> {
-  await writeJson(path.join(ROOT, 'sessions', `${safeId(s.id)}.json`), s)
+  await writeJson(path.join(ROOT_OF(), 'sessions', `${safeId(s.id)}.json`), s)
 }
 
 export async function deleteSession(id: string): Promise<void> {
-  await fs.unlink(path.join(ROOT, 'sessions', `${safeId(id)}.json`)).catch(() => {})
+  await fs.unlink(path.join(ROOT_OF(), 'sessions', `${safeId(id)}.json`)).catch(() => {})
 }

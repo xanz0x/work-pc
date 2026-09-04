@@ -132,3 +132,11 @@ APP_URL=http://localhost:3000 APP_PASSWORD=IceKrymTeam13@ node scripts/long-dial
   на лету в одноразовых контекстах браузера.
 - Серверные данные: `/root/.workflow/ai/sync/<spaceId>/` — только шифртекст.
 - Тесты: `APP_URL=https://token-permissions.preview.emergentagent.com python3 -m pytest tests/api/test_sync.py -q`.
+
+## Аккаунты и админ-панель (2026-06-04)
+- **Администратор**: email `admin@workspacex.local`, пароль `IceKrymTeam13@` (= APP_PASSWORD; вход одним паролем без email тоже работает — совместимость). Роль admin, лицензия не нужна.
+- Пользователи создаются админом (`/admin`, временный пароль → смена при первом входе) или саморегистрацией на `/login` → «Регистрация»; работать начинают после ключа лицензии `WSX-XXXX-XXXX-XXXX-XXXX` (админ выдаёт в `/admin` → «Ключи лицензий»).
+- Эндпоинты: `POST /ai-api/auth/{login,register,password,license}`, `GET/DELETE /ai-api/auth/session`; админ: `/admin/api/{users,users/[id],licenses,overview}` (роль admin).
+- Данные пользователей: `/root/.workflow/ai/users/*.json`, личные каталоги `/root/.workflow/ai/users/<uid>/`. Первый админ хранит данные в корне AI_DIR и базе IndexedDB `workflow` (legacyStore), остальные — `workflow-<uid>` и префикс `u:<uid>:` в localStorage.
+- Playwright: `tests/e2e/global-setup.ts` логинит админа и кладёт cookie в `test-results/.auth/admin.json` для всех сценариев.
+- См. `/app/auth_testing.md`.
