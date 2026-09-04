@@ -1212,3 +1212,35 @@ UX-4 accessibility · LG-4/LG-5 · RM-3.
 - `components/mcp-tokens.tsx`: единый механизм подтверждения `arm(key)` (5 с) для отзыва/удаления/очистки; у каждой строки кнопка «Удалить» (`mcp-token-delete`, у активных — рядом с «Отозвать»); в шапке списка «Очистить неактивные · N» (`mcp-token-purge`) когда есть неактивные; «скрыть» у выданного токена — иконка-крестик.
 - Дизайн (screen-settings.css, слой NF-10): отступы между блоками (шапка списка не липнет к блоку выданного токена), карточка выдачи с r-panel, чекбоксы областей 15px (danger — красный accent), блок выданного токена с лёгким акцентным фоном и появлением, строки токенов: цветная левая кайма по статусу (ok/warn/text-3), имя + id-плашка mono lowercase + статус-пилюля с точкой, мета-строка mono, кнопки btn-sm, «Удалить» приглушена до hover.
 - Проверено на preview: выдача → отзыв → очистка → удаление, счётчик обновляется. tsc 0, eslint 0 ошибок, next build ok. e2e 21-mcp-external совместим (revoke без изменений).
+
+## Модуль «Почта» — фаза 1 (2026-06, итерация 31, сделано)
+**Запрос**: план `docs/email-module-plan.md`. Решения владельца (ask_human): MVP = отправка + проверка IMAP-подключения
+(без чтения); зависимости — только `nodemailer` сейчас (`imapflow` — фаза 2); Gmail/Яндекс/Mail.ru/iCloud/Yahoo — пароли
+приложений, Proton — Bridge, Outlook помечен «нужен OAuth2»; пароли — на сервере AES-256-GCM ключом `MAIL_SECRET`.
+- **Крипто/хранение**: `lib/mail-crypto.ts` (scrypt(MAIL_SECRET) → AES-256-GCM `iv:tag:ct`), `AI_DIR/users/<uid>/mail/accounts.json`
+  (legacy-админ — `AI_DIR/mail/`). API пароль не отдаёт (`hasPassword: true`). Без `MAIL_SECRET` (32+) — `503 MAIL_DISABLED`, UI показывает баннер.
+- **Провайдеры**: `lib/mail-providers.ts` — Gmail, Яндекс, Mail.ru (+bk/list/inbox), Outlook/Hotmail/Live, iCloud, Yahoo/AOL, Proton (Bridge
+  127.0.0.1:1025/1143), Zoho, Fastmail, GMX (com/net), Рамблер; `hint {kind: plain|app-password|oauth|bridge, url}`; MX-суффиксы для своих доменов.
+- **Автопоиск**: `lib/mail-discovery.ts` — builtin → параллельно ISPDB (autoconfig.thunderbird.net) + autoconfig домена (+ .well-known)
+  + DNS SRV (RFC 6186) + MX-эвристика → Autodiscover (если MX → Microsoft) → перебор imap./smtp./mail.<d> с TCP-пробой 3 с. Только https и
+  порты 25/465/587/143/993. Кандидаты с `source`/`confidence`. Проверено живьём: gmail (builtin), mozilla.com (mx→gmail), posteo.de (ispdb+autoconfig+srv), ethereal.email (srv).
+- **Проверка/отправка**: `lib/mail-server.ts` — `verifySmtp` (nodemailer `verify`, TLS обязателен кроме loopback), `verifyImap`
+  (минимальный IMAP LOGIN на node:tls, STARTTLS-апгрейд), `runChecks` (SMTP обязателен, IMAP — статус), `sendMail` (вложения base64 ≤ 15 МБ, счётчик `sentCount`).
+  Ошибки → коды `AUTH_FAILED | CONNECT_FAILED | TLS_FAILED | NEEDS_APP_PASSWORD | NEEDS_BRIDGE | NEEDS_OAUTH | NO_CONFIG | INVALID_ARGS | SEND_FAILED` с подсказкой провайдера.
+- **API** (`/ai-api/mail/*`, под сессией через proxy): `POST discover`, `GET/POST accounts`, `PUT/DELETE accounts/:id` (PUT с неработающим паролем/хостами
+  не сохраняется — 422), `POST accounts/:id/test`, `POST accounts/:id/send`. Лимиты: discover 10/мин на uid, auth 5/мин на uid:email|id.
+- **UI**: экран `mail` («Почта», `IconMail`) — карточки ящиков (провайдер, точки SMTP/IMAP, источник, счётчик писем, «Проверить», «Удалить» с подтверждением),
+  диалог из трёх полей с живым автопоиском (`mail-discover-status`), плашкой про пароль ДО ввода (`mail-auth-hint`), шагами «Ищем → SMTP → IMAP → Готово»,
+  «Настроить вручную» (хосты/порты/шифрование/логин, предзаполнено кандидатом); форма письма (от кого/кому/копия/тема/текст/вложения с диска).
+  Слой стилей `app/styles/screen-mail.css` (`@layer wf051`). Команда палитры `go.mail`. Журнал: `mail-account-added/removed`, `mail-sent`, `mail-auth-failed`.
+- **Тесты**: `tests/unit/mail.test.ts` (9: таблица провайдеров, парсер clientConfig, SRV, Autodiscover), vitest 233/233; тест-агент `tests/api/test_mail.py` 20/20 +
+  UI E2E PASS (`test_reports/iteration_31.json`); `tsc` 0, `eslint` 0 ошибок, `next build` ok.
+- **Среда**: под сброшен — восстановлены `node_modules` (pnpm 10), `/app/.env` (+ `MAIL_SECRET`). Зависимости: `nodemailer@7`, `@types/nodemailer`.
+
+### Бэклог почты (фазы 2–4 по плану)
+- P1 (фаза 2): чтение почты — `imapflow` + `mailparser`, `GET accounts/:id/messages`, список папок/писем, просмотр, флаги; письма как узлы карты памяти.
+- P1: правка существующего ящика из UI (переименовать, сменить пароль, хосты) — API `PUT` готов, кнопки в карточке нет.
+- P2 (фаза 3): OAuth2 (XOAUTH2) Google/Microsoft — снимет пароли приложений и откроет Outlook.
+- P2: вложения из библиотеки — библиотека хранит только метаданные и текстовый индекс, байтов файлов нет; сейчас вложения с диска.
+- P3 (фаза 4): ИИ поверх почты — сводки, черновики ответов, стикеры из писем. Отправка писем ИИ/по расписанию (пароль доступен серверу).
+- P3: e2e Playwright-сценарий диалога с моком discovery; экспорт/импорт ящиков; тумблер функции `mail` в админке.

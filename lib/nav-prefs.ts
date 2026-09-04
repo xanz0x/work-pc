@@ -8,7 +8,7 @@ import type { ScreenId } from '@/lib/store/nav'
 
 export type NavPrefs = { order: ScreenId[]; hidden: ScreenId[] }
 
-export const NAV_DEFAULT_ORDER: ScreenId[] = ['library', 'map', 'chat', 'vault', 'activity', 'settings', 'admin']
+export const NAV_DEFAULT_ORDER: ScreenId[] = ['library', 'map', 'chat', 'vault', 'mail', 'activity', 'settings', 'admin']
 
 /** Пункты, которые нельзя скрыть: без «Настроек» меню не вернуть обратно. */
 export const NAV_LOCKED: ScreenId[] = ['settings']

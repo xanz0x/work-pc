@@ -122,6 +122,7 @@ export type CommandIcon =
   | 'spark'
   | 'grid'
   | 'pipeline'
+  | 'mail'
 
 export type Command = {
   id: string
@@ -419,6 +420,15 @@ export const COMMANDS: Command[] = [
     icon: 'key',
     words: ['секреты', 'пароли', 'vault'],
     run: (c) => c.go('vault'),
+  },
+  {
+    id: 'go.mail',
+    group: 'nav',
+    title: 'Почта',
+    hint: 'Почтовые ящики, автопоиск настроек и отправка писем',
+    icon: 'mail',
+    words: ['почта', 'email', 'mail', 'письмо', 'smtp', 'imap'],
+    run: (c) => c.go('mail'),
   },
   {
     id: 'go.activity',

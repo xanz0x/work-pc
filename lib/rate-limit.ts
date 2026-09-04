@@ -78,6 +78,19 @@ export function resetLogin(ip: string): void {
   login.delete(ip)
 }
 
+const mailDiscover = new Map<string, Win>()
+const mailAuth = new Map<string, Win>()
+
+/** Почта: автопоиск настроек — 10 в минуту на пользователя. */
+export function limitMailDiscover(uid: string): number {
+  return bump(mailDiscover, uid, MINUTE, 10)
+}
+
+/** Почта: попытки авторизации на ящик — 5 в минуту (подбор пароля не пройдёт). */
+export function limitMailAuth(key: string): number {
+  return bump(mailAuth, key, MINUTE, 5)
+}
+
 /** NF-10: внешний агент — 60 вызовов в минуту на один токен. */
 export function limitMcp(tokenId: string): number {
   return bump(mcp, tokenId, MINUTE, envInt('MCP_RATE_PER_MIN', 60))

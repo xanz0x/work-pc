@@ -59,6 +59,7 @@ const PLACEHOLDER: Record<ScreenId, string> = {
   map: 'Найти узел или кластер на карте',
   chat: 'Поиск по истории разговоров',
   vault: 'Поиск по секретам: type: tag: favorite:',
+  mail: 'Поиск по ящикам и адресам',
   settings: 'Поиск по настройкам',
   activity: 'Поиск по событиям сейфа',
   admin: 'Поиск по пользователям',
@@ -157,7 +158,7 @@ export function AppShell({ children }: { children: ReactNode }) {
      «холодным» и на слабой машине ждал сеть. Первый кадр не задет — работа
      стоит в очереди idle. */
   useEffect(() => {
-    const ids: ScreenId[] = ['library', 'map', 'chat', 'vault', 'activity', 'settings']
+    const ids: ScreenId[] = ['library', 'map', 'chat', 'vault', 'mail', 'activity', 'settings']
     const warm = () => ids.forEach(prefetchScreen)
     const ric = window.requestIdleCallback
     if (typeof ric === 'function') {
@@ -229,6 +230,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     map: stats.links,
     chat: stats.sessions,
     vault: v.secretIndex.length,
+    mail: 0,
     settings: 0,
     activity: 0,
     admin: 0,
@@ -256,6 +258,8 @@ export function AppShell({ children }: { children: ReactNode }) {
               : 'Сейф секретов закрыт — нужен мастер-ключ'
             : v.screen === 'activity'
               ? `Лента событий · ${v.unread} ${plural(v.unread, 'новое', 'новых', 'новых')}`
+            : v.screen === 'mail'
+              ? 'Почта · SMTP/IMAP · пароли зашифрованы на сервере'
             : v.dirty
               ? 'Есть несохранённые изменения'
               : `${v.engineView.label} · AES-256`

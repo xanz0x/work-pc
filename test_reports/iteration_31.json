@@ -1,0 +1,21 @@
+{
+  "summary": "Итерация 31 · первый прогон нового модуля «Почта» (MVP phase 1). Написан pytest-регресс /app/tests/api/test_mail.py (20 тестов), покрывающий: guard 401, discover (gmail builtin/proton bridge/hotmail oauth/ethereal SRV/invalid), создание реального ethereal-ящика (SRV, smtp+imap ok, ответ без password/passwordEnc, hasPassword=true), gmail с неправильным паролем → 422 NEEDS_APP_PASSWORD и ящик НЕ сохраняется, отказы manual config (порт 2525, security='none' на non-loopback), GET list без паролей, POST /test, PUT rename, PUT c плохим паролем (старый пароль остаётся рабочим), PUT 404, send (200 + sentCount +1), send с пустым телом → 400, send с некорректным to → 400, DELETE + повторный DELETE → 404, rate-limit на 6-й POST (ratelimit-qa@gmail.com). Все 20/20 PASS против preview-URL. UI E2E (Playwright, 1440x900): логин admin, переход по nav-mail → mail-screen, empty-state и mail-send-form видны, диалог mail-add: gmail → discover-status показывает 'smtp.gmail.com:465 · imap.gmail.com:993 · источник: встроенный', плашка mail-auth-hint и mail-hint-link появляются ДО ввода пароля, при wrongpass mail-step-smtp получает data-state='fail', mail-add-error с текстом про пароль приложения, кнопка mail-error-manual раскрывает mail-manual с prefilled mail-smtp-host='smtp.gmail.com'. Добавление реального ethereal через диалог: discover 'smtp.ethereal.email:587 · imap.ethereal.email:993 · источник: DNS SRV' (плашки hint нет, kind=plain), пароль → шаги smtp/imap проходят, диалог закрывается, появляется mail-account-row с mail-status-smtp/imap class 'st-ok', mail-account-count='1 ящик'. Send-форма: mail-send-from (span) показывает 'dzzbuk33bcyzyoqm@ethereal.email', отправка с вложением → mail-send-result class 'ok', текст 'Отправлено · 1 получ.', поля очищаются. mail-account-test: текст 'Проверить'→'Проверяем…'→'Проверить'. mail-account-delete: 1-й клик arm ('Точно удалить?'), 2-й — удаляет ящик, лента активности (nav-activity) показывает 'Почта: ящик добавлен' и 'Почта: письмо отправлено' и 'Почта: ящик удалён'. Функциональных дефектов не найдено.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/tests/api/test_mail.py",
+    "/app/test_reports/pytest/iteration_31.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "app/ai-api/mail/accounts/route.ts: rate-limit применяется ДО валидации email (пустой/битый email пойдёт в бакет 'uid:'), это позволяет одним и тем же uid бесконтрольно поедать бакет для '' — стоит валидировать email до limitMailAuth, чтобы 400 не тратил бюджет.",
+    "mail-server sendMail возвращает поле recipients=to.length+cc.length (см. route.ts), а в проблемной постановке ожидается 'recipients:1' при to=1, cc=[] — совпало, но семантика 'кому именно ушло' лучше брать из nodemailer accepted[].length (иначе если получатель отвергнут SMTP, счётчик всё равно даст 1)."
+  ],
+  "updated_files": ["/app/tests/api/test_mail.py"],
+  "success_rate": {"backend": "100% (20/20 pytest)", "frontend": "100% (все UI-сценарии из задачи прошли)"},
+  "test_credentials": "admin / IceKrymTeam13@ ; ethereal: dzzbuk33bcyzyoqm@ethereal.email / 22FNUDY5JhDHu75uaE",
+  "seed_data_creation": "В ходе тестов создавался и удалялся ethereal-ящик (Ethereal-pytest / Ethereal-UI / Throwaway). Автокламер в fixture cleanup_accounts удаляет всё, что появилось за время прогона. После UI-теста ящик тоже удалён кнопкой. Осталось: в списке ящиков admin пусто.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Тест-файл /app/tests/api/test_mail.py требует APP_URL=https://mailbox-provisioner.preview.emergentagent.com (cookie Secure). Rate-limit /ai-api/mail/accounts — 5/мин per uid:email; тест test_zzz_rate_limit_last намеренно последний и использует отдельный email 'ratelimit-qa@gmail.com', чтобы не блокировать другие. Discover возвращает provider как объект {id,name} или null; кандидат структура: {source, confidence, providerId, config:{smtp:{host,port,security}, imap:{...}}, user?}. mail-send-from во фронте — <span data-testid='mail-send-from'>, не <input>. Ethereal-письма реально не доставляются — они видны только в веб-интерфейсе ethereal.email по messageId."
+}

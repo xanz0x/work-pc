@@ -89,7 +89,7 @@ APP_URL=http://localhost:3000 APP_PASSWORD=IceKrymTeam13@ node scripts/long-dial
   нужен `npx next build && sudo supervisorctl restart frontend`.
 - Из-за прод-сборки cookie входа помечена `Secure`, и `pytest tests/api` по
   `http://localhost:3000` получает 401 на всё после входа. Прогонять их надо по
-  https-адресу preview: `APP_URL=https://user-licensing.preview.emergentagent.com
+  https-адресу preview: `APP_URL=https://mailbox-provisioner.preview.emergentagent.com
   python3 -m pytest tests/api -q`. Оставшиеся падения там — среда, а не код:
   нет `/root/.workflow/ai/*` (файлы скиллов лежат в `/app/ai`) и не запущен
   локальный Ollama (503).
@@ -121,7 +121,7 @@ APP_URL=http://localhost:3000 APP_PASSWORD=IceKrymTeam13@ node scripts/long-dial
   `GET/POST /mcp/admin/bridge` — нужна cookie сессии `wf_session`.
 - Инструменты работают только при открытой вкладке приложения (иначе `NO_BRIDGE`);
   `create_secret` требует одобрения в UI и разблокированного сейфа.
-- Тесты: `APP_URL=https://user-licensing.preview.emergentagent.com python3 -m pytest tests/api/test_mcp.py -q`;
+- Тесты: `APP_URL=https://mailbox-provisioner.preview.emergentagent.com python3 -m pytest tests/api/test_mcp.py -q`;
   e2e `tests/e2e/21-mcp-external.spec.ts` создаёт PIN `123456` в одноразовом профиле.
 - `.env` восстановлен 2026-06-04 (пароль прежний `IceKrymTeam13@`), добавлен `/app/.env.example`.
 
@@ -131,7 +131,7 @@ APP_URL=http://localhost:3000 APP_PASSWORD=IceKrymTeam13@ node scripts/long-dial
 - Фраза — единственный ключ: сервер её не хранит. В e2e (`22-sync-e2ee.spec.ts`) она генерируется
   на лету в одноразовых контекстах браузера.
 - Серверные данные: `/root/.workflow/ai/sync/<spaceId>/` — только шифртекст.
-- Тесты: `APP_URL=https://user-licensing.preview.emergentagent.com python3 -m pytest tests/api/test_sync.py -q`.
+- Тесты: `APP_URL=https://mailbox-provisioner.preview.emergentagent.com python3 -m pytest tests/api/test_sync.py -q`.
 
 ## Аккаунты, тарифы и ключи лицензий (2026-06, итерация 28)
 - **Администратор**: логин `admin` (`ADMIN_LOGIN` в `/app/.env`), пароль `IceKrymTeam13@` (= `APP_PASSWORD`). Вход одним паролем без логина — тоже админ (совместимость). Email больше НЕ используется.
@@ -142,5 +142,15 @@ APP_URL=http://localhost:3000 APP_PASSWORD=IceKrymTeam13@ node scripts/long-dial
 - Карточка пользователя: `POST /admin/api/users/[id] {action:'set-plan', planId}` / `grant-license` / `revoke-license`.
 - Файлы: `/root/.workflow/ai/users/{users,sessions,licenses,plans}.json`. Старые записи с `email` мигрируются в `login` (часть до @) при первом запуске.
 - Лимиты: вход 10 неудачных / 15 мин с IP; ключи — 30 НЕУДАЧНЫХ попыток / 15 мин (удачные не тратят бюджет).
-- Тесты: `npx vitest run tests/unit/users.test.ts`; `APP_URL=https://user-licensing.preview.emergentagent.com python3 -m pytest tests/api/test_admin.py tests/api/test_plans_licensing.py -q`; e2e `tests/e2e/23-admin-accounts.spec.ts`. Подробно — `/app/auth_testing.md`.
+- Тесты: `npx vitest run tests/unit/users.test.ts`; `APP_URL=https://mailbox-provisioner.preview.emergentagent.com python3 -m pytest tests/api/test_admin.py tests/api/test_plans_licensing.py -q`; e2e `tests/e2e/23-admin-accounts.spec.ts`. Подробно — `/app/auth_testing.md`.
 - Тестовые пользователи создаются на лету (qa-*, tester1, demo_user с паролем `password-123`, тариф Pro) — можно удалять из админки.
+
+## Модуль «Почта» (2026-06, фаза 1)
+- Экран «Почта» в меню (`nav-mail`), API `/ai-api/mail/*` под сессией. Требует `MAIL_SECRET` (32+ символов) в `/app/.env` — задан.
+- Тестовые ящики Ethereal (fake SMTP/IMAP, письма не доставляются, видны на https://ethereal.email):
+  - `qtf2kannuu6gjlxb@ethereal.email` / `2T6upz7zfYqNGbAGRs`
+  - `dzzbuk33bcyzyoqm@ethereal.email` / `22FNUDY5JhDHu75uaE`
+  - Автопоиск находит их через DNS SRV: smtp.ethereal.email:587 STARTTLS, imap.ethereal.email:993 SSL.
+  - Новый: `node -e "require('nodemailer').createTestAccount().then(a=>console.log(a.user,a.pass))"`
+- Gmail с любым паролем → `NEEDS_APP_PASSWORD` (реальный SMTP-ответ). Ящики: `/root/.workflow/ai/mail/accounts.json` (пароль AES-GCM).
+- Лимиты: discover 10/мин на пользователя, попытки авторизации 5/мин на ящик (429 RATE_LIMITED).

@@ -28,6 +28,7 @@ import {
 import {
   IconBell,
   IconChat,
+  IconMail,
   IconClip,
   IconDatabase,
   IconDoc,
@@ -100,6 +101,7 @@ const CMD_ICON: Record<CommandIcon, Ico> = {
   spark: IconSparkText,
   grid: IconGridBoard,
   pipeline: IconPipeline,
+  mail: IconMail,
 }
 
 /** Строка списка: результат поиска, команда или заголовок группы. */

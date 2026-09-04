@@ -38,6 +38,7 @@ describe('AR-2 · разрез globals.css', () => {
       'screen-admin.css',
       'screen-chat.css',
       'screen-library.css',
+      'screen-mail.css',
       'screen-map.css',
       'screen-settings.css',
       'screen-vault.css',

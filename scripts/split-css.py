@@ -46,6 +46,7 @@ SCREEN_FILES = {
                  'components/flags-section.tsx', 'components/ui-scale-section.tsx'],
     'vault': ['components/screen-vault.tsx', 'components/vault'],
     'activity': ['components/screen-activity.tsx'],
+    'mail': ['components/screen-mail.tsx', 'components/mail'],
 }
 SHELL_FILES = [
     'components/app-shell.tsx', 'components/command-palette.tsx',

@@ -47,6 +47,7 @@ const LOADERS: Record<ScreenId, Loader> = {
   map: () => import('@/components/screen-map').then((m) => ({ default: m.ScreenMap })),
   chat: () => import('@/components/screen-chat').then((m) => ({ default: m.ScreenChat })),
   vault: () => import('@/components/screen-vault').then((m) => ({ default: m.ScreenVault })),
+  mail: () => import('@/components/screen-mail').then((m) => ({ default: m.ScreenMail })),
   settings: () =>
     import('@/components/screen-settings').then((m) => ({ default: m.ScreenSettings })),
   activity: () =>
@@ -87,6 +88,7 @@ export const SCREENS: Record<ScreenId, ComponentType> = {
   map: dynamic(withRetry(LOADERS.map), { ssr: false, loading: ScreenLoading }),
   chat: dynamic(withRetry(LOADERS.chat), { ssr: false, loading: ScreenLoading }),
   vault: dynamic(withRetry(LOADERS.vault), { ssr: false, loading: ScreenLoading }),
+  mail: dynamic(withRetry(LOADERS.mail), { ssr: false, loading: ScreenLoading }),
   settings: dynamic(withRetry(LOADERS.settings), { ssr: false, loading: ScreenLoading }),
   activity: dynamic(withRetry(LOADERS.activity), { ssr: false, loading: ScreenLoading }),
   admin: dynamic(withRetry(LOADERS.admin), { ssr: false, loading: ScreenLoading }),

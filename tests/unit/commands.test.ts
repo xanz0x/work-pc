@@ -62,15 +62,16 @@ describe('NF-6 · состав реестра', () => {
     }
   })
 
-  it('в реестре есть все шесть переходов по экранам', () => {
+  it('в реестре есть все семь переходов по экранам', () => {
     const nav = COMMANDS.filter((c) => c.group === 'nav')
-    expect(nav).toHaveLength(6)
+    expect(nav).toHaveLength(7)
     const c = ctx()
     nav.forEach((cmd) => cmd.run(c))
     expect((c.go as ReturnType<typeof vi.fn>).mock.calls.flat().sort()).toEqual([
       'activity',
       'chat',
       'library',
+      'mail',
       'map',
       'settings',
       'vault',

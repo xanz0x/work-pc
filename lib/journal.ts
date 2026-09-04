@@ -37,6 +37,10 @@ export type JournalKind =
   | 'sync-enabled'
   | 'sync-disabled'
   | 'sync-device-revoked'
+  | 'mail-account-added'
+  | 'mail-account-removed'
+  | 'mail-sent'
+  | 'mail-auth-failed'
 
 export type JournalEntry = {
   id: string
@@ -70,6 +74,10 @@ export const JOURNAL_KINDS: { id: JournalKind; label: string; severe: boolean }[
   { id: 'sync-enabled', label: 'Синхронизация включена', severe: false },
   { id: 'sync-disabled', label: 'Синхронизация выключена', severe: false },
   { id: 'sync-device-revoked', label: 'Устройство отозвано', severe: true },
+  { id: 'mail-account-added', label: 'Почта · ящик добавлен', severe: false },
+  { id: 'mail-account-removed', label: 'Почта · ящик удалён', severe: false },
+  { id: 'mail-sent', label: 'Почта · письмо отправлено', severe: false },
+  { id: 'mail-auth-failed', label: 'Почта · отказ в авторизации', severe: false },
 ]
 
 export function journalKindLabel(kind: JournalKind): string {

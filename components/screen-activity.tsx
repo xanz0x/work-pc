@@ -106,6 +106,10 @@ const JKIND_ICON: Record<JournalKind, IconId> = {
   'sync-enabled': 'database',
   'sync-disabled': 'database',
   'sync-device-revoked': 'shield',
+  'mail-account-added': 'inbox',
+  'mail-account-removed': 'trash',
+  'mail-sent': 'inbox',
+  'mail-auth-failed': 'shield',
 }
 
 const OBJ_LABELS: Record<ObjType, string> = {

@@ -370,6 +370,16 @@ export function IconRefresh(p: P) {
   )
 }
 
+export function IconMail(p: P) {
+  return (
+    <svg {...base} {...p}>
+      <rect x="3" y="5.5" width="18" height="13" rx="2" />
+      <path d="m3.5 7 8.5 6 8.5-6" />
+    </svg>
+  )
+}
+
+
 export function IconInbox(p: P) {
   return (
     <svg {...base} {...p}>
