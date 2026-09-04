@@ -10,6 +10,7 @@
 
 import '@/app/styles/screen-admin.css'
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
+import { IconLogoMark } from '@/components/icons'
 import { installStorageScope } from '@/lib/db/scope'
 import { accessState, type AccessState, type FeatureId, type UserView } from '@/lib/users'
 
@@ -130,7 +131,10 @@ function AccessWall({
   return (
     <main className="acc-wall" data-testid="access-wall" data-access={access}>
       <div className="acc-card panel">
-        <div className="label-mono">{user.email}</div>
+        <span className="login-mark" aria-hidden="true">
+          <IconLogoMark />
+        </span>
+        <div className="label-mono acc-who">{user.email}</div>
         {access === 'blocked' && (
           <>
             <h1>Учётная запись заблокирована</h1>

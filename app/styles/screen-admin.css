@@ -149,8 +149,12 @@
   }
   .adm-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: 2fr 1.4fr 1.4fr 1.2fr 1.4fr auto;
     gap: 8px;
+    align-items: center;
+  }
+  .adm-grid .mcp-input {
+    height: 34px;
   }
   .adm-check {
     display: flex;
@@ -226,6 +230,182 @@
     }
     .adm-grid {
       grid-template-columns: 1fr;
+    }
+  }
+}
+
+/* ===== АДМИНКА · полировка ===== */
+@layer wf048 {
+  .adm-stat {
+    position: relative;
+    overflow: hidden;
+  }
+  .adm-stat::before {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    background: var(--border-3);
+  }
+  .adm-stat.tone-ok::before {
+    background: var(--ok);
+  }
+  .adm-stat.tone-warn::before {
+    background: var(--warn);
+  }
+  .adm-stat.tone-danger::before {
+    background: var(--danger);
+  }
+  .adm-row {
+    grid-template-columns: 34px minmax(0, 1.5fr) auto auto minmax(0, 1fr) minmax(0, 0.8fr) minmax(0, 1fr);
+  }
+  .adm-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--raise-1);
+    border: 1px solid var(--border-2);
+    color: var(--text);
+    font-weight: 640;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+  .adm-avatar.role-admin {
+    background: rgba(229, 100, 92, 0.12);
+    border-color: rgba(229, 100, 92, 0.45);
+    color: var(--danger);
+  }
+  .adm-avatar.lg {
+    width: 42px;
+    height: 42px;
+    font-size: 16px;
+  }
+  .adm-you {
+    font-style: normal;
+    margin-left: 6px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: var(--raise-1);
+    border: 1px solid var(--accent-line);
+    font-size: 9.5px;
+    font-weight: 600;
+    color: var(--accent);
+    vertical-align: middle;
+  }
+  .adm-pill {
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 1px solid var(--border-2);
+    font-size: 10.5px;
+    font-family: var(--font-mono);
+    color: var(--text-2);
+    white-space: nowrap;
+  }
+  .adm-pill.role-admin {
+    border-color: rgba(229, 100, 92, 0.45);
+    color: var(--danger);
+  }
+  .adm-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    margin-right: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    vertical-align: middle;
+  }
+  .adm-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  .adm-cell-k {
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+  .adm-cell-v {
+    font-size: 11.5px;
+    color: var(--text-2);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .adm-card-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .adm-card-head .adm-who {
+    flex: 1;
+  }
+  .adm-card-head .adm-who b {
+    font-size: 14px;
+  }
+  .adm-sep {
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .adm-hint {
+    align-items: flex-start;
+    gap: 8px;
+    padding: 22px 20px;
+  }
+  .adm-hint-ico {
+    display: inline-flex;
+    width: 34px;
+    height: 34px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: var(--raise-1);
+    color: var(--text-2);
+  }
+  .adm-hint-ico svg {
+    width: 16px;
+    height: 16px;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .adm-hint b {
+    color: var(--text);
+    font-size: 13px;
+  }
+  .adm-create {
+    border-color: var(--accent-line);
+    background: var(--raise-1);
+  }
+  .adm-toggles .mcp-scope-text b {
+    font-size: 12px;
+  }
+  .acc-card .login-mark {
+    margin-bottom: 2px;
+  }
+  .acc-who {
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    color: var(--text-3);
+  }
+  @media (max-width: 960px) {
+    .adm-row {
+      grid-template-columns: 34px 1fr auto;
+    }
+    .adm-row .adm-cell,
+    .adm-row .adm-pill {
+      display: none;
+    }
+    .adm-side {
+      position: static;
     }
   }
 }

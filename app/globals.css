@@ -5667,6 +5667,40 @@
     font-size: 11px;
     color: var(--text-3);
   }
+  /* Переключатель «Вход / Регистрация»: на /login стили настроек не загружены. */
+  .login-mode {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    padding: 3px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.03);
+  }
+  .login-mode button {
+    height: 32px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-3);
+    font: inherit;
+    font-size: 12.5px;
+    font-weight: 560;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+  }
+  .login-mode button:hover {
+    color: var(--text);
+  }
+  .login-mode button.active {
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--text);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+  }
+  .login-field .label-mono {
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    color: var(--text-3);
+  }
   @keyframes consent-in {
     from {
       opacity: 0;

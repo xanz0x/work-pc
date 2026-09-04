@@ -60,9 +60,18 @@ export function AdminUserCard({ user: u, selfId, onChanged, onDeleted }: Props) 
 
   return (
     <div className="panel adm-card" data-testid="admin-user-card" data-user-id={u.id}>
-      <div className="mask-head">
-        <span className="label-mono">{u.email}</span>
-        <span className={`adm-acc st-${acc}`}>{u.status === 'blocked' ? 'заблокирован' : acc === 'ok' ? 'доступ есть' : acc === 'license' ? 'без лицензии' : 'ждёт смены пароля'}</span>
+      <div className="adm-card-head">
+        <span className={`adm-avatar lg role-${u.role}`} aria-hidden="true">
+          {(u.name || u.email).slice(0, 1).toUpperCase()}
+        </span>
+        <div className="adm-who">
+          <b>{u.name}</b>
+          <span className="label-mono">{u.email}</span>
+        </div>
+        <span className={`adm-acc st-${acc}`}>
+          <i className="adm-dot" aria-hidden="true" />
+          {u.status === 'blocked' ? 'заблокирован' : acc === 'ok' ? 'доступ есть' : acc === 'license' ? 'без лицензии' : 'ждёт смены пароля'}
+        </span>
       </div>
 
       <div className="adm-field">
@@ -115,7 +124,7 @@ export function AdminUserCard({ user: u, selfId, onChanged, onDeleted }: Props) 
         </button>
       </div>
 
-      <div className="adm-field">
+      <div className="adm-field adm-sep">
         <label className="label-mono">Лицензия · {u.role === 'admin' ? 'админу не нужна' : `до ${fmtDate(u.licenseUntil)}`}</label>
         {u.role === 'user' && (
           <div className="adm-inline">
@@ -138,7 +147,7 @@ export function AdminUserCard({ user: u, selfId, onChanged, onDeleted }: Props) 
         )}
       </div>
 
-      <div className="adm-field">
+      <div className="adm-field adm-sep">
         <label className="label-mono">Безопасность · сессий {u.sessions} · последний вход {fmtDate(u.lastLoginAt)}</label>
         <div className="adm-inline wrap">
           <button

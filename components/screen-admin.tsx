@@ -30,9 +30,8 @@ type Overview = {
 
 const ACCESS_LABEL = { ok: 'работает', blocked: 'заблокирован', license: 'ждёт лицензию', password: 'сменит пароль' } as const
 
-function CreateUser({ onDone }: { onDone: () => void }) {
+function CreateUser({ onDone, onClose }: { onDone: () => void; onClose: () => void }) {
   const { flash } = useToast()
-  const [open, setOpen] = useState(false)
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
   const [password, setPassword] = useState(genPassword)
@@ -56,18 +55,11 @@ function CreateUser({ onDone }: { onDone: () => void }) {
     onDone()
   }
 
-  if (!open) {
-    return (
-      <button className="btn btn-primary" onClick={() => setOpen(true)} data-testid="admin-create-open">
-        <IconUser width={12} height={12} aria-hidden="true" /> Создать пользователя
-      </button>
-    )
-  }
   return (
     <form className="adm-create panel" onSubmit={submit} data-testid="admin-create-form">
       <div className="mask-head">
         <span className="label-mono">Новый пользователь · временный пароль сменится при первом входе</span>
-        <button type="button" className="mcp-x" onClick={() => setOpen(false)} data-testid="admin-create-close">
+        <button type="button" className="mcp-x" onClick={onClose} data-testid="admin-create-close">
           закрыть
         </button>
       </div>
@@ -124,6 +116,7 @@ export function ScreenAdmin() {
   const [overview, setOverview] = useState<Overview | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
   const [q, setQ] = useState('')
+  const [createOpen, setCreateOpen] = useState(false)
 
   const reload = useCallback(async () => {
     const [u, o] = await Promise.all([adminFetch<UserView[]>('/admin/api/users'), adminFetch<Overview>('/admin/api/overview')])
@@ -150,8 +143,12 @@ export function ScreenAdmin() {
             после ключа лицензии на срок, который вы задаёте.
           </p>
         </div>
-        <CreateUser onDone={() => void reload()} />
+        <button className="btn btn-primary" onClick={() => setCreateOpen((o) => !o)} data-testid="admin-create-open">
+          <IconUser width={12} height={12} aria-hidden="true" /> Создать пользователя
+        </button>
       </header>
+
+      {createOpen && <CreateUser onDone={() => void reload()} onClose={() => setCreateOpen(false)} />}
 
       {overview && (
         <div className="adm-stats" data-testid="admin-overview">
@@ -165,8 +162,8 @@ export function ScreenAdmin() {
             ['ИИ сегодня', overview.aiToday],
             ['ИИ всего', overview.aiTotal],
             ['Свободных ключей', overview.licensesFree],
-          ].map(([k, v]) => (
-            <div key={k} className="adm-stat panel">
+          ].map(([k, v], i) => (
+            <div key={k} className={`adm-stat panel tone-${['', '', 'ok', 'warn', 'danger', '', '', '', 'ok'][i]}`}>
               <b className="num">{v}</b>
               <span className="label-mono">{k}</span>
             </div>
@@ -192,19 +189,35 @@ export function ScreenAdmin() {
                   data-testid="admin-user-row"
                   data-email={u.email}
                 >
-                  <span className="adm-who">
-                    <b>{u.name}</b>
-                    <span className="label-mono">{u.email}{u.id === me?.id ? ' · вы' : ''}</span>
+                  <span className={`adm-avatar role-${u.role}`} aria-hidden="true">
+                    {(u.name || u.email).slice(0, 1).toUpperCase()}
                   </span>
-                  <span className={`mcp-chip${u.role === 'admin' ? ' danger' : ''}`}>{u.role}</span>
+                  <span className="adm-who">
+                    <b>
+                      {u.name}
+                      {u.id === me?.id && <i className="adm-you">вы</i>}
+                    </b>
+                    <span className="label-mono">{u.email}</span>
+                  </span>
+                  <span className={`adm-pill role-${u.role}`}>{u.role === 'admin' ? 'админ' : 'пользователь'}</span>
                   <span className={`adm-acc st-${acc}`} data-testid="admin-user-access">
+                    <i className="adm-dot" aria-hidden="true" />
                     {ACCESS_LABEL[acc]}
                   </span>
-                  <span className="label-mono">лиц. до {u.role === 'admin' ? '∞' : fmtDate(u.licenseUntil)}</span>
-                  <span className="label-mono">
-                    ИИ {u.aiCallsToday}/{u.aiDailyLimit || '∞'}
+                  <span className="adm-cell">
+                    <span className="adm-cell-k">лицензия</span>
+                    <span className="adm-cell-v">{u.role === 'admin' ? 'бессрочно' : fmtDate(u.licenseUntil)}</span>
                   </span>
-                  <span className="label-mono">вход {fmtDate(u.lastLoginAt)}</span>
+                  <span className="adm-cell">
+                    <span className="adm-cell-k">ИИ сегодня</span>
+                    <span className="adm-cell-v">
+                      {u.aiCallsToday} / {u.aiDailyLimit || '∞'}
+                    </span>
+                  </span>
+                  <span className="adm-cell">
+                    <span className="adm-cell-k">вход</span>
+                    <span className="adm-cell-v">{fmtDate(u.lastLoginAt)}</span>
+                  </span>
                 </button>
               )
             })}
@@ -216,7 +229,11 @@ export function ScreenAdmin() {
             <AdminUserCard key={current.id} user={current} selfId={me?.id ?? ''} onChanged={() => void reload()} onDeleted={() => { setSelected(null); void reload() }} />
           ) : (
             <div className="panel adm-hint" data-testid="admin-hint">
-              Выберите пользователя слева, чтобы управлять ролью, функциями, лицензией и сессиями.
+              <span className="adm-avatar lg" aria-hidden="true">
+                ?
+              </span>
+              <b>Карточка пользователя</b>
+              <span>Выберите строку слева: роль, функции, лимит ИИ, лицензия, пароль и сессии — всё здесь.</span>
             </div>
           )}
           <AdminLicenses onChanged={() => void reload()} />
