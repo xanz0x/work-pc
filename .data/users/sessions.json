@@ -1,0 +1,16 @@
+[
+  {
+    "sid": "e2a9fb9cc0edee7cc06864b6292b7f8c",
+    "uid": "3ffbfeb1ea255062",
+    "createdAt": 1788565138816,
+    "expiresAt": 1788608338816,
+    "ua": "curl/7.88.1"
+  },
+  {
+    "sid": "93bdb9fbdb4f9f8da6e60d931542aa11",
+    "uid": "3ffbfeb1ea255062",
+    "createdAt": 1788565158257,
+    "expiresAt": 1788608358257,
+    "ua": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.0 Safari/537.36"
+  }
+]

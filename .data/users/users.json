@@ -1,0 +1,29 @@
+[
+  {
+    "id": "3ffbfeb1ea255062",
+    "login": "admin",
+    "name": "Администратор",
+    "passHash": "scrypt$9pQQyzYebxVcMj0vztzn2Q==$OLMIa/AEu34MN3R1oPE9Um6Pxc1/ZARtG6z6b+Ieckg=",
+    "role": "admin",
+    "status": "active",
+    "features": {
+      "ai": true,
+      "mcp": true,
+      "sync": true,
+      "secrets": true,
+      "offline": true,
+      "telemetry": true
+    },
+    "aiDailyLimit": 0,
+    "aiDay": "2026-09-04",
+    "aiDayCount": 0,
+    "aiTotal": 0,
+    "licenseUntil": null,
+    "planId": null,
+    "mustChangePassword": false,
+    "passwordFromEnv": true,
+    "legacyStore": true,
+    "createdAt": 1788565138715,
+    "lastLoginAt": 1788565158257
+  }
+]
