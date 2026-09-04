@@ -1,0 +1,35 @@
+{
+  "summary": "Итерация 28 · Тарифы + ключи лицензий + регистрация по ключу (Next.js, preview по https). API: новый pytest tests/api/test_plans_licensing.py — 18/18 PASS (логин admin по login+password и одним паролем, 401 на неверном пароле; GET /admin/api/plans 3 тарифа с days/aiDailyLimit/features/users/freeKeys, 401 без cookie и 403 у обычного пользователя; POST /admin/api/plans валидация name<2 и неверного color -> 400; PATCH days/archived; DELETE неиспользуемого тарифа 200, тарифа с пользователями 409 IN_USE; POST /admin/api/licenses count=2 -> 2 ключа ^WSX(-[A-Z2-9]{4}){4}$ + views с planName/days, count=26 -> 400, planId мусор -> 400 NO_PLAN, отзыв ключа -> предпросмотр 400 REVOKED; POST /ai-api/auth/key -> plan{name,color}+days, INVALID для несуществующего; регистрация по ключу: login в нижнем регистре, plan/features/aiDailyLimit из тарифа, licenseUntil>now, повторное использование ключа 400 USED, занятый логин 409 LOGIN_TAKEN, без ключа 400; Basic -> 403 FEATURE_DISABLED на /mcp/admin/tokens, активация Pro-ключа через /ai-api/auth/license -> plan Pro и 200; admin set-plan/grant-license/revoke-license -> 403 LICENSE_REQUIRED и access='license'; POST /admin/api/users вручную -> mustChangePassword=true, тариф Pro, лицензия на 30 дн.). Регресс tests/api/test_admin.py — 14/14 PASS. UI: /login (вкладки Вход/Регистрация, бейдж тарифа по ключу, login-key-error, disabled submit до валидности, редирект на / с онбордингом, profile-login '@login · Pro'), вход админа (неверный пароль -> login-error 'Логин или пароль не подошли.'), /admin (admin-overview, 3 вкладки; Тарифы: создание через plan-editor с цветом/функциями, правка, архив + admin-plans-show-archived, удаление двойным кликом; Ключи: выдача 2 ключей, admin-license-issued/-key/-copy, фильтры free/used/revoked/all, отзыв ключа -> вкладка «Отозванные»; Пользователи: строки с @login и plan-badge, поиск, карточка с admin-card-plan/set-plan/license-bar/days/grant/revoke-license, admin-create-open -> admin-created-creds), стена лицензии: после revoke пользователь видит access-wall data-access='license' с бейджем Pro, ввод Enterprise-ключа в wall-license-key возвращает в приложение, profile-login '@qa-... · Enterprise'. Блокирующих дефектов не найдено.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /ai-api/auth/register|key|license", "issue": "Лимит 30 запросов/15 мин считается по первому значению X-Forwarded-For, т.е. один общий IP пода/ингресса на всех тестировщиков: во время UI-прогона регистрация получила 429 «Слишком много попыток» уже после 3 обращений (бюджет был съеден pytest'ом ранее). Не баг логики, но e2e/UI-прогоны без подмены X-Forwarded-For нестабильны — стоит либо повысить лимит для ключей, либо не тратить бюджет на предпросмотр ключа (POST /ai-api/auth/key) при вводе в поле."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/admin при ширине 768 (планшет)", "issues": ["Сайдбар не сворачивается и перекрывается контентом: левая колонка обрезана (видны только иконки/огрызки текста 'Добавить', '13', 'нстратор'), основной блок начинается под ней", "Кнопка «Создать вручную» и правая часть карточек сводки/строк пользователей уходят за правый край видимой области (документ не скроллится по X, элементы просто обрезаны)", "Строки пользователей на 768 теряют колонки Лицензия/ИИ сегодня/Вход — данные не переносятся, а исчезают"]}
+    ]
+  },
+  "test_report_links": [
+    "/app/tests/api/test_plans_licensing.py",
+    "/app/tests/api/test_admin.py"
+  ],
+  "action_items": [
+    "Опционально: адаптив /admin на ширине 768 — свернуть сайдбар и перевести сводку/строки в 1–2 колонки, чтобы кнопка «Создать вручную» и колонки строк не обрезались",
+    "Опционально: не расходовать лимит ключей на предпросмотр (/ai-api/auth/key) или поднять лимит, иначе UI-регистрация ловит 429 при частых прогонах"
+  ],
+  "critical_code_review_comments": [
+    "lib/rate-limit.ts clientIp() берёт первый элемент X-Forwarded-For — заголовок подделываем клиентом (проверено: подмена X-Forwarded-For из браузера обнуляет лимит). Для прод-развёртывания стоит доверять только N-му справа адресу от известного прокси, иначе лимиты входа/ключей обходятся тривиально."
+  ],
+  "updated_files": ["/app/tests/api/test_plans_licensing.py", "/app/test_reports/iteration_28.json"],
+  "success_rate": {"backend": "100% (32/32: 18 новых + 14 регресс)", "frontend": "100% проверенных потоков (регистрация по ключу, вход, тарифы CRUD, ключи, карточка пользователя, стена лицензии)"},
+  "seed_data_creation": "Созданы и удалены после теста: пользователи qa-1788486613 (регистрация по Pro-ключу, затем Enterprise через стену лицензии) и qa-man-86841 (создан вручную из админки); тариф QA-UI-* создан и удалён через UI; в базе остались только admin/tester1/demo_user. В licenses.json остались тестовые свободные/отозванные ключи (WSX-*, заметки qa-28/qa-batch/ui-qa-28) — они безвредны, при желании подчистить вручную.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "admin / IceKrymTeam13@ (пароль не менялся, пользователь admin не удалялся)",
+  "context_for_next_testing_agent": "Тестировать только по https://user-licensing.preview.emergentagent.com (cookie Secure). Новый API-набор: tests/api/test_plans_licensing.py (использует уникальный X-Forwarded-For на прогон, поэтому лимиты не мешают). В Playwright обязательно ставить page.set_extra_http_headers({'X-Forwarded-For': '10.x.y.z'}) — иначе регистрация ловит 429 после нескольких прогонов. Для админ-UI: логин на /login, затем localStorage['wf.settings.v1.onboarding.at']=Date.now() и переход на /admin (у обычного пользователя ключ онбординга префиксован u:<uid>:, поэтому оверлей так не гасится). В admin-license-plan опции имеют подписи вида 'Enterprise · 365 дн.' — выбирать по index, а не по label. Тестовых пользователей после прогона удалять через DELETE /admin/api/users/{id}.",
+  "rca_of_the_issue": "Единственное падение в ходе UI-прогона (429 на регистрации) — исчерпанный лимит /ai-api/auth/* на общий IP пода после pytest-прогона; после подмены X-Forwarded-For в браузере регистрация прошла с первого раза. Дефектов приложения не обнаружено."
+}

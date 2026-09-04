@@ -11,6 +11,7 @@ type Win = { at: number; n: number }
 const minute = new Map<string, Win>()
 const day = new Map<string, Win>()
 const login = new Map<string, Win>()
+const keys = new Map<string, Win>()
 const telemetry = new Map<string, Win>()
 const mcp = new Map<string, Win>()
 
@@ -50,6 +51,18 @@ export function limitChat(ip: string): { ok: boolean; scope: 'minute' | 'day'; r
 /** Подбор пароля: 10 неудачных попыток на 15 минут с адреса. */
 export function limitLogin(ip: string): number {
   return bump(login, ip, 15 * MINUTE, 10)
+}
+
+/** Ключи лицензий (проверка, регистрация, активация): 30 НЕУДАЧНЫХ попыток на 15 минут; удачные бюджет не тратят. */
+export function limitKey(ip: string): number {
+  const cur = keys.get(ip)
+  const now = Date.now()
+  if (!cur || now - cur.at > 15 * MINUTE || cur.n < 30) return 0
+  return Math.max(1, Math.ceil((15 * MINUTE - (now - cur.at)) / 1000))
+}
+
+export function failKey(ip: string): void {
+  bump(keys, ip, 15 * MINUTE, 30)
 }
 
 /**

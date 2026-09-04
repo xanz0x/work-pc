@@ -17,7 +17,7 @@ export default async function globalSetup(config: FullConfig) {
     return
   }
   const ctx = await request.newContext({ baseURL })
-  const r = await ctx.post('/ai-api/auth/login', { data: { password } })
+  const r = await ctx.post('/ai-api/auth/login', { data: { login: 'admin', password } })
   if (!r.ok()) throw new Error(`вход администратора не удался: HTTP ${r.status()}`)
   await ctx.storageState({ path: ADMIN_STATE })
   await ctx.dispose()

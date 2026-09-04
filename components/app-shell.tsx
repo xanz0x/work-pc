@@ -522,8 +522,8 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <span className="pr-name" data-testid="profile-name">
                   {account.user?.name ?? 'Профиль'}
                 </span>
-                <span className="pr-sub mono" data-testid="profile-email">
-                  {account.user?.email} · {account.isAdmin ? 'админ' : 'выйти'}
+                <span className="pr-sub mono" data-testid="profile-login">
+                  @{account.user?.login} · {account.isAdmin ? 'админ' : account.user?.plan?.name ?? 'выйти'}
                 </span>
               </span>
             </button>

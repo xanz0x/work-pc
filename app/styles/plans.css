@@ -1,0 +1,492 @@
+/* ===== ТАРИФЫ И КЛЮЧИ · бейджи, карточки тарифов, поле ключа на входе ===== */
+@layer wf048 {
+  .plan-graphite { --plan-c: 168 176 188; }
+  .plan-green { --plan-c: 47 190 126; }
+  .plan-blue { --plan-c: 86 156 255; }
+  .plan-amber { --plan-c: 255 190 90; }
+  .plan-violet { --plan-c: 170 120 255; }
+  .plan-red { --plan-c: 229 100 92; }
+
+  .plan-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 9px 2px 7px;
+    border-radius: 999px;
+    border: 1px solid rgb(var(--plan-c) / 0.45);
+    background: rgb(var(--plan-c) / 0.1);
+    color: rgb(var(--plan-c));
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    line-height: 1.6;
+  }
+  .plan-badge::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgb(var(--plan-c));
+    box-shadow: 0 0 8px rgb(var(--plan-c) / 0.6);
+  }
+  .plan-badge.lg {
+    font-size: 12px;
+    padding: 4px 12px 4px 10px;
+  }
+  .plan-badge.none {
+    --plan-c: 120 126 136;
+    border-style: dashed;
+    background: transparent;
+  }
+
+  /* --- поле ключа на странице входа --- */
+  .login-card.is-register {
+    width: min(460px, 100%);
+  }
+  .login-key {
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .login-key.ok {
+    border-color: rgb(47 190 126 / 0.6);
+    box-shadow: 0 0 0 3px rgb(47 190 126 / 0.12);
+  }
+  .login-key.bad,
+  .input.bad {
+    border-color: rgb(229 100 92 / 0.6);
+  }
+  .login-key-state {
+    min-height: 18px;
+    font-size: 12px;
+    color: var(--text-2);
+  }
+  .login-key-state .label-mono {
+    font-size: 10.5px;
+    color: var(--text-3);
+  }
+  .login-key-ok {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: var(--r);
+    border: 1px solid rgb(47 190 126 / 0.25);
+    background: rgb(47 190 126 / 0.06);
+    animation: plan-in 0.22s ease-out;
+  }
+  .login-key-ok b {
+    color: var(--text);
+  }
+  @keyframes plan-in {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  /* --- вкладки админки --- */
+  .adm-tabs {
+    display: inline-flex;
+    gap: 2px;
+    padding: 3px;
+    border-radius: 999px;
+    border: 1px solid var(--border-2);
+    background: var(--bg-input);
+  }
+  .adm-tabs button {
+    border: 0;
+    background: transparent;
+    color: var(--text-3);
+    font: inherit;
+    font-size: 12px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    transition: background-color 0.15s ease, color 0.15s ease;
+  }
+  .adm-tabs button:hover {
+    color: var(--text-2);
+  }
+  .adm-tabs button.active {
+    background: var(--raise-1);
+    color: var(--text);
+    box-shadow: inset 0 0 0 1px var(--accent-line);
+  }
+  .adm-tabs .adm-count {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--raise-1);
+    color: var(--text-3);
+  }
+  .adm-tabs button.active .adm-count {
+    color: var(--accent);
+  }
+
+  /* --- карточки тарифов --- */
+  .plans-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 12px;
+  }
+  .plan-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px 16px 14px;
+    overflow: hidden;
+    transition: border-color 0.15s ease, transform 0.15s ease;
+    animation: plan-in 0.25s ease-out both;
+  }
+  .plan-card::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    background: rgb(var(--plan-c));
+  }
+  .plan-card::after {
+    content: '';
+    position: absolute;
+    right: -40px;
+    top: -40px;
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgb(var(--plan-c) / 0.14), transparent 70%);
+    pointer-events: none;
+  }
+  .plan-card:hover {
+    border-color: rgb(var(--plan-c) / 0.5);
+  }
+  .plan-card.archived {
+    opacity: 0.6;
+  }
+  .plan-card.archived::before {
+    background: repeating-linear-gradient(90deg, rgb(var(--plan-c)) 0 6px, transparent 6px 12px);
+  }
+  .plan-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .plan-name {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+  .plan-name b {
+    font-size: 16px;
+    font-weight: 640;
+    color: var(--text);
+    letter-spacing: 0.01em;
+  }
+  .plan-name span {
+    font-size: 11.5px;
+    color: var(--text-2);
+    line-height: 1.45;
+  }
+  .plan-nums {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+  .plan-num {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 8px 10px;
+    border-radius: var(--r);
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+  }
+  .plan-num b {
+    font-size: 15px;
+    font-weight: 640;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+  .plan-num span {
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+  .plan-feats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+  .plan-feat {
+    font-size: 10.5px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 1px solid var(--border-2);
+    color: var(--text-2);
+    white-space: nowrap;
+  }
+  .plan-feat.on {
+    border-color: rgb(var(--plan-c) / 0.4);
+    color: rgb(var(--plan-c));
+    background: rgb(var(--plan-c) / 0.07);
+  }
+  .plan-feat.off {
+    color: var(--text-3);
+    text-decoration: line-through;
+    text-decoration-color: var(--border-3);
+  }
+  .plan-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: auto;
+    flex-wrap: wrap;
+  }
+  .plan-actions .btn {
+    height: 28px;
+    font-size: 11.5px;
+    padding: 0 10px;
+  }
+  .plan-new {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 200px;
+    border: 1px dashed var(--border-3);
+    border-radius: var(--r-lg, 12px);
+    background: transparent;
+    color: var(--text-3);
+    font: inherit;
+    font-size: 12.5px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+  }
+  .plan-new:hover {
+    border-color: var(--accent-line);
+    color: var(--text);
+    background: var(--raise-1);
+  }
+  .plan-new svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  /* --- редактор тарифа --- */
+  .plan-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 16px 18px;
+    border-color: rgb(var(--plan-c) / 0.5);
+    animation: plan-in 0.2s ease-out;
+  }
+  .plan-editor-grid {
+    display: grid;
+    grid-template-columns: 1.4fr 2fr;
+    gap: 10px;
+  }
+  .plan-editor-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .plan-swatches {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .plan-swatch {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    background: rgb(var(--plan-c) / 0.25);
+    box-shadow: inset 0 0 0 8px rgb(var(--plan-c));
+    cursor: pointer;
+    transition: transform 0.12s ease, border-color 0.12s ease;
+  }
+  .plan-swatch:hover {
+    transform: scale(1.1);
+  }
+  .plan-swatch.active {
+    border-color: var(--text);
+    transform: scale(1.12);
+  }
+  .plan-editor .mcp-input {
+    height: 34px;
+  }
+  .plan-editor textarea.mcp-input {
+    height: auto;
+    min-height: 54px;
+    resize: vertical;
+    padding-top: 8px;
+  }
+  .plan-preview {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--text-2);
+  }
+
+  /* --- выдача ключей --- */
+  .keys-issue {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1.6fr 80px auto;
+    gap: 8px;
+    align-items: end;
+  }
+  .keys-issue .adm-field > label {
+    font-size: 10px;
+  }
+  .keys-issued {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 14px;
+    border-radius: var(--r);
+    border: 1px solid rgb(47 190 126 / 0.35);
+    background: rgb(47 190 126 / 0.06);
+    animation: plan-in 0.22s ease-out;
+  }
+  .keys-issued-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .keys-issued-list code {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    color: var(--text);
+    padding: 6px 10px;
+    border-radius: var(--r);
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    user-select: all;
+  }
+  .keys-filter {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .keys-table {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .key-row {
+    display: grid;
+    grid-template-columns: 200px auto 1fr auto auto;
+    gap: 12px;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: var(--r);
+    border: 1px solid var(--border);
+    background: var(--bg-input);
+    font-size: 11.5px;
+    color: var(--text-2);
+  }
+  .key-row code {
+    font-family: var(--font-mono);
+    letter-spacing: 0.08em;
+    color: var(--text);
+  }
+  .key-row.used,
+  .key-row.revoked {
+    opacity: 0.6;
+  }
+  .key-row.revoked code {
+    text-decoration: line-through;
+  }
+  .key-row .key-state {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    white-space: nowrap;
+  }
+  .key-row .key-state.free {
+    color: var(--ok);
+  }
+  .key-row .key-state.used {
+    color: var(--text-3);
+  }
+  .key-row .key-state.revoked {
+    color: var(--danger);
+  }
+  .key-row .btn {
+    height: 26px;
+    font-size: 11px;
+    padding: 0 10px;
+  }
+
+  /* --- карточка пользователя: тариф --- */
+  .adm-plan-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .adm-plan-row .mcp-input {
+    height: 32px;
+    font-size: 12px;
+  }
+  .adm-lic-bar {
+    position: relative;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--border);
+    overflow: hidden;
+  }
+  .adm-lic-bar i {
+    position: absolute;
+    inset: 0 auto 0 0;
+    border-radius: 999px;
+    background: var(--ok);
+    transition: width 0.3s ease;
+  }
+  .adm-lic-bar.warn i {
+    background: var(--warn);
+  }
+  .adm-lic-bar.danger i {
+    background: var(--danger);
+  }
+  .adm-lic-meta {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--text-3);
+  }
+
+  @media (max-width: 960px) {
+    .keys-issue,
+    .plan-editor-grid,
+    .plan-editor-row {
+      grid-template-columns: 1fr;
+    }
+    .key-row {
+      grid-template-columns: 1fr auto;
+    }
+    .key-row .key-note,
+    .key-row .plan-badge {
+      display: none;
+    }
+  }
+}

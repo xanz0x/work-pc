@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { issueSession, sessionTtlMs, setSessionCookies } from '@/lib/app-auth'
 import { clientIp, limitLogin, resetLogin } from '@/lib/rate-limit'
 import { withRoute } from '@/lib/route-log'
-import { isEmail } from '@/lib/users'
+import { loginProblem } from '@/lib/users'
 import { login } from '@/lib/users-server'
 
 export const runtime = 'nodejs'
@@ -23,14 +23,14 @@ export const POST = withRoute('/ai-api/auth/login', async (req: NextRequest) => 
     )
   }
 
-  const body = (await req.json().catch(() => ({}))) as { email?: unknown; password?: unknown }
-  const email = typeof body.email === 'string' && body.email.trim() ? body.email : null
-  if (email !== null && !isEmail(email)) {
-    return NextResponse.json({ code: 'AUTH_REQUIRED', error: 'Введите корректный email.' }, { status: 401 })
+  const body = (await req.json().catch(() => ({}))) as { login?: unknown; password?: unknown }
+  const who = typeof body.login === 'string' && body.login.trim() ? body.login : null
+  if (who !== null && loginProblem(who)) {
+    return NextResponse.json({ code: 'AUTH_REQUIRED', error: 'Логин или пароль не подошли.' }, { status: 401 })
   }
-  const r = await login(email, String(body.password ?? ''), sessionTtlMs(), req.headers.get('user-agent') ?? '')
+  const r = await login(who, String(body.password ?? ''), sessionTtlMs(), req.headers.get('user-agent') ?? '')
   if (!r.ok) {
-    const msg = r.code === 'BLOCKED' ? 'Учётная запись заблокирована администратором.' : 'Email или пароль не подошли.'
+    const msg = r.code === 'BLOCKED' ? 'Учётная запись заблокирована администратором.' : 'Логин или пароль не подошли.'
     return NextResponse.json({ code: r.code === 'BLOCKED' ? 'BLOCKED' : 'AUTH_REQUIRED', error: msg }, { status: r.code === 'BLOCKED' ? 403 : 401 })
   }
 

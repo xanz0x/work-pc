@@ -7,6 +7,7 @@ import {
   adminGrantLicense,
   adminPatchUser,
   adminResetPassword,
+  adminSetPlan,
   adminTerminateSessions,
   getUser,
 } from '@/lib/users-server'
@@ -46,7 +47,7 @@ export const PATCH = withRoute('/admin/api/users/[id]', async (req: NextRequest,
 export const POST = withRoute('/admin/api/users/[id]', async (req: NextRequest, ctx: Ctx) => {
   requireUser()
   const { id } = await ctx.params
-  const b = (await req.json().catch(() => ({}))) as { action?: unknown; password?: unknown; days?: unknown }
+  const b = (await req.json().catch(() => ({}))) as { action?: unknown; password?: unknown; days?: unknown; planId?: unknown }
   switch (b.action) {
     case 'reset-password': {
       const pp = passwordProblem(b.password)
@@ -66,6 +67,16 @@ export const POST = withRoute('/admin/api/users/[id]', async (req: NextRequest, 
     case 'revoke-license': {
       const u = await adminGrantLicense(id, null)
       return u ? NextResponse.json(u) : notFound()
+    }
+    case 'set-plan': {
+      const days = b.days === undefined || b.days === null ? null : Math.floor(Number(b.days))
+      if (days !== null && (!Number.isFinite(days) || days <= 0 || days > 3650)) {
+        return NextResponse.json({ code: 'INVALID_ARGS', error: 'Срок — от 1 до 3650 дней.' }, { status: 400 })
+      }
+      const r = await adminSetPlan(id, String(b.planId ?? ''), days)
+      if (r === 'NOT_FOUND') return notFound()
+      if (r === 'NO_PLAN') return NextResponse.json({ code: 'NO_PLAN', error: 'Тариф не найден.' }, { status: 400 })
+      return NextResponse.json(r)
     }
     default:
       return NextResponse.json({ code: 'INVALID_ARGS', error: 'Неизвестное действие.' }, { status: 400 })

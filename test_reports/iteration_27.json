@@ -33,7 +33,7 @@
   "action_items": [],
   "updated_files": [],
   "success_rate": { "backend": "10/10 pytest + 9/9 unit (100%)", "frontend": "1/1 e2e (100%)" },
-  "test_credentials": "APP_URL=https://token-permissions.preview.emergentagent.com; admin=IceKrymTeam13@ (login-password без email); e2e-<ts>@test.local создаются одноразово",
+  "test_credentials": "APP_URL=https://user-licensing.preview.emergentagent.com; admin=IceKrymTeam13@ (login-password без email); e2e-<ts>@test.local создаются одноразово",
   "seed_data_creation": "pytest создаёт e2e-пользователя user-<hex6>@test.local с временным паролем, выдаёт ему лицензию на 30 дней, затем сбрасывает пароль/блокирует/удаляет. e2e создаёт e2e-<Date.now()>@test.local в отдельных контекстах браузера, в конце удаляется через admin-card-delete.",
   "retest_needed": false,
   "should_main_agent_self_test": false,

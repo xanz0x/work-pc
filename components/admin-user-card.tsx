@@ -4,18 +4,41 @@
 
 import { useState } from 'react'
 import { IconCopy } from './icons'
+import { PlanBadge } from './plan-badge'
 import { adminFetch, fmtDate, genPassword } from './admin-shared'
-import { FEATURES, LICENSE_TERMS, accessState, type FeatureId, type Features, type Role, type UserView } from '@/lib/users'
+import { FEATURES, LICENSE_TERMS, accessState, type FeatureId, type Features, type PlanStats, type Role, type UserView } from '@/lib/users'
 import { useToast } from '@/lib/vault-store'
 
-type Props = { user: UserView; selfId: string; onChanged: () => void; onDeleted: () => void }
+type Props = { user: UserView; plans: PlanStats[]; selfId: string; onChanged: () => void; onDeleted: () => void }
 
-export function AdminUserCard({ user: u, selfId, onChanged, onDeleted }: Props) {
+/** Полоска остатка лицензии: зелёная → жёлтая (≤7 дн.) → красная (истекла). */
+function LicenseBar({ until }: { until: number | null }) {
+  if (!until) return <span className="label-mono">Лицензии нет — пользователь ждёт ключ или продления.</span>
+  const left = until - Date.now()
+  const daysLeft = Math.ceil(left / 86_400_000)
+  const tone = left <= 0 ? 'danger' : daysLeft <= 7 ? 'warn' : ''
+  const pct = left <= 0 ? 0 : Math.min(100, Math.max(4, (daysLeft / 90) * 100))
+  return (
+    <div className="adm-field" data-testid="admin-card-license-bar">
+      <div className={`adm-lic-bar ${tone}`}>
+        <i style={{ width: `${pct}%` }} />
+      </div>
+      <div className="adm-lic-meta">
+        <span>{left <= 0 ? 'истекла' : `осталось ${daysLeft} дн.`}</span>
+        <span>до {fmtDate(until)}</span>
+      </div>
+    </div>
+  )
+}
+
+export function AdminUserCard({ user: u, plans, selfId, onChanged, onDeleted }: Props) {
   const { flash } = useToast()
+  const activePlans = plans.filter((p) => !p.archived || p.id === u.plan?.id)
   const [features, setFeatures] = useState<Features>(u.features)
   const [limit, setLimit] = useState(String(u.aiDailyLimit))
   const [name, setName] = useState(u.name)
   const [days, setDays] = useState(30)
+  const [planId, setPlanId] = useState(u.plan?.id ?? activePlans[0]?.id ?? '')
   const [temp, setTemp] = useState<string | null>(null)
   const [confirm, setConfirm] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
@@ -62,11 +85,11 @@ export function AdminUserCard({ user: u, selfId, onChanged, onDeleted }: Props) 
     <div className="panel adm-card" data-testid="admin-user-card" data-user-id={u.id}>
       <div className="adm-card-head">
         <span className={`adm-avatar lg role-${u.role}`} aria-hidden="true">
-          {(u.name || u.email).slice(0, 1).toUpperCase()}
+          {(u.name || u.login).slice(0, 1).toUpperCase()}
         </span>
         <div className="adm-who">
           <b>{u.name}</b>
-          <span className="label-mono">{u.email}</span>
+          <span className="label-mono">@{u.login}</span>
         </div>
         <span className={`adm-acc st-${acc}`}>
           <i className="adm-dot" aria-hidden="true" />
@@ -125,25 +148,48 @@ export function AdminUserCard({ user: u, selfId, onChanged, onDeleted }: Props) 
       </div>
 
       <div className="adm-field adm-sep">
-        <label className="label-mono">Лицензия · {u.role === 'admin' ? 'админу не нужна' : `до ${fmtDate(u.licenseUntil)}`}</label>
-        {u.role === 'user' && (
-          <div className="adm-inline">
-            <select className="mcp-input" value={days} onChange={(e) => setDays(Number(e.target.value))} data-testid="admin-card-days">
-              {LICENSE_TERMS.map((t) => (
-                <option key={t.days} value={t.days}>
-                  +{t.label}
-                </option>
-              ))}
-            </select>
-            <button className="btn btn-ghost" onClick={() => void action({ action: 'grant-license', days }, 'Лицензия продлена')} data-testid="admin-card-grant">
-              Продлить
-            </button>
-            {u.licenseUntil && (
-              <button className="btn btn-ghost" onClick={() => void action({ action: 'revoke-license' }, 'Лицензия снята')} data-testid="admin-card-revoke-license">
-                Снять
+        <label className="label-mono">Тариф и лицензия</label>
+        {u.role === 'admin' ? (
+          <span className="label-mono">Администратору тариф и лицензия не нужны — доступ бессрочный.</span>
+        ) : (
+          <>
+            <div className="adm-plan-row">
+              <PlanBadge plan={u.plan} lg />
+              <select className="mcp-input" value={planId} onChange={(e) => setPlanId(e.target.value)} data-testid="admin-card-plan">
+                {activePlans.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                className="btn btn-ghost"
+                disabled={!planId || planId === u.plan?.id}
+                onClick={() => void action({ action: 'set-plan', planId }, 'Тариф изменён: функции и лимит обновлены')}
+                data-testid="admin-card-set-plan"
+              >
+                Перевести
               </button>
-            )}
-          </div>
+            </div>
+            <LicenseBar until={u.licenseUntil} />
+            <div className="adm-inline wrap">
+              <select className="mcp-input" value={days} onChange={(e) => setDays(Number(e.target.value))} data-testid="admin-card-days">
+                {LICENSE_TERMS.map((t) => (
+                  <option key={t.days} value={t.days}>
+                    +{t.label}
+                  </option>
+                ))}
+              </select>
+              <button className="btn btn-ghost" disabled={!u.plan} title={u.plan ? '' : 'Сначала выберите тариф'} onClick={() => void action({ action: 'grant-license', days }, 'Лицензия продлена')} data-testid="admin-card-grant">
+                Продлить
+              </button>
+              {u.licenseUntil && (
+                <button className="btn btn-ghost" onClick={() => void action({ action: 'revoke-license' }, 'Лицензия снята')} data-testid="admin-card-revoke-license">
+                  Снять
+                </button>
+              )}
+            </div>
+          </>
         )}
       </div>
 

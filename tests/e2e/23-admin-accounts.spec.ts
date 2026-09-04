@@ -22,32 +22,34 @@ async function loginAdmin(page: Page) {
 test('аккаунты: создание, лицензия, изоляция, тумблеры, блокировка', async ({ browser }) => {
   test.skip(!process.env.APP_PASSWORD, 'нужен APP_PASSWORD для входа')
   test.setTimeout(180_000)
-  const email = `e2e-${Date.now()}@test.local`
+  const email = `e2e-${Date.now().toString(36)}`
   const temp = 'temp-pass-12345'
 
   const ctxA = await browser.newContext()
   const a = await ctxA.newPage()
   await loginAdmin(a)
-  await expect(a.getByTestId('profile-email')).toContainText('админ')
+  await expect(a.getByTestId('profile-login')).toContainText('админ')
   await a.getByTestId('nav-admin').click()
   await expect(a.getByTestId('screen-admin')).toBeVisible()
 
   await a.getByTestId('admin-create-open').click()
-  await a.getByTestId('admin-create-email').fill(email)
+  await a.getByTestId('admin-create-login').fill(email)
   await a.getByTestId('admin-create-name').fill('Ирина')
   await a.getByTestId('admin-create-password').fill(temp)
-  await a.getByTestId('admin-create-days').selectOption('0')
+  await a.getByTestId('admin-create-plan').selectOption('')
   await a.getByTestId('admin-create-submit').click()
   await expect(a.getByTestId('admin-created-creds')).toContainText(email)
+  await a.getByTestId('admin-tab-keys').click()
   await a.getByTestId('admin-license-issue').click()
-  const key = (await a.getByTestId('admin-license-key').innerText()).trim()
+  const key = (await a.getByTestId('admin-license-key').first().innerText()).trim()
   expect(key).toMatch(/^WSX(-[A-Z2-9]{4}){4}$/)
+  await a.getByTestId('admin-tab-users').click()
 
   /* Пользователь: временный пароль → своя → ключ → приложение. */
   const ctxB = await browser.newContext()
   const b = await ctxB.newPage()
   await b.goto('/login')
-  await b.getByTestId('login-email').fill(email)
+  await b.getByTestId('login-login').fill(email)
   await b.getByTestId('login-password').fill(temp)
   await b.getByTestId('login-submit').click()
   await expect(b.getByTestId('access-wall')).toHaveAttribute('data-access', 'password', { timeout: 30_000 })
@@ -83,7 +85,7 @@ test('аккаунты: создание, лицензия, изоляция, т
   await expect(b).toHaveURL(/\/login/, { timeout: 30_000 })
   /* Форма входа должна гидратироваться, иначе submit уйдёт нативным GET. */
   await b.waitForLoadState('networkidle')
-  await b.getByTestId('login-email').fill(email)
+  await b.getByTestId('login-login').fill(email)
   await b.getByTestId('login-password').fill('my-own-pass-123')
   await b.getByTestId('login-submit').click()
   await expect(b.getByTestId('login-error')).toContainText('заблокирована')

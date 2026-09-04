@@ -11,8 +11,9 @@
 import '@/app/styles/screen-admin.css'
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 import { IconLogoMark } from '@/components/icons'
+import { PlanBadge } from '@/components/plan-badge'
 import { installStorageScope } from '@/lib/db/scope'
-import { accessState, type AccessState, type FeatureId, type UserView } from '@/lib/users'
+import { KEY_RE, accessState, normalizeKey, type AccessState, type FeatureId, type UserView } from '@/lib/users'
 
 type Account = {
   user: UserView | null
@@ -134,7 +135,7 @@ function AccessWall({
         <span className="login-mark" aria-hidden="true">
           <IconLogoMark />
         </span>
-        <div className="label-mono acc-who">{user.email}</div>
+        <div className="label-mono acc-who">@{user.login}</div>
         {access === 'blocked' && (
           <>
             <h1>Учётная запись заблокирована</h1>
@@ -209,17 +210,23 @@ function LicenseForm({ onDone, user }: { onDone: () => Promise<void>; user: User
   return (
     <form onSubmit={submit} data-testid="wall-license-form">
       <h1>{expired ? 'Срок лицензии истёк' : 'Нужен ключ лицензии'}</h1>
+      <div className="adm-inline">
+        <PlanBadge plan={user.plan} lg />
+        {expired && <span className="label-mono">закончилась {new Date(user.licenseUntil!).toLocaleDateString('ru-RU')}</span>}
+      </div>
       <p>
-        Учётная запись создана. Чтобы работать, введите ключ вида WSX-XXXX-XXXX-XXXX-XXXX — его выдаёт
-        администратор на определённый срок.
+        {expired
+          ? 'Чтобы продолжить, введите новый ключ от администратора. Ключ того же тарифа продлит срок, ключ другого тарифа — переведёт на него.'
+          : 'Чтобы работать, введите ключ вида WSX-XXXX-XXXX-XXXX-XXXX — его выдаёт администратор под тариф и срок.'}
       </p>
       <input
         className="mcp-input acc-key"
         placeholder="WSX-XXXX-XXXX-XXXX-XXXX"
         value={key}
-        onChange={(e) => setKey(e.target.value.toUpperCase())}
+        onChange={(e) => setKey(e.target.value.trim() ? normalizeKey(e.target.value) : '')}
         autoComplete="off"
         spellCheck={false}
+        maxLength={23}
         data-testid="wall-license-key"
       />
       {err && (
@@ -227,7 +234,7 @@ function LicenseForm({ onDone, user }: { onDone: () => Promise<void>; user: User
           {err}
         </p>
       )}
-      <button className="btn btn-primary" disabled={busy || key.length < 23} data-testid="wall-license-submit">
+      <button className="btn btn-primary" disabled={busy || !KEY_RE.test(key)} data-testid="wall-license-submit">
         Активировать
       </button>
     </form>
