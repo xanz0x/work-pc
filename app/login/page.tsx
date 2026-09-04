@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { IconLogoMark } from '@/components/icons'
 import { LogoWord } from '@/components/screen-lock-logo'
 
 /**
@@ -59,9 +58,6 @@ export default function LoginPage() {
   return (
     <main className="login-page">
       <form className="login-card panel" onSubmit={submit} data-testid="login-form">
-        <span className="login-mark" aria-hidden="true">
-          <IconLogoMark />
-        </span>
         <h1 className="login-title" data-testid="login-logo">
           <LogoWord className="login-logo" />
         </h1>
