@@ -39,6 +39,7 @@ export const ENV_SPEC: Spec[] = [
   { name: 'MCP_RATE_PER_MIN', required: false, kind: 'int', note: 'вызовов MCP в минуту на токен (60)' },
   { name: 'ADMIN_LOGIN', required: false, kind: 'string', note: 'логин первого администратора (admin)' },
   { name: 'MAIL_SECRET', required: false, kind: 'string', min: 32, note: 'ключ шифрования паролей почтовых ящиков (32+ символа)' },
+  { name: 'SONJJ_API_KEY', required: false, kind: 'string', min: 8, note: 'ключ SmailPro/Sonjj для временных Gmail и Outlook (my.sonjj.com)' },
   { name: 'LOG_LEVEL', required: false, kind: 'string', note: 'debug | info | warn | error' },
 ]
 

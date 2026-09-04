@@ -167,3 +167,7 @@ APP_URL=http://localhost:3000 APP_PASSWORD=IceKrymTeam13@ node scripts/long-dial
 - `/app/.env` пересоздан: APP_PASSWORD=IceKrymTeam13@, новые APP_SESSION_SECRET и MAIL_SECRET (старые cookie и ранее сохранённые пароли ящиков после смены MAIL_SECRET требуют повторного ввода), ADMIN_LOGIN=admin, AI_PROXY_URL, EMERGENT_LLM_KEY, AI_MODEL=claude-sonnet-4-5-20250929, AI_DIR=/root/.workflow/ai.
 - Вход: admin / IceKrymTeam13@ (поля формы: login, password).
 - Тестовый ящик почты: Read QA · qtf2kannuu6gjlxb@ethereal.email / 2T6upz7zfYqNGbAGRs (IMAP imap.ethereal.email:993, SMTP smtp.ethereal.email:587). Папки: INBOX, Drafts, "Sent Mail", Junk (Спам), Trash.
+
+## Временная почта (итерация 37)
+- Ключ SmailPro/Sonjj: `SONJJ_API_KEY` в `/app/.env` (получить в https://my.sonjj.com → раздел API, оплата кредитами). Сейчас НЕ задан: генераторы Gmail/Outlook/SmailPro отвечают 503 NO_KEY, бесплатный mail.tm работает без ключа.
+- Тесты: `python3 -m pytest tests/api/test_mail_temp.py -q`; тест лимита включается `RUN_TEMP_RATE_LIMIT=1` и только последним.

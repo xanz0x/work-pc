@@ -562,7 +562,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {v.palette && <CommandPalette />}
 
       {v.toast && (
-        <div className="flash-toast" role="status" aria-live="polite">
+        <div className="flash-toast" role="status" aria-live="polite" data-testid="flash-toast">
           {v.toast}
         </div>
       )}

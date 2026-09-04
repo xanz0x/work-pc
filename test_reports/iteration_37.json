@@ -1,0 +1,38 @@
+{
+  "summary": "Итерация 37 — подмодуль ВРЕМЕННОЙ почты. Backend: создан новый pytest-набор tests/api/test_mail_temp.py (15 тестов) — 14 прошли, лимит 60/мин проверен отдельно вручную и подтверждён (429 RATE_LIMITED + retryAfter на 61-м запросе). Проверено: POST {kind:'mailtm'} → 201, адрес @uberip.com, ящик в списке; GET /ai-api/mail/temp → smailpro:false; kind temp|gmail|outlook → 503 NO_KEY с русским текстом про SONJJ_API_KEY; мусорный kind и битое тело → 400 INVALID_ARGS; inbox → {box,rows,syncedAt} + lastSyncAt; несуществующий mid → 404; PATCH mailtm → 400 NOT_SUPPORTED; id 00000000 и нечисловой id → 404; DELETE → 200 + исчезает из списка, повторный → 404; все маршруты без cookie → 401 AUTH_REQUIRED. Frontend (1920x800): раздел «Временные» в рейке, меню из 4 генераторов, создание бесплатного ящика (~2 c) с паспортом/адресом/копировать/удалить, тост про SONJJ_API_KEY без создания ящика (счётчик не растёт), удаление из паспорта и в два клика по корзине («Точно?»), переключение обычный↔временный ящик в обе стороны (папки исчезают/возвращаются), регресс обычного ящика (письмо открылось, звезда сработала, «Написать» открылось окном поверх), страница без прокрутки. Критических дефектов не найдено.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET/POST /ai-api/mail/temp*", "issue": "При 429 отдаётся только поле retryAfter в теле, HTTP-заголовок Retry-After отсутствует (клиентам/прокси удобнее заголовок)"}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "MailTempPane", "issue": "Кнопка «Скопировать» в headless-контексте падает в фолбэк «Скопировать не удалось — выделите адрес вручную» (navigator.clipboard без разрешения). Фолбэк корректный, но адрес не выделяется автоматически — можно добавить select-range/execCommand", "selector": "[data-testid=\"mail-temp-copy\"]", "priority": "LOW"},
+      {"component": "Заголовок экрана «Почта»", "issue": "При активном временном ящике подзаголовок шапки продолжает показывать адрес IMAP-ящика (qtf2kannuu6gjlxb@ethereal.email), хотя в правой панели паспорт временного адреса @uberip.com", "selector": "заголовок экрана Почта", "priority": "LOW"},
+      {"component": "Тост приложения", "issue": "У тоста (.flash-toast в components/app-shell.tsx:565) нет data-testid — тесты вынуждены цепляться за CSS-класс. Предлагаю data-testid=\"flash-toast\" (не правил сам: прод-сборка требует next build + restart)", "selector": ".flash-toast", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/tests/api/test_mail_temp.py", "/app/test_reports/pytest/temp_mail.xml"],
+  "action_items": [
+    "Опционально: добавить data-testid=\"flash-toast\" тосту в components/app-shell.tsx",
+    "Опционально: заголовок экрана «Почта» должен показывать адрес активного временного ящика",
+    "Опционально: заголовок Retry-After в 429-ответах временной почты",
+    "Опционально: при неудаче clipboard выделять текст адреса, чтобы подсказка «выделите вручную» была выполнима одним движением"
+  ],
+  "critical_code_review_comments": [
+    "tempGuard считает лимит по ключу temp:<uid>:<id|all>, то есть 60/мин на КАЖДЫЙ ящик отдельно и ещё 60/мин на список — фактический бюджет пользователя выше заявленного «60/мин на маршруты временной почты»; если это осознанно, стоит отразить в документации",
+    "MailTempPane опрашивает inbox каждые 15 с: при долгой открытой вкладке это 4 запроса/мин к mail.tm на ящик — у провайдера свои лимиты, стоит останавливать таймер при document.hidden",
+    "components/mail/mail-inbox.tsx ~493 строки и держит и обычную, и временную логику — на границе разумного, при следующем расширении лучше вынести временную ветку в отдельный контейнер"
+  ],
+  "updated_files": ["/app/tests/api/test_mail_temp.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Создано 2 ящика mail.tm в ходе API-тестов (оба удалены) и 1 через UI (удалён). На сервере оставлен один прежний ящик a8526df2e7a2@uberip.com (id 0de32685) — удобен для повторных UI-проверок, лишние удалены.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "admin / IceKrymTeam13@ (поля login/password, data-testid login-login / login-password); онбординг гасится localStorage wf.settings.v1={onboarding:{at:Date.now()}} ДО входа",
+  "context_for_next_testing_agent": "Набор временной почты: tests/api/test_mail_temp.py (прогон APP_URL=https://compose-speedup.preview.emergentagent.com python3 -m pytest tests/api/test_mail_temp.py -q). Тест лимита test_rate_limit_429 по умолчанию skip — включать RUN_TEMP_RATE_LIMIT=1 и только последним, иначе следующие запросы получат 429 на минуту. Не создавать больше 3-4 ящиков mail.tm подряд. Реальную доставку письма во временный ящик проверить нечем — пустой список писем НЕ баг. SONJJ_API_KEY на сервере намеренно отсутствует, платные генераторы обязаны отдавать 503 NO_KEY.",
+  "rca_of_the_issue": "Не требуется: заявленный контракт API и UI-состояния подтверждены полностью, найдены только косметические замечания."
+}

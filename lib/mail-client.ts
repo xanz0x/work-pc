@@ -142,8 +142,39 @@ export const mailApi = {
     }),
 }
 
-export function readAsBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
+export type TempKind = 'mailtm' | 'temp' | 'gmail' | 'outlook'
+
+export const TEMP_LABEL: Record<TempKind, string> = {
+  mailtm: 'Обычная · бесплатно',
+  temp: 'Обычная · SmailPro',
+  gmail: 'Gmail · SmailPro',
+  outlook: 'Hotmail/Outlook · SmailPro',
+}
+
+export type TempBoxView = {
+  id: string
+  kind: TempKind
+  address: string
+  createdAt: number
+  expiresAt: number | null
+  timestamp?: number
+  lastSyncAt: number | null
+  count: number
+}
+
+export type TempRow = { mid: string; subject: string; from: string; date: string | null }
+export type TempFull = TempRow & { html: string | null; text: string | null }
+
+export const tempApi = {
+  list: () => call<{ boxes: TempBoxView[]; smailpro: boolean }>('/ai-api/mail/temp'),
+  create: (kind: TempKind) => call<{ box: TempBoxView }>('/ai-api/mail/temp', { method: 'POST', body: JSON.stringify({ kind }) }),
+  remove: (id: string) => call<{ ok: true }>(`/ai-api/mail/temp/${id}`, { method: 'DELETE' }),
+  extend: (id: string) => call<{ box: TempBoxView }>(`/ai-api/mail/temp/${id}`, { method: 'PATCH' }),
+  inbox: (id: string) => call<{ box: TempBoxView; rows: TempRow[]; syncedAt: number }>(`/ai-api/mail/temp/${id}/inbox`),
+  message: (id: string, mid: string) => call<{ message: TempFull }>(`/ai-api/mail/temp/${id}/messages/${encodeURIComponent(mid)}`),
+}
+
+export function readAsBase64(file: File): Promise<string> {  return new Promise((resolve, reject) => {
     const fr = new FileReader()
     fr.onerror = () => reject(fr.error)
     fr.onload = () => resolve(String(fr.result).split(',')[1] ?? '')

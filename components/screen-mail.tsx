@@ -25,6 +25,7 @@ export function ScreenMail() {
   const [composing, setComposing] = useState(false)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [tempAddress, setTempAddress] = useState<string | null>(null)
 
   const reload = useCallback(async () => {
     const r = await mailApi.list()
@@ -90,7 +91,7 @@ export function ScreenMail() {
         <span className="mail-bar-title">
           <IconMail width={15} height={15} aria-hidden="true" />
           <h1>Почта</h1>
-          <span className="mail-bar-sub">{accounts === null ? 'загрузка…' : active ? active.email : 'ящики не подключены'}</span>
+          <span className="mail-bar-sub">{tempAddress ?? (accounts === null ? 'загрузка…' : active ? active.email : 'ящики не подключены')}</span>
         </span>
         <span className="mail-bar-actions">
           <button className="btn btn-ghost btn-sm" onClick={() => setAdding(true)} disabled={!enabled} data-testid="mail-add-bar">
@@ -123,6 +124,7 @@ export function ScreenMail() {
           onRemove={(acc) => void remove(acc)}
           onCompose={() => setComposing(true)}
           onAccountPatch={patchAccount}
+          onTempAddress={setTempAddress}
         />
       )}
 

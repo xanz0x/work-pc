@@ -1296,3 +1296,9 @@ UX-4 accessibility · LG-4/LG-5 · RM-3.
 ### Итерация 37 · удаление ящика из рейки
 - `components/mail/mail-account-row.tsx`: кнопка-корзина в строке ящика (появляется при наведении/фокусе), удаление в два клика («Точно?», 5 с на отмену), `data-testid=mail-account-row-delete-<id>`. Кнопка «Удалить» в паспорте ящика сохранена.
 - Проверено вживую: создан второй ящик через API, удалён из UI — тост «Ящик удалён», на сервере остался один. vitest 247/247, tsc 0, прод-сборка.
+
+### Итерация 37 · подмодуль «Временная почта» (в экране «Почта»)
+- Провайдеры: mail.tm (бесплатно, без ключа, домен @uberip.com) и SmailPro через Sonjj (`app.sonjj.com`, `X-Api-Key` = `SONJJ_API_KEY`): обычная временная (10 мин, продление), временный Gmail и Hotmail/Outlook (пул alias, только приём).
+- Файлы: `lib/temp-mail.ts`, `lib/temp-mail-route.ts`, `app/ai-api/mail/temp/**` (список/создать, удалить/продлить, входящие, письмо), `components/mail/mail-temp-rail.tsx`, `components/mail/mail-temp-pane.tsx`; раздел «Временные» в рейке экрана «Почта», удаление в два клика.
+- Без ключа Sonjj платные генераторы честно отдают 503 NO_KEY; бесплатный работает. Тесты: `tests/api/test_mail_temp.py` (15), vitest 247/247, отчёт `test_reports/iteration_37.json` (backend 100%, frontend 100%).
+- НЕ ПРОВЕРЕНО: реальная доставка письма во временный ящик (нет исходящего SMTP — Ethereal наружу не отправляет).

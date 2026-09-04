@@ -11,7 +11,19 @@ import { MailAccountRow } from './mail-account-row'
 import { MailFolderList } from './mail-folder-list'
 import { MailMsgList } from './mail-msg-list'
 import { MailMsgView } from './mail-msg-view'
-import { isFail, mailApi, type AccountView, type FolderView, type MessageFull, type MessageRow } from '@/lib/mail-client'
+import { MailTempPane } from './mail-temp-pane'
+import { MailTempRail } from './mail-temp-rail'
+import {
+  isFail,
+  mailApi,
+  tempApi,
+  type AccountView,
+  type FolderView,
+  type MessageFull,
+  type MessageRow,
+  type TempBoxView,
+  type TempKind,
+} from '@/lib/mail-client'
 import { REFRESH_KEY, REFRESH_OPTIONS, letterWord, mergeRows, readRefresh } from '@/lib/mail-format'
 import { folderLabel } from '@/lib/mail-read'
 import { useToast } from '@/lib/vault-store'
@@ -27,6 +39,8 @@ type Props = {
   onRemove: (acc: AccountView) => void
   onCompose: () => void
   onAccountPatch: (id: string, patch: Partial<AccountView>) => void
+  /** Подпись в шапке экрана: адрес активного временного ящика или null (тогда показывается обычный ящик). */
+  onTempAddress: (address: string | null) => void
 }
 
 type PageCache = { rows: MessageRow[]; total: number; cursor: number | null; at: number }
@@ -53,6 +67,11 @@ export function MailInbox(p: Props) {
   const [refresh, setRefresh] = useState(60)
   const [syncedAt, setSyncedAt] = useState<number | null>(null)
   const [syncing, setSyncing] = useState(false)
+  /* Временные ящики живут рядом с обычными: выбран один из двух списков. */
+  const [temps, setTemps] = useState<TempBoxView[]>([])
+  const [tempId, setTempId] = useState<string | null>(null)
+  const [tempSmailpro, setTempSmailpro] = useState(false)
+  const [tempCreating, setTempCreating] = useState<TempKind | null>(null)
 
   const gen = useRef(0)
   const folderRef = useRef('INBOX')
@@ -68,6 +87,47 @@ export function MailInbox(p: Props) {
   const hasImap = !!active?.imap
 
   useEffect(() => setRefresh(readRefresh()), [])
+
+  useEffect(() => {
+    void (async () => {
+      const r = await tempApi.list()
+      if (isFail(r)) return
+      setTemps(r.boxes)
+      setTempSmailpro(r.smailpro)
+    })()
+  }, [])
+
+  const tempActive = temps.find((b) => b.id === tempId) ?? null
+
+  const { onTempAddress } = p
+  useEffect(() => {
+    onTempAddress(tempActive?.address ?? null)
+  }, [onTempAddress, tempActive])
+
+  const patchTemp = useCallback((box: TempBoxView) => {
+    setTemps((cur) => cur.map((b) => (b.id === box.id ? box : b)))
+  }, [])
+
+  async function createTemp(kind: TempKind) {
+    setTempCreating(kind)
+    const r = await tempApi.create(kind)
+    setTempCreating(null)
+    if (isFail(r)) {
+      flash(r.error)
+      return
+    }
+    setTemps((cur) => [...cur, r.box])
+    setTempId(r.box.id)
+    flash(`Временный адрес готов: ${r.box.address}`)
+  }
+
+  async function removeTemp(box: TempBoxView) {
+    setTemps((cur) => cur.filter((b) => b.id !== box.id))
+    setTempId((cur) => (cur === box.id ? null : cur))
+    const r = await tempApi.remove(box.id)
+    if (isFail(r)) flash(r.error)
+    else flash('Временный ящик удалён')
+  }
 
   /* Патч идёт и в кеш страницы: иначе возврат в папку показывает старый флаг. */
   const patchRows = useCallback((uid: number, patch: Partial<MessageRow>) => {
@@ -319,7 +379,16 @@ export function MailInbox(p: Props) {
         </div>
         <div className="mail-acc-rows" data-testid="mail-account-list">
           {accounts.map((a) => (
-            <MailAccountRow key={a.id} account={a} active={a.id === accId} onPick={() => p.onPickAccount(a.id)} onRemove={() => p.onRemove(a)} />
+            <MailAccountRow
+              key={a.id}
+              account={a}
+              active={a.id === accId && !tempActive}
+              onPick={() => {
+                setTempId(null)
+                p.onPickAccount(a.id)
+              }}
+              onRemove={() => p.onRemove(a)}
+            />
           ))}
           {accounts.length === 0 && (
             <div className="mail-rail-empty" data-testid="mail-empty">
@@ -330,7 +399,16 @@ export function MailInbox(p: Props) {
             </div>
           )}
         </div>
-        {active && hasImap && (
+        <MailTempRail
+          boxes={temps}
+          activeId={tempActive ? tempId : null}
+          smailpro={tempSmailpro}
+          creating={tempCreating}
+          onPick={(id) => setTempId(id)}
+          onCreate={(kind) => void createTemp(kind)}
+          onRemove={(box) => void removeTemp(box)}
+        />
+        {!tempActive && active && hasImap && (
           <>
             <div className="mail-rail-sec">
               <span className="label-mono">Папки</span>
@@ -338,14 +416,18 @@ export function MailInbox(p: Props) {
             <MailFolderList folders={folders} current={folder} onPick={pickFolder} />
           </>
         )}
-        {active && !hasImap && (
+        {!tempActive && active && !hasImap && (
           <p className="mail-rail-note" data-testid="mail-inbox-no-imap">
             IMAP не настроен — ящик только отправляет письма.
           </p>
         )}
       </aside>
 
-      <section className="mail-list-col" aria-label="Список писем">
+      {tempActive ? (
+        <MailTempPane box={tempActive} onBox={patchTemp} onRemove={() => void removeTemp(tempActive)} />
+      ) : (
+        <>
+          <section className="mail-list-col" aria-label="Список писем">
         {active && hasImap ? (
           <>
             <div className="mail-list-head">
@@ -409,7 +491,9 @@ export function MailInbox(p: Props) {
             </button>
           </div>
         )}
-      </section>
+          </section>
+        </>
+      )}
     </div>
   )
 }
