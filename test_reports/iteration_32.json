@@ -29,5 +29,5 @@
   "seed_data_creation": "Никаких ящиков не создавалось (Proton-сценарии заведомо ошибочные, до записи в БД не доходят). Регресс test_mail.py сам создаёт и удаляет свои временные ethereal-ящики.",
   "retest_needed": false,
   "should_main_agent_self_test": true,
-  "context_for_next_testing_agent": "Новый файл /app/tests/api/test_mail_proton_iter32.py требует APP_URL=https://inbox-sync-15.preview.emergentagent.com. NEEDS_BRIDGE возвращается быстро (~1s), потому что probeBridge на agent-env сразу видит ECONNREFUSED. AUTH_FAILED через smtp.protonmail.ch:587 занимает 2-6 s (реальный SMTP AUTH). Порт 1025/1143 разрешён нормализацией только при config.bridge:true — в POST /ai-api/mail/accounts надо явно передавать этот флаг. На /login при <=390px есть design nit с обрезанием логотипа."
+  "context_for_next_testing_agent": "Новый файл /app/tests/api/test_mail_proton_iter32.py требует APP_URL=https://compose-speedup.preview.emergentagent.com. NEEDS_BRIDGE возвращается быстро (~1s), потому что probeBridge на agent-env сразу видит ECONNREFUSED. AUTH_FAILED через smtp.protonmail.ch:587 занимает 2-6 s (реальный SMTP AUTH). Порт 1025/1143 разрешён нормализацией только при config.bridge:true — в POST /ai-api/mail/accounts надо явно передавать этот флаг. На /login при <=390px есть design nit с обрезанием логотипа."
 }

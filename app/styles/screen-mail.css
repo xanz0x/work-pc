@@ -1202,6 +1202,16 @@
     flex: 0 0 13px;
   }
 
+  .mail-inbox-title .label-mono {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mail-inbox-title .mail-count {
+    white-space: nowrap;
+  }
+
   .mail-inbox-tools {
     display: inline-flex;
     align-items: center;
@@ -1213,6 +1223,7 @@
     font-size: 10.5px;
     color: var(--text-3);
     letter-spacing: 0.03em;
+    white-space: nowrap;
   }
 
   .mail-refresh-sel.mcp-input {

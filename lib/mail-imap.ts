@@ -196,17 +196,6 @@ async function runOnce<T>(acc: MailAccount, fn: (c: ImapFlow, p: Pooled) => Prom
   }
 }
 
-/** Папка уже выбрана — только NOOP, чтобы подтянуть новые письма; иначе SELECT. */
-async function openFolder(c: ImapFlow, folder: string): Promise<{ exists: number }> {
-  const cur = c.mailbox
-  if (cur && typeof cur === 'object' && cur.path === folder) {
-    await c.noop()
-    return { exists: cur.exists }
-  }
-  const mb = await c.mailboxOpen(folder)
-  return { exists: mb.exists }
-}
-
 /* ---------- преобразования ---------- */
 
 const addr = (a?: MessageAddressObject | null): Addr | null => (a && a.address ? { name: a.name ?? '', address: a.address } : null)
@@ -246,7 +235,13 @@ function toRow(m: FetchMessageObject): MessageRow {
 
 /* ---------- сценарии ---------- */
 
-async function foldersOn(c: ImapFlow, acc: MailAccount): Promise<FolderView[]> {
+/** LIST + STATUS по всем папкам стоит дорого; при частом переключении папок отдаём результат из кэша соединения. */
+const FOLDERS_TTL_MS = 8_000
+
+const cloneFolders = (list: FolderView[]): FolderView[] => list.map((f) => ({ ...f }))
+
+async function foldersOn(c: ImapFlow, acc: MailAccount, p?: Pooled): Promise<FolderView[]> {
+  if (p?.folders && Date.now() - p.folders.at < FOLDERS_TTL_MS) return cloneFolders(p.folders.list)
   const raw = await c.list({ statusQuery: { messages: true, unseen: true } })
   const out: FolderView[] = raw
     .filter((f) => !f.flags.has('\\Noselect') && !f.flags.has('\\NonExistent'))
@@ -261,11 +256,12 @@ async function foldersOn(c: ImapFlow, acc: MailAccount): Promise<FolderView[]> {
   const sorted = sortFolders(out)
   const inbox = sorted.find((f) => f.path.toUpperCase() === 'INBOX')
   if (inbox) await noteImapSync(acc.id, { unseen: inbox.unseen ?? 0, total: inbox.total ?? 0 })
+  if (p) p.folders = { at: Date.now(), list: cloneFolders(sorted) }
   return sorted
 }
 
 export async function listFolders(acc: MailAccount): Promise<FolderView[]> {
-  return withImap(acc, (c) => foldersOn(c, acc))
+  return withImap(acc, (c, p) => foldersOn(c, acc, p))
 }
 
 export type MessagePage = { folder: string; total: number; rows: MessageRow[]; nextCursor: number | null; folders?: FolderView[] }
@@ -287,10 +283,10 @@ async function pageOn(c: ImapFlow, acc: MailAccount, folder: string, cursor: num
 
 /** Страница писем; с withFolders — в том же соединении и список папок (один логин на обновление). */
 export async function listMessages(acc: MailAccount, folder: string, cursor: number | null, limit: number, withFolders = false): Promise<MessagePage> {
-  return withImap(acc, async (c) => {
+  return withImap(acc, async (c, p) => {
     const page = await pageOn(c, acc, folder, cursor, limit)
     if (!withFolders) return page
-    const folders = await foldersOn(c, acc)
+    const folders = await foldersOn(c, acc, p)
     /* Счётчик STATUS у некоторых серверов запаздывает: для полностью загруженной папки считаем по строкам. */
     if (page.nextCursor === null) {
       const unseen = page.rows.filter((r) => !r.seen).length
@@ -307,7 +303,7 @@ async function readAll(stream: NodeJS.ReadableStream): Promise<Buffer> {
 }
 
 export async function getMessage(acc: MailAccount, folder: string, uid: number, markSeen: boolean): Promise<MessageFull> {
-  return withImap(acc, async (c) => {
+  return withImap(acc, async (c, p) => {
     const lock = await c.getMailboxLock(folder, { readOnly: !markSeen })
     try {
       const meta = await c.fetchOne(String(uid), { uid: true, flags: true, size: true, envelope: true }, { uid: true })
@@ -320,6 +316,7 @@ export async function getMessage(acc: MailAccount, folder: string, uid: number, 
       if (markSeen && !flags.has('\\Seen')) {
         await c.messageFlagsAdd(String(uid), ['\\Seen'], { uid: true })
         flags = new Set([...flags, '\\Seen'])
+        p.folders = null /* счётчик непрочитанных изменился */
       }
       const date = parsed.date ?? meta.envelope?.date ?? meta.internalDate
       const html = typeof parsed.html === 'string' && parsed.html ? sanitizeMailHtml(parsed.html) : null
@@ -356,7 +353,7 @@ export async function getMessage(acc: MailAccount, folder: string, uid: number, 
 export type FlagPatch = { seen?: boolean; flagged?: boolean }
 
 export async function setFlags(acc: MailAccount, folder: string, uid: number, patch: FlagPatch): Promise<{ uid: number; seen: boolean; flagged: boolean }> {
-  return withImap(acc, async (c) => {
+  return withImap(acc, async (c, p) => {
     const lock = await c.getMailboxLock(folder)
     try {
       const add: string[] = []
@@ -367,6 +364,7 @@ export async function setFlags(acc: MailAccount, folder: string, uid: number, pa
       if (patch.flagged === false) remove.push('\\Flagged')
       if (add.length) await c.messageFlagsAdd(String(uid), add, { uid: true })
       if (remove.length) await c.messageFlagsRemove(String(uid), remove, { uid: true })
+      if (patch.seen !== undefined) p.folders = null /* счётчик непрочитанных изменился */
       const m = await c.fetchOne(String(uid), { uid: true, flags: true }, { uid: true })
       if (!m) throw new MailError('NOT_FOUND', 'Письмо не найдено: возможно, оно перемещено или удалено.')
       const flags = m.flags ?? new Set<string>()

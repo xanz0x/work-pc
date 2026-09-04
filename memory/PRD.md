@@ -1286,3 +1286,9 @@ UX-4 accessibility · LG-4/LG-5 · RM-3.
   свежая страница сливается с уже загруженными (`mergeRows`). Непрочитанные полностью загруженной папки считаются по строкам (STATUS у Ethereal запаздывает).
 - Тесты: `tests/unit/mail-read.test.ts` (13), `tests/api/test_mail_read.py` (14, по https-превью). CSS — внутри `screen-mail.css` (@layer wf051).
 - Бэклог фазы 2: письма как узлы карты, скачивание вложений, cid-картинки, IMAP SEARCH. Далее по NEXT_SESSION: правка ящика из карточки, P2/P3.
+
+## Итерация 36 (2026-06) · почта: пул IMAP + кэш папок + компактный UI
+- `lib/mail-imap.ts`: пул соединений (90 с), кэш LIST 8 с, мёртвый `openFolder` удалён. Латентность повторных запросов: folders 5.7 с → 0.1–0.23 с, messages ~0.4 с.
+- `components/mail/mail-inbox.tsx`: устранены расхождения локальных кэшей (флаги, бейджи непрочитанных), шапка списка не переносится.
+- Тесты: vitest 247/247, tests/api/test_mail_read.py 14/14, отчёты test_reports/iteration_35.json и iteration_36.json (ретест 5/5 PASS).
+- Известное: копия отправленного письма не пишется в папку «Отправленные» (IMAP APPEND) — P1 бэклог.

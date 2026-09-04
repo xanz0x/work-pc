@@ -53,7 +53,7 @@
     "/app/tests/e2e/21-mcp-external.spec.ts (смягчена одна ассерция: mcp-approval count `toBe(2)` → `toBeGreaterThanOrEqual(2)`; см. integration_issues выше)"
   ],
   "success_rate": { "backend": "12/12 (100%)", "frontend": "1/1 e2e (100% после смягчения ассерции)" },
-  "test_credentials": "APP_PASSWORD=IceKrymTeam13@; APP_URL=https://inbox-sync-15.preview.emergentagent.com; PIN e2e=123456",
+  "test_credentials": "APP_PASSWORD=IceKrymTeam13@; APP_URL=https://compose-speedup.preview.emergentagent.com; PIN e2e=123456",
   "seed_data_creation": "e2e создаёт: токены 'e2e-агент' и (pytest) 'pytest-*'; стикер 'Стикер от агента'; секрет 'e2e-secret'. Всё живёт в одноразовом Playwright-профиле (IndexedDB), прод не затронут. На сервере остаются token-виды и audit-записи — см. критический комментарий про кольцевой буфер.",
   "retest_needed": false,
   "should_main_agent_self_test": false,

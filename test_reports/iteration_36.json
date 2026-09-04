@@ -1,0 +1,38 @@
+{
+  "summary": "Итерация 36 — целевой ретест 4 дефектов синхронизации кэшей в components/mail/mail-inbox.tsx и вёрстки шапки списка (frontend only, prod-сборка, 1920x800, вход admin, ящик Read QA id=1750de80). ВСЕ 4 ДЕФЕКТА ИСПРАВЛЕНЫ, вёрстка исправлена, регресс чистый. Проверено: (1) HIGH — внешний POST flags {seen:false} на uid1 → mail-inbox-refresh (строка стала непрочитанной, бейджи 1→2) → клик mail-msg-open-1: GET messages/1?markSeen=0 вернул seen=true, бейдж папки и ящика 2→1, data-unread снят; кэш MessageFull действительно сверяется со свежими rows в loadPage. (2) MEDIUM — звезда: клик mail-msg-star-1 (flagged false→true, на сервере flagged=true), переход в Спам и возврат во Входящие: 10 замеров aria-pressed за 4 с — все 'true', мигания/откатов нет (patchRows пишет в pages.current). (3) MEDIUM — клик mail-msg-view-star в открытом письме: подпись mail-msg-view-seen осталась 'Не прочитано', server seen неизменён (true→true), изменился только flagged (true→false) — flag() патчит только изменённые ключи. (4) MEDIUM — бейджи согласованы: до открытия folder=2/acc=2/паспорт «Непрочитанных»=2, через 1 с после открытия uid2 folder=1/acc=1, после закрытия письма паспорт показывает 1; server uid2 seen=true. (5) Вёрстка шапки на пустых папках: Отправленные — «0 писем» в одну строку (countH 17 = lineH 17), зазор до времени 10px, наложения нет; Спам — зазор 63px, наложения нет; страница не прокручивается (pageScroll=0). Регресс: первый вход в Почту 6.9s (включая логин/переход и полный IMAP-цикл), переключение папок cold 0.42s / из кэша 0.04–0.05s, открытие письма из префетча 0.06s, «Написать» открывается окном поверх (z-index 900, opacity 1, форма центрирована, ящик предвыбран), Escape закрывает окно, список остаётся целым. Ошибок в консоли и 5xx не было.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Отправка письма → папка «Отправленные»",
+        "issue": "Известное и вынесенное в бэклог (не проверялось повторно, не считается регрессом): копия отправленного письма не пишется в IMAP-папку Sent, поэтому «Отправленные» пусты (0 писем) при «Отправлено 1» в паспорте.",
+        "affected_selectors": ["[data-testid=\"mail-folder-Sent Mail\"]"]
+      }
+    ],
+    "design_issues": [
+      {
+        "screen": "Почта · шапка списка (Отправленные/Спам, 1920x800)",
+        "issues": ["Замечаний нет: счётчик «0 писем» и время синхронизации в одну строку, без наложения (nowrap работает); название папки корректно урезается эллипсисом («ОТПРАВЛЕН…»)"]
+      }
+    ]
+  },
+  "test_report_links": ["/app/tests/api/test_mail_read.py", "/app/tests/api/test_mail.py"],
+  "action_items": [
+    "Мелкая тестируемость (не блокер): у фактов паспорта ящика (.mail-acc-facts — «Непрочитанных», «Во входящих», «Отправлено», «Синхронизация») нет data-testid, приходится читать по CSS-классу — добавить data-testid=mail-account-fact-unseen/total/sent/sync",
+    "Опционально: в open() ветка кэша по-прежнему доверяет cached.seen; если флаг изменился на сервере после последнего loadPage и пользователь не нажал обновление, письмо не будет помечено прочитанным. Дешёвая страховка — сверять с row.seen из списка"
+  ],
+  "critical_code_review_comments": [
+    "patchRows (write-through в pages.current), loadPage (сверка msgs.current со свежими rows), flag() (только изменённые ключи, before из message для открытого письма) и bumpUnseen (правка imapSync ящика для INBOX) — реализованы корректно и подтверждены сценариями; расхождений кэшей больше не наблюдается",
+    "bumpUnseen меняет imapSync только для INBOX — это верно (бейдж ящика = непрочитанные во Входящих), но при чтении письма из другой папки бейдж ящика ожидаемо не меняется: поведение сознательное, документировать в комментарии не помешает",
+    "mail-inbox.tsx 413 строк и три ref-кэша (pages/msgs/prefetching) — сейчас согласованы вручную; при следующем расширении лучше вынести в отдельный хук useMailCache, иначе риск регресса при новых операциях (удаление/перемещение письма пока не патчит кэши)"
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "не тестировался (по запросу)", "frontend": "100% (5 из 5 ретестов PASS + регресс без замечаний)" },
+  "seed_data_creation": "Новых писем не создавалось. Флаги ящика Read QA (INBOX) в ходе ретестов переключались; итог: uid1 seen=true/flagged=false, uid2 seen=true/flagged=true, uid3 seen=true, uid4 остался непрочитанным (бейджи Входящие=1, ящик=1, паспорт=1)",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "admin / IceKrymTeam13@ (/login, поля login-login, login-password); ящик Read QA id=1750de80, папки: INBOX, Drafts, 'Sent Mail', Junk (=Спам), Trash",
+  "context_for_next_testing_agent": "Папка «Спам» имеет path Junk (data-testid=mail-folder-Junk), «Отправленные» — 'Sent Mail'. Онбординг гасится localStorage['wf.settings.v1']={onboarding:{at:Date.now()}} до логина. Внешняя смена флагов из страницы: fetch('/ai-api/mail/accounts/1750de80/messages/<uid>/flags',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({folder:'INBOX',seen:false})}); проверка сервера: GET messages/<uid>?folder=INBOX&markSeen=0. Внимание: в скриптах Playwright для этого окружения избегать экранированных кавычек внутри JS-строк (\\\" ломает парсер) — использовать невалидированные CSS-селекторы вида [data-testid=mail-list-loading]. Лимит 60 запросов/мин на маршруты чтения соблюдался. Незакрытый бэклог: копия отправленного письма не попадает в Sent (IMAP APPEND).",
+  "rca_of_the_issue": "Ретест: все четыре причины из итерации 35 устранены в mail-inbox.tsx — write-through патч флагов в pages.current, сверка кэша писем со свежими rows в loadPage, частичный патч в flag() с источником истины из открытого письма и правка imapSync.unseen ящика при локальном изменении seen. Вёрстка шапки закрыта white-space: nowrap на .mail-count/.mail-synced и эллипсисом на названии папки."
+}

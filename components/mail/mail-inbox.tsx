@@ -62,18 +62,30 @@ export function MailInbox(p: Props) {
   const prefetching = useRef(new Set<string>())
   const accStatus = useRef(active?.status)
   accStatus.current = active?.status
+  const accSync = useRef(active?.imapSync)
+  accSync.current = active?.imapSync
   const accId = active?.id ?? null
   const hasImap = !!active?.imap
 
   useEffect(() => setRefresh(readRefresh()), [])
 
+  /* Патч идёт и в кеш страницы: иначе возврат в папку показывает старый флаг. */
   const patchRows = useCallback((uid: number, patch: Partial<MessageRow>) => {
     setRows((cur) => cur?.map((r) => (r.uid === uid ? { ...r, ...patch } : r)) ?? null)
+    const path = folderRef.current
+    const cached = pages.current.get(path)
+    if (cached) pages.current.set(path, { ...cached, rows: cached.rows.map((r) => (r.uid === uid ? { ...r, ...patch } : r)) })
   }, [])
 
-  const bumpUnseen = useCallback((path: string, delta: number) => {
-    setFolders((cur) => cur?.map((f) => (f.path === path ? { ...f, unseen: Math.max(0, (f.unseen ?? 0) + delta) } : f)) ?? null)
-  }, [])
+  const bumpUnseen = useCallback(
+    (path: string, delta: number) => {
+      setFolders((cur) => cur?.map((f) => (f.path === path ? { ...f, unseen: Math.max(0, (f.unseen ?? 0) + delta) } : f)) ?? null)
+      const sync = accSync.current
+      if (path.toUpperCase() !== 'INBOX' || !accId || !sync) return
+      onAccountPatch(accId, { imapSync: { ...sync, unseen: Math.max(0, sync.unseen + delta) } })
+    },
+    [accId, onAccountPatch],
+  )
 
   const remember = useCallback((key: string, m: MessageFull) => {
     const map = msgs.current
@@ -138,6 +150,12 @@ export function MailInbox(p: Props) {
         nextRows = [...(prev?.rows ?? []), ...r.rows.filter((n) => !prev?.rows.some((o) => o.uid === n.uid))]
       }
       pages.current.set(path, { rows: nextRows, total: r.total, cursor: nextCursor, at: r.syncedAt })
+      /* Флаги на сервере могли измениться после того, как письмо попало в кеш: сверяем со свежими строками. */
+      for (const row of nextRows) {
+        const k = `${path}:${row.uid}`
+        const c = msgs.current.get(k)
+        if (c && (c.seen !== row.seen || c.flagged !== row.flagged)) msgs.current.set(k, { ...c, seen: row.seen, flagged: row.flagged })
+      }
       setRows(nextRows)
       setCursor(nextCursor)
       if (r.folders) applyFolders(id, r.folders, r.syncedAt)
@@ -226,9 +244,11 @@ export function MailInbox(p: Props) {
     setMsgError(null)
     const cached = msgs.current.get(key)
     if (cached) {
-      setMessage(cached)
+      /* Строка списка свежее кеша письма: она приходит с каждым обновлением папки. */
+      const seen = row ? row.seen : cached.seen
+      setMessage({ ...cached, seen })
       setMsgLoading(false)
-      if (!cached.seen) {
+      if (!seen) {
         const seenMsg = { ...cached, seen: true }
         remember(key, seenMsg)
         setMessage(seenMsg)
@@ -258,21 +278,23 @@ export function MailInbox(p: Props) {
   async function flag(uid: number, patch: { seen?: boolean; flagged?: boolean }) {
     if (!accId) return
     const key = `${folder}:${uid}`
-    const row = rows?.find((r) => r.uid === uid)
-    const before = { seen: row?.seen ?? message?.seen ?? true, flagged: row?.flagged ?? message?.flagged ?? false }
-    const optimistic = { ...before, ...patch }
-    const seenDelta = patch.seen !== undefined && patch.seen !== before.seen ? (patch.seen ? -1 : 1) : 0
-    const apply = (v: { seen: boolean; flagged: boolean }) => {
+    /* Источник истины — открытое письмо, если это оно: строка списка могла устареть после фонового обновления. */
+    const src = message?.uid === uid ? message : rows?.find((r) => r.uid === uid)
+    const revert: Partial<MessageRow> = {}
+    if (patch.seen !== undefined) revert.seen = src?.seen ?? true
+    if (patch.flagged !== undefined) revert.flagged = src?.flagged ?? false
+    const seenDelta = patch.seen !== undefined && patch.seen !== revert.seen ? (patch.seen ? -1 : 1) : 0
+    const apply = (v: Partial<MessageRow>) => {
       patchRows(uid, v)
       const c = msgs.current.get(key)
       if (c) remember(key, { ...c, ...v })
       if (message?.uid === uid) setMessage((m) => (m ? { ...m, ...v } : m))
     }
-    apply(optimistic)
+    apply(patch)
     if (seenDelta) bumpUnseen(folder, seenDelta)
     const r = await mailApi.flags(accId, folder, uid, patch)
     if (isFail(r)) {
-      apply(before)
+      apply(revert)
       if (seenDelta) bumpUnseen(folder, -seenDelta)
       flash(r.error)
     }
