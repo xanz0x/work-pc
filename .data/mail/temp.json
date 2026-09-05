@@ -9,5 +9,25 @@
     "expiresAt": null,
     "lastSyncAt": null,
     "count": 0
+  },
+  {
+    "id": "80023715",
+    "kind": "gmail",
+    "address": "geraldchri.s.376@gmail.com",
+    "timestamp": 1788566900,
+    "createdAt": 1788566900118,
+    "expiresAt": null,
+    "lastSyncAt": null,
+    "count": 0
+  },
+  {
+    "id": "d98508c0",
+    "kind": "outlook",
+    "address": "reynoldshero301159+h1qxn@outlook.com",
+    "timestamp": 1788566900,
+    "createdAt": 1788566900399,
+    "expiresAt": null,
+    "lastSyncAt": null,
+    "count": 0
   }
 ]
