@@ -6,11 +6,11 @@ import { useEffect, useRef, useState } from 'react'
 import { IconClock, IconPlus, IconTrash } from '../icons'
 import { TEMP_LABEL, type TempBoxView, type TempKind } from '@/lib/mail-client'
 
-const KINDS: TempKind[] = ['mailtm', 'temp', 'gmail', 'outlook']
+const KINDS: TempKind[] = ['mailtm', 'gmail', 'outlook']
 
 const HINT: Record<TempKind, string> = {
   mailtm: 'нестандартный домен, без ключа и лимитов',
-  temp: 'домен SmailPro, живёт 10 минут',
+  temp: 'обычный домен, живёт 10 минут',
   gmail: 'настоящий адрес @gmail.com из пула',
   outlook: 'настоящий адрес Outlook/Hotmail из пула',
 }

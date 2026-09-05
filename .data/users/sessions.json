@@ -12,5 +12,12 @@
     "createdAt": 1788565158257,
     "expiresAt": 1788608358257,
     "ua": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.0 Safari/537.36"
+  },
+  {
+    "sid": "d9a2e06bc0955d9ace2f60833f1b466f",
+    "uid": "3ffbfeb1ea255062",
+    "createdAt": 1788566616599,
+    "expiresAt": 1788609816599,
+    "ua": "curl/7.88.1"
   }
 ]

@@ -21,13 +21,13 @@ import { userDir } from './users-server'
 
 export type TempKind = 'mailtm' | 'temp' | 'gmail' | 'outlook'
 
-export const TEMP_KINDS: TempKind[] = ['mailtm', 'temp', 'gmail', 'outlook']
+export const TEMP_KINDS: TempKind[] = ['mailtm', 'gmail', 'outlook']
 
 export const TEMP_LABEL: Record<TempKind, string> = {
   mailtm: 'Обычная · бесплатно',
-  temp: 'Обычная · SmailPro',
-  gmail: 'Gmail · SmailPro',
-  outlook: 'Hotmail/Outlook · SmailPro',
+  temp: 'Обычная',
+  gmail: 'Gmail',
+  outlook: 'Hotmail/Outlook',
 }
 
 /** Срок обычного временного ящика по умолчанию и шаг продления. */
