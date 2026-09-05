@@ -60,3 +60,8 @@ User has a smailpro.com *web* Premium subscription but no API key, and asked to 
 - users-server.ts: apply normalizeFeatures in user view(), adminCreateUser, listPlans -> old admin/plans get mail+cloud=true. Admin panel toggles auto-render (admin-plans/admin-plan-editor/admin-user-card map FEATURES). Verified via curl + screenshot.
 - Gating: screen-settings SECTION_FEATURE cloud:'cloud' + <CloudSection/> gated by has('cloud'); sidebar-nav 'mail' gated by has('mail').
 - Single "общий диск" badge on file card: cloud->VaultFile mapping now tags:[] and desc without the phrase (dir shown as «Папка …»); the accent chip in FileCardContent is the only marker. Verified.
+
+## Admin entry moved to topbar (2026-06)
+- Removed 'admin' from sidebar-nav (available filter now excludes it entirely).
+- Added shield icon-btn in app-shell topbar (data-testid=topbar-admin-btn), admin-only (account.isAdmin), onClick v.go('admin'); IconShield. Verified via screenshot.
+- Admin password set to IceKrymTeam13@ (APP_PASSWORD in /app/.env + /app/.env.local; auto re-synced by seedAdmin).

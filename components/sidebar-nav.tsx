@@ -71,7 +71,7 @@ export function SidebarNav({ counts, clusters, collapsed }: Props) {
       (id !== 'chat' || account.has('ai')) &&
       (id !== 'vault' || account.has('secrets')) &&
       (id !== 'mail' || account.has('mail')) &&
-      (id !== 'admin' || account.isAdmin),
+      id !== 'admin',
   )
   const shown = editing ? available : available.filter((id) => !prefs.hidden.includes(id))
 

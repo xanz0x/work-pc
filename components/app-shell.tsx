@@ -47,6 +47,7 @@ import {
   IconChipAi,
   IconGear,
   IconLockRound,
+  IconShield,
   IconLogoMark,
   IconPlus,
   IconSearch,
@@ -551,6 +552,17 @@ export function AppShell({ children }: { children: ReactNode }) {
               <span>{statusText}</span>
             </span>
             <NotificationsBell />
+            {account.isAdmin && (
+              <button
+                className="icon-btn"
+                title="Администрирование"
+                aria-label="Администрирование"
+                onClick={() => v.go('admin')}
+                data-testid="topbar-admin-btn"
+              >
+                <IconShield />
+              </button>
+            )}
             {v.lock.status !== 'off' && (
               <button
                 className="icon-btn"
