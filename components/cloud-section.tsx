@@ -240,8 +240,11 @@ export function CloudSection() {
         </div>
       )}
 
-      {/* Панель действий и хлебные крошки */}
-      <div className="cloud-bar">
+      {/* Управление диском — только для администратора. */}
+      {data.isAdmin && (
+        <>
+          {/* Панель действий и хлебные крошки */}
+          <div className="cloud-bar">
         <div className="cloud-crumbs" data-testid="cloud-crumbs">
           <button className={`crumb${dir === '' ? ' on' : ''}`} onClick={() => setDir('')}>
             <IconDatabase width={13} height={13} aria-hidden="true" /> Диск
@@ -298,12 +301,23 @@ export function CloudSection() {
           ))}
         </div>
       )}
+        </>
+      )}
 
       <div className="cloud-hint" data-testid="cloud-hint">
         <IconLibrary width={16} height={16} aria-hidden="true" />
         <span>
-          Загруженные файлы не показываются здесь — они появляются в <b>Библиотеке</b> и на <b>Карте</b> с пометкой
-          <span className="cloud-hint-badge">общий диск</span>. Удалить файл можно из его карточки в библиотеке.
+          {data.isAdmin ? (
+            <>
+              Загруженные файлы не показываются здесь — они появляются в <b>Библиотеке</b> и на <b>Карте</b> с пометкой
+              <span className="cloud-hint-badge">общий диск</span>. Удалить файл можно из его карточки в библиотеке.
+            </>
+          ) : (
+            <>
+              Вы участник с правом <b>только просмотра</b>. Общие файлы открываются в <b>Библиотеке</b> и на <b>Карте</b> с пометкой
+              <span className="cloud-hint-badge">общий диск</span> — их можно смотреть и скачивать. Загрузка и удаление доступны администратору.
+            </>
+          )}
         </span>
       </div>
     </section>

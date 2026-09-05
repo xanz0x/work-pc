@@ -49,3 +49,8 @@ User has a smailpro.com *web* Premium subscription but no API key, and asked to 
 - FileCardContent: accent "общий диск" chip when file.shared. Library file inspector: insp-cloud block (Скачать + Удалить с диска -> DELETE /ai-api/cloud/file/[id] then dispatch 'wsx:cloud-changed').
 - cloud-section.tsx: removed file grid; kept invite/join + upload + folders + hint pointing to Library/Map; dispatches 'wsx:cloud-changed' after upload/join/folder delete.
 - Verified: 2 cloud files show in Library with badge + in graph (38 links); settings section shows hint (no grid). Fixed dup import of classify in data.tsx.
+
+## Cloud: map badge + read-only members + fullscreen preview (2026-06)
+- Map (screen-map.tsx): Node gained shared flag (from D.fileById(gn.id)?.shared); drawNode draws accent green ring on shared nodes; hover/selected label shows "· общий диск".
+- Permissions: cloud-store.ts mutating ops (upload/rename/delete/createFolder/removeFolder) now requireAdmin(); download (readFileBytes) + driveView + joinDrive stay member-level. Verified friend=403, admin=201. cloud-section.tsx hides toolbar/folders for non-admins + read-only hint. Library inspector gates "Удалить с диска" by account.isAdmin (else "только просмотр" note).
+- Fullscreen preview: screen-library.tsx cloudPreview state + overlay (components/cloud-viewer.css), img for images / iframe for PDF via /ai-api/cloud/file/[id]?inline=1; "Просмотр" button in inspector for image/pdf. Verified visually.

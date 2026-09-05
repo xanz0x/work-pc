@@ -91,6 +91,8 @@ type Node = {
   hot: number
   core?: boolean
   flash?: number
+  /** Файл из общего облака — на карте помечаем акцентным кольцом. */
+  shared?: boolean
 }
 type Edge = {
   a: Node
@@ -532,6 +534,7 @@ export function ScreenMap() {
           locked: gn.locked,
           temp: gn.temp,
           processing: gn.processing,
+          shared: D.fileById(gn.id)?.shared ?? false,
           glow: (k * 1.7 + ring) % (Math.PI * 2),
           deg: 0,
           hot: 0,
@@ -843,6 +846,14 @@ export function ScreenMap() {
       ctx!.strokeStyle = `rgba(${n.hue},${Math.min(0.9, alpha + 0.22)})`
       ctx!.stroke()
       ctx!.setLineDash([])
+      /* Файл общего диска — акцентное зелёное кольцо, чтобы был заметен. */
+      if (n.shared) {
+        ctx!.beginPath()
+        ctx!.arc(n.x, n.y, rr + 2.6, 0, 7)
+        ctx!.strokeStyle = `rgba(47,190,126,${Math.min(0.95, alpha + 0.28)})`
+        ctx!.lineWidth = 1.5
+        ctx!.stroke()
+      }
       /* Стикер отличается от файла квадратной серединой, а не только цветом. */
       if (n.kind === 'note') {
         const h = rr * 0.62
@@ -1225,7 +1236,7 @@ export function ScreenMap() {
         ctx!.font = '11px "IBM Plex Mono",monospace'
         const found =
           search && label === search.target && (search.phase === 'found' || search.phase === 'settled')
-        const text = found ? `${label.name} · найдено` : label.name
+        const text = found ? `${label.name} · найдено` : label.shared ? `${label.name} · общий диск` : label.name
         const tw = ctx!.measureText(text).width
         const bx = clamp(sx + 12, 8, Math.max(8, W - tw - 24))
         const by = clamp(sy - 24, 8, Math.max(8, H - 28))

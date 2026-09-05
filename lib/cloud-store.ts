@@ -133,6 +133,13 @@ async function writeDrive(d: Drive): Promise<void> {
 
 const isAdmin = (): boolean => requireUser().role === 'admin'
 
+/** Менять общий диск (загрузка, удаление, папки) может только администратор. */
+function requireAdmin(): void {
+  if (requireUser().role !== 'admin') {
+    throw new CloudError('FORBIDDEN', 'Изменять общий диск может только администратор. Приглашённым доступны просмотр и скачивание.')
+  }
+}
+
 async function isMember(d: Drive): Promise<boolean> {
   const u = requireUser()
   return u.role === 'admin' || d.members.includes(u.uid)
@@ -211,7 +218,7 @@ export async function rotateInvite(): Promise<string> {
 
 export async function createFolder(parent: string, name: string): Promise<void> {
   const d = await readDrive()
-  requireMember(d)
+  requireAdmin()
   const nm = cleanName(name)
   if (!nm) throw new CloudError('INVALID_ARGS', 'Укажите имя папки.')
   const p = cleanDir(parent ? `${parent}/${nm}` : nm)
@@ -224,7 +231,7 @@ export async function createFolder(parent: string, name: string): Promise<void> 
 
 export async function removeFolder(dirPath: string): Promise<void> {
   const d = await readDrive()
-  requireMember(d)
+  requireAdmin()
   const p = cleanDir(dirPath)
   if (!p) throw new CloudError('INVALID_ARGS', 'Не указана папка.')
   d.folders = d.folders.filter((f) => f !== p && !f.startsWith(`${p}/`))
@@ -234,7 +241,7 @@ export async function removeFolder(dirPath: string): Promise<void> {
 
 export async function uploadFile(name: string, dir: string, data: Uint8Array, contentType: string): Promise<CloudFile> {
   const d = await readDrive()
-  requireMember(d)
+  requireAdmin()
   const nm = cleanName(name) || 'file'
   const ext = nm.includes('.') ? nm.split('.').pop() : 'bin'
   const objPath = `${APP}/cloud/${randomBytes(12).toString('hex')}.${ext}`
@@ -257,7 +264,7 @@ export async function uploadFile(name: string, dir: string, data: Uint8Array, co
 
 export async function renameFile(id: string, name: string): Promise<void> {
   const d = await readDrive()
-  requireMember(d)
+  requireAdmin()
   const f = d.files.find((x) => x.id === id && !x.deleted)
   if (!f) throw new CloudError('NOT_FOUND', 'Файл не найден.')
   const nm = cleanName(name)
@@ -268,7 +275,7 @@ export async function renameFile(id: string, name: string): Promise<void> {
 
 export async function deleteFile(id: string): Promise<void> {
   const d = await readDrive()
-  requireMember(d)
+  requireAdmin()
   const f = d.files.find((x) => x.id === id && !x.deleted)
   if (!f) throw new CloudError('NOT_FOUND', 'Файл не найден.')
   f.deleted = true

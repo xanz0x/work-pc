@@ -40,6 +40,17 @@
       "by": "3ffbfeb1ea255062",
       "at": "2026-09-05T00:55:47.668Z",
       "deleted": false
+    },
+    {
+      "id": "49e41a8da264",
+      "name": "f.txt",
+      "dir": "",
+      "path": "worxspacex/cloud/84fcddd882b1f4ea5817f808.txt",
+      "contentType": "text/plain",
+      "size": 17,
+      "by": "3ffbfeb1ea255062",
+      "at": "2026-09-05T01:05:27.024Z",
+      "deleted": false
     }
   ]
 }

@@ -2,6 +2,7 @@
 
 /* AR-2: слой стилей библиотеки приезжает вместе с чанком экрана. */
 import '@/app/styles/screen-library.css'
+import './cloud-viewer.css'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   IconCheck,
@@ -67,6 +68,7 @@ import { useIntent } from '@/lib/commands'
 import { BulkBar, type BulkAction } from '@/components/bulk-bar'
 import { DialogShell } from '@/components/dialog-shell'
 import { trackAction, trackDrop } from '@/lib/telemetry'
+import { useAccount } from '@/lib/account'
 
 /** Локальный алиас: короче в объявлении состояния доски. */
 const usePersisted = usePersistedState
@@ -104,6 +106,8 @@ export function ScreenLibrary() {
   const NAV = useNavStore()
   const LK = useLockStore()
   const { flash } = useToast()
+  const account = useAccount()
+  const [cloudPreview, setCloudPreview] = useState<FileView | null>(null)
   /* LG-5: приём файлов, подключение папки и переиндексация — мутации:
      двойной клик по кнопке обязан дать один результат. */
   const M = useMutations()
@@ -1155,6 +1159,33 @@ export function ScreenLibrary() {
          каждое действие один раз, без дублей из двух смонтированных
          досок режима «Всё». */}
       <div id="board-live" className="sr-only" role="status" aria-live="polite" />
+      {cloudPreview && (
+        <div className="cloud-viewer" role="dialog" aria-modal="true" data-testid="cloud-viewer" onClick={() => setCloudPreview(null)}>
+          <div className="cloud-viewer-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="cloud-viewer-head">
+              <span className="chip" style={{ borderColor: 'var(--accent-line)', color: 'var(--accent)' }}>
+                общий диск
+              </span>
+              <b className="ellipsis">{cloudPreview.name}</b>
+              <span className="grow" />
+              <a className="btn btn-ghost btn-sm" href={`/ai-api/cloud/file/${cloudPreview.cloudId}`} data-testid="cloud-viewer-download">
+                <IconExternal /> Скачать
+              </a>
+              <button className="btn btn-ghost btn-sm" onClick={() => setCloudPreview(null)} data-testid="cloud-viewer-close">
+                <IconClose /> Закрыть
+              </button>
+            </div>
+            <div className="cloud-viewer-body">
+              {/\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(cloudPreview.name) ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={`/ai-api/cloud/file/${cloudPreview.cloudId}?inline=1`} alt={cloudPreview.name} />
+              ) : (
+                <iframe title={cloudPreview.name} src={`/ai-api/cloud/file/${cloudPreview.cloudId}?inline=1`} />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       <div className="lib-layout">
         <main>
           <div className="page-head">
@@ -1952,6 +1983,12 @@ export function ScreenLibrary() {
                 </div>
                 <p>Файл лежит в общем облаке — его видят все участники. В библиотеке и на карте он помечен «общий диск».</p>
                 <div className="insp-actions">
+                  {/\.(png|jpe?g|gif|webp|bmp|svg|pdf)$/i.test(selFile.name) && (
+                    <button className="btn btn-primary btn-sm" data-testid="insp-cloud-view" onClick={() => setCloudPreview(selFile)}>
+                      <IconDocPreview />
+                      Просмотр
+                    </button>
+                  )}
                   <a
                     className="btn btn-ghost btn-sm"
                     href={`/ai-api/cloud/file/${selFile.cloudId}`}
@@ -1960,21 +1997,25 @@ export function ScreenLibrary() {
                     <IconExternal />
                     Скачать
                   </a>
-                  <button
-                    className="btn btn-ghost btn-sm"
-                    data-testid="insp-cloud-delete"
-                    onClick={async () => {
-                      if (!selFile?.cloudId) return
-                      if (!window.confirm(`Удалить «${selFile.name}» из общего облака?`)) return
-                      await fetch(`/ai-api/cloud/file/${selFile.cloudId}`, { method: 'DELETE' }).catch(() => {})
-                      window.dispatchEvent(new Event('wsx:cloud-changed'))
-                      setSel(null)
-                      flash('Файл удалён из общего облака')
-                    }}
-                  >
-                    <IconTrash />
-                    Удалить с диска
-                  </button>
+                  {account.isAdmin ? (
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      data-testid="insp-cloud-delete"
+                      onClick={async () => {
+                        if (!selFile?.cloudId) return
+                        if (!window.confirm(`Удалить «${selFile.name}» из общего облака?`)) return
+                        await fetch(`/ai-api/cloud/file/${selFile.cloudId}`, { method: 'DELETE' }).catch(() => {})
+                        window.dispatchEvent(new Event('wsx:cloud-changed'))
+                        setSel(null)
+                        flash('Файл удалён из общего облака')
+                      }}
+                    >
+                      <IconTrash />
+                      Удалить с диска
+                    </button>
+                  ) : (
+                    <span className="setting-note" data-testid="insp-cloud-readonly">только просмотр · удаление у администратора</span>
+                  )}
                 </div>
               </div>
             )}
