@@ -3,7 +3,7 @@
     "id": "3ffbfeb1ea255062",
     "login": "admin",
     "name": "Администратор",
-    "passHash": "scrypt$9pQQyzYebxVcMj0vztzn2Q==$OLMIa/AEu34MN3R1oPE9Um6Pxc1/ZARtG6z6b+Ieckg=",
+    "passHash": "scrypt$y52rL0DOBvtQ9SzDNeALeg==$lqhtjfsG5jmw+TqFVHtCvPROUBRqu9AzqDaSZAk1jCk=",
     "role": "admin",
     "status": "active",
     "features": {
@@ -24,7 +24,7 @@
     "passwordFromEnv": true,
     "legacyStore": true,
     "createdAt": 1788565138715,
-    "lastLoginAt": 1788571104658
+    "lastLoginAt": 1788628495322
   },
   {
     "id": "30b301b40aee8a79",
