@@ -2,6 +2,7 @@
 import withBundleAnalyzer from '@next/bundle-analyzer'
 
 const nextConfig = {
+  devIndicators: false,
   // P0-4: сборка обязана падать на ошибке типов — гейт, а не пожелание.
   images: {
     unoptimized: true,

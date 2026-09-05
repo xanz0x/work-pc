@@ -1,6 +1,6 @@
 """Модуль «Почта» — фаза 2 (чтение по IMAP): папки, список, письмо, флаги, лимиты, ошибки.
 
-Прогон: APP_URL=https://email-switcher-2.preview.emergentagent.com \
+Прогон: APP_URL=https://layout-perfect-4.preview.emergentagent.com \
         python3 -m pytest tests/api/test_mail_read.py -q
 Ящик Ethereal поддерживает IMAP; письма туда попадают только через его же SMTP (self-send).
 """
@@ -10,7 +10,7 @@ import time
 import pytest
 import requests
 
-BASE = os.environ.get("APP_URL", "https://email-switcher-2.preview.emergentagent.com").rstrip("/")
+BASE = os.environ.get("APP_URL", "https://layout-perfect-4.preview.emergentagent.com").rstrip("/")
 PASSWORD = os.environ.get("APP_PASSWORD", "IceKrymTeam13@")
 
 ETHEREAL_EMAIL = "qtf2kannuu6gjlxb@ethereal.email"

@@ -1,0 +1,55 @@
+{
+  "summary": "Frontend-only shell regression completed on public preview URL. Covered sidebar/topbar/statusbar behavior across desktop (1920x800, 1440x900, 1280x800) and mobile widths (900→320), including zoom 100/125/150, nav states, collapse persistence, search/notifications interactions, popup fit, footer labels, and logout/re-login. Unit tests for css-split/nav-prefs/commands passed (23/23).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Desktop shell hydration at 1280x800 zoom 150%",
+        "issue": "Intermittent timeout waiting for [data-testid=app-shell][data-app-ready=1] in one run (20s), while retry succeeded. Looks flaky around splash/app-ready synchronization under high zoom.",
+        "affected_selectors": [
+          "[data-testid='app-shell'][data-app-ready='1']"
+        ]
+      },
+      {
+        "flow": "Upload via shell file picker + cleanup",
+        "issue": "Actual file picker upload action was triggered with tiny txt, but deterministic UI evidence and in-app removal of that test file were not reliably validated within shell-only selector scope.",
+        "affected_selectors": [
+          "[data-testid='file-picker']",
+          "[data-testid='file-add-btn']"
+        ]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/tests/unit/css-split.test.ts",
+    "/app/tests/unit/nav-prefs.test.ts",
+    "/app/tests/unit/commands.test.ts"
+  ],
+  "action_items": [
+    "Verify and stabilize splash/app-ready transition under 150% zoom (especially 1280x800) to avoid intermittent false-ready/late-ready states.",
+    "Add deterministic test hooks/selectors for uploaded file row and delete action in library so upload-cleanup can be fully asserted in shell regressions.",
+    "(Optional UX) Ensure lock-button scenario can be exercised in disposable state when lock is enabled; in current run lock button was absent because lock status=off."
+  ],
+  "critical_code_review_comments": [
+    "AppShell readiness relies on data-app-ready + splash timing; one flaky wait indicates this boundary may still race under heavy zoom/layout recalculation.",
+    "Shell flows are well-instrumented with data-testid overall; file lifecycle (add->present->remove) still lacks straightforward deterministic selectors from shell-level tests."
+  ],
+  "updated_files": [
+    "/app/test_reports/iteration_41.json"
+  ],
+  "success_rate": {
+    "backend": "not tested (frontend-only request)",
+    "frontend": "94% (core shell checks passed; 1 flaky hydration case, 1 partial upload-cleanup verification)"
+  },
+  "seed_data_creation": "Disposable tiny file used for picker smoke (/tmp/wf_shell_test_upload.txt). No intentional persistent server/security setting changes.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "test_credentials": "Read from /app/memory/test_credentials.md and used: admin / IceKrymTeam13@",
+  "context_for_next_testing_agent": "Artifacts: /app/test_reports/screenshots_iter41 (desktop 125/collapsed/tools/mobile/320 popup/zoom150 screenshots). Major checks passed: no shell horizontal overflow across tested breakpoints, bottom nav/footer overlap checks OK, notifications Escape-close + focus return, Ctrl+K opens palette, status footer shows 'Облачный ИИ выключен', no hardcoded 'SESSION 7F3A' or blanket 'AES-256' in footer. Re-run matrix specifically at 1280x800 zoom150 for splash/app-ready stability with longer observation window.",
+  "rca of the issue": "Probable flaky race between splash dismissal and app-ready signal under high zoom/layout pressure (observed once at 1280x800@150 where ready selector timed out, then passed on retry). Upload cleanup gap is testability-related: shell-level deterministic selectors for uploaded item/delete are not obvious in this scope, so full add->remove assertion remains partial."
+}

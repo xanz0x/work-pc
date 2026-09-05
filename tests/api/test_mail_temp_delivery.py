@@ -16,7 +16,7 @@ from email.message import EmailMessage
 import pytest
 import requests
 
-APP_URL = os.environ.get("APP_URL", "https://email-switcher-2.preview.emergentagent.com").rstrip("/")
+APP_URL = os.environ.get("APP_URL", "https://layout-perfect-4.preview.emergentagent.com").rstrip("/")
 PASSWORD = os.environ.get("APP_PASSWORD", "IceKrymTeam13@")
 LOGIN = os.environ.get("ADMIN_LOGIN", "admin")
 API = f"{APP_URL}/ai-api"

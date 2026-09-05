@@ -1,0 +1,355 @@
+/* Общие панели WorkSpaceX. Отдельный слой: не меняет оформление экранов
+   и не теряется при генерации старого CSS из _monolith.css. */
+@layer wf053 {
+  .app {
+    --shell-footer-height: 32px;
+    grid-template-columns: 248px minmax(0, 1fr);
+    height: calc(100dvh / var(--ui-zoom, 1));
+    padding-bottom: var(--shell-footer-height);
+  }
+
+  .app .sidebar {
+    padding: 0 14px 12px;
+    gap: 0;
+    scrollbar-gutter: auto;
+    background: #090c0f;
+  }
+  .sidebar .brand {
+    min-height: 64px;
+    flex-shrink: 0;
+    padding: 0 4px;
+    gap: 9px;
+    margin-bottom: 14px;
+  }
+  .sidebar .logo-word { font-size: 12px; letter-spacing: .14em; }
+  .sidebar .logo-sub { font-size: 8px; letter-spacing: .1em; color: #859099; }
+  .sidebar .logo-mark { width: 26px; height: 30px; }
+  .sidebar .sidebar-toggle { width: 24px; min-width: 24px; height: 28px; }
+  .sidebar .nav-add {
+    height: 38px;
+    flex-shrink: 0;
+    margin: 0 0 20px;
+    border-radius: 4px;
+    font-size: 12.5px;
+    box-shadow: none;
+  }
+  .sidebar .nav {
+    flex: 1 1 auto;
+    min-height: 100px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    gap: 4px;
+    padding-bottom: 24px;
+  }
+  .sidebar .nav-section-row {
+    height: 28px;
+    padding: 0 10px;
+    margin-bottom: 6px;
+    color: #859099;
+    font-size: 11px;
+    font-weight: 400;
+    letter-spacing: .02em;
+  }
+  .sidebar .nav-edit-btn { opacity: 1; width: 26px; height: 26px; color: #859099; }
+  .sidebar .nav-item {
+    flex-shrink: 0;
+    height: 42px;
+    padding: 0 10px;
+    gap: 10px;
+    border-radius: 4px;
+    color: #a6adb5;
+    font-size: 12.5px;
+  }
+  .sidebar .nav-item > span { min-width: 0; }
+  .sidebar .nav-item svg { width: 17px; height: 17px; }
+  .sidebar .nav-item:hover { background: #13191e; color: var(--text); }
+  .sidebar .nav-item.active,
+  .sidebar .nav-lib-row.is-active { background: #10251d; color: #58cf9a; }
+  .sidebar .nav-item.active::before {
+    left: 0;
+    top: 12px;
+    bottom: 12px;
+    width: 2px;
+    border-radius: 1px;
+  }
+  .sidebar .nav-lib-row { gap: 0; position: relative; border-radius: 4px; }
+  .sidebar .nav-lib-row .nav-item { padding-right: 36px; }
+  .sidebar .nav-lib-chev { position: absolute; right: 5px; width: 28px; height: 32px; }
+  .sidebar .nav-lib-row.is-active .nav-lib-chev { color: #58cf9a; }
+  .sidebar .nav-count {
+    font-size: 10px;
+    min-width: 18px;
+    text-align: right;
+    letter-spacing: 0;
+    color: #929da7;
+  }
+  .sidebar .nav-count.is-zero { color: #7f8b94; }
+  .sidebar .nav-item.active .nav-count { color: #58cf9a; }
+  .sidebar .nav-sub { height: 32px; padding-left: 22px; font-size: 12px; }
+  .sidebar .nav-sub .cluster-dot { width: 5px; height: 5px; border-radius: 50%; }
+  .sidebar .nav-row .nav-item-static { padding-left: 2px; padding-right: 0; gap: 6px; height: auto; min-height: 42px; font-size: 11px; }
+  .sidebar .nav-row .nav-item-static > span { line-height: 1.3; }
+  .sidebar .nav-grip { width: 14px; }
+  .sidebar .nav-mini { width: 22px; }
+  .sidebar .sidebar-foot { margin-top: auto; padding-top: 12px; gap: 8px; }
+  .sidebar .engine-pill,
+  .sidebar .profile-row {
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 9px 10px;
+    gap: 10px;
+    min-height: 52px;
+  }
+  .sidebar .engine-pill { background: #10161a; border-color: var(--border); }
+  .sidebar .engine-pill:hover,
+  .sidebar .profile-row:hover { background: #171e23; border-color: var(--border-2); }
+  .sidebar .ep-name,
+  .sidebar .pr-name { font-size: 12px; line-height: 1.5; }
+  .sidebar .ep-sub,
+  .sidebar .pr-sub { font-size: 10px; line-height: 1.6; color: #929da7; }
+  .sidebar .engine-pill[data-state='disconnected'] > svg { color: #929da7; }
+  .sidebar .net-dot,
+  .topbar .net-dot,
+  .shell-statusbar .net-dot { animation: none; }
+  .sidebar .net-dot.idle { background: #7f8b94; }
+  .sidebar .sidebar-storage { padding: 12px 10px; border: none; background: transparent; }
+  .sidebar .storage-head { margin-bottom: 8px; }
+  .sidebar .storage-head .label-mono {
+    font-family: inherit;
+    font-size: 11px;
+    color: #a6adb5;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+  .sidebar .storage-bar { height: 3px; margin-bottom: 8px; border-radius: 2px; background: #222b32; }
+  .sidebar .storage-bar i { background: var(--accent); background-image: none; }
+  .sidebar .storage-meta { font-size: 10px; color: #929da7; }
+  .sidebar .profile-row { border-top-color: var(--border); border-radius: 0; }
+  .sidebar .avatar { width: 28px; height: 28px; background: #131a20; border: none; border-radius: 4px; color: #a6adb5; }
+
+  .app .topbar {
+    height: 64px;
+    padding: 0 28px;
+    gap: 24px;
+    justify-content: space-between;
+    background: #080b0e;
+  }
+  .topbar-search { display: flex; align-items: center; gap: 8px; flex: 1 1 580px; min-width: 0; max-width: 620px; }
+  .topbar .search-wrap { flex: 1; min-width: 100px; }
+  .topbar .search-pill {
+    height: 36px;
+    gap: 10px;
+    padding: 0 11px;
+    border-radius: 4px;
+    background: #0e1317;
+    border-color: #242d34;
+    color: #929da7;
+    box-shadow: none;
+  }
+  .topbar .search-pill:focus-within { border-color: var(--accent-line); }
+  .topbar .search-pill > svg { flex-shrink: 0; }
+  .topbar .search-pill input { font-size: 12.5px; }
+  .topbar .search-pill input::placeholder { color: #929da7; }
+  .topbar .kbd-btn { height: 26px; }
+  .topbar .kbd-btn kbd { color: #929da7; font-size: 9px; border-color: #303b43; padding: 1px 5px; }
+  .topbar .kbd-btn:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
+  .topbar .search-panel { top: calc(100% + 6px); border: 1px solid var(--border-3); border-radius: 4px; box-shadow: none; }
+  .topbar .shell-search-scope { flex: 0 0 auto; }
+  .topbar .shell-search-scope .dd-trigger {
+    height: 36px;
+    padding: 0 10px;
+    gap: 8px;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 12px;
+    letter-spacing: 0;
+    text-transform: none;
+    background: transparent;
+    border-color: var(--border-2);
+  }
+  .topbar .shell-search-scope .dd-trigger-meta { color: #929da7; font-size: 10px; }
+  .topbar .shell-search-scope .dd-menu { left: auto; right: 0; max-width: calc(100vw - 32px); }
+  .topbar-actions,
+  .topbar-tools { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .topbar-actions { flex: 0 1 auto; gap: 16px; }
+  .topbar-tools { flex-shrink: 0; padding-left: 12px; border-left: 1px solid var(--border-2); }
+  .topbar .status-chip {
+    min-width: 0;
+    max-width: 280px;
+    padding: 0;
+    height: auto;
+    border: none;
+    font-family: inherit;
+    font-size: 11.5px;
+    letter-spacing: 0;
+    text-transform: none;
+    color: #929da7;
+  }
+  .topbar .status-chip > span { overflow: hidden; text-overflow: ellipsis; }
+  .topbar .icon-btn { width: 36px; height: 36px; border-radius: 4px; color: #a6adb5; }
+  .topbar .icon-btn:hover { background: #192127; color: var(--text); }
+  .topbar .icon-btn svg { width: 17px; height: 17px; }
+  .topbar .notif-badge { top: 1px; right: 0; border-color: #080b0e; }
+  .topbar .shell-mobile-action { display: none; }
+
+  .shell-statusbar {
+    height: 32px;
+    justify-content: space-between;
+    padding: 0 18px;
+    gap: 20px;
+    background: #090c0f;
+    font-size: 10px;
+    letter-spacing: 0;
+    text-transform: none;
+    color: #929da7;
+  }
+  .shell-status-group { display: flex; align-items: center; gap: 18px; min-width: 0; }
+  .shell-status-primary { flex: 1 1 auto; }
+  .shell-status-secondary { flex: 0 1 auto; }
+  .shell-statusbar .sb-clock { flex-shrink: 0; min-width: 52px; font-size: 10px; color: #929da7; }
+  .shell-statusbar .shell-engine-status { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 9px; letter-spacing: .02em; }
+  .shell-engine-status .net-dot { background: #7f8b94; }
+  .shell-engine-status.is-ready .net-dot { background: var(--ok); }
+  .shell-engine-status.is-cloud .net-dot { background: var(--warn); }
+  .shell-lock-status { display: flex; align-items: center; gap: 6px; }
+  .shell-lock-status svg { width: 12px; height: 12px; stroke: currentColor; stroke-width: 1.5; fill: none; }
+  .shell-statusbar .sb-alert {
+    flex-shrink: 0;
+    height: 24px;
+    margin: 0;
+    padding: 0 7px;
+    gap: 6px;
+    border-color: transparent;
+    background: transparent;
+    border-radius: 3px;
+    letter-spacing: 0;
+    color: #e99a76;
+  }
+  .shell-statusbar .sb-alert b { font-size: 10px; font-weight: 500; }
+  .shell-statusbar .sb-alert:hover { background: #29201b; border-color: #53382b; }
+  .shell-statusbar .sb-alert:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+  .shell-statusbar .sb-net { font-size: 10px; }
+  .shell-statusbar .sb-dev { font-size: 9px; }
+
+  /* Иконная колонка сохраняет те же центры и размеры кнопок. */
+  .app.nav-collapsed { grid-template-columns: 64px minmax(0, 1fr); }
+  .app.nav-collapsed .sidebar { padding: 0 8px 12px; }
+  .app.nav-collapsed .brand { min-height: 96px; padding: 16px 0 10px; margin-bottom: 8px; gap: 8px; }
+  .app.nav-collapsed .nav { width: 100%; gap: 4px; }
+  .app.nav-collapsed .nav-section { display: none; }
+  .app.nav-collapsed .nav-add { width: 44px; height: 38px; margin-bottom: 16px; }
+  .app.nav-collapsed .nav-item { width: 44px; height: 42px; padding: 0; gap: 0; }
+  .app.nav-collapsed .nav-item > span { display: none; }
+  .app.nav-collapsed .nav-lib-row .nav-item { padding: 0; }
+  .app.nav-collapsed .nav-item.active::before { left: 0; }
+  .app.nav-collapsed .engine-pill,
+  .app.nav-collapsed .profile-row { width: 44px; height: 44px; min-height: 44px; padding: 0; justify-content: center; }
+
+  @media (max-height: 850px) and (min-width: 901px) {
+    .sidebar .brand { margin-bottom: 8px; }
+    .sidebar .nav-add { margin-bottom: 12px; }
+    .sidebar .nav { gap: 2px; padding-bottom: 8px; }
+    .sidebar .nav-section-row { height: 24px; margin-bottom: 4px; }
+    .sidebar .nav-item { height: 36px; }
+    .sidebar .sidebar-foot { gap: 4px; padding-top: 8px; }
+    .sidebar .engine-pill,
+    .sidebar .profile-row { min-height: 44px; padding: 5px 10px; }
+    .sidebar .sidebar-storage { padding: 6px 10px; }
+  }
+
+  @media (max-width: 1200px) {
+    .app .topbar { padding: 0 20px; gap: 16px; }
+    .topbar .status-chip { display: none; }
+    .shell-statusbar .shell-lock-status { display: none; }
+    .shell-statusbar .sb-dev { display: none; }
+  }
+  @media (min-width: 481px) and (max-width: 900px) {
+    .app,
+    .app.nav-collapsed { grid-template-columns: 64px minmax(0, 1fr); }
+    .app .sidebar { padding: 0 8px 12px; align-items: center; }
+    .app .sidebar .brand { min-height: 64px; padding: 0; margin-bottom: 14px; justify-content: center; }
+    .sidebar .brand-words,
+    .sidebar .sidebar-toggle,
+    .sidebar .nav-section,
+    .sidebar .nav-count,
+    .sidebar .nav-sub,
+    .sidebar .nav-lib-chev,
+    .sidebar .nav-item > span,
+    .sidebar .nav-add > span,
+    .sidebar .ep-text,
+    .sidebar .pr-text,
+    .sidebar .engine-pill .net-dot,
+    .sidebar .sidebar-storage { display: none; }
+    .app .sidebar .nav { width: 44px; gap: 4px; align-items: center; }
+    .app .sidebar .nav-item { width: 44px; height: 42px; padding: 0; gap: 0; justify-content: center; }
+    .app .sidebar .nav-add { width: 44px; padding: 0; }
+    .sidebar .sidebar-foot { width: 44px; }
+    .app .sidebar .engine-pill,
+    .app .sidebar .profile-row { width: 44px; min-height: 44px; padding: 0; justify-content: center; }
+  }
+  @media (max-width: 700px) {
+    .app .topbar { padding: 0 12px; gap: 10px; }
+    .topbar-search { gap: 6px; }
+    .topbar .search-wrap { min-width: 80px; }
+    .topbar .kbd-btn { display: none; }
+    .topbar-actions { gap: 0; }
+    .topbar-tools { padding-left: 0; border: none; gap: 2px; }
+    .topbar .icon-btn { width: 32px; }
+    .topbar .notif-panel { position: fixed; right: 12px; top: 66px; width: min(384px, calc(100vw - 88px)); max-height: calc(100dvh - 140px); overflow-y: auto; }
+    .shell-statusbar { padding: 0 12px; gap: 8px; }
+    .shell-status-group { gap: 8px; }
+    .shell-statusbar .sb-clock,
+    .shell-statusbar .sb-net { display: none; }
+  }
+  @media (max-width: 480px) {
+    .app,
+    .app.nav-collapsed { grid-template-columns: minmax(0, 1fr); padding-bottom: 92px; }
+    .app .sidebar,
+    .app.nav-collapsed .sidebar {
+      position: fixed;
+      inset: auto 0 32px;
+      height: 60px;
+      padding: 0 8px;
+      flex-direction: row;
+      border-right: none;
+      border-top: 1px solid var(--border-2);
+      overflow: visible;
+    }
+    .app .sidebar .brand,
+    .app .sidebar .nav-add,
+    .app .sidebar .sidebar-foot,
+    .app .sidebar .nav-section,
+    .app .sidebar .nav-lib-chev,
+    .app .sidebar .nav-count,
+    .app .sidebar .nav-sub,
+    .app .sidebar .nav-item > span { display: none; }
+    .app .sidebar .nav {
+      flex: 1;
+      width: 100%;
+      min-height: 0;
+      flex-direction: row;
+      align-items: center;
+      gap: 2px;
+      padding: 0;
+      overflow-x: auto;
+    }
+    .app .sidebar .nav > .nav-item,
+    .app .sidebar .nav-lib-row { flex: 1 0 38px; }
+    .app .sidebar .nav-item { width: 100%; height: 44px; padding: 0; gap: 0; justify-content: center; }
+    .app .sidebar .nav-item.active::before { top: auto; bottom: 0; left: 12px; right: 12px; width: auto; height: 2px; }
+    .app .topbar { height: 104px; padding: 10px 12px 8px; flex-wrap: wrap; gap: 6px; align-content: space-between; }
+    .topbar-search { flex: 1 0 100%; max-width: none; }
+    .topbar .search-wrap { width: auto; flex: 1; }
+    .topbar .search-pill { width: 100%; height: 36px; padding: 0 10px; justify-content: flex-start; }
+    .topbar .search-pill input { display: block; }
+    .topbar-actions { flex: 1; justify-content: flex-end; gap: 6px; }
+    .topbar-tools { gap: 4px; }
+    .topbar .shell-mobile-action { display: flex; }
+    .topbar .icon-btn { width: 36px; height: 36px; }
+    .topbar .notif-panel { top: 108px; width: calc(100vw - 24px); max-height: calc(100dvh - 212px); }
+    .shell-statusbar { font-size: 9px; padding: 0 8px; }
+    .shell-statusbar .shell-engine-status { font-size: 8px; gap: 5px; letter-spacing: 0; }
+    .shell-statusbar .sb-alert { padding: 0 3px; gap: 4px; }
+    .shell-statusbar .net-dot { width: 5px; height: 5px; }
+  }
+}

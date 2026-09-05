@@ -1,6 +1,6 @@
 """Модуль «Почта» — MVP (phase 1) API-регресс.
 
-Прогон: APP_URL=https://email-switcher-2.preview.emergentagent.com \
+Прогон: APP_URL=https://layout-perfect-4.preview.emergentagent.com \
         python3 -m pytest tests/api/test_mail.py -q
 """
 import os
@@ -10,7 +10,7 @@ import uuid
 import pytest
 import requests
 
-BASE = os.environ.get("APP_URL", "https://email-switcher-2.preview.emergentagent.com").rstrip("/")
+BASE = os.environ.get("APP_URL", "https://layout-perfect-4.preview.emergentagent.com").rstrip("/")
 PASSWORD = os.environ.get("APP_PASSWORD", "IceKrymTeam13@")
 
 ETHEREAL_EMAIL = "dzzbuk33bcyzyoqm@ethereal.email"

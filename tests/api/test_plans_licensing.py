@@ -1,6 +1,6 @@
 """Итерация 28 · Тарифы, ключи лицензий, регистрация по ключу, админ-действия.
 
-Прогон: APP_URL=https://email-switcher-2.preview.emergentagent.com \
+Прогон: APP_URL=https://layout-perfect-4.preview.emergentagent.com \
         python3 -m pytest tests/api/test_plans_licensing.py -q
 """
 import os

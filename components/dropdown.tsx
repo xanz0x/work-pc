@@ -185,6 +185,7 @@ export function Dropdown({
           id={listId}
           aria-label={label}
           ref={listRef}
+          data-testid={testId ? `${testId}-menu` : undefined}
           style={menuWidth ? { width: menuWidth } : undefined}
         >
           <div className="dd-menu-head label-mono">{label}</div>
@@ -199,6 +200,7 @@ export function Dropdown({
                     type="button"
                     role="option"
                     id={optionId(index)}
+                    data-testid={testId ? `${testId}-option-${option.value}` : undefined}
                     aria-selected={option.value === value}
                     tabIndex={-1}
                     disabled={option.disabled}

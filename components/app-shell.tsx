@@ -1,6 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
+import '@/app/styles/shell.css'
 
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { Dropdown } from './dropdown'
@@ -56,10 +57,10 @@ import {
 
 /** Плейсхолдер поиска зависит от экрана — но поле всегда одно и то же. */
 const PLACEHOLDER: Record<ScreenId, string> = {
-  library: 'Поиск по смыслу: «договор аренды»',
+  library: 'Поиск по библиотеке',
   map: 'Найти узел или кластер на карте',
   chat: 'Поиск по истории разговоров',
-  vault: 'Поиск по секретам: type: tag: favorite:',
+  vault: 'Поиск по секретам',
   mail: 'Поиск по ящикам и адресам',
   settings: 'Поиск по настройкам',
   activity: 'Поиск по событиям сейфа',
@@ -289,9 +290,9 @@ export function AppShell({ children }: { children: ReactNode }) {
     v.screen === 'library'
       ? stats.processing > 0
         ? `ИИ индексирует ${stats.processing} ${plural(stats.processing, 'файл', 'файла', 'файлов')}…`
-        : `${stats.files} ${plural(stats.files, 'файл', 'файла', 'файлов')} · ${stats.links} связей`
+        : `${stats.files} ${plural(stats.files, 'файл', 'файла', 'файлов')} · ${stats.links} ${plural(stats.links, 'связь', 'связи', 'связей')}`
       : v.screen === 'map'
-        ? `${stats.nodes} ${plural(stats.nodes, 'узел', 'узла', 'узлов')} · ${stats.links} связей`
+        ? `${stats.nodes} ${plural(stats.nodes, 'узел', 'узла', 'узлов')} · ${stats.links} ${plural(stats.links, 'связь', 'связи', 'связей')}`
         : v.screen === 'chat'
           ? `${v.engineView.model} · ${
               v.engineView.isCloud
@@ -307,10 +308,12 @@ export function AppShell({ children }: { children: ReactNode }) {
             : v.screen === 'activity'
               ? `Лента событий · ${v.unread} ${plural(v.unread, 'новое', 'новых', 'новых')}`
             : v.screen === 'mail'
-              ? 'Почта · SMTP/IMAP · пароли зашифрованы на сервере'
+              ? 'Почта · SMTP / IMAP'
+            : v.screen === 'admin'
+              ? 'Администрирование'
             : v.dirty
               ? 'Есть несохранённые изменения'
-              : `${v.engineView.label} · AES-256`
+              : v.engineView.label
 
   const inlineHits = v.hits.slice(0, 7)
 
@@ -345,8 +348,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         data-testid="app-shell"
         data-app-ready={ready ? '1' : '0'}
       >
-        <aside className="sidebar">
-          <div className="brand">
+        <aside className="sidebar" data-testid="shell-sidebar">
+          <div className="brand" data-testid="shell-brand">
             <span className="logo-mark" aria-hidden="true">
               <IconLogoMark />
             </span>
@@ -358,6 +361,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </span>
             <button
               className="sidebar-toggle"
+              data-testid="sidebar-toggle"
               onClick={toggle}
               title={collapsed ? 'Развернуть меню' : 'Свернуть меню'}
               aria-label={collapsed ? 'Развернуть меню' : 'Свернуть меню'}
@@ -400,38 +404,35 @@ export function AppShell({ children }: { children: ReactNode }) {
             <button
               className="engine-pill"
               onClick={() => v.openSetting('engine')}
-              title={`Движок ИИ: ${v.engineView.label} · ${v.engineView.model}`}
+              title={`Движок ИИ: ${v.engineView.label} · ${v.engineView.model} · ${v.engineView.statusLabel}`}
+              data-state={v.engineView.isCloud ? 'cloud' : v.engineView.ready ? 'ready' : 'disconnected'}
               data-testid="engine-pill"
             >
               <IconChipAi />
               <span className="ep-text">
-                <span className="ep-name">{v.engineView.label}</span>
-                <span className="ep-sub num">
-                  {v.engineView.model} ·{' '}
+                <span className="ep-name" data-testid="engine-name">{v.engineView.label}</span>
+                <span className="ep-sub num" data-testid="engine-model">
+                  {v.engineView.model}
                   {/* NF-2: скорость — только настоящая, из последнего ответа движка. */}
                   {engine.metrics.tokensPerSec !== null
-                    ? `${engine.metrics.tokensPerSec} ток/с`
-                    : v.engineView.isCloud
-                      ? 'внешняя модель'
-                      : v.engineView.ready
-                        ? 'на устройстве'
-                        : 'не подключён'}
+                    ? ` · ${engine.metrics.tokensPerSec} ток/с`
+                    : ''}
                 </span>
               </span>
-              <i className={`net-dot${v.engineView.isCloud ? ' warn' : ''}`} />
+              <i aria-hidden="true" className={`net-dot${v.engineView.isCloud ? ' warn' : v.engineView.ready ? '' : ' idle'}`} />
             </button>
 
-            <div className="sidebar-storage">
+            <div className="sidebar-storage" data-testid="sidebar-storage">
               <div className="storage-head">
                 <span className="label-mono">Хранилище</span>
-                <span className="num label-mono">
+                <span className="num label-mono" data-testid="storage-percent">
                   <NumTicker value={stats.usedPct} />%
                 </span>
               </div>
-              <div className={`storage-bar${stats.processing > 0 ? ' busy' : ''}`}>
+              <div className={`storage-bar${stats.processing > 0 ? ' busy' : ''}`} role="progressbar" aria-label="Использовано хранилища" aria-valuemin={0} aria-valuemax={100} aria-valuenow={stats.usedPct} data-testid="storage-progress">
                 <i style={{ width: `${stats.usedPct}%` }} />
               </div>
-              <div className="storage-meta num">
+              <div className="storage-meta num" data-testid="storage-usage">
                 {fmtBytes(stats.bytes)} из {fmtBytes(stats.quota)} · {stats.files}{' '}
                 {plural(stats.files, 'файл', 'файла', 'файлов')}
               </div>
@@ -459,12 +460,14 @@ export function AppShell({ children }: { children: ReactNode }) {
         </aside>
 
         <div className="main-col">
-          <header className="topbar">
+          <header className="topbar" data-testid="shell-topbar">
+            <div className="topbar-search">
             <div className="search-wrap" ref={searchWrap}>
               <div className={`search-pill${searchOpen && v.query.trim() ? ' open' : ''}`}>
                 <IconSearch width={15} height={15} stroke="currentColor" strokeWidth={1.5} />
                 <input
                   type="text"
+                  data-testid="shell-search-input"
                   placeholder={PLACEHOLDER[v.screen]}
                   aria-label="Поиск по сейфу"
                   value={v.query}
@@ -474,6 +477,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 />
                 <button
                   className="kbd-btn"
+                  data-testid="shell-search-palette"
                   onClick={() => v.setPalette(true)}
                   title="Открыть палитру поиска"
                   aria-label="Открыть палитру поиска"
@@ -483,14 +487,15 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
 
               {searchOpen && v.query.trim() !== '' && (
-                <div className="search-panel" role="listbox" aria-label="Быстрые результаты">
+                <div className="search-panel" role="listbox" aria-label="Быстрые результаты" data-testid="shell-search-results">
                   {inlineHits.length === 0 ? (
-                    <p className="search-empty">Ничего не найдено</p>
+                    <p className="search-empty" data-testid="shell-search-empty">Ничего не найдено</p>
                   ) : (
                     <>
                       {inlineHits.map((h) => (
                         <button
                           key={h.key}
+                          data-testid={`shell-search-hit-${h.key}`}
                           role="option"
                           aria-selected={false}
                           className={`search-row${h.kind === 'file' && h.locked ? ' is-locked' : ''}`}
@@ -509,6 +514,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                       {v.hits.length > inlineHits.length && (
                         <button
                           className="search-more label-mono"
+                          data-testid="shell-search-more"
                           onClick={() => {
                             setSearchOpen(false)
                             v.setPalette(true)
@@ -525,6 +531,8 @@ export function AppShell({ children }: { children: ReactNode }) {
 
             <Dropdown
               label="Область поиска"
+              className="shell-search-scope"
+              testId="shell-search-scope"
               variant="chip"
               value={v.scope}
               options={SCOPES.map((s) => ({
@@ -536,7 +544,8 @@ export function AppShell({ children }: { children: ReactNode }) {
               onChange={(val) => v.setScope(val as typeof v.scope)}
               menuWidth={288}
             />
-            <span className="grow" />
+            </div>
+            <div className="topbar-actions">
             {v.demo.active && (
               <button
                 className="demo-pill"
@@ -547,10 +556,13 @@ export function AppShell({ children }: { children: ReactNode }) {
                 ДЕМО<b className="num">{v.demo.count}</b>
               </button>
             )}
-            <span className="status-chip">
-              <i className={`net-dot${stats.offline ? '' : ' warn'}`} />
+            <span className="status-chip" data-testid="topbar-page-status" title={statusText}>
               <span>{statusText}</span>
             </span>
+            <button className="icon-btn shell-mobile-action" title="Добавить файл" aria-label="Добавить файл" data-testid="topbar-file-add" onClick={() => picker.current?.click()}>
+              <IconPlus />
+            </button>
+            <div className="topbar-tools" role="group" aria-label="Действия приложения">
             <NotificationsBell />
             {account.isAdmin && (
               <button
@@ -567,6 +579,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <button
                 className="icon-btn"
                 title="Заблокировать сейф (Ctrl+Shift+L)"
+                data-testid="topbar-lock-btn"
                 aria-label="Заблокировать сейф"
                 onClick={v.lockNow}
               >
@@ -576,33 +589,41 @@ export function AppShell({ children }: { children: ReactNode }) {
             <button
               className="icon-btn"
               title="Настройки"
+              data-testid="topbar-settings-btn"
               aria-label="Настройки"
               onClick={() => v.go('settings')}
             >
               <IconGear />
             </button>
+            <button className="icon-btn shell-mobile-action" title="Выйти из учётной записи" aria-label="Выйти из учётной записи" data-testid="topbar-profile-logout" onClick={() => void account.logout()}>
+              <IconUser />
+            </button>
+            </div>
+            </div>
           </header>
           {children}
         </div>
       </div>
 
-      <footer className="statusbar">
-        <span>SESSION 7F3A</span>
-        <span className="sb-sep">·</span>
+      <footer className="statusbar shell-statusbar" data-testid="shell-statusbar">
+        <div className="shell-status-group shell-status-primary">
         <StatusClock />
-        <span className="sb-sep">·</span>
-        <span>AES-256</span>
-        <span className="sb-sep">·</span>
-        <span className="sb-ok" data-testid="status-mode">
+        <span className={`shell-engine-status${v.engineView.isCloud ? ' is-cloud' : v.engineView.ready ? ' is-ready' : ''}`} data-testid="status-mode" title={v.engineView.statusLabel}>
+          <i className="net-dot" aria-hidden="true" />
           {v.engineView.statusLabel}
         </span>
-        <span className="grow" />
+        </div>
+        <div className="shell-status-group shell-status-secondary">
         <JournalAlert />
         {flags.flags.dev && (
           <span className="sb-dev mono" data-testid="status-dev">
             сборка {APP_BUILD} · схема v{DB_VERSION} · запретов {blocked}
           </span>
         )}
+        <span className="shell-lock-status" data-testid="status-lock" title={v.lock.status === 'off' ? 'Мастер-ключ не настроен' : 'Мастер-ключ настроен'}>
+          <IconLockRound aria-hidden="true" />
+          {v.lock.status === 'off' ? 'Мастер-ключ не настроен' : v.lock.status === 'locked' ? 'Сейф заблокирован' : 'Сейф разблокирован'}
+        </span>
         {flags.offline ? (
           <span className="sb-net sb-offline" data-testid="status-offline">
             <i className="net-dot" />
@@ -611,9 +632,10 @@ export function AppShell({ children }: { children: ReactNode }) {
         ) : (
           <span className="sb-net" data-testid="status-net">
             <i className={`net-dot${v.engineView.isCloud ? ' warn' : ''}`} />
-            {v.engineView.netLabel}
+            {v.engineView.isCloud ? 'Облачный ИИ включён' : 'Облачный ИИ выключен'}
           </span>
         )}
+        </div>
       </footer>
 
       {/* Палитра приезжает своим чанком и только когда её открыли:

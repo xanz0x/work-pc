@@ -112,7 +112,7 @@ export function SidebarNav({ counts, clusters, collapsed }: Props) {
   return (
     <nav className={`nav${editing ? ' nav-editing' : ''}`} aria-label="Основная навигация" data-testid="sidebar-nav">
       <div className="nav-section nav-section-row">
-        <span>{editing ? 'Настройка меню' : 'Меню'}</span>
+        <span data-testid="nav-section-label">{editing ? 'Настройка меню' : 'Меню'}</span>
         {!collapsed && (
           <button
             className={`nav-edit-btn${editing ? ' on' : ''}`}
@@ -204,7 +204,7 @@ export function SidebarNav({ counts, clusters, collapsed }: Props) {
           >
             <Icon />
             <span>{label}</span>
-            {COUNTED.includes(id) && <b className="nav-count num">{counts[id]}</b>}
+            {COUNTED.includes(id) && <b className={`nav-count num${counts[id] === 0 ? ' is-zero' : ''}`} data-testid={`nav-count-${id}`}>{counts[id]}</b>}
           </button>
         )
 
@@ -212,7 +212,7 @@ export function SidebarNav({ counts, clusters, collapsed }: Props) {
 
         return (
           <Fragment key={id}>
-            <div className="nav-lib-row">
+            <div className={`nav-lib-row${v.screen === 'library' ? ' is-active' : ''}`}>
               {btn}
               <button
                 className={`nav-lib-chev${libOpen ? ' open' : ''}`}
@@ -237,7 +237,7 @@ export function SidebarNav({ counts, clusters, collapsed }: Props) {
                 >
                   <i className="cluster-dot" style={{ background: `rgba(${c.rgb},.9)` }} />
                   <span>{c.label}</span>
-                  <b className="nav-count num">{c.count}</b>
+                  <b className="nav-count num" data-testid={`nav-cluster-count-${c.id}`}>{c.count}</b>
                 </button>
               ))}
           </Fragment>
@@ -246,7 +246,7 @@ export function SidebarNav({ counts, clusters, collapsed }: Props) {
 
       {editing && (
         <div className="nav-edit-foot">
-          <span className="nav-edit-hint">Тяните за рукоятку или стрелками · глаз скрывает пункт</span>
+          <span className="nav-edit-hint" data-testid="nav-edit-hint">Тяните за рукоятку или стрелками · глаз скрывает пункт</span>
           {!isDefaultNav(prefs) && (
             <button className="nav-reset" onClick={reset} data-testid="nav-reset">
               <IconRefresh />

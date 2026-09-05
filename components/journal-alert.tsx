@@ -31,11 +31,13 @@ export function JournalAlert() {
       type="button"
       className="sb-alert"
       onClick={() => openSetting('journal')}
-      title="Открыть журнал безопасности: только необратимые события"
+      title={`Открыть журнал безопасности · необратимых событий: ${count}`}
+      aria-label={`Журнал безопасности · необратимых событий: ${count}`}
       data-testid="status-journal-alert"
     >
       <IconShield width={12} height={12} />
-      ЖУРНАЛ · {count} НЕОБРАТИМ{count === 1 ? 'ОЕ' : 'ЫХ'}
+      <span>Журнал</span>
+      <b className="num" data-testid="status-journal-count">{count}</b>
     </button>
   )
 }

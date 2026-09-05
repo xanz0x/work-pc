@@ -15,15 +15,15 @@
       "telemetry": true
     },
     "aiDailyLimit": 0,
-    "aiDay": "2026-09-04",
-    "aiDayCount": 0,
-    "aiTotal": 0,
+    "aiDay": "2026-09-05",
+    "aiDayCount": 2,
+    "aiTotal": 2,
     "licenseUntil": null,
     "planId": null,
     "mustChangePassword": false,
     "passwordFromEnv": true,
     "legacyStore": true,
     "createdAt": 1788491455099,
-    "lastLoginAt": 1788494745973
+    "lastLoginAt": 1788630322826
   }
 ]
