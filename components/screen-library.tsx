@@ -1942,6 +1942,43 @@ export function ScreenLibrary() {
 
             <div className="file-name mono num">{selFile?.name ?? '—'}</div>
 
+            {selFile?.shared && (
+              <div className="insp-block panel" data-testid="insp-cloud">
+                <div className="blk-head">
+                  <span className="label-mono">Общий диск</span>
+                  <span className="chip" style={{ borderColor: 'var(--accent-line)', color: 'var(--accent)' }}>
+                    облако
+                  </span>
+                </div>
+                <p>Файл лежит в общем облаке — его видят все участники. В библиотеке и на карте он помечен «общий диск».</p>
+                <div className="insp-actions">
+                  <a
+                    className="btn btn-ghost btn-sm"
+                    href={`/ai-api/cloud/file/${selFile.cloudId}`}
+                    data-testid="insp-cloud-download"
+                  >
+                    <IconExternal />
+                    Скачать
+                  </a>
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    data-testid="insp-cloud-delete"
+                    onClick={async () => {
+                      if (!selFile?.cloudId) return
+                      if (!window.confirm(`Удалить «${selFile.name}» из общего облака?`)) return
+                      await fetch(`/ai-api/cloud/file/${selFile.cloudId}`, { method: 'DELETE' }).catch(() => {})
+                      window.dispatchEvent(new Event('wsx:cloud-changed'))
+                      setSel(null)
+                      flash('Файл удалён из общего облака')
+                    }}
+                  >
+                    <IconTrash />
+                    Удалить с диска
+                  </button>
+                </div>
+              </div>
+            )}
+
             {tab === 'details' ? (
               <div className="meta-grid">
                 <div>
@@ -2593,6 +2630,16 @@ function FileCardContent({
         {file.demo && (
           <span className="demo-tag" title="Объект демо-корпуса" data-testid={`demo-tag-${file.id}`}>
             демо
+          </span>
+        )}
+        {file.shared && (
+          <span
+            className="chip"
+            title="Файл из общего облака"
+            data-testid={`shared-tag-${file.id}`}
+            style={{ borderColor: 'var(--accent-line)', color: 'var(--accent)' }}
+          >
+            общий диск
           </span>
         )}
         <button

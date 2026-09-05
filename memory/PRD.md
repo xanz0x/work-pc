@@ -42,3 +42,10 @@ User has a smailpro.com *web* Premium subscription but no API key, and asked to 
 ## Cloud: design polish + auto-join (2026-06)
 - Redesigned components/cloud-section.css to app dark theme (vars from globals.css): accent invite card w/ left gradient bar + glowing code, folder chips (delete on hover), file cards w/ hover lift + "облако · общий" gradient badge, image thumbs. Fixed invisible icons (#set-cloud svg { stroke: currentColor } — app only strokes .btn svg). Added responsive @media(max-width:720px). Added 'cloud' to ALL_SECTIONS + FOCUS_ALIAS so it appears in settings rail and openSetting('cloud') scrolls to it.
 - Auto-join via invite link "/?cloud=CODE": app-shell effect redeems code (URL or sessionStorage) then openSetting('cloud') + strips param; login/page.tsx and lib/account.tsx (AccountGate, before /login redirect) stash the code in sessionStorage so it survives the unauthenticated redirect. Verified: visiting the link while logged in auto-joins and opens the cloud section.
+
+## Cloud files -> Library + Map (2026-06)
+- Per user: don't show files inside the cloud settings section; shared files appear in Library and Map with a "общий диск" badge.
+- Store (lib/store/data.tsx): fetch /ai-api/cloud on mount + on 'wsx:cloud-changed' event; map cloud files to VaultFile (id 'cloud:<id>', shared:true, cloudId, classify() for cluster/icon, tags ['общий диск']). mergedFiles = local + cloud feeds views/fileMap/graph (NOT persisted, NOT in stats/clusterMix/localStorage). VaultFile gained shared?/cloudId? (lib/data.ts).
+- FileCardContent: accent "общий диск" chip when file.shared. Library file inspector: insp-cloud block (Скачать + Удалить с диска -> DELETE /ai-api/cloud/file/[id] then dispatch 'wsx:cloud-changed').
+- cloud-section.tsx: removed file grid; kept invite/join + upload + folders + hint pointing to Library/Map; dispatches 'wsx:cloud-changed' after upload/join/folder delete.
+- Verified: 2 cloud files show in Library with badge + in graph (38 links); settings section shows hint (no grid). Fixed dup import of classify in data.tsx.

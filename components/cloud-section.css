@@ -324,6 +324,43 @@
   border-color: color-mix(in oklab, var(--danger) 55%, transparent);
 }
 
+/* ---------- подсказка «файлы в библиотеке» ---------- */
+
+.cloud-hint {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-top: 6px;
+  padding: 14px 16px;
+  border: 1px dashed var(--border-3);
+  border-radius: 12px;
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.cloud-hint svg {
+  color: var(--accent);
+  flex: none;
+  margin-top: 1px;
+}
+
+.cloud-hint b {
+  color: var(--text);
+}
+
+.cloud-hint-badge {
+  display: inline-flex;
+  margin: 0 5px;
+  padding: 1px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--accent-line);
+  color: var(--accent);
+  font-size: 11px;
+  vertical-align: middle;
+}
+
+
 /* ---------- узкие экраны ---------- */
 
 @media (max-width: 720px) {

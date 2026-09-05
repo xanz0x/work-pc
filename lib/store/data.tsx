@@ -197,6 +197,57 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [drafts, setDrafts] = usePersistedState<Record<string, string>>('wf.chat.drafts', {})
   const [scrolls, setScrolls] = usePersistedState<Record<string, number>>('wf.chat.scroll', {})
 
+  /* ---------- общий диск (облако) ----------
+     Файлы общего диска не хранятся локально: их метаданные приезжают с
+     сервера и подмешиваются в общий корпус только для показа (библиотека,
+     карта, поиск). В localStorage они не попадают. */
+  const [cloudFiles, setCloudFiles] = useState<VaultFile[]>([])
+  const loadCloud = useCallback(async () => {
+    try {
+      const r = await fetch('/ai-api/cloud', { cache: 'no-store' })
+      if (!r.ok) return setCloudFiles([])
+      const d = (await r.json()) as {
+        member?: boolean
+        files?: { id: string; name: string; dir: string; size: number; at: string }[]
+      }
+      if (!d.member || !Array.isArray(d.files)) return setCloudFiles([])
+      setCloudFiles(
+        d.files.map((f) => {
+          const c = classify(f.name)
+          const when = new Date(f.at)
+          return {
+            id: `cloud:${f.id}`,
+            cloudId: f.id,
+            shared: true,
+            icon: c.icon,
+            cluster: c.cluster,
+            name: f.name,
+            desc: f.dir ? `Общий диск · папка «${f.dir}»` : 'Файл общего диска',
+            bytes: f.size,
+            date: Number.isNaN(when.getTime())
+              ? '—'
+              : when.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' }),
+            tags: ['общий диск'],
+            indexed: true,
+          } as VaultFile
+        }),
+      )
+    } catch {
+      setCloudFiles([])
+    }
+  }, [])
+  useEffect(() => {
+    void loadCloud()
+    const h = () => void loadCloud()
+    window.addEventListener('wsx:cloud-changed', h)
+    return () => window.removeEventListener('wsx:cloud-changed', h)
+  }, [loadCloud])
+  /** Корпус для показа: локальные файлы + файлы общего диска. */
+  const mergedFiles = useMemo(
+    () => (cloudFiles.length ? [...files, ...cloudFiles] : files),
+    [files, cloudFiles],
+  )
+
   const ready = filesReady && notesReady && chatReady
 
   const notesRef = useRef(notes)
@@ -293,8 +344,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   /* ---------- корпус ---------- */
 
-  const fileMap = useMemo(() => new Map(files.map((f) => [f.id, f])), [files])
-  const views = useMemo(() => files.map(viewOf), [files])
+  const fileMap = useMemo(() => new Map(mergedFiles.map((f) => [f.id, f])), [mergedFiles])
+  const views = useMemo(() => mergedFiles.map(viewOf), [mergedFiles])
   const viewMap = useMemo(() => new Map(views.map((v) => [v.id, v])), [views])
 
   const fileById = useCallback((id: string) => fileMap.get(id), [fileMap])
@@ -662,10 +713,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
    */
   const [graph, setGraph] = useState<Graph>(() => buildGraph([], [], 0))
   useEffect(() => {
-    const t = setTimeout(() => setGraph(buildGraph(files, liveNotesRef.current, 0)), 180)
+    const t = setTimeout(() => setGraph(buildGraph(mergedFiles, liveNotesRef.current, 0)), 180)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [files, aliveKey])
+  }, [mergedFiles, aliveKey])
   const clusters = useMemo(() => clusterLoad(graph), [graph])
   const mix = useMemo(() => clusterMix(files), [files])
   const neighbors = useCallback((id: string) => neighborsOf(graph, id), [graph])

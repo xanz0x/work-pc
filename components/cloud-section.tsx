@@ -2,10 +2,10 @@
 
 /* ============================================================
    РАЗДЕЛ НАСТРОЕК «ОБЩЕЕ ОБЛАКО»
-   Один общий диск: администраторы и участники (вошедшие по коду)
-   загружают, скачивают, переименовывают и удаляют файлы, строят
-   папки. Файлы облака помечены плашкой «облако · общий», чтобы их
-   нельзя было спутать с локальными файлами на этом ПК.
+   Управление общим диском: приглашение по коду, загрузка файлов и
+   папки. САМИ файлы здесь не показываются — они появляются в
+   «Библиотеке» и на «Карте» с пометкой «общий диск». Удалять файл
+   можно из инспектора файла в библиотеке.
    ============================================================ */
 
 import './cloud-section.css'
@@ -14,28 +14,15 @@ import {
   IconChevronLeft,
   IconCopy,
   IconDatabase,
-  IconDoc,
   IconExternal,
   IconFolder,
-  IconImage,
   IconKey,
-  IconPencil,
+  IconLibrary,
   IconPlus,
   IconRefresh,
   IconTrash,
 } from './icons'
-import { fmtBytes } from '@/lib/data'
 import { useToast } from '@/lib/vault-store'
-
-type CloudFile = {
-  id: string
-  name: string
-  dir: string
-  contentType: string
-  size: number
-  by: string
-  at: string
-}
 
 type DriveView = {
   isAdmin: boolean
@@ -43,12 +30,10 @@ type DriveView = {
   inviteCode?: string
   membersCount?: number
   folders: string[]
-  files: CloudFile[]
 }
 
 const parentOf = (p: string) => p.split('/').slice(0, -1).join('/')
 const nameOf = (p: string) => p.split('/').slice(-1)[0]
-const isImg = (t: string) => t.startsWith('image/')
 
 async function api(path: string, init?: RequestInit) {
   const r = await fetch(`/ai-api/cloud${path}`, { cache: 'no-store', ...init })
@@ -57,6 +42,9 @@ async function api(path: string, init?: RequestInit) {
   return body
 }
 
+/** Сообщаем библиотеке/карте, что состав общего диска изменился. */
+const notifyChanged = () => window.dispatchEvent(new Event('wsx:cloud-changed'))
+
 export function CloudSection() {
   const { flash } = useToast()
   const [data, setData] = useState<DriveView | null>(null)
@@ -64,8 +52,6 @@ export function CloudSection() {
   const [dir, setDir] = useState('')
   const [joinCode, setJoinCode] = useState('')
   const [busy, setBusy] = useState(false)
-  const [renaming, setRenaming] = useState<string | null>(null)
-  const [renameVal, setRenameVal] = useState('')
   const fileRef = useRef<HTMLInputElement | null>(null)
 
   const load = useCallback(async () => {
@@ -91,6 +77,7 @@ export function CloudSection() {
       flash('Вы подключены к общему облаку')
       setJoinCode('')
       await load()
+      notifyChanged()
     } catch (e) {
       flash(e instanceof Error ? e.message : 'Не удалось войти')
     } finally {
@@ -122,8 +109,8 @@ export function CloudSection() {
         fd.append('dir', dir)
         await api('/upload', { method: 'POST', body: fd })
       }
-      flash(list.length === 1 ? `Загружен «${list[0].name}»` : `Загружено файлов: ${list.length}`)
-      await load()
+      flash(list.length === 1 ? `Загружен «${list[0].name}» — ищите его в Библиотеке` : `Загружено файлов: ${list.length} — они в Библиотеке`)
+      notifyChanged()
     } catch (e) {
       flash(e instanceof Error ? e.message : 'Загрузка не удалась')
     } finally {
@@ -152,36 +139,9 @@ export function CloudSection() {
       await api('/folder', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path }) })
       if (dir === path || dir.startsWith(`${path}/`)) setDir(parentOf(path))
       await load()
+      notifyChanged()
     } catch (e) {
       flash(e instanceof Error ? e.message : 'Не удалось удалить папку')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function del(id: string, name: string) {
-    if (!window.confirm(`Удалить «${name}» из общего облака?`)) return
-    setBusy(true)
-    try {
-      await api(`/file/${id}`, { method: 'DELETE' })
-      flash('Файл удалён')
-      await load()
-    } catch (e) {
-      flash(e instanceof Error ? e.message : 'Не удалось удалить')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function saveRename(id: string) {
-    if (!renameVal.trim()) return
-    setBusy(true)
-    try {
-      await api(`/file/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: renameVal.trim() }) })
-      setRenaming(null)
-      await load()
-    } catch (e) {
-      flash(e instanceof Error ? e.message : 'Не удалось переименовать')
     } finally {
       setBusy(false)
     }
@@ -194,7 +154,7 @@ export function CloudSection() {
       </span>
       <div className="sec-head-text">
         <div className="setting-title">Общее облако</div>
-        <div className="setting-note">Один общий диск: файлы видят все участники, отдельно от локальных файлов на этом ПК</div>
+        <div className="setting-note">Общий диск для участников. Файлы появляются в Библиотеке и на Карте с пометкой «общий диск»</div>
       </div>
       <span className="sec-meta label-mono">общий диск</span>
     </div>
@@ -242,7 +202,6 @@ export function CloudSection() {
 
   const crumbs = dir ? dir.split('/') : []
   const subfolders = data.folders.filter((f) => parentOf(f) === dir)
-  const filesHere = data.files.filter((f) => f.dir === dir)
   const shareUrl = data.inviteCode ? `${typeof window !== 'undefined' ? window.location.origin : ''}/?cloud=${data.inviteCode}` : ''
 
   return (
@@ -257,7 +216,7 @@ export function CloudSection() {
             <b className="mono cloud-code" data-testid="cloud-invite-code">
               {data.inviteCode}
             </b>
-            <span className="setting-note">Участников: {data.membersCount ?? 0}. Кто знает код — получает доступ к этому же диску.</span>
+            <span className="setting-note">Участников: {data.membersCount ?? 0}. Ссылка сразу подключает к диску — код вводить не нужно.</span>
           </div>
           <div className="tm-actions">
             <button
@@ -323,7 +282,7 @@ export function CloudSection() {
         />
       </div>
 
-      {/* Папки */}
+      {/* Папки (для организации загрузок). Сами файлы — в Библиотеке. */}
       {subfolders.length > 0 && (
         <div className="cloud-folders" data-testid="cloud-folders">
           {subfolders.map((f) => (
@@ -340,77 +299,13 @@ export function CloudSection() {
         </div>
       )}
 
-      {/* Файлы */}
-      {filesHere.length === 0 && subfolders.length === 0 ? (
-        <div className="setting-note cloud-empty" data-testid="cloud-empty">
-          Здесь пока пусто. Загрузите файл или создайте папку — всё это увидят другие участники облака.
-        </div>
-      ) : (
-        <div className="cloud-grid" data-testid="cloud-files">
-          {filesHere.map((f) => (
-            <article key={f.id} className="cloud-card" data-testid="cloud-file" data-file-id={f.id}>
-              <span className="cloud-badge" title="Файл из общего облака">
-                <IconDatabase width={10} height={10} aria-hidden="true" /> облако · общий
-              </span>
-              <div className="cloud-thumb">
-                {isImg(f.contentType) ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={`/ai-api/cloud/file/${f.id}?inline=1`} alt={f.name} loading="lazy" />
-                ) : (
-                  <IconDoc width={26} height={26} stroke="currentColor" strokeWidth={1.3} />
-                )}
-                {isImg(f.contentType) && (
-                  <span className="cloud-thumb-tag">
-                    <IconImage width={11} height={11} aria-hidden="true" />
-                  </span>
-                )}
-              </div>
-              {renaming === f.id ? (
-                <div className="cloud-rename">
-                  <input
-                    className="input input-sm"
-                    autoFocus
-                    value={renameVal}
-                    onChange={(e) => setRenameVal(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') void saveRename(f.id)
-                      if (e.key === 'Escape') setRenaming(null)
-                    }}
-                    data-testid="cloud-rename-input"
-                  />
-                  <button className="btn btn-primary btn-sm" onClick={() => void saveRename(f.id)} data-testid="cloud-rename-save">
-                    OK
-                  </button>
-                </div>
-              ) : (
-                <div className="cloud-name ellipsis" title={f.name}>
-                  {f.name}
-                </div>
-              )}
-              <div className="cloud-meta mono">{fmtBytes(f.size)}</div>
-              <div className="cloud-actions">
-                <a className="cloud-mini" href={`/ai-api/cloud/file/${f.id}`} title="Скачать" data-testid="cloud-download">
-                  <IconExternal width={12} height={12} aria-hidden="true" />
-                </a>
-                <button
-                  className="cloud-mini"
-                  title="Переименовать"
-                  onClick={() => {
-                    setRenaming(f.id)
-                    setRenameVal(f.name)
-                  }}
-                  data-testid="cloud-rename"
-                >
-                  <IconPencil width={12} height={12} aria-hidden="true" />
-                </button>
-                <button className="cloud-mini danger" title="Удалить" disabled={busy} onClick={() => void del(f.id, f.name)} data-testid="cloud-delete">
-                  <IconTrash width={12} height={12} aria-hidden="true" />
-                </button>
-              </div>
-            </article>
-          ))}
-        </div>
-      )}
+      <div className="cloud-hint" data-testid="cloud-hint">
+        <IconLibrary width={16} height={16} aria-hidden="true" />
+        <span>
+          Загруженные файлы не показываются здесь — они появляются в <b>Библиотеке</b> и на <b>Карте</b> с пометкой
+          <span className="cloud-hint-badge">общий диск</span>. Удалить файл можно из его карточки в библиотеке.
+        </span>
+      </div>
     </section>
   )
 }
