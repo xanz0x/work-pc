@@ -6,7 +6,7 @@
 export type Role = 'admin' | 'user'
 export type UserStatus = 'active' | 'blocked'
 
-export type FeatureId = 'ai' | 'mcp' | 'sync' | 'secrets' | 'offline' | 'telemetry'
+export type FeatureId = 'ai' | 'mcp' | 'sync' | 'secrets' | 'offline' | 'telemetry' | 'mail' | 'cloud'
 
 export type Features = Record<FeatureId, boolean>
 
@@ -17,6 +17,8 @@ export const FEATURES: { id: FeatureId; label: string; note: string }[] = [
   { id: 'secrets', label: 'Менеджер секретов', note: 'Пароли, ключи, карты под мастер-ключом' },
   { id: 'offline', label: 'Автономный режим и бэкапы', note: 'Отключение сети, экспорт и восстановление архива' },
   { id: 'telemetry', label: 'Телеметрия', note: 'Возможность включить отправку анонимных событий' },
+  { id: 'mail', label: 'Почта', note: 'Временные ящики: обычная, Gmail и Hotmail/Outlook' },
+  { id: 'cloud', label: 'Общее облако', note: 'Общий диск участников: файлы видны в Библиотеке и на Карте' },
 ]
 
 export const DEFAULT_FEATURES: Features = {
@@ -26,6 +28,16 @@ export const DEFAULT_FEATURES: Features = {
   secrets: true,
   offline: true,
   telemetry: true,
+  mail: true,
+  cloud: true,
+}
+
+/** Дополняет набор функций недостающими ключами (значения по умолчанию —
+    для старых аккаунтов и тарифов, созданных до появления нового модуля). */
+export function normalizeFeatures(v: Partial<Features> | null | undefined): Features {
+  const base: Features = { ...DEFAULT_FEATURES }
+  if (v) for (const f of FEATURES) if (typeof v[f.id] === 'boolean') base[f.id] = v[f.id] as boolean
+  return base
 }
 
 export const DEFAULT_AI_DAILY_LIMIT = 50
@@ -66,7 +78,7 @@ export const DEFAULT_PLANS: PlanInput[] = [
     tagline: 'Личный сейф и ИИ-помощник для одного',
     color: 'graphite',
     days: 30,
-    features: { ai: true, mcp: false, sync: false, secrets: true, offline: true, telemetry: true },
+    features: { ai: true, mcp: false, sync: false, secrets: true, offline: true, telemetry: true, mail: true, cloud: false },
     aiDailyLimit: 50,
   },
   {
@@ -74,7 +86,7 @@ export const DEFAULT_PLANS: PlanInput[] = [
     tagline: 'Синхронизация между устройствами и внешние агенты',
     color: 'green',
     days: 90,
-    features: { ai: true, mcp: true, sync: true, secrets: true, offline: true, telemetry: true },
+    features: { ai: true, mcp: true, sync: true, secrets: true, offline: true, telemetry: true, mail: true, cloud: true },
     aiDailyLimit: 300,
   },
   {

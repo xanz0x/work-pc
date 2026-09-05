@@ -15,6 +15,7 @@ import {
   DEFAULT_AI_DAILY_LIMIT,
   DEFAULT_FEATURES,
   DEFAULT_PLANS,
+  normalizeFeatures,
   accessState,
   normalizeLogin,
   type Features,
@@ -235,7 +236,7 @@ function view(u: UserRecord): UserView {
     name: u.name,
     role: u.role,
     status: u.status,
-    features: u.features,
+    features: normalizeFeatures(u.features),
     aiDailyLimit: u.aiDailyLimit,
     aiCallsToday: u.aiDay === today() ? u.aiDayCount : 0,
     aiCallsTotal: u.aiTotal,
@@ -331,7 +332,7 @@ export async function register(loginRaw: string, password: string, key: string, 
     passHash: await hashPassword(password),
     role: 'user',
     status: 'active',
-    features: { ...p.features },
+    features: normalizeFeatures(p.features),
     aiDailyLimit: p.aiDailyLimit,
     aiDay: today(),
     aiDayCount: 0,
@@ -412,6 +413,7 @@ export async function listPlans(): Promise<PlanStats[]> {
   return S.plans
     .map((p) => ({
       ...p,
+      features: normalizeFeatures(p.features),
       users: S.users.filter((u) => u.planId === p.id).length,
       freeKeys: S.licenses.filter((l) => l.planId === p.id && !l.usedBy && !l.revokedAt).length,
     }))

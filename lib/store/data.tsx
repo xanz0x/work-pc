@@ -222,12 +222,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
             icon: c.icon,
             cluster: c.cluster,
             name: f.name,
-            desc: f.dir ? `Общий диск · папка «${f.dir}»` : 'Файл общего диска',
+            desc: f.dir ? `Папка «${f.dir}»` : '',
             bytes: f.size,
             date: Number.isNaN(when.getTime())
               ? '—'
               : when.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' }),
-            tags: ['общий диск'],
+            tags: [],
             indexed: true,
           } as VaultFile
         }),

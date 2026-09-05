@@ -129,6 +129,7 @@ const SECTION_FEATURE: Record<string, FeatureId> = {
   flags: 'offline',
   mcp: 'mcp',
   sync: 'sync',
+  cloud: 'cloud',
 }
 
 const ALL_SECTIONS: { id: string; label: string; Icon: Ico }[] = [
@@ -860,7 +861,7 @@ export function ScreenSettings() {
             {account.has('offline') && <FlagsSection />}
             {account.has('mcp') && <McpSection />}
             {account.has('sync') && <SyncSection />}
-            <CloudSection />
+            {account.has('cloud') && <CloudSection />}
             <JournalPanel />
 
             <section className="sec panel danger-zone" id="set-danger">

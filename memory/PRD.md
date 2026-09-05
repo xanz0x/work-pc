@@ -54,3 +54,9 @@ User has a smailpro.com *web* Premium subscription but no API key, and asked to 
 - Map (screen-map.tsx): Node gained shared flag (from D.fileById(gn.id)?.shared); drawNode draws accent green ring on shared nodes; hover/selected label shows "· общий диск".
 - Permissions: cloud-store.ts mutating ops (upload/rename/delete/createFolder/removeFolder) now requireAdmin(); download (readFileBytes) + driveView + joinDrive stay member-level. Verified friend=403, admin=201. cloud-section.tsx hides toolbar/folders for non-admins + read-only hint. Library inspector gates "Удалить с диска" by account.isAdmin (else "только просмотр" note).
 - Fullscreen preview: screen-library.tsx cloudPreview state + overlay (components/cloud-viewer.css), img for images / iframe for PDF via /ai-api/cloud/file/[id]?inline=1; "Просмотр" button in inspector for image/pdf. Verified visually.
+
+## Features registry + admin toggles for new modules (2026-06)
+- lib/users.ts: FeatureId += 'mail' | 'cloud'; FEATURES += Почта/Общее облако; DEFAULT_FEATURES mail:true,cloud:true; DEFAULT_PLANS Basic(mail:true,cloud:false)/Pro(both true). Added normalizeFeatures() to backfill missing keys (default) for old accounts/plans.
+- users-server.ts: apply normalizeFeatures in user view(), adminCreateUser, listPlans -> old admin/plans get mail+cloud=true. Admin panel toggles auto-render (admin-plans/admin-plan-editor/admin-user-card map FEATURES). Verified via curl + screenshot.
+- Gating: screen-settings SECTION_FEATURE cloud:'cloud' + <CloudSection/> gated by has('cloud'); sidebar-nav 'mail' gated by has('mail').
+- Single "общий диск" badge on file card: cloud->VaultFile mapping now tags:[] and desc without the phrase (dir shown as «Папка …»); the accent chip in FileCardContent is the only marker. Verified.
