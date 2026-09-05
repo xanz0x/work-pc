@@ -1,0 +1,224 @@
+/* Раздел «Общее облако» в настройках. */
+
+.cloud-empty {
+  padding: 14px 2px;
+}
+
+.cloud-join,
+.cloud-invite {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 14px;
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.08));
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--panel, #12161c) 60%, transparent);
+}
+
+.cloud-join-text,
+.cloud-invite-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 200px;
+  flex: 1;
+}
+
+.cloud-code {
+  font-size: 20px;
+  letter-spacing: 2px;
+  color: var(--accent, #6ee7b7);
+}
+
+.cloud-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 16px 0 12px;
+}
+
+.cloud-crumbs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: wrap;
+}
+
+.crumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--muted, #93a1b0);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.crumb:hover {
+  color: var(--fg, #e7edf3);
+  background: color-mix(in oklab, var(--fg, #fff) 8%, transparent);
+}
+
+.crumb.on {
+  color: var(--fg, #e7edf3);
+}
+
+.crumb-sep {
+  opacity: 0.4;
+  margin-right: 2px;
+}
+
+.cloud-folders {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.cloud-folder {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.09));
+  border-radius: 10px;
+  overflow: hidden;
+  background: color-mix(in oklab, var(--panel, #12161c) 55%, transparent);
+}
+
+.cloud-folder-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  max-width: 190px;
+  color: var(--fg, #e7edf3);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background-color 0.15s ease;
+}
+
+.cloud-folder-open:hover {
+  background: color-mix(in oklab, var(--fg, #fff) 7%, transparent);
+}
+
+.cloud-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px;
+}
+
+.cloud-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 12px;
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.09));
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--panel, #12161c) 55%, transparent);
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.cloud-card:hover {
+  border-color: color-mix(in oklab, var(--accent, #6ee7b7) 45%, transparent);
+  transform: translateY(-2px);
+}
+
+/* Плашка: то, что файл именно из общего облака, а не локальный. */
+.cloud-badge {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: #06281f;
+  background: linear-gradient(90deg, var(--accent, #6ee7b7), #38bdf8);
+  font-weight: 700;
+}
+
+.cloud-thumb {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 96px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: color-mix(in oklab, #000 25%, transparent);
+  color: var(--muted, #93a1b0);
+}
+
+.cloud-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cloud-thumb-tag {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+}
+
+.cloud-name {
+  font-size: 13px;
+  color: var(--fg, #e7edf3);
+}
+
+.cloud-meta {
+  font-size: 11px;
+  color: var(--muted, #93a1b0);
+}
+
+.cloud-rename {
+  display: flex;
+  gap: 6px;
+}
+
+.cloud-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.cloud-mini {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.1));
+  background: transparent;
+  color: var(--muted, #93a1b0);
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.cloud-mini:hover {
+  color: var(--fg, #e7edf3);
+  border-color: color-mix(in oklab, var(--fg, #fff) 25%, transparent);
+  background: color-mix(in oklab, var(--fg, #fff) 6%, transparent);
+}
+
+.cloud-mini.danger:hover {
+  color: #fca5a5;
+  border-color: color-mix(in oklab, #f87171 45%, transparent);
+}

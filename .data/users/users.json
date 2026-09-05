@@ -24,6 +24,33 @@
     "passwordFromEnv": true,
     "legacyStore": true,
     "createdAt": 1788565138715,
-    "lastLoginAt": 1788566898877
+    "lastLoginAt": 1788568256565
+  },
+  {
+    "id": "30b301b40aee8a79",
+    "login": "friend",
+    "name": "Друг",
+    "passHash": "scrypt$J/HWwk6kup05ATGznPypYw==$3RVsl9i7SHlGlBWBNwbvH2uuV/BKEu2W47C1cnGbovU=",
+    "role": "user",
+    "status": "active",
+    "features": {
+      "ai": true,
+      "mcp": false,
+      "sync": false,
+      "secrets": true,
+      "offline": true,
+      "telemetry": true
+    },
+    "aiDailyLimit": 50,
+    "aiDay": "2026-09-05",
+    "aiDayCount": 0,
+    "aiTotal": 0,
+    "licenseUntil": 1791160257130,
+    "planId": "5cbdbcd41a74406f",
+    "mustChangePassword": false,
+    "passwordFromEnv": false,
+    "legacyStore": false,
+    "createdAt": 1788568257130,
+    "lastLoginAt": 1788568257248
   }
 ]

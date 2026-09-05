@@ -53,6 +53,7 @@ import { McpSection } from './mcp-section'
 import { useAccount } from '@/lib/account'
 import type { FeatureId } from '@/lib/users'
 import { SyncSection } from './sync-section'
+import { CloudSection } from './cloud-section'
 import { JournalPanel } from './journal-panel'
 import { UiScaleSection } from './ui-scale-section'
 import {
@@ -857,6 +858,7 @@ export function ScreenSettings() {
             {account.has('offline') && <FlagsSection />}
             {account.has('mcp') && <McpSection />}
             {account.has('sync') && <SyncSection />}
+            <CloudSection />
             <JournalPanel />
 
             <section className="sec panel danger-zone" id="set-danger">

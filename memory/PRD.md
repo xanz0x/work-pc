@@ -26,3 +26,15 @@ User has a smailpro.com *web* Premium subscription but no API key, and asked to 
 ## Blocker / next
 - P0 (user action): top up Sonjj credits at my.sonjj.com to enable Gmail/Outlook/Standard SmailPro.
   Once credits exist, all 3 options work with no code change.
+
+## Feature: Shared Cloud drive (2026-06)
+- Request: cloud storage in Settings, add/remove files, shared with a friend via secret invite link/code, files visually marked vs local. Admin function, no size/type limits.
+- Design: built-in shared drive (NOT Google Drive) on Emergent object storage. One global drive.
+- Backend: lib/cloud-store.ts (TS storage client init/put/get + shared JSON metadata at AI_DIR/cloud/drive.json), routes under app/ai-api/cloud/* (GET list, join, invite rotate [admin], upload, folder POST/DELETE, file/[id] GET|PATCH|DELETE). Soft-delete (storage has no delete). Access: admin always; others become members by redeeming invite code.
+- Frontend: components/cloud-section.tsx (+ cloud-section.css) wired into screen-settings.tsx after SyncSection. Breadcrumb folders, upload (multipart), rename, delete, image preview (inline), "облако · общий" badge to distinguish from local files. Admin sees/rotates invite code + share link.
+- Verified end-to-end via curl + friend user: admin sees drive & code, friend GET=member:false, join by code, then sees shared folder & uploads; admin sees friend's file (membersCount:1). Invite code now persisted on first read (was ephemeral bug — fixed).
+- Env added: EMERGENT_LLM_KEY, INTEGRATION_PROXY_URL in /app/.env.local.
+
+## SmailPro update (2026-06)
+- Removed "Обычная · SmailPro" (temp kind) from UI + POST validation. Renamed Gmail·SmailPro→Gmail, Hotmail/Outlook·SmailPro→Hotmail/Outlook. 3 kinds now: mailtm, gmail, outlook.
+- Sonjj credits topped up: Gmail/Outlook create real addresses (verified 201).

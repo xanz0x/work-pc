@@ -1,0 +1,33 @@
+{
+  "inviteCode": "ef379171",
+  "members": [
+    "30b301b40aee8a79"
+  ],
+  "folders": [
+    "Photos"
+  ],
+  "files": [
+    {
+      "id": "07f21a864be7",
+      "name": "renamed.png",
+      "dir": "Photos",
+      "path": "worxspacex/cloud/44fc7a11689a9895908bafbc.png",
+      "contentType": "image/png",
+      "size": 2056,
+      "by": "3ffbfeb1ea255062",
+      "at": "2026-09-05T00:25:36.164Z",
+      "deleted": true
+    },
+    {
+      "id": "8c0bcdee0bce",
+      "name": "f.txt",
+      "dir": "",
+      "path": "worxspacex/cloud/4f401bdc89db85c737668d16.txt",
+      "contentType": "text/plain",
+      "size": 17,
+      "by": "30b301b40aee8a79",
+      "at": "2026-09-05T00:31:08.602Z",
+      "deleted": false
+    }
+  ]
+}
