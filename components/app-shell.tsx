@@ -147,6 +147,53 @@ export function AppShell({ children }: { children: ReactNode }) {
     void flushClientErrors()
   }, [])
 
+  /* Автоприём кода: переход по ссылке-приглашению «/?cloud=КОД» сразу
+     подключает к общему облаку — код берём из URL или из sessionStorage
+     (страница входа кладёт его туда перед редиректом на «/»). */
+  useEffect(() => {
+    let code: string | null = null
+    try {
+      code = new URL(window.location.href).searchParams.get('cloud')
+      if (!code) code = sessionStorage.getItem('wsx-cloud-code')
+    } catch {
+      /* приватный режим — пропускаем */
+    }
+    if (!code) return
+    const clean = code
+    void (async () => {
+      try {
+        const r = await fetch('/ai-api/cloud/join', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code: clean }),
+        })
+        const b = (await r.json().catch(() => ({}))) as { error?: string }
+        if (r.ok) {
+          v.flash('Вы подключены к общему облаку по ссылке')
+          v.openSetting('cloud')
+        } else {
+          v.flash(b.error || 'Ссылка-приглашение недействительна')
+        }
+      } catch {
+        v.flash('Не удалось подключиться по ссылке')
+      } finally {
+        try {
+          sessionStorage.removeItem('wsx-cloud-code')
+        } catch {
+          /* игнорируем */
+        }
+        try {
+          const u = new URL(window.location.href)
+          u.searchParams.delete('cloud')
+          window.history.replaceState({}, '', u.pathname + u.search)
+        } catch {
+          /* игнорируем */
+        }
+      }
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   /* NF-9: локальный счётчик экранов. Ни одного байта наружу без согласия —
      это просто число «сколько раз открыт экран» в localStorage. */
   useEffect(() => {

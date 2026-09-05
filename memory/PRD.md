@@ -38,3 +38,7 @@ User has a smailpro.com *web* Premium subscription but no API key, and asked to 
 ## SmailPro update (2026-06)
 - Removed "Обычная · SmailPro" (temp kind) from UI + POST validation. Renamed Gmail·SmailPro→Gmail, Hotmail/Outlook·SmailPro→Hotmail/Outlook. 3 kinds now: mailtm, gmail, outlook.
 - Sonjj credits topped up: Gmail/Outlook create real addresses (verified 201).
+
+## Cloud: design polish + auto-join (2026-06)
+- Redesigned components/cloud-section.css to app dark theme (vars from globals.css): accent invite card w/ left gradient bar + glowing code, folder chips (delete on hover), file cards w/ hover lift + "облако · общий" gradient badge, image thumbs. Fixed invisible icons (#set-cloud svg { stroke: currentColor } — app only strokes .btn svg). Added responsive @media(max-width:720px). Added 'cloud' to ALL_SECTIONS + FOCUS_ALIAS so it appears in settings rail and openSetting('cloud') scrolls to it.
+- Auto-join via invite link "/?cloud=CODE": app-shell effect redeems code (URL or sessionStorage) then openSetting('cloud') + strips param; login/page.tsx and lib/account.tsx (AccountGate, before /login redirect) stash the code in sessionStorage so it survives the unauthenticated redirect. Verified: visiting the link while logged in auto-joins and opens the cloud section.

@@ -1,0 +1,18 @@
+{
+  "passHash": "Tmonc4oMcKNmjJPrKb2CIaoB0PLnbw6iFmRsJd09WjE",
+  "createdAt": 1788568510842,
+  "devices": [
+    {
+      "id": "2047ce5d05ffac12",
+      "tokenHash": "cLuK9_bNhAU2yeEPO-waiIcY-10SLq26cmHg8g0ZDo4",
+      "label": {
+        "ct": "LUAZ+Vp8xU+YoW9fOCrqHepRIDQzAA==",
+        "iv": "4dc8uziaAnAfxtVw"
+      },
+      "createdAt": 1788568510843,
+      "lastSeenAt": 1788569138244,
+      "revokedAt": null
+    }
+  ],
+  "owner": "legacy"
+}

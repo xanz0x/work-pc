@@ -143,6 +143,7 @@ const ALL_SECTIONS: { id: string; label: string; Icon: Ico }[] = [
   { id: 'flags', label: 'Автономный режим', Icon: IconWifi },
   { id: 'mcp', label: 'MCP наружу', Icon: IconTerminal },
   { id: 'sync', label: 'Синхронизация', Icon: IconDatabase },
+  { id: 'cloud', label: 'Общее облако', Icon: IconDatabase },
   { id: 'journal', label: 'Журнал безопасности', Icon: IconLayers },
   { id: 'danger', label: 'Опасная зона', Icon: IconTrash },
 ]
@@ -169,6 +170,7 @@ const FOCUS_ALIAS: Record<string, string> = {
   agents: 'mcp',
   sync: 'sync',
   devices: 'sync',
+  cloud: 'cloud',
   danger: 'danger',
 }
 

@@ -34,6 +34,17 @@ export default function LoginPage() {
     document.documentElement.classList.remove('lock-pending')
   }, [])
 
+  /* Ссылка-приглашение в облако: сохраняем код до входа, чтобы после
+     редиректа на «/» каркас подключил друга автоматически. */
+  useEffect(() => {
+    try {
+      const code = new URL(window.location.href).searchParams.get('cloud')
+      if (code) sessionStorage.setItem('wsx-cloud-code', code)
+    } catch {
+      /* приватный режим — пропускаем */
+    }
+  }, [])
+
   /* Ключ полный → спрашиваем сервер, что за тариф. Один запрос на ключ. */
   useEffect(() => {
     if (mode !== 'register') return

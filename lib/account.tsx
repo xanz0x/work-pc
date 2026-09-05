@@ -65,6 +65,14 @@ export function AccountGate({ children }: { children: ReactNode }) {
       return
     }
     if (!s.authed || !s.user) {
+      /* Сохраняем код-приглашение до редиректа на вход — иначе «/?cloud=КОД»
+         потеряется, и друг не подключится к облаку автоматически. */
+      try {
+        const c = new URL(window.location.href).searchParams.get('cloud')
+        if (c) sessionStorage.setItem('wsx-cloud-code', c)
+      } catch {
+        /* приватный режим */
+      }
       window.location.replace('/login')
       return
     }
