@@ -18,6 +18,7 @@ import { IconAlertTri, IconClose, IconKey, IconLockRound } from './icons'
 import { MkPassField, MkPinRow, strengthPw } from './mk-fields'
 import { useVault } from '@/lib/vault-store'
 import type { LockMethod } from '@/lib/lock-store'
+import { useDialog } from '@/hooks/use-dialog'
 
 const AUTOLOCK_OPTIONS: { min: number; label: string }[] = [
   { min: 0, label: 'Никогда' },
@@ -47,21 +48,13 @@ function MkModal({
   footer: ReactNode
   testId: string
 }) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onClose])
+  const { dialogProps } = useDialog<HTMLFormElement>({ onClose, label: title, autoFocus: false })
 
   return (
     <div className="mk-back" role="presentation" onPointerDown={onClose}>
       <form
         className={`mk-card panel${danger ? ' is-danger' : ''}`}
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
+        {...dialogProps}
         onPointerDown={(e) => e.stopPropagation()}
         onSubmit={onSubmit}
         data-testid={testId}
@@ -71,9 +64,8 @@ function MkModal({
             <IconLockRound />
           </span>
           <div className="mk-head-text">
-            <h2 className="mk-title">{title}</h2>
-            <span className="mk-sub label-mono">
-              <i className="mk-dot" aria-hidden="true" />
+            <h2 className="mk-title" data-testid={`${testId}-title`}>{title}</h2>
+            <span className="mk-sub" data-testid={`${testId}-description`}>
               {sub}
             </span>
           </div>
@@ -213,7 +205,7 @@ export function SecuritySection() {
   const warnBanner = (
     <p className="mk-warn" data-testid="mk-warn">
       <IconAlertTri width={14} height={14} aria-hidden="true" focusable="false" />
-      <span>Забытый мастер-ключ стирает файловые ключи</span>
+      <span>Сохраните мастер-ключ: восстановить его нельзя.</span>
     </p>
   )
 
@@ -227,8 +219,8 @@ export function SecuritySection() {
 
   const createModal = creating ? (
     <MkModal
-      title="Безопасность"
-      sub="МАСТЕР-КЛЮЧ"
+      title="Настройка мастер-ключа"
+      sub="Для блокировки сейфа и защиты секретов"
       onClose={resetForms}
       onSubmit={onCreate}
       testId="mk-modal"
@@ -240,19 +232,11 @@ export function SecuritySection() {
           <button
             className="mk-submit"
             type="submit"
-            disabled={!s1LenOk || !s2 || s1 !== s2}
+            disabled={lock.busy || !s1LenOk || !s2 || s1 !== s2}
             data-testid="mk-submit"
           >
             <IconKey width={13} height={13} aria-hidden="true" focusable="false" />
-            {s1LenOk
-              ? s2 && s1 === s2
-                ? 'Включить замок'
-                : method === 'pin'
-                  ? 'Повторите пин'
-                  : 'Повторите пароль'
-              : method === 'pin'
-                ? 'Введите 6 цифр'
-                : 'Минимум 8 символов'}
+            {lock.busy ? 'Сохраняем…' : 'Включить замок'}
           </button>
         </>
       }
@@ -271,7 +255,7 @@ export function SecuritySection() {
           }}
           data-testid="mk-tab-pin"
         >
-          PIN 6 цифр
+          PIN · 6 цифр
         </button>
         <button
           type="button"
@@ -325,7 +309,7 @@ export function SecuritySection() {
           <MkPassField
             id="sec-key-new"
             label="Мастер-пароль"
-            hint={s1 ? `${s1.length}/8+` : 'min 8 chars'}
+            hint={s1 ? `${s1.length} символов` : 'От 8 символов'}
             hintTone={s1LenOk ? 'ok' : s1 ? 'bad' : undefined}
             value={s1}
             onChange={(next) => {
@@ -374,8 +358,8 @@ export function SecuritySection() {
 
   const changeModal = changing ? (
     <MkModal
-      title="Смена ключа"
-      sub="МАСТЕР-КЛЮЧ"
+      title="Смена мастер-ключа"
+      sub={isPin ? 'Текущий и новый PIN' : 'Текущий и новый пароль'}
       onClose={resetForms}
       onSubmit={onChangeMaster}
       testId="mk-change-modal"
@@ -387,15 +371,11 @@ export function SecuritySection() {
           <button
             className="mk-submit"
             type="submit"
-            disabled={!curPinOk || !nextOk || next1 !== next2}
+            disabled={lock.busy || !curPinOk || !nextOk || next1 !== next2}
             data-testid="mk-change-submit"
           >
             <IconKey width={13} height={13} aria-hidden="true" focusable="false" />
-            {nextOk && next1 === next2
-              ? 'Сменить ключ'
-              : isPin
-                ? 'Введите 6 цифр'
-                : 'Минимум 8 символов'}
+            {lock.busy ? 'Сохраняем…' : 'Сохранить ключ'}
           </button>
         </>
       }
@@ -457,7 +437,7 @@ export function SecuritySection() {
           <MkPassField
             id="sec-key-next"
             label="Новый ключ"
-            hint={next1 ? `${next1.length}/8+` : 'min 8 chars'}
+            hint={next1 ? `${next1.length} символов` : 'От 8 символов'}
             hintTone={nextOk ? 'ok' : next1 ? 'bad' : undefined}
             value={next1}
             onChange={setNext1}
@@ -488,7 +468,7 @@ export function SecuritySection() {
           />
         </>
       )}
-      <p className="mk-note">
+      <p className="mk-note" data-testid="mk-change-note">
         Файловые ключи продолжат работать — они переупакуются автоматически.
       </p>
       {errLine}
@@ -500,7 +480,7 @@ export function SecuritySection() {
   const disableModal = disabling ? (
     <MkModal
       title="Выключить замок"
-      sub="МАСТЕР-КЛЮЧ"
+      sub="Подтвердите действие мастер-ключом"
       danger
       onClose={resetForms}
       onSubmit={onDisable}
@@ -513,18 +493,18 @@ export function SecuritySection() {
           <button
             className="mk-submit is-danger"
             type="submit"
-            disabled={!disablePinOk}
+            disabled={lock.busy || !disablePinOk}
             data-testid="mk-disable-submit"
           >
             <IconAlertTri width={13} height={13} aria-hidden="true" focusable="false" />
-            Подтвердить
+            {lock.busy ? 'Проверяем…' : 'Выключить замок'}
           </button>
         </>
       }
     >
-      <p className="mk-warn is-danger">
+      <p className="mk-warn is-danger" data-testid="mk-disable-warning">
         <IconAlertTri width={14} height={14} aria-hidden="true" focusable="false" />
-        <span>С замком стираются файловые ключи</span>
+        <span>Мастер-ключ и файловые ключи будут удалены. Доступ к зашифрованным секретам и защищённому содержимому может быть потерян.</span>
       </p>
       {isPin ? (
         <MkPinRow
@@ -622,6 +602,7 @@ export function SecuritySection() {
               aria-checked={lock.autoLockMin === o.min}
               className={lock.autoLockMin === o.min ? 'active' : ''}
               onClick={() => v.setAutoLock(o.min)}
+              data-testid={`autolock-${o.min}`}
             >
               {o.label}
             </button>
@@ -641,6 +622,7 @@ export function SecuritySection() {
           className="lock-setup-btn inline"
           title="Заблокировать сейф сейчас (Ctrl+Shift+L)"
           onClick={v.lockNow}
+          data-testid="security-lock-now"
         >
           Заблокировать
         </button>

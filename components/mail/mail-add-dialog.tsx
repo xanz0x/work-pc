@@ -5,6 +5,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { DialogShell } from '../dialog-shell'
+import { PasswordInput } from '../password-input'
 import { IconAlertTri, IconCheck, IconClose, IconExternal, IconRefresh } from '../icons'
 import { logJournal } from '@/lib/journal'
 import { SOURCE_LABEL, isFail, mailApi, type AccountView, type AuthHint, type ClientConfig, type Discovery, type MailConfig } from '@/lib/mail-client'
@@ -274,10 +275,10 @@ export function MailAddDialog({ onClose, onAdded }: { onClose: () => void; onAdd
           </div>
         )}
 
-        <label className="mail-field">
-          <span className="label-mono">{useAlt ? 'SMTP-токен' : hint?.kind === 'app-password' ? 'Пароль приложения' : hint?.kind === 'bridge' ? 'Пароль из Proton Bridge' : 'Пароль'}</span>
-          <input className="mcp-input mono" type="password" value={password} autoComplete="new-password" onChange={(e) => setPassword(e.target.value)} data-testid="mail-password" />
-        </label>
+        <div className="access-field">
+          <label htmlFor="mail-account-password" data-testid="mail-password-label">{useAlt ? 'SMTP-токен' : hint?.kind === 'app-password' ? 'Пароль приложения' : hint?.kind === 'bridge' ? 'Пароль из Proton Bridge' : 'Пароль'}</label>
+          <PasswordInput id="mail-account-password" value={password} autoComplete="new-password" onChange={(e) => setPassword(e.target.value)} testId="mail-password" />
+        </div>
 
         <button className="mail-manual-toggle" onClick={() => (manual ? setManual(false) : prefillManual(effective))} aria-expanded={manual} data-testid="mail-manual-toggle">
           {manual ? 'Скрыть ручные настройки' : 'Настроить вручную'}

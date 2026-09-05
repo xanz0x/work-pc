@@ -1,16 +1,8 @@
 'use client'
 
-/* ============================================================
-   SCREEN-LOCK · полноэкранный замок сейфа
-   Рендерится ПОВЕРХ app-shell при v.lock.status === 'locked'.
-   PIN 4–8 цифр — ячейки с автопереходом фокуса; пароль — одно поле.
-   Анти-брутфорс: busy (PBKDF2 идёт) + cooldownUntil (задержка).
-   Вспышка danger при ошибке, вспышка акцента при успехе.
-   Дисциплина «Графит»: тон + волосяные границы, без blur/теней.
-   V3.5 «Хранилище»: retro-grid пол в перспективе снизу экрана,
-   усиленные метеоры, 2-зонная карточка (кольцо-пульс / колодцы),
-   гравировка над карточкой и статусная строка во всю нижнюю кромку.
-   ============================================================ */
+/* Полноэкранная разблокировка: 6 цифр PIN или мастер-пароль.
+   Общий стиль access.css; проверка, cooldown и ключи — в существующем store.
+   MeteorLayer сохранён для других потребителей, но на формах доступа не используется. */
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { LockMethod } from '@/lib/lock-store'
@@ -19,8 +11,12 @@ import { adoptMasterSession } from '@/hooks/use-file-keys'
 import { trackAction, trackDrop } from '@/lib/telemetry'
 import { IconLockRound } from './icons'
 import { LogoWord } from './screen-lock-logo'
+import { PasswordInput } from './password-input'
+import { ResetLockDialog } from './reset-lock-dialog'
+import { useDialog } from '@/hooks/use-dialog'
+import { PIN_LENGTH } from './mk-fields'
 
-const PIN_LEN = 6
+const PIN_LEN = PIN_LENGTH
 
 /* ============================================================
    METEORS · порт Magic UI «meteors» (https://magicui.design/r/meteors.json)
@@ -77,12 +73,13 @@ export function ScreenLock() {
 
   const [pin, setPin] = useState<string[]>(Array(PIN_LEN).fill(''))
   const [password, setPassword] = useState('')
-  const [show, setShow] = useState(false)
+  const [resetting, setResetting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [okFlash, setOkFlash] = useState(false)
   const [tickNow, setTickNow] = useState(Date.now())
   const [activeCell, setActiveCell] = useState(0)
   const cellsRef = useRef<(HTMLInputElement | null)[]>([])
+  const { dialogProps } = useDialog<HTMLDivElement>({ onClose: () => {}, label: 'Сейф заблокирован' })
 
   /* Тик для обратного отсчёта cooldown. */
   useEffect(() => {
@@ -182,41 +179,22 @@ export function ScreenLock() {
 
   return (
     <div
-      className={`lock-screen${okFlash ? ' lock-ok' : ''}${error ? ' has-error' : ''}`}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Сейф заблокирован"
+      className="lock-screen access-scene"
+      {...dialogProps}
+      data-testid="lock-screen"
     >
-      {/* Сцена «хранилище»: retro-grid пол снизу экрана + метеоры */}
-      <div className="lock-floor" aria-hidden="true">
-        <i />
-      </div>
-
-      <MeteorLayer />
-
-      {/* Гравировка над карточкой */}
-      <p className="lock-engrave num">SEIF 7F3A · РАСШИФРОВКА ТРЕБУЕТСЯ</p>
-
-      <div className="lock-card">
-        {/* Вспышка danger-кромки при ошибке (500ms), контент не трогает */}
-        <i className="lock-edge" aria-hidden="true" />
-
-        <div className="lock-head">
-          <div className="lock-mark" aria-hidden="true">
-            <IconLockRound />
-            <i className="lock-pulse" />
-            <i className="lock-pulse p2" />
-          </div>
-
-          <LogoWord className="lock-logo" />
-
-          <p className="lock-tagline">local ai workspace · сейф заблокирован</p>
-        </div>
-
-        <div className="lock-well">
+      <div className="access-stack" inert={resetting}>
+      <div className="access-brand" data-testid="lock-brand"><LogoWord /></div>
+      <div className="access-card">
+        <header className="access-heading">
+          <span className="access-mark" aria-hidden="true"><IconLockRound /></span>
+          <h1 data-testid="lock-title">Сейф заблокирован</h1>
+          <p data-testid="lock-description">{method === 'pin' ? 'Введите PIN из 6 цифр.' : 'Введите мастер-пароль для продолжения.'}</p>
+        </header>
+        <div className="access-body">
           {method === 'pin' ? (
             <>
-              <div className={`lock-cells${error ? ' has-error' : ''}${disabled ? ' is-busy' : ''}`}>
+              <div className={`access-pin-cells${error ? ' has-error' : ''}`}>
                 {pin.map((d, i) => (
                   <input
                     key={i}
@@ -234,24 +212,25 @@ export function ScreenLock() {
                     onPaste={onCellPaste}
                     onFocus={() => setActiveCell(i)}
                     aria-label={`Цифра пин-кода ${i + 1}`}
+                    aria-invalid={!!error}
                     data-testid={`lock-cell-${i}`}
                   />
                 ))}
               </div>
-              <p className="lock-hint num" role="status">
+              <p className="access-hint" role="status" data-testid="lock-pin-hint">
                 {pinValue.length === 0
-                  ? `Введите ${PIN_LEN} цифр пина`
+                  ? 'Проверка начнётся после последней цифры.'
                   : pinValue.length < PIN_LEN
-                    ? `Осталось ${PIN_LEN - pinValue.length} — проверка запустится сама`
-                    : '\u00A0'}
+                    ? `Введено ${pinValue.length} из ${PIN_LEN} цифр`
+                    : 'PIN введён'}
               </p>
             </>
           ) : (
-            <form onSubmit={submitPassword}>
-              <div className={`lock-pass${error ? ' has-error' : ''}${disabled ? ' is-busy' : ''}`}>
-                <input
-                  className="lock-input"
-                  type={show ? 'text' : 'password'}
+            <form onSubmit={submitPassword} className="access-field">
+              <label htmlFor="unlock-password" data-testid="lock-password-label">Мастер-пароль</label>
+                <PasswordInput
+                  id="unlock-password"
+                  testId="lock-password"
                   value={password}
                   disabled={disabled}
                   autoComplete="off"
@@ -261,45 +240,33 @@ export function ScreenLock() {
                     setError(null)
                   }}
                   aria-label="Мастер-пароль"
+                  aria-invalid={!!error}
                 />
-                <button type="button" className="icon-btn lock-eye" onClick={() => setShow((s) => !s)} aria-label={show ? 'Скрыть пароль' : 'Показать пароль'}>
-                  {show ? 'скрыть' : 'показать'}
-                </button>
-              </div>
-              <button className="lock-submit" type="submit" disabled={disabled || !password}>
-                Разблокировать
+              <button className="access-primary" type="submit" disabled={disabled || !password} data-testid="lock-password-submit">
+                {lock.busy ? 'Проверяем…' : 'Разблокировать'}
               </button>
             </form>
           )}
 
-          <p className={`lock-status num${error ? ' err' : ''}`} role="status">
+          <p className={error && !cooling ? 'access-alert' : 'access-unlock-status'} role={error && !cooling ? 'alert' : 'status'} data-testid="lock-status">
             {lock.busy
-              ? 'Проверяю ключ…'
+              ? 'Проверяем ключ…'
+              : okFlash
+                ? 'Сейф разблокирован'
               : cooling
-                ? `Подождите ${fmtCooldown(lock.cooldownUntil - tickNow)} — попытка ${lock.failCount}`
-                : error ?? '\u00A0'}
+                ? `Следующая попытка через ${fmtCooldown(lock.cooldownUntil - tickNow)}`
+                : error ?? ''}
           </p>
+          <button className="access-link" type="button" disabled={lock.busy || okFlash} onClick={() => setResetting(true)} data-testid="lock-forgot-key">Не помню мастер-ключ</button>
         </div>
       </div>
 
-      {/* Статусная строка во весь низ экрана — голос статус-бара приложения */}
-      <footer className="lock-statusline num">
-        <span>SESSION 7F3A</span>
-        {/* ls-aux — сегменты, уходящие на узких экранах (RESPONSIVE v3.8):
-            остаются SESSION и ПОПЫТКИ, между ними flex-разделитель */}
-        <span className="sb-sep ls-aux">·</span>
-        <span className="ls-aux">AES-256</span>
-        <span className="sb-sep ls-aux">·</span>
-        <span className="ls-aux">ЛОКАЛЬНЫЙ РЕЖИМ</span>
-        <span className="ls-grow" />
-        <span className="ls-aux">ЗАМОК С {lockedAtLabel || '—'}</span>
-        <span className="sb-sep ls-aux">·</span>
-        <span className="ls-attempts">ПОПЫТОК: {lock.failCount}</span>
-        <span className="sb-sep ls-aux">·</span>
-        <span className="ls-net ls-aux">
-          <i className="net-dot" />ONLINE · 0 УТЕЧЕК
-        </span>
+      <footer className="access-meta">
+        <span data-testid="lock-locked-at">Блокировка: {lockedAtLabel || '—'}</span>
+        <span data-testid="lock-failed-attempts">Неудачных попыток: {lock.failCount}</span>
       </footer>
+      </div>
+      {resetting && <ResetLockDialog onClose={() => setResetting(false)} onReset={v.resetLock} />}
     </div>
   )
 }

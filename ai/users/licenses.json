@@ -1,0 +1,14 @@
+[
+  {
+    "id": "9bade2540a735075",
+    "mask": "WSX-••••-••••-••••-LEX2",
+    "planId": "ae5c5a61bc44d4af",
+    "days": 7,
+    "note": "visual_access_test",
+    "createdAt": 1788631168973,
+    "usedBy": "deleted:6fe822c9dee6459a",
+    "usedAt": 1788631169294,
+    "revokedAt": null,
+    "keyHash": "105a08c814753f02a15a90cbc0d9c5a03c490a145656c105ad17bebdd28b1841"
+  }
+]

@@ -278,10 +278,9 @@ export function Onboarding() {
           <>
             <div className="onb-body">
               <p className="onb-kicker">Шаг 2 из 3 · мастер-ключ</p>
-              <h2 className="onb-title">Ключ, без которого сейф не открывается</h2>
-              <p className="onb-lede">
-                Ключ выводится PBKDF2 (600 000 итераций) и остаётся на устройстве: восстановить
-                его нельзя ни нам, ни вам. Он же защищает пароли в менеджере секретов.
+              <h2 className="onb-title" data-testid="onb-key-title">Настройте мастер-ключ</h2>
+              <p className="onb-lede" data-testid="onb-key-description">
+                Он блокирует сейф и защищает секреты. Сохраните ключ: восстановить его нельзя.
               </p>
 
               <div className="onb-methods">
@@ -338,7 +337,7 @@ export function Onboarding() {
                     <MkPassField
                       id="onb-key-new"
                       label="Мастер-пароль"
-                      hint={secret ? `${secret.length}/8+` : 'min 8 chars'}
+                      hint={secret ? `${secret.length} символов` : 'От 8 символов'}
                       hintTone={secretOk ? 'ok' : secret ? 'bad' : undefined}
                       value={secret}
                       onChange={(next) => {
@@ -386,10 +385,10 @@ export function Onboarding() {
                   {error}
                 </p>
               )}
-              <p className="onb-note">
+              <p className="onb-note" data-testid="onb-key-hint">
                 {method === 'pin'
-                  ? 'PIN: ровно 6 цифр — столько же принимает экран разблокировки.'
-                  : 'Пароль: минимум 8 символов, лучше фраза из четырёх слов.'}
+                  ? 'PIN должен содержать 6 цифр.'
+                  : 'Пароль должен содержать не менее 8 символов.'}
               </p>
 
               {declining ? (

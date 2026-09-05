@@ -10,6 +10,7 @@ import { IconClose } from '@/components/icons'
 import { useSecrets } from '@/lib/secrets-store'
 import { MAX_IMPORT_BYTES, detectAndImport, download, type ImportPreview } from '@/lib/secrets-io'
 import { useDialog } from '@/hooks/use-dialog'
+import { PasswordInput } from '@/components/password-input'
 
 type Tab = 'import' | 'export' | 'backup'
 
@@ -122,14 +123,14 @@ export function VaultIo({ onClose }: { onClose: () => void }) {
                 }}
                 data-testid="io-enc-file"
               />
-              <input
+              <PasswordInput
                 className="input vt-inline-input"
-                type="password"
                 value={pass}
                 onChange={(e) => setPass(e.target.value)}
                 placeholder="пароль зашифрованного снимка"
                 autoComplete="off"
-                data-testid="io-enc-pass"
+                testId="io-enc-pass"
+                aria-label="Пароль зашифрованного снимка"
               />
               <button
                 className="btn btn-ghost btn-sm"
@@ -193,17 +194,18 @@ export function VaultIo({ onClose }: { onClose: () => void }) {
 
         {tab === 'export' && (
           <div className="vt-form">
-            <label className="vt-field">
-              <span className="label-mono">Пароль зашифрованного экспорта (AES-GCM · PBKDF2 600k)</span>
-              <input
+            <div className="access-field">
+              <label htmlFor="io-export-password" data-testid="io-export-pass-label">Пароль зашифрованного экспорта</label>
+              <PasswordInput
+                id="io-export-password"
                 className="input"
-                type="password"
                 value={pass}
                 onChange={(e) => setPass(e.target.value)}
                 autoComplete="off"
-                data-testid="io-export-pass"
+                testId="io-export-pass"
+                placeholder="Не менее 8 символов"
               />
-            </label>
+            </div>
             <button
               className="btn btn-primary btn-sm"
               disabled={pass.length < 8 || busy}

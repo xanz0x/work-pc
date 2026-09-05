@@ -457,7 +457,7 @@ export function VaultEditor({
                             onClick={() => setShown((m) => ({ ...m, [i]: !m[i] }))}
                             data-testid={`editor-field-eye-${i}`}
                           >
-                            {shown[i] ? <IconEye /> : <IconEyeOff />}
+                            {shown[i] ? <IconEyeOff /> : <IconEye />}
                           </button>
                         )}
                         {f.kind !== 'multiline' && (

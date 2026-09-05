@@ -107,7 +107,7 @@ export function SecretValue({
         >
           {empty ? '—' : shown === null ? (field.secret ? MASK : field.value) : shown}
         </span>
-        {shown !== null && left > 0 && <span className="vt-val-left num">{left}с</span>}
+        {shown !== null && left > 0 && <span className="vt-val-left num" data-testid={`secret-reveal-countdown-${field.id}`}>{left}с</span>}
         {field.secret && !empty && (
           <button
             className="vte-btn"
@@ -117,7 +117,7 @@ export function SecretValue({
             aria-label={shown === null ? 'Показать значение' : 'Скрыть значение'}
             data-testid={`reveal-${field.id}`}
           >
-            {shown === null ? <IconEyeOff /> : <IconEye />}
+            {shown === null ? <IconEye /> : <IconEyeOff />}
           </button>
         )}
         {!empty && (

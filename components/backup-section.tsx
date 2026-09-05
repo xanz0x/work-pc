@@ -17,6 +17,7 @@
 import { trackAction } from '@/lib/telemetry'
 import { useCallback, useEffect, useState } from 'react'
 import { IconDatabase, IconRefresh, IconTrash } from './icons'
+import { PasswordInput } from './password-input'
 import { useVault } from '@/lib/vault-store'
 import { useFlags } from '@/lib/flags'
 import { download } from '@/lib/secrets-io'
@@ -270,24 +271,22 @@ export function BackupSection() {
           </div>
         ) : null}
         <div className="folder-row">
-          <input
+          <PasswordInput
             className="input input-mono"
-            type="password"
             placeholder={cfg?.pwd ? 'пароль снимка' : `пароль снимка · минимум ${MIN_PWD} знаков`}
             value={pwd}
             onChange={(e) => setPwd(e.target.value)}
             aria-label="Пароль снимка"
-            data-testid="backup-pwd"
+            testId="backup-pwd"
           />
           {!cfg?.pwd && (
-            <input
+            <PasswordInput
               className="input input-mono"
-              type="password"
               placeholder="повтор"
               value={pwd2}
               onChange={(e) => setPwd2(e.target.value)}
               aria-label="Повтор пароля снимка"
-              data-testid="backup-pwd2"
+              testId="backup-pwd2"
             />
           )}
           <button
@@ -441,14 +440,13 @@ export function BackupSection() {
 
         {blob && !pending && (
           <div className="folder-row" data-testid="backup-open-row">
-            <input
+            <PasswordInput
               className="input input-mono"
-              type="password"
               placeholder="пароль снимка"
               value={openPwd}
               onChange={(e) => setOpenPwd(e.target.value)}
               aria-label="Пароль снимка для открытия"
-              data-testid="backup-open-pwd"
+              testId="backup-open-pwd"
             />
             <button
               className="btn btn-primary btn-sm"

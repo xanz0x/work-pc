@@ -2,8 +2,8 @@
 
 /* Поля мастер-ключа: одна реализация на настройки и онбординг. */
 
-import { useState, type ReactNode } from 'react'
-import { IconEye, IconEyeOff } from './icons'
+import { type ReactNode } from 'react'
+import { PasswordInput } from './password-input'
 
 /** PIN ровно из шести цифр — единое правило для всех экранов. */
 export const PIN_LENGTH = 6
@@ -48,39 +48,26 @@ export function MkPassField({
   onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void
   children?: ReactNode
 }) {
-  const [shown, setShown] = useState(false)
   return (
     <div className="mk-field">
-      <label className="label-mono mk-label" htmlFor={id}>
+      <label className="label-mono mk-label" htmlFor={id} data-testid={`${testId}-label`}>
         <span>{label}</span>
         {hint ? (
-          <span className={`mk-hint num${hintTone ? ` mk-hint-${hintTone}` : ''}`}>{hint}</span>
+          <span className={`mk-hint num${hintTone ? ` mk-hint-${hintTone}` : ''}`} data-testid={`${testId}-hint`}>{hint}</span>
         ) : null}
       </label>
-      <div className="mk-input-wrap">
-        <input
-          ref={inputRef}
+        <PasswordInput
+          inputRef={inputRef}
           id={id}
           className={`lock-input mk-input num${incomplete ? ' is-incomplete' : ''}`}
-          type={shown ? 'text' : 'password'}
           autoComplete={autoComplete}
           placeholder={placeholder}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={onKeyDown}
-          data-testid={testId}
+          testId={testId}
+          aria-invalid={incomplete || undefined}
         />
-        <button
-          className="mk-eye"
-          type="button"
-          onClick={() => setShown((x) => !x)}
-          aria-label={shown ? 'Скрыть ключ' : 'Показать ключ'}
-          aria-pressed={shown}
-          data-testid={`${testId}-eye`}
-        >
-          {shown ? <IconEye /> : <IconEyeOff />}
-        </button>
-      </div>
       {children}
     </div>
   )
@@ -110,9 +97,9 @@ export function MkPinRow({
 }) {
   return (
     <div className="mk-field">
-      <label className="label-mono mk-label" htmlFor={idBase}>
+      <label className="label-mono mk-label" htmlFor={idBase} data-testid={`${testId}-label`}>
         <span>{label}</span>
-        <span className={`mk-hint num${hintTone ? ` mk-hint-${hintTone}` : ''}`}>{hint}</span>
+        <span className={`mk-hint num${hintTone ? ` mk-hint-${hintTone}` : ''}`} data-testid={`${testId}-hint`}>{hint}</span>
       </label>
       <div className={`lock-cells mk-cells${hasError ? ' has-error' : ''}`}>
         {Array.from({ length: PIN_LENGTH }).map((_, i) => (

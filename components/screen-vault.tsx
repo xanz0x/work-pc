@@ -305,10 +305,9 @@ export function ScreenVault() {
           <span className="vt-gate-icon">
             <IconShield />
           </span>
-          <h1 className="vt-gate-title">Менеджер секретов требует замок</h1>
-          <p className="vt-note">
-            Модуль не хранит ничего в открытом виде: ключ записей выводится из мастер-ключа сейфа
-            (PBKDF2 600 000 → AES-GCM-256). Включите замок — и сейф секретов появится здесь.
+          <h1 className="vt-gate-title" data-testid="vault-gate-title">Настройте защиту секретов</h1>
+          <p className="vt-note" data-testid="vault-gate-description">
+            Для хранения паролей и других секретов нужен мастер-ключ сейфа.
           </p>
           <button
             className="btn btn-primary"
@@ -329,10 +328,9 @@ export function ScreenVault() {
           <span className="vt-gate-icon">
             <IconShield />
           </span>
-          <h1 className="vt-gate-title">Сейф секретов закрыт</h1>
-          <p className="vt-note">
-            Разблокируйте сейф мастер-ключом (кнопка-замок в топбаре или Ctrl+Shift+L → ввод) —
-            ключ записей появится только в памяти этой вкладки.
+          <h1 className="vt-gate-title" data-testid="vault-wait-title">Сейф секретов закрыт</h1>
+          <p className="vt-note" data-testid="vault-wait-description">
+            Разблокируйте сейф мастер-ключом, чтобы получить доступ к секретам.
           </p>
         </div>
       </div>

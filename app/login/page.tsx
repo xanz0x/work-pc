@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { IconKey, IconLockRound, IconUser } from '@/components/icons'
-import { MeteorLayer } from '@/components/screen-lock'
+import { IconKey, IconLockRound } from '@/components/icons'
+import { PasswordInput } from '@/components/password-input'
 import { LogoWord } from '@/components/screen-lock-logo'
 import { PlanBadge } from '@/components/plan-badge'
 import { KEY_RE, loginProblem, normalizeKey, type PlanRef } from '@/lib/users'
@@ -117,30 +117,19 @@ export default function LoginPage() {
   const canRegister = mode === 'login' || (keyInfo !== null && password.length >= 8 && password === again && login.trim().length >= 3)
 
   return (
-    <main className={`lock-screen login-scene${err ? ' has-error' : ''}`} data-testid="login-page">
-      <div className="lock-floor" aria-hidden="true">
-        <i />
-      </div>
-      <MeteorLayer />
-
-      <p className="lock-engrave num">{mode === 'login' ? 'SESSION · ВХОД В УЧЁТНУЮ ЗАПИСЬ' : 'SESSION · РЕГИСТРАЦИЯ ПО КЛЮЧУ'}</p>
-
-      <form className={`lock-card login-card${mode === 'register' ? ' is-register' : ''}`} onSubmit={submit} data-testid="login-form">
-        <i className="lock-edge" aria-hidden="true" />
-        <div className="lock-head">
-          <div className="lock-mark" aria-hidden="true">
+    <main className="access-scene" data-testid="login-page">
+      <div className="access-stack">
+      <div className="access-brand" data-testid="login-logo"><LogoWord /></div>
+      <form className="access-card" onSubmit={submit} data-testid="login-form" aria-busy={busy}>
+        <header className="access-heading">
+          <span className="access-mark" aria-hidden="true">
             {mode === 'login' ? <IconLockRound /> : <IconKey />}
-            <i className="lock-pulse" />
-            <i className="lock-pulse p2" />
-          </div>
-          <h1 className="login-title" data-testid="login-logo">
-            <LogoWord className="lock-logo" />
-          </h1>
-          <p className="lock-tagline">local ai workspace · {mode === 'login' ? 'личный сейф под учётной записью' : 'доступ по ключу лицензии'}</p>
-        </div>
-
-        <div className="lock-well login-well">
-          <div className="autolock-seg login-mode" role="tablist">
+          </span>
+          <h1 data-testid="login-heading">{mode === 'login' ? 'Вход в аккаунт' : 'Создание аккаунта'}</h1>
+          <p data-testid="login-description">{mode === 'login' ? 'Введите логин и пароль.' : 'Нужен ключ лицензии от администратора.'}</p>
+        </header>
+        <div className="access-body">
+          <div className="access-tabs" role="tablist" aria-label="Вход или регистрация">
             <button type="button" role="tab" aria-selected={mode === 'login'} className={mode === 'login' ? 'active' : ''} onClick={() => switchMode('login')} data-testid="login-tab-login">
               Вход
             </button>
@@ -150,12 +139,11 @@ export default function LoginPage() {
           </div>
 
           {mode === 'register' && (
-            <label className="login-field login-key-field">
-              <span className="label-mono">ключ лицензии</span>
-              <span className="lf-row">
-              <IconKey className="lf-ico" aria-hidden="true" />
+            <div className="access-field">
+              <label htmlFor="account-key" data-testid="login-key-label">Ключ лицензии</label>
               <input
-                className={`lock-input login-key${keyInfo ? ' ok' : keyErr ? ' bad' : ''}`}
+                id="account-key"
+                className="access-input num"
                 placeholder="WSX-XXXX-XXXX-XXXX-XXXX"
                 value={key}
                 onChange={(e) => setKey(e.target.value.trim() ? normalizeKey(e.target.value) : '')}
@@ -167,12 +155,13 @@ export default function LoginPage() {
                 spellCheck={false}
                 maxLength={23}
                 data-testid="login-key"
+                aria-invalid={!!keyErr}
+                aria-describedby="account-key-status"
               />
-              </span>
-              <div className="login-key-state" aria-live="polite">
-                {keyBusy && <span className="label-mono">проверяю…</span>}
+              <div className="access-key-state" id="account-key-status" aria-live="polite" data-testid="login-key-status">
+                {keyBusy && <span data-testid="login-key-checking">Проверяем ключ…</span>}
                 {!keyBusy && keyInfo && (
-                  <span className="login-key-ok" data-testid="login-key-plan">
+                  <span className="access-key-ok" data-testid="login-key-plan">
                     <PlanBadge plan={keyInfo.plan} />
                     <span>
                       <b>{keyInfo.days} дн.</b> · {keyInfo.tagline}
@@ -180,20 +169,19 @@ export default function LoginPage() {
                   </span>
                 )}
                 {!keyBusy && keyErr && (
-                  <span className="login-err" role="alert" data-testid="login-key-error">
+                  <span className="access-error" role="alert" data-testid="login-key-error">
                     {keyErr}
                   </span>
                 )}
               </div>
-            </label>
+            </div>
           )}
 
-          <label className="login-field">
-            <span className="label-mono">{mode === 'login' ? 'логин · пусто = администратор' : 'логин'}</span>
-            <span className="lf-row">
-            <IconUser className="lf-ico" aria-hidden="true" />
+          <div className="access-field">
+            <label htmlFor="account-login" data-testid="login-login-label">Логин</label>
             <input
-              className="lock-input"
+              id="account-login"
+              className="access-input"
               type="text"
               autoComplete="username"
               autoCapitalize="none"
@@ -203,65 +191,46 @@ export default function LoginPage() {
               onChange={(e) => setLogin(e.target.value.toLowerCase())}
               maxLength={32}
               data-testid="login-login"
+              placeholder={mode === 'login' ? 'Ваш логин' : 'От 3 до 32 символов'}
             />
-            </span>
-          </label>
-          <label className="login-field">
-            <span className="label-mono">пароль</span>
-            <span className="lf-row">
-            <IconLockRound className="lf-ico" aria-hidden="true" />
-            <input
-              className="lock-input"
-              type="password"
+          </div>
+          <div className="access-field">
+            <label htmlFor="account-password" data-testid="login-password-label">Пароль</label>
+            <PasswordInput
+              id="account-password"
               autoFocus
               autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-              ref={passRef}
+              inputRef={passRef}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              data-testid="login-password"
+              testId="login-password"
+              placeholder={mode === 'register' ? 'Не менее 8 символов' : 'Введите пароль'}
             />
-            </span>
-          </label>
+          </div>
           {mode === 'register' && (
-            <label className="login-field">
-              <span className="label-mono">пароль ещё раз</span>
-              <span className="lf-row">
-              <IconLockRound className="lf-ico" aria-hidden="true" />
-              <input
-                className={`lock-input${mismatch ? ' bad' : ''}`}
-                type="password"
+            <div className="access-field">
+              <label htmlFor="account-password-again" data-testid="login-password-again-label">Повторите пароль</label>
+              <PasswordInput
+                id="account-password-again"
                 autoComplete="new-password"
                 value={again}
                 onChange={(e) => setAgain(e.target.value)}
-                data-testid="login-password-again"
+                testId="login-password-again"
+                aria-invalid={mismatch}
+                placeholder="Тот же пароль ещё раз"
               />
-              </span>
-            </label>
+              {mismatch && <span className="access-error" data-testid="login-password-mismatch">Пароли не совпадают</span>}
+            </div>
           )}
 
-          <button type="submit" className="lock-submit login-submit" disabled={busy || !canRegister} data-testid="login-submit">
-            {busy ? 'Проверяю…' : mode === 'login' ? 'Войти' : keyInfo ? `Создать аккаунт · ${keyInfo.plan.name}` : 'Создать аккаунт'}
+          <button type="submit" className="access-primary" disabled={busy || !canRegister} data-testid="login-submit">
+            {busy ? 'Проверяем…' : mode === 'login' ? 'Войти' : 'Создать аккаунт'}
           </button>
-
-          <p className={`lock-status num${err ? ' err' : ''}`} role={err ? 'alert' : 'status'} data-testid={err ? 'login-error' : undefined}>
-            {err ?? (mode === 'login' ? 'Сессия живёт 12 часов · cookie httpOnly' : 'Ключ выдаёт администратор · определяет тариф и срок')}
-          </p>
+          {err && <p className="access-alert" role="alert" data-testid="login-error">{err}</p>}
+          {mode === 'login' && <p className="access-footnote" data-testid="login-admin-hint">Администратор может войти без логина.</p>}
         </div>
       </form>
-
-      <footer className="lock-statusline num">
-        <span>SESSION</span>
-        <span className="sb-sep ls-aux">·</span>
-        <span className="ls-aux">AES-256</span>
-        <span className="sb-sep ls-aux">·</span>
-        <span className="ls-aux">ДАННЫЕ КАЖДОГО ПОЛЬЗОВАТЕЛЯ ОТДЕЛЕНЫ</span>
-        <span className="ls-grow" />
-        <span className="ls-attempts">{mode === 'login' ? 'ВХОД' : 'РЕГИСТРАЦИЯ'}</span>
-        <span className="sb-sep ls-aux">·</span>
-        <span className="ls-net ls-aux">
-          <i className="net-dot" />ONLINE · 0 УТЕЧЕК
-        </span>
-      </footer>
+      </div>
     </main>
   )
 }

@@ -10,7 +10,8 @@
 
 import '@/app/styles/screen-admin.css'
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
-import { IconLogoMark } from '@/components/icons'
+import { LogoWord } from '@/components/screen-lock-logo'
+import { PasswordInput } from '@/components/password-input'
 import { PlanBadge } from '@/components/plan-badge'
 import { installStorageScope } from '@/lib/db/scope'
 import { KEY_RE, accessState, normalizeKey, type AccessState, type FeatureId, type UserView } from '@/lib/users'
@@ -119,9 +120,9 @@ export function AccountGate({ children }: { children: ReactNode }) {
 function Splash({ text, action }: { text: string; action?: { label: string; onClick: () => void } }) {
   return (
     <div className="acc-splash" data-testid="account-splash">
-      <span>{text}</span>
+      <span data-testid="account-splash-status">{text}</span>
       {action && (
-        <button className="btn btn-ghost" onClick={action.onClick}>
+        <button className="btn btn-ghost" onClick={action.onClick} data-testid="account-retry">
           {action.label}
         </button>
       )}
@@ -143,23 +144,25 @@ function AccessWall({
   logout: () => Promise<void>
 }) {
   return (
-    <main className="acc-wall" data-testid="access-wall" data-access={access}>
-      <div className="acc-card panel">
-        <span className="login-mark" aria-hidden="true">
-          <IconLogoMark />
-        </span>
-        <div className="label-mono acc-who">@{user.login}</div>
+    <main className="access-scene" data-testid="access-wall" data-access={access}>
+      <div className="access-stack">
+      <div className="access-brand" data-testid="wall-brand"><LogoWord /></div>
+      <div className="access-card access-account-card">
+      <div className="access-body">
+        <div className="access-who" data-testid="wall-user">@{user.login}</div>
         {access === 'blocked' && (
           <>
-            <h1>Учётная запись заблокирована</h1>
-            <p>Администратор приостановил доступ. Локальные данные в этом браузере не тронуты.</p>
+            <h1 data-testid="wall-blocked-title">Аккаунт заблокирован</h1>
+            <p data-testid="wall-blocked-description">Администратор приостановил доступ. Локальные данные в этом браузере не тронуты.</p>
           </>
         )}
         {access === 'password' && <PasswordForm onDone={refresh} />}
         {access === 'license' && <LicenseForm onDone={refresh} user={user} />}
-        <button className="btn btn-ghost acc-logout" onClick={() => void logout()} data-testid="wall-logout">
+        <button className="access-link" onClick={() => void logout()} data-testid="wall-logout">
           Выйти
         </button>
+      </div>
+      </div>
       </div>
     </main>
   )
@@ -185,18 +188,24 @@ function PasswordForm({ onDone }: { onDone: () => Promise<void> }) {
     await onDone()
   }
   return (
-    <form onSubmit={submit} data-testid="wall-password-form">
-      <h1>Смените временный пароль</h1>
-      <p>Пароль выдал администратор — задайте свой, не короче 8 знаков.</p>
-      <input className="mcp-input" type="password" placeholder="Новый пароль" value={next} onChange={(e) => setNext(e.target.value)} autoComplete="new-password" data-testid="wall-password-next" />
-      <input className="mcp-input" type="password" placeholder="Ещё раз" value={again} onChange={(e) => setAgain(e.target.value)} autoComplete="new-password" data-testid="wall-password-again" />
+    <form className="access-account-form" onSubmit={submit} data-testid="wall-password-form">
+      <h1 data-testid="wall-password-title">Смените временный пароль</h1>
+      <p data-testid="wall-password-description">Задайте свой пароль вместо выданного администратором.</p>
+      <div className="access-field">
+        <label htmlFor="wall-password-new" data-testid="wall-password-next-label">Новый пароль</label>
+        <PasswordInput id="wall-password-new" placeholder="Не менее 8 символов" value={next} onChange={(e) => setNext(e.target.value)} autoComplete="new-password" testId="wall-password-next" />
+      </div>
+      <div className="access-field">
+        <label htmlFor="wall-password-repeat" data-testid="wall-password-again-label">Повторите пароль</label>
+        <PasswordInput id="wall-password-repeat" placeholder="Тот же пароль ещё раз" value={again} onChange={(e) => setAgain(e.target.value)} autoComplete="new-password" testId="wall-password-again" />
+      </div>
       {err && (
         <p className="mk-err" role="alert" data-testid="wall-error">
           {err}
         </p>
       )}
-      <button className="btn btn-primary" disabled={busy || next.length < 8} data-testid="wall-password-submit">
-        Сохранить и войти
+      <button className="access-primary" disabled={busy || next.length < 8} data-testid="wall-password-submit">
+        {busy ? 'Сохраняем…' : 'Сохранить и войти'}
       </button>
     </form>
   )
@@ -221,19 +230,20 @@ function LicenseForm({ onDone, user }: { onDone: () => Promise<void>; user: User
     await onDone()
   }
   return (
-    <form onSubmit={submit} data-testid="wall-license-form">
-      <h1>{expired ? 'Срок лицензии истёк' : 'Нужен ключ лицензии'}</h1>
+    <form className="access-account-form" onSubmit={submit} data-testid="wall-license-form">
+      <h1 data-testid="wall-license-title">{expired ? 'Срок лицензии истёк' : 'Нужен ключ лицензии'}</h1>
       <div className="adm-inline">
         <PlanBadge plan={user.plan} lg />
         {expired && <span className="label-mono">закончилась {new Date(user.licenseUntil!).toLocaleDateString('ru-RU')}</span>}
       </div>
-      <p>
+      <p data-testid="wall-license-description">
         {expired
-          ? 'Чтобы продолжить, введите новый ключ от администратора. Ключ того же тарифа продлит срок, ключ другого тарифа — переведёт на него.'
-          : 'Чтобы работать, введите ключ вида WSX-XXXX-XXXX-XXXX-XXXX — его выдаёт администратор под тариф и срок.'}
+          ? 'Введите новый ключ от администратора. Срок и тариф обновятся по этому ключу.'
+          : 'Введите ключ лицензии, выданный администратором.'}
       </p>
       <input
-        className="mcp-input acc-key"
+        className="access-input num"
+        aria-label="Ключ лицензии"
         placeholder="WSX-XXXX-XXXX-XXXX-XXXX"
         value={key}
         onChange={(e) => setKey(e.target.value.trim() ? normalizeKey(e.target.value) : '')}
@@ -247,7 +257,7 @@ function LicenseForm({ onDone, user }: { onDone: () => Promise<void>; user: User
           {err}
         </p>
       )}
-      <button className="btn btn-primary" disabled={busy || !KEY_RE.test(key)} data-testid="wall-license-submit">
+      <button className="access-primary" disabled={busy || !KEY_RE.test(key)} data-testid="wall-license-submit">
         Активировать
       </button>
     </form>

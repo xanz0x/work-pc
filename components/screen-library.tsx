@@ -67,6 +67,7 @@ import { useBulkRunner } from '@/lib/bulk'
 import { useIntent } from '@/lib/commands'
 import { BulkBar, type BulkAction } from '@/components/bulk-bar'
 import { DialogShell } from '@/components/dialog-shell'
+import { PasswordInput } from './password-input'
 import { trackAction, trackDrop } from '@/lib/telemetry'
 import { useAccount } from '@/lib/account'
 
@@ -843,9 +844,8 @@ export function ScreenLibrary() {
       </>
     ) : bulkForm === 'key' ? (
       <>
-        <input
+        <PasswordInput
           className="input input-sm mono"
-          type="password"
           autoFocus
           value={bulkKey1}
           onChange={(e) => {
@@ -854,11 +854,10 @@ export function ScreenLibrary() {
           }}
           placeholder="ключ файлов (минимум 8)"
           aria-label="Ключ для выбранных файлов"
-          data-testid="lib-bulk-key1"
+          testId="lib-bulk-key1"
         />
-        <input
+        <PasswordInput
           className="input input-sm mono"
-          type="password"
           value={bulkKey2}
           onChange={(e) => {
             setBulkKey2(e.target.value)
@@ -869,7 +868,7 @@ export function ScreenLibrary() {
           }}
           placeholder="повторите ключ"
           aria-label="Повторите ключ"
-          data-testid="lib-bulk-key2"
+          testId="lib-bulk-key2"
         />
         <button className="btn btn-primary btn-sm" onClick={applyBulkKey} data-testid="lib-bulk-key-apply">
           <IconLockRound width={13} height={13} stroke="currentColor" strokeWidth={1.6} />
@@ -1545,16 +1544,17 @@ export function ScreenLibrary() {
                     <i />
                   </button>
                   {draftLock ? (
-                    <input
+                    <PasswordInput
                       className="input input-sm mono"
-                      type="password"
+                      testId="note-draft-password"
+                      aria-label="Пароль стикера"
                       value={draftKey}
                       onChange={(e) => setDraftKey(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.nativeEvent.isComposing) saveDraft()
                       }}
                       placeholder={
-                        editing ? 'новый ключ · пусто = оставить прежний' : 'локальный ключ · AES-256'
+                        editing ? 'Пусто — сохранить прежний пароль' : 'Пароль стикера'
                       }
                     />
                   ) : (
@@ -1723,9 +1723,9 @@ export function ScreenLibrary() {
             {!noteOpen && (
               <div className="unlock unlock-insp">
                 <div className="unlock-row">
-                  <input
+                  <PasswordInput
                     className={`input input-sm mono${keyError && askKey === selNote.id ? ' err' : ''}`}
-                    type="password"
+                    testId="note-inspector-password"
                     value={askKey === selNote.id ? keyValue : ''}
                     onFocus={() => {
                       if (askKey !== selNote.id) openKeyPrompt(selNote.id)
@@ -1860,9 +1860,9 @@ export function ScreenLibrary() {
               </p>
               {settingKeyFor === selNote.id && !selNote.locked && (
                 <div className="key-setup">
-                  <input
+                  <PasswordInput
                     className="input input-sm mono"
-                    type="password"
+                    testId="note-set-password"
                     autoFocus
                     value={newKey}
                     onChange={(e) => setNewKey(e.target.value)}
@@ -2238,17 +2238,18 @@ export function ScreenLibrary() {
               }}
             >
               <div className="lock-card">
-                <div className="lk-head mono">
+                <div className="lk-head" data-testid="fk-ask-title">
                   <IconKey width={12} height={12} aria-hidden="true" focusable="false" />
-                  ФАЙЛ ПОД КЛЮЧОМ
+                  Файл защищён паролем
                 </div>
-                <div className="file-name mono num">{f?.name ?? '—'}</div>
+                <div className="file-name" data-testid="fk-ask-filename">{f?.name ?? '—'}</div>
                 <div className="lock-form">
-                  <input
+                  <label className="access-hint" htmlFor="file-unlock-password" data-testid="fk-ask-label">Пароль файла</label>
+                  <PasswordInput
+                    id="file-unlock-password"
                     className={`lock-input mono${fkErr ? ' err' : ''}`}
-                    type="password"
                     autoFocus
-                    data-testid="fk-ask-input"
+                    testId="fk-ask-input"
                     value={fkVal}
                     disabled={cooling}
                     onChange={(e) => {
@@ -2258,7 +2259,7 @@ export function ScreenLibrary() {
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.nativeEvent.isComposing) submitFileKey()
                     }}
-                    placeholder="ключ файла"
+                    placeholder="Введите пароль"
                     aria-label="Ключ файла"
                     aria-invalid={!!fkErr}
                   />
@@ -2269,8 +2270,8 @@ export function ScreenLibrary() {
                   >
                     {fkErr ??
                       (cooling
-                        ? 'анти-брутфорс: подождите перед следующей попыткой'
-                        : 'ключ проверяется локально, ни один байт не уходит из устройства')}
+                        ? 'Подождите перед следующей попыткой.'
+                        : 'Введите пароль, заданный для этого файла.')}
                   </span>
                 </div>
                 <div className="fk-modal-row">
@@ -2285,6 +2286,7 @@ export function ScreenLibrary() {
                   </button>
                   <button
                     className="btn btn-ghost btn-sm"
+                    data-testid="fk-ask-cancel"
                     onClick={() => {
                       setFkAsk(null)
                       setFkErr(null)
@@ -2311,22 +2313,22 @@ export function ScreenLibrary() {
               onClose={() => closeFkSet()}
             >
               <div className="lock-card">
-                <div className="lk-head mono">
+                <div className="lk-head" data-testid="fk-set-title">
                   <IconLockRound width={12} height={12} aria-hidden="true" focusable="false" />
-                  ПОСТАВИТЬ НА КЛЮЧ
+                  Установить пароль файла
                 </div>
-                <div className="file-name mono num">{f?.name ?? '—'}</div>
-                <p className="fk-note">
-                  Случайный ключ файла оборачивается мастер-ключом сейфа (AES-GCM) и хранится на
-                  этом устройстве. Без пароля файла описание не расшифровать; сброс сейфа стирает
-                  файловые ключи вместе с доступом.
+                <div className="file-name" data-testid="fk-set-filename">{f?.name ?? '—'}</div>
+                <p className="fk-note" data-testid="fk-set-warning">
+                  Пароль защищает описание файла. Сброс мастер-ключа удалит файловые ключи и доступ к защищённому описанию.
                 </p>
                 <div className="lock-form">
-                  <input
+                  <label className="access-hint" htmlFor="file-new-password" data-testid="fk-set-pass1-label">Новый пароль</label>
+                  <PasswordInput
+                    id="file-new-password"
                     className={`lock-input mono${fkSetErr ? ' err' : ''}`}
-                    type="password"
                     autoFocus
-                    data-testid="fk-set-pass1"
+                    testId="fk-set-pass1"
+                    autoComplete="new-password"
                     value={fkNew1}
                     onChange={(e) => {
                       setFkNew1(e.target.value)
@@ -2335,14 +2337,16 @@ export function ScreenLibrary() {
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.nativeEvent.isComposing) saveFileKeySetup()
                     }}
-                    placeholder="новый ключ файла (минимум 8)"
+                    placeholder="Не менее 8 символов"
                     aria-label="Новый ключ файла"
                     aria-invalid={!!fkSetErr}
                   />
-                  <input
+                  <label className="access-hint" htmlFor="file-repeat-password" data-testid="fk-set-pass2-label">Повторите пароль</label>
+                  <PasswordInput
+                    id="file-repeat-password"
                     className={`lock-input mono${fkSetErr ? ' err' : ''}`}
-                    type="password"
-                    data-testid="fk-set-pass2"
+                    testId="fk-set-pass2"
+                    autoComplete="new-password"
                     value={fkNew2}
                     onChange={(e) => {
                       setFkNew2(e.target.value)
@@ -2351,7 +2355,7 @@ export function ScreenLibrary() {
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.nativeEvent.isComposing) saveFileKeySetup()
                     }}
-                    placeholder="повторите ключ файла"
+                    placeholder="Тот же пароль ещё раз"
                     aria-label="Повторите ключ файла"
                   />
                   <span
@@ -2365,10 +2369,11 @@ export function ScreenLibrary() {
                 <div className="fk-modal-row">
                   <button className="btn btn-primary btn-sm" data-testid="fk-set-save" onClick={() => void saveFileKeySetup()}>
                     <IconLockRound width={13} height={13} stroke="currentColor" strokeWidth={1.6} />
-                    Запереть
+                    Установить пароль
                   </button>
                   <button
                     className="btn btn-ghost btn-sm"
+                    data-testid="fk-set-cancel"
                     onClick={() => {
                       closeFkSet()
                     }}
@@ -2529,9 +2534,9 @@ function NoteCardContent({
         (keyApplies ? (
           <div className="unlock" onClick={(e) => e.stopPropagation()}>
             <div className="unlock-row">
-              <input
+              <PasswordInput
                 className={`input input-sm mono${keyError ? ' err' : ''}`}
-                type="password"
+                testId={`note-unlock-password-${note.id}`}
                 autoFocus
                 value={keyValue}
                 onChange={(e) => {
@@ -2545,7 +2550,7 @@ function NoteCardContent({
                 aria-label="Локальный ключ"
                 aria-invalid={!!keyError}
               />
-              <button className="btn btn-primary btn-sm" onClick={submitKey} aria-label="Открыть стикер">
+              <button className="btn btn-primary btn-sm" onClick={submitKey} aria-label="Открыть стикер" data-testid={`note-unlock-submit-${note.id}`}>
                 <IconKey />
               </button>
             </div>
