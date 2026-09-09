@@ -41,7 +41,7 @@ export type MessageRow = {
   hasAttachments: boolean
 }
 
-export type AttachmentView = { filename: string; contentType: string; size: number; cid: string | null; inline: boolean }
+export type AttachmentView = { filename: string; contentType: string; size: number; cid: string | null; inline: boolean; dataUrl?: string }
 
 export type MessageFull = Omit<MessageRow, 'seq' | 'hasAttachments'> & {
   folder: string

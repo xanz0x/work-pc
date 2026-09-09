@@ -76,6 +76,8 @@ import { LibraryContextMenu, type LibraryMenuAction, type LibraryMenuTarget } fr
 import { LibraryShareDialog, type LibraryShareRequest } from './library-share-dialog'
 import { SharedNoteInspector } from './shared-note-inspector'
 import { LibraryViewer, type LibraryViewerTarget } from './library-viewer'
+import { IntakeStrip } from './intake-strip'
+import { intakeFiles, type IntakeTrack } from '@/lib/intake'
 
 /** Локальный алиас: короче в объявлении состояния доски. */
 const usePersisted = usePersistedState
@@ -141,6 +143,8 @@ export function ScreenLibrary() {
   const { flash } = useToast()
   const account = useAccount()
   const [cloudPreview, setCloudPreview] = useState<FileView | null>(null)
+  /** Живой приём файлов: перенос в папку хранения и разбор ИИ. */
+  const [intake, setIntake] = useState<IntakeTrack[]>([])
   const [contextMenu, setContextMenu] = useState<LibraryMenuTarget | null>(null)
   const [shareRequest, setShareRequest] = useState<LibraryShareRequest | null>(null)
   const menuReturn = useRef<HTMLElement | null>(null)
@@ -1275,6 +1279,11 @@ export function ScreenLibrary() {
         bytes: cloudPreview.bytes,
         cloudId: cloudPreview.cloudId ?? D.cloudCopies[`file:${cloudPreview.id}`] ?? null,
         absPath: absPathOf(cloudPreview),
+        /* Паспорт файла в просмотрщике — разбор ИИ-архивариуса. */
+        description: cloudPreview.desc,
+        tags: cloudPreview.tags,
+        ...(cloudPreview.analysisStatus ? { analysisStatus: cloudPreview.analysisStatus } : {}),
+        ...(cloudPreview.fileName ? { fileName: cloudPreview.fileName } : {}),
       }
     : null
 
@@ -1291,6 +1300,7 @@ export function ScreenLibrary() {
       {viewerTarget && (
         <LibraryViewer target={viewerTarget} onClose={() => setCloudPreview(null)} />
       )}
+      <IntakeStrip tracks={intake} onClose={() => setIntake([])} />
       <div className="lib-layout">
         <main>
           <div className="page-head">
@@ -1373,6 +1383,11 @@ export function ScreenLibrary() {
                       if (r.ok) trackAction('files.intake')
                       else if (r.reason === 'error') trackDrop('files.intake.failed')
                     })
+                    /* Главный сценарий: файл уезжает в выбранную папку хранения,
+                       и ИИ-архивариус даёт ему название, описание и метки. */
+                    if (account.has('cloud')) {
+                      void intakeFiles(list, setIntake)
+                    }
                   }
                   e.target.value = ''
                 }}

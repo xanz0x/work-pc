@@ -1,8 +1,8 @@
 /* ============================================================
-   LLM · КОНТРАКТ ПРОВАЙДЕРА (NF-2)
-   Один интерфейс на всех: локальный движок, облачный прокси и всё,
-   что появится позже (WebGPU). Маршрут чата больше не знает, кто
-   отвечает: он получает поток дельт и раздаёт их клиенту как SSE.
+   LLM · КОНТРАКТ ПРОВАЙДЕРА
+   Один интерфейс для всех OpenAI-совместимых источников: свой
+   сервер и OpenRouter. Маршрут чата не знает, кто отвечает: он
+   получает поток дельт и раздаёт их клиенту как SSE.
    ============================================================ */
 
 import type { AiErrorCode } from '@/lib/ai-errors'
@@ -19,7 +19,7 @@ export type LlmMessage = {
   }[]
 }
 
-/** Схема инструмента (function calling), одинаковая для Ollama и облака. */
+/** Схема инструмента (function calling) — одинаковая у всех провайдеров. */
 export type LlmTool = {
   type: 'function'
   function: { name: string; description: string; parameters: unknown }
@@ -54,21 +54,22 @@ export type LlmRequest = {
 /** Почему провайдер не может ответить — с инструкцией, что сделать человеку. */
 export type ProviderStatus = {
   ok: boolean
-  /** Кто отвечает: `ollama` или `cloud`. */
-  provider: 'ollama' | 'cloud'
-  /** Адрес движка (для локального) — показывается в настройках. */
+  /** Способ подключения: свой сервер или OpenRouter. */
+  kind: 'custom' | 'openrouter'
+  kindLabel: string
+  /** База API — показывается в настройках. */
   base: string | null
   /** Имя модели, которое реально пойдёт в запрос. */
   model: string | null
-  /** Что установлено на устройстве (только локальный движок). */
-  models: string[]
+  /** Модель для картинок (может совпадать с основной). */
+  visionModel: string | null
   code: AiErrorCode | null
-  /** Человеческая инструкция: команда, которую нужно выполнить. */
+  /** Человеческая инструкция: что именно сделать. */
   hint: string | null
 }
 
 export type LlmProvider = {
-  id: 'ollama' | 'cloud'
+  id: 'custom' | 'openrouter'
   /** Подпись модели для интерфейса. */
   label: string
   stream: (req: LlmRequest) => AsyncGenerator<LlmDelta>

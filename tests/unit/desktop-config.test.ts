@@ -54,14 +54,8 @@ describe('desktop config: host/invite/env validation', () => {
       'WSX_NEXT_PORT=38632',
       'WSX_LOOPBACK=127.0.0.1',
       'WSX_LISTEN_HOST=0.0.0.0',
-      'OLLAMA_HOST=127.0.0.1:38633',
-      'OLLAMA_URL=http://127.0.0.1:38633',
-      'OLLAMA_MODEL=qwen2.5:3b',
-      'OLLAMA_NUM_CTX=8192',
-      'OLLAMA_KEEP_ALIVE=5m',
     ].join('\n'))
     const env = await runtimeEnv(resources, root)
     expect(env.AI_DIR).toBe(path.join(root, 'data'))
-    expect(env.OLLAMA_MODELS).toBe(path.join(root, 'models'))
   })
 })

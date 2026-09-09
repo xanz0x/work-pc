@@ -78,7 +78,10 @@ async function callUpstream(
     try {
       res = await fetch(`${proxy}/chat/completions`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+        headers: {
+          ...(key ? { Authorization: `Bearer ${key}` } : {}),
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify(payload),
         signal: AbortSignal.any([signal, AbortSignal.timeout(UPSTREAM_TIMEOUT_MS)]),
       })
@@ -102,9 +105,14 @@ async function callUpstream(
   throw last ?? new LlmFail('UPSTREAM_ERROR', 'провайдер недоступен')
 }
 
-export function cloudProvider(proxy: string, key: string, model: string): LlmProvider {
+export function cloudProvider(
+  proxy: string,
+  key: string,
+  model: string,
+  kind: 'custom' | 'openrouter' = 'custom',
+): LlmProvider {
   return {
-    id: 'cloud',
+    id: kind,
     label: model,
     async *stream(req: LlmRequest): AsyncGenerator<LlmDelta> {
       const res = await callUpstream(

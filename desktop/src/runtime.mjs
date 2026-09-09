@@ -3,7 +3,6 @@ import { access, readFile, mkdir } from 'node:fs/promises'
 import { runtimeEnv } from './config.mjs'
 import { startGateway } from './gateway.mjs'
 import { OwnedProcess, waitFor, requireFreePort, systemEnvironment } from './processes.mjs'
-import { ensureEngine, ensureModel } from './downloads.mjs'
 
 export class HostRuntime {
   constructor({ root, resources, serverDir, nodeExe, secrets, progress }) {
@@ -39,28 +38,8 @@ export class HostRuntime {
         await waitFor(async () => (await fetch(`http://${env.WSX_LOOPBACK}:${env.WSX_NEXT_PORT}/login`, { signal: AbortSignal.timeout(2500) })).ok, signal)
         this.gateway = await startGateway(env, identity)
         this.ready = true
-        this.progress({ phase: 'app-ready', text: 'Общая база запущена. Подготавливаю ИИ…', appReady: true })
+        this.progress({ phase: 'ready', text: 'Общая база запущена. Модель подключается в настройках программы.', appReady: true, modelReady: true })
       }
-      const exe = await ensureEngine(this.resources, this.root, signal, this.progress)
-      let ollama = this.children.find((c) => c.name === 'Ollama')
-      if (!ollama || ollama.child?.exitCode !== null) {
-        if (ollama) await ollama.stop()
-        const url = new URL(env.OLLAMA_URL)
-        await requireFreePort(url.hostname, url.port)
-        ollama = new OwnedProcess('Ollama', exe, ['serve'], {
-          cwd: path.dirname(exe), env: { ...systemEnvironment(), ...env },
-        }, (text, phase) => this.progress({ phase, text })).setLogDir(path.join(this.root, 'logs'))
-        this.children = this.children.filter((c) => c.name !== 'Ollama'); this.children.push(ollama); ollama.start()
-      }
-      await waitFor(async () => (await fetch(`${env.OLLAMA_URL}/api/tags`, { signal: AbortSignal.timeout(2500) })).ok, signal)
-      await ensureModel(env, signal, this.progress)
-      this.progress({ phase: 'warmup', text: 'Первый запуск модели. На 8 ГБ памяти это может занять несколько минут…' })
-      const response = await fetch(`${env.OLLAMA_URL}/api/chat`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.any([signal, AbortSignal.timeout(240000)]),
-        body: JSON.stringify({ model: env.OLLAMA_MODEL, messages: [], stream: false, keep_alive: env.OLLAMA_KEEP_ALIVE, options: { num_ctx: Number(env.OLLAMA_NUM_CTX), num_predict: 1 } }),
-      })
-      if (!response.ok || (await response.json()).error) throw new Error('Модель скачана, но не загрузилась в память. Закройте лишние программы и повторите.')
-      this.progress({ phase: 'ready', text: 'Приложение и локальный ИИ готовы.', appReady: true, modelReady: true })
     } catch (e) {
       this.progress({ phase: 'error', text: signal.aborted ? 'Загрузка приостановлена. Нажмите «Повторить», чтобы продолжить.' : e.message, appReady: this.ready })
       if (!this.gateway) { await Promise.all(this.children.map((c) => c.stop())); this.children = [] }

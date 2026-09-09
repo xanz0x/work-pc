@@ -1,0 +1,276 @@
+/* Настройки · подключение модели (свой сервер / OpenRouter) */
+
+@layer wf070 {
+  .apr-kinds {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+    gap: 10px;
+    margin-top: 14px;
+  }
+
+  .apr-kind {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 14px 15px;
+    text-align: left;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--panel-2, var(--panel));
+    color: inherit;
+    cursor: pointer;
+    transition:
+      border-color 0.16s ease,
+      background-color 0.16s ease,
+      transform 0.16s ease;
+  }
+
+  .apr-kind:hover {
+    border-color: var(--accent-line);
+    transform: translateY(-1px);
+  }
+
+  .apr-kind.selected {
+    border-color: var(--accent);
+    background: color-mix(in oklab, var(--accent) 8%, var(--panel));
+  }
+
+  .apr-kind-name {
+    display: block;
+    font-weight: 600;
+    font-size: 14px;
+  }
+
+  .apr-kind-sub {
+    display: block;
+    margin-top: 3px;
+    font-size: 12.5px;
+    line-height: 1.45;
+    color: var(--muted);
+  }
+
+  .apr-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+    gap: 12px 16px;
+    margin-top: 16px;
+  }
+
+  .apr-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .apr-field .input {
+    width: 100%;
+    padding: 9px 11px;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    background: var(--bg);
+    color: inherit;
+    font-size: 13.5px;
+    font-family: inherit;
+    transition:
+      border-color 0.16s ease,
+      box-shadow 0.16s ease;
+  }
+
+  .apr-field .input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 18%, transparent);
+  }
+
+  .apr-hint {
+    font-size: 11.5px;
+    line-height: 1.4;
+    color: var(--muted);
+  }
+
+  .apr-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 16px;
+  }
+
+  .apr-error {
+    margin-top: 12px;
+    padding: 9px 12px;
+    border: 1px solid color-mix(in oklab, var(--danger, #d9534f) 40%, var(--line));
+    border-radius: 9px;
+    font-size: 12.5px;
+    color: var(--danger, #d9534f);
+  }
+
+  .apr-picker {
+    margin-top: 16px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .apr-picker-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    background: var(--panel-2, var(--panel));
+  }
+
+  .apr-search {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex: 1 1 220px;
+    padding: 6px 10px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--bg);
+    color: var(--muted);
+  }
+
+  .apr-search input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    background: none;
+    color: var(--fg, inherit);
+    font: inherit;
+    font-size: 13px;
+    outline: none;
+  }
+
+  .apr-chip {
+    padding: 5px 11px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: none;
+    color: var(--muted);
+    font-size: 11.5px;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition:
+      border-color 0.16s ease,
+      color 0.16s ease,
+      background-color 0.16s ease;
+  }
+
+  .apr-chip:hover {
+    color: inherit;
+    border-color: var(--accent-line);
+  }
+
+  .apr-chip.on {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: color-mix(in oklab, var(--accent) 10%, transparent);
+  }
+
+  .apr-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 340px;
+    overflow: auto;
+  }
+
+  .apr-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 9px 12px;
+    border: 0;
+    border-bottom: 1px solid color-mix(in oklab, var(--line) 60%, transparent);
+    background: none;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.14s ease;
+  }
+
+  .apr-row:hover {
+    background: color-mix(in oklab, var(--accent) 6%, transparent);
+  }
+
+  .apr-row.selected {
+    background: color-mix(in oklab, var(--accent) 12%, transparent);
+    box-shadow: inset 2px 0 0 var(--accent);
+  }
+
+  .apr-row-main {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .apr-row-name {
+    font-size: 13px;
+    font-weight: 550;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .apr-row-id {
+    font-size: 11px;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .apr-row-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    justify-content: flex-end;
+  }
+
+  .apr-tag {
+    padding: 2px 7px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-size: 10.5px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .apr-tag.free {
+    border-color: color-mix(in oklab, var(--ok, #3fa66a) 45%, var(--line));
+    color: var(--ok, #3fa66a);
+  }
+
+  .apr-tag.ghost {
+    opacity: 0.7;
+  }
+
+  .apr-row-vision {
+    padding: 3px 9px;
+    border: 1px dashed var(--accent-line);
+    border-radius: 999px;
+    font-size: 10.5px;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+
+  .apr-row-vision:hover {
+    background: color-mix(in oklab, var(--accent) 14%, transparent);
+  }
+
+  .apr-empty {
+    padding: 18px 12px;
+    text-align: center;
+    font-size: 12.5px;
+    color: var(--muted);
+  }
+}

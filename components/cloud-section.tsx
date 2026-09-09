@@ -25,6 +25,7 @@ import {
   IconTrash,
 } from './icons'
 import { useToast } from '@/lib/vault-store'
+import { FolderPickerDialog } from './folder-picker-dialog'
 
 type DriveView = {
   isAdmin: boolean
@@ -99,7 +100,9 @@ export function CloudSection() {
   const [joinCode, setJoinCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [uploads, setUploads] = useState<UploadTrack[]>([])
-  /** Фолбэк выбора папки без моста: ручной ввод пути (window.prompt в Electron всегда null). */
+  /** Обзор папок на машине программы: браузер абсолютный путь не отдаёт. */
+  const [browsing, setBrowsing] = useState(false)
+  /** Фолбэк: ручной ввод пути (если обзор недоступен). */
   const [showManualRoot, setShowManualRoot] = useState(false)
   const [manualRoot, setManualRoot] = useState('')
   const fileRef = useRef<HTMLInputElement | null>(null)
@@ -267,9 +270,8 @@ export function CloudSection() {
       await changeRoot(picked.trim(), true, rootNote)
       return
     }
-    /* Фолбэк (браузер без моста): ручной ввод пути в поле. */
-    setManualRoot(data?.storageRoot ?? '')
-    setShowManualRoot(true)
+    /* Без моста (браузер) — обзор папок на той машине, где работает программа. */
+    setBrowsing(true)
   }
 
   async function submitManualRoot() {
@@ -437,7 +439,18 @@ export function CloudSection() {
               </>
             )}
           </div>
-          {/* Фолбэк без моста Electron: путь вводится вручную (НЕ window.prompt — он в Electron всегда null). */}
+          <div className="cloud-storage-manual">
+            <button
+              className="btn btn-ghost btn-sm"
+              onClick={() => {
+                setManualRoot(data.storageRoot ?? '')
+                setShowManualRoot((v) => !v)
+              }}
+              data-testid="cloud-storage-manual-toggle"
+            >
+              {showManualRoot ? 'Скрыть ручной ввод' : 'Ввести путь вручную'}
+            </button>
+          </div>
           {showManualRoot && (
             <div className="cloud-storage-manual" data-testid="cloud-storage-manual">
               <input
@@ -461,6 +474,17 @@ export function CloudSection() {
             </div>
           )}
         </div>
+      )}
+
+      {browsing && (
+        <FolderPickerDialog
+          current={data.storageRoot ?? null}
+          onClose={() => setBrowsing(false)}
+          onPick={(picked) => {
+            setBrowsing(false)
+            void changeRoot(picked, true, rootNote)
+          }}
+        />
       )}
 
       {/* Управление диском — только для администратора. */}

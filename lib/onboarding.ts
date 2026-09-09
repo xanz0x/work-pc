@@ -1,11 +1,15 @@
 /* ============================================================
-   ОНБОРДИНГ · политика первого запуска (NF-4)
+   ОНБОРДИНГ · политика первого запуска
    Чистая логика: кому показывать три шага, что означает отказ от
-   мастер-ключа и во что превращается выбор режима. Компонент
-   `components/onboarding.tsx` только рисует то, что решено здесь.
+   мастер-ключа и во что превращается выбор режима. Локальную модель
+   продукт больше не устанавливает: на первом шаге человек подключает
+   модель (свой сервер или OpenRouter) или откладывает это на потом.
+   Компонент `components/onboarding.tsx` только рисует то, что решено
+   здесь.
    ============================================================ */
 
-export type PrivacyMode = 'local' | 'hybrid'
+/** Сколько контекста уходит подключённой модели. */
+export type PrivacyMode = 'hybrid' | 'cloud'
 export type KeyChoice = 'created' | 'declined'
 export type StartChoice = 'folder' | 'demo'
 
@@ -50,8 +54,8 @@ export function shouldMarkOnboarded(o: OnboardingState, lockConfigured: boolean)
 
 /**
  * Отказ от мастер-ключа не оставляет систему в полудоверенном состоянии:
- * без защиты гибридный режим запрещён — режим падает в локальный, согласие
- * на внешние запросы не выдаётся.
+ * без защиты согласие на отправку содержимого наружу не выдаётся, а режим
+ * опускается до гибридного (наружу уходит меньше).
  */
 export function resolveOnboarding(
   r: OnboardingResult,
@@ -64,11 +68,11 @@ export function resolveOnboarding(
   onboarding: OnboardingState
 } {
   const unprotected = r.keyChoice === 'declined'
-  const engine: PrivacyMode = unprotected ? 'local' : r.mode
+  const engine: PrivacyMode = unprotected ? 'hybrid' : r.mode
   return {
     engine,
-    cloudConsent: engine === 'hybrid',
-    downgraded: unprotected && r.mode === 'hybrid',
+    cloudConsent: !unprotected,
+    downgraded: unprotected && r.mode === 'cloud',
     onboarding: { at: now, mode: engine, keyChoice: r.keyChoice, start: r.start },
   }
 }

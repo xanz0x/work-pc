@@ -13,6 +13,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { ENGINES } from '@/lib/data'
+import { OnboardingModelStep } from './onboarding-model-step'
 import { validateSecret, type LockMethod } from '@/lib/lock-store'
 import {
   needsOnboarding,
@@ -30,23 +31,6 @@ import { RecoveryCodeCard } from './recovery-key-dialog'
 import { useDialog } from '@/hooks/use-dialog'
 import '@/app/styles/onboarding.css'
 
-const MODES: PrivacyMode[] = ['local', 'hybrid']
-
-/** Что именно покидает устройство в каждом режиме — без обтекаемых формулировок. */
-const LEAKS: Record<PrivacyMode, string[]> = {
-  local: [
-    'Ничего: индексация, поиск и ответы модели считаются на этом устройстве.',
-    'Внешних запросов нет — в статус-баре так и написано.',
-    'Нужен запущенный Ollama с выбранной моделью, иначе чат честно откажет.',
-  ],
-  hybrid: [
-    'Текст вашего вопроса и подобранные фрагменты файлов уходят провайдеру модели.',
-    'Имена файлов и метки попадают в запрос как контекст.',
-    'Индексация и хранение остаются локальными: сам файл не выгружается.',
-    'Согласие фиксируется с датой и отзывается в настройках одним переключателем.',
-  ],
-}
-
 /** Атрибуты выбора папки для фолбэка без File System Access API. */
 const DIR_ATTRS = { webkitdirectory: 'true', directory: 'true' } as unknown as Record<string, string>
 
@@ -60,8 +44,10 @@ export function Onboarding() {
 
   const [step, setStep] = useState<1 | 2 | 3>(1)
   const [active, setActive] = useState<boolean | null>(null)
-  const [mode, setMode] = useState<PrivacyMode | null>(null)
+  const [mode, setMode] = useState<PrivacyMode>('hybrid')
   const [ack, setAck] = useState(false)
+  /** Модель подключена на первом шаге (или уже была подключена раньше). */
+  const [connectedModel, setConnectedModel] = useState<string | null>(null)
   const [method, setMethod] = useState<LockMethod>('pin')
   const [secret, setSecret] = useState('')
   const [repeat, setRepeat] = useState('')
@@ -93,7 +79,7 @@ export function Onboarding() {
       /* Перезагрузка посреди онбординга: ключ уже выбран — возвращаемся на шаг 3. */
       if (onb.keyChoice) {
         setKeyChoice(onb.keyChoice)
-        setMode(onb.mode ?? 'local')
+        setMode(onb.mode ?? 'hybrid')
         setStep(3)
       }
       return
@@ -166,7 +152,7 @@ export function Onboarding() {
       icon: keyChoice === 'created' ? 'check' : 'shield',
       title: 'Первый запуск завершён',
       body:
-        `Режим: ${keyChoice === 'declined' ? 'локальный (без ключа облако отключено)' : mode === 'local' ? 'локальный' : 'гибридный'}. ` +
+        `Режим: ${keyChoice === 'declined' ? 'гибридный (без ключа согласие не выдано)' : mode === 'cloud' ? 'полный контекст' : 'гибридный'}. ` +
         `Мастер-ключ: ${keyChoice === 'created' ? 'создан' : 'не создан'}. ` +
         `Начали с: ${start === 'folder' ? 'подключения папки' : 'демо-корпуса'}.`,
     })
@@ -194,7 +180,7 @@ export function Onboarding() {
     else dirPicker.current?.click()
   }
 
-  const canNext1 = mode !== null && (mode === 'local' || ack)
+  const canNext1 = mode === 'hybrid' || ack
   /* PIN — ровно 6 цифр (как требует экран разблокировки), пароль — от 8. */
   const secretOk = method === 'pin' ? /^\d{6}$/.test(secret) : secret.length >= 8
   const canCreate = secretOk && secret === repeat && !L.lock.busy
@@ -222,74 +208,73 @@ export function Onboarding() {
           </span>
         </div>
 
-        {/* ---------- шаг 1 · режим приватности ---------- */}
+        {/* ---------- шаг 1 · подключение модели ---------- */}
         {step === 1 && (
           <>
             <div className="onb-body">
-              <p className="onb-kicker">Шаг 1 из 3 · приватность</p>
-              <h2 className="onb-title">Где считать и что можно отпускать наружу</h2>
+              <p className="onb-kicker">Шаг 1 из 3 · модель</p>
+              <h2 className="onb-title">Подключите модель — устанавливать ничего не нужно</h2>
               <p className="onb-lede">
-                Режим меняется в настройках в любой момент, но начать честнее с осознанного
-                выбора: ниже — ровно то, что уходит с устройства.
+                Программа не скачивает модели на компьютер. Подключите ключ OpenRouter и выберите
+                модель из живого списка либо укажите адрес своего OpenAI-совместимого сервера.
+                Это можно сделать и позже, в настройках.
               </p>
 
-              <div className="onb-grid">
-                {MODES.map((id) => {
-                  const e = ENGINES.find((x) => x.id === id)!
-                  return (
-                    <button
-                      key={id}
-                      className="onb-pick"
-                      aria-pressed={mode === id}
-                      onClick={() => {
-                        setMode(id)
-                        setAck(false)
-                      }}
-                      data-testid={`onb-mode-${id}`}
-                    >
-                      <span className="onb-pick-top">
-                        <span className="onb-pick-name">{e.name}</span>
-                        {e.badge && <span className="onb-badge">{e.badge}</span>}
-                      </span>
-                      <span className="onb-pick-sub">{e.sub}</span>
-                    </button>
-                  )
-                })}
+              <OnboardingModelStep
+                connected={connectedModel !== null}
+                onConnected={(m) => setConnectedModel(m)}
+              />
+
+              <div className="onb-grid onb-grid-tight">
+                {ENGINES.map((e) => (
+                  <button
+                    key={e.id}
+                    className="onb-pick"
+                    aria-pressed={mode === e.id}
+                    onClick={() => {
+                      setMode(e.id)
+                      setAck(false)
+                    }}
+                    data-testid={`onb-mode-${e.id}`}
+                  >
+                    <span className="onb-pick-top">
+                      <span className="onb-pick-name">{e.name}</span>
+                      {e.badge && <span className="onb-badge">{e.badge}</span>}
+                    </span>
+                    <span className="onb-pick-sub">{e.sub}</span>
+                  </button>
+                ))}
               </div>
 
-              {mode && (
-                <div
-                  className={`onb-leaks${mode === 'local' ? ' ok' : ''}`}
-                  data-testid="onb-leaks"
-                >
-                  <p className="onb-kicker">
-                    {mode === 'local' ? 'Что уходит: ничего' : 'Что уходит наружу'}
-                  </p>
-                  <ul>
-                    {LEAKS[mode].map((t) => (
-                      <li key={t}>{t}</li>
-                    ))}
-                  </ul>
-                  {mode === 'hybrid' && (
-                    <label className="onb-ack">
-                      <input
-                        type="checkbox"
-                        checked={ack}
-                        onChange={(e) => setAck(e.target.checked)}
-                        data-testid="onb-cloud-ack"
-                      />
-                      <span>
-                        Понимаю: в гибридном режиме вопрос и фрагменты файлов уходят внешнему
-                        провайдеру. Согласие будет записано с датой.
-                      </span>
-                    </label>
-                  )}
-                </div>
-              )}
+              <div className="onb-leaks" data-testid="onb-leaks">
+                <p className="onb-kicker">Что уходит наружу</p>
+                <ul>
+                  <li>Текст вопроса и подобранные фрагменты файлов уходят подключённой модели.</li>
+                  <li>Имена файлов и метки попадают в запрос как контекст.</li>
+                  <li>Индексация и хранение остаются локальными: сам файл не выгружается.</li>
+                  <li>Согласие фиксируется с датой и отзывается в настройках одним переключателем.</li>
+                </ul>
+                {mode === 'cloud' && (
+                  <label className="onb-ack">
+                    <input
+                      type="checkbox"
+                      checked={ack}
+                      onChange={(e) => setAck(e.target.checked)}
+                      data-testid="onb-cloud-ack"
+                    />
+                    <span>
+                      Понимаю: в режиме «Полный контекст» фрагменты файлов уходят провайдеру целиком.
+                      Согласие будет записано с датой.
+                    </span>
+                  </label>
+                )}
+              </div>
             </div>
 
             <div className="onb-foot">
-              <span className="onb-legend">Шаг 1 / 3</span>
+              <span className="onb-legend">
+                {connectedModel ? `Модель: ${connectedModel}` : 'Модель можно подключить позже'}
+              </span>
               <span className="grow" />
               <button
                 className="onb-btn primary"

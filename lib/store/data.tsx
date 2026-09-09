@@ -231,14 +231,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
             shared: true,
             icon: c.icon,
             cluster: c.cluster,
-            name: f.name,
-            desc: f.dir ? `Папка «${f.dir}»` : '',
+            /* Имя в библиотеке — название от ИИ-архивариуса, если он его дал. */
+            name: f.title?.trim() || f.name,
+            /** Файл на диске — под своим именем: показываем его как подпись. */
+            fileName: f.name,
+            desc: f.description?.trim() || (f.dir ? `Папка «${f.dir}»` : ''),
             bytes: f.size,
             ...(f.absPath ? { absPath: f.absPath } : {}),
             date: Number.isNaN(when.getTime())
               ? '—'
               : when.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' }),
-            tags: [],
+            tags: f.analysisTags ?? [],
+            ...(f.analysisStatus ? { analysisStatus: f.analysisStatus } : {}),
+            ...(f.analysisStatus === 'queued' ? { processing: true } : {}),
             indexed: true,
           } as VaultFile
         }),

@@ -26,6 +26,7 @@ import { IconAlertTri, IconCheck, IconClose, IconKey } from './icons'
 import { MkPassField, MkPinRow, strengthPw } from './mk-fields'
 import { ResetLockDialog } from './reset-lock-dialog'
 import { useDialog } from '@/hooks/use-dialog'
+import './recovery-key-card.css'
 
 function fmtCooldown(ms: number): string {
   const s = Math.max(0, Math.ceil(ms / 1000))
@@ -41,6 +42,7 @@ function fmtCooldown(ms: number): string {
 
 export function RecoveryCodeCard({ code, testId = 'recovery-code' }: { code: string; testId?: string }) {
   const [copied, setCopied] = useState(false)
+  const [saved, setSaved] = useState(false)
   const copiedTimerRef = useRef(0)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -63,26 +65,73 @@ export function RecoveryCodeCard({ code, testId = 'recovery-code' }: { code: str
     }
   }
 
+  /** Файл-подстраховка: ключ уходит на диск владельца, а не в облако. */
+  function download() {
+    const body = [
+      'WorkSpaceX · ключ восстановления сейфа',
+      '',
+      code,
+      '',
+      'Что это: код, который открывает сейф, если мастер-ключ забыт.',
+      'Он существует в одном экземпляре и не восстанавливается.',
+      `Создан: ${new Date().toLocaleString('ru-RU')}`,
+    ].join('\n')
+    const url = URL.createObjectURL(new Blob([body], { type: 'text/plain;charset=utf-8' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'workspacex-recovery-key.txt'
+    a.click()
+    window.setTimeout(() => URL.revokeObjectURL(url), 4000)
+    setSaved(true)
+  }
+
+  /* Код читается глазами и переписывается на бумагу: рвём его на группы. */
+  const groups = (code.match(/.{1,6}/g) ?? [code]).slice(0, 12)
+
   return (
-    <>
-      <div className="mk-field">
-        <label className="label-mono mk-label" htmlFor={`${testId}-value`}>
-          <span>Ключ восстановления</span>
-          <span className="mk-hint num">{code.length} симв.</span>
-        </label>
+    <div className="rk-card" data-testid={`${testId}-card`}>
+      <div className="rk-top">
+        <span className="rk-ico" aria-hidden="true">
+          <IconKey />
+        </span>
+        <div className="rk-top-text">
+          <b>Ключ восстановления</b>
+          <span>Показывается один раз — сохраните его сейчас</span>
+        </div>
+        <span className="rk-badge num">{code.length} симв.</span>
+      </div>
+
+      <div className="rk-code" aria-hidden="true">
+        {groups.map((g, i) => (
+          // eslint-disable-next-line react/no-array-index-key
+          <span key={`${g}-${i}`} className="rk-chunk mono">
+            {g}
+          </span>
+        ))}
+      </div>
+
+      {/* Настоящее значение — в поле: его можно выделить и скопировать вручную. */}
+      <label className="rk-input-wrap">
+        <span className="sr-only" id={`${testId}-label`}>
+          Ключ восстановления
+        </span>
         <input
           ref={inputRef}
           id={`${testId}-value`}
           readOnly
           value={code}
           onFocus={(e) => e.currentTarget.select()}
-          className="lock-input mk-input num"
+          className="rk-input mono"
           autoComplete="off"
           spellCheck={false}
+          aria-labelledby={`${testId}-label`}
           aria-describedby={`${testId}-warning`}
           data-testid={`${testId}-value`}
         />
-        <button type="button" className="mk-cancel" onClick={copy} data-testid={`${testId}-copy`}>
+      </label>
+
+      <div className="rk-acts">
+        <button type="button" className={`rk-btn${copied ? ' is-done' : ''}`} onClick={copy} data-testid={`${testId}-copy`}>
           {copied ? (
             <>
               <IconCheck width={13} height={13} aria-hidden="true" focusable="false" /> Скопировано
@@ -91,16 +140,26 @@ export function RecoveryCodeCard({ code, testId = 'recovery-code' }: { code: str
             'Скопировать'
           )}
         </button>
+        <button type="button" className={`rk-btn${saved ? ' is-done' : ''}`} onClick={download} data-testid={`${testId}-download`}>
+          {saved ? (
+            <>
+              <IconCheck width={13} height={13} aria-hidden="true" focusable="false" /> Файл сохранён
+            </>
+          ) : (
+            'Скачать файлом'
+          )}
+        </button>
       </div>
-      <p className="mk-warn is-danger" data-testid={`${testId}-warning`}>
+
+      <p className="rk-warn" data-testid={`${testId}-warning`}>
         <IconAlertTri width={14} height={14} aria-hidden="true" focusable="false" />
         <span>Запиши код — он показывается один раз; без него при утере мастер-ключа данные будут потеряны.</span>
       </p>
-      <p className="mk-note" data-testid={`${testId}-note`}>
+      <p className="rk-note" data-testid={`${testId}-note`}>
         Код разблокирует сейф, если мастер-ключ забыт, и хранится только на этом устройстве.
         Новый код выдаётся при смене мастер-ключа.
       </p>
-    </>
+    </div>
   )
 }
 

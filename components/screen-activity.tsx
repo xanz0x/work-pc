@@ -246,41 +246,32 @@ function LiveNow() {
     })
   }
 
-  /* Движок ИИ */
+  /* Подключение модели */
   if (engine.checking) {
     tiles.push({
       key: 'engine',
       Icon: IconChipAi,
-      label: 'Движок ИИ',
-      value: 'Проверяем движок…',
+      label: 'Модель ИИ',
+      value: 'Проверяем подключение…',
       sub: view.model,
       state: 'live',
     })
-  } else if (view.isCloud) {
+  } else if (engine.provider?.ok) {
     tiles.push({
       key: 'engine',
       Icon: IconChipAi,
-      label: 'Движок ИИ',
-      value: view.label,
-      sub: view.model,
-      state: 'warn',
-    })
-  } else if (engine.local?.ok) {
-    tiles.push({
-      key: 'engine',
-      Icon: IconChipAi,
-      label: 'Движок ИИ',
-      value: 'Локальный движок',
-      sub: `${view.model} · на устройстве`,
+      label: 'Модель ИИ',
+      value: engine.provider.kindLabel,
+      sub: engine.provider.model ?? view.model,
       state: 'ok',
     })
   } else {
     tiles.push({
       key: 'engine',
       Icon: IconChipAi,
-      label: 'Движок ИИ',
-      value: 'Движок не подключён',
-      sub: engine.error ? 'Статус недоступен' : `${view.model} · запустите Ollama`,
+      label: 'Модель ИИ',
+      value: 'Модель не подключена',
+      sub: engine.error ? 'Статус недоступен' : 'Настройки → Подключение модели',
       state: 'off',
     })
   }

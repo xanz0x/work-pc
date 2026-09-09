@@ -18,4 +18,15 @@ export type CloudLibraryItem = {
   note?: CloudNoteSnapshot
   /** Абсолютный путь в папке хранения — отдаётся только администратору. */
   absPath?: string
+  /* ---- результат разбора файла ИИ-архивариусом ---- */
+  /** Название, которое дал ИИ (вместо имени файла). */
+  title?: string
+  /** Описание: что это, что внутри, чем полезно. */
+  description?: string
+  /** Метки от ИИ: вид документа, тема, назначение. */
+  analysisTags?: string[]
+  analysisStatus?: 'queued' | 'done' | 'partial' | 'failed'
+  analysisKind?: string
+  analyzedAt?: string
+  analysisError?: string
 }

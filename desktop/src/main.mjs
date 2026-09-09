@@ -218,7 +218,7 @@ function handlers() {
   handle('setup:pause', () => runtime?.cancel())
   handle('setup:open', openWorkspace)
   handle('setup:copy-invite', () => { if (config?.role !== 'host') throw new Error('Приглашение создаётся на главном ПК.'); clipboard.writeText(encodeInvite(config)); return config.url })
-  handle('setup:license', () => shell.openExternal('https://ollama.com/library/qwen2.5vl:3b/blobs/832dd9e00a68'))
+  handle('setup:license', () => shell.openExternal('https://openrouter.ai/keys'))
   handle('setup:update-mail', async (input) => {
     if (config?.role !== 'host' || busy) throw new Error('Настройка доступна только на главном ПК.')
     if (!secretValues) throw new Error('Сначала восстановите доступ к защищённым настройкам Windows. Ключи не перезаписаны.')

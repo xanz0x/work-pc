@@ -1,48 +1,41 @@
-import { NextResponse, type NextRequest } from 'next/server'
-import { DEFAULT_MODEL, isModelId, type ModelId } from '@/lib/data'
-import { cloudStatus, localStatus } from '@/lib/llm'
-import { pullCommand } from '@/lib/llm/models'
+import { NextResponse } from 'next/server'
+import { providerStatus } from '@/lib/llm'
 import { log } from '@/lib/log'
 import { requestId } from '@/lib/ai-errors'
+import type { NextRequest } from 'next/server'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 /**
- * NF-2 · состояние движков. Настройки и чат спрашивают этот маршрут, чтобы
- * писать правду: запущен ли Ollama, стоит ли выбранная модель, настроено ли
- * облако. Проверка идёт с сервера — браузер не стучится в localhost сам и не
- * знает адрес движка.
+ * Состояние подключённой модели. Настройки и чат спрашивают этот маршрут,
+ * чтобы писать правду: какой способ подключения выбран, какая модель пойдёт
+ * в запрос и что сделать, если подключения нет.
  *
- * GET /ai-api/engine?model=qwen-7b
+ * GET /ai-api/engine
  */
 export async function GET(req: NextRequest) {
   const rid = req.headers.get('x-request-id') ?? requestId()
-  const raw = req.nextUrl.searchParams.get('model')
-  const model: ModelId = isModelId(raw) ? raw : DEFAULT_MODEL
-
-  const local = await localStatus(model)
-  const cloud = cloudStatus()
+  const st = await providerStatus()
 
   log('info', 'engine.probe', {
     rid,
     route: '/ai-api/engine',
     status: 200,
-    engine: local.ok ? 'ollama' : 'off',
-    code: local.code ?? undefined,
+    engine: st.ok ? st.kind : 'off',
+    code: st.code ?? undefined,
   })
 
   return NextResponse.json({
-    local: {
-      ok: local.ok,
-      base: local.base,
-      model: local.model,
-      models: local.models,
-      code: local.code,
-      hint: local.hint,
-      /** Готовая команда для терминала, если модели нет. */
-      pull: local.model ? pullCommand(local.model) : null,
+    provider: {
+      ok: st.ok,
+      kind: st.kind,
+      kindLabel: st.kindLabel,
+      base: st.base,
+      model: st.model,
+      visionModel: st.visionModel,
+      code: st.code,
+      hint: st.hint,
     },
-    cloud: { ok: cloud.ok, model: cloud.model },
   })
 }

@@ -1,54 +1,36 @@
 'use client'
 
 /* ============================================================
-   ПАНЕЛЬ ЛОКАЛЬНОГО ДВИЖКА (NF-2)
-   Одна честная плашка на два места — настройки и чат. Пишет ровно то,
-   что известно: адрес движка, тег модели, что установлено на устройстве.
-   Если движка нет — показывает команды, которые нужно выполнить, и не
-   притворяется, будто модель «загружается».
+   ПАНЕЛЬ ПОДКЛЮЧЕНИЯ МОДЕЛИ
+   Одна честная плашка на два места — настройки и чат. Пишет ровно
+   то, что известно серверу: способ подключения, адрес API и имя
+   модели. Модель не подключена — говорит это прямо и ведёт в
+   раздел настроек, а не притворяется, что что-то «загружается».
    ============================================================ */
 
-import { useState } from 'react'
 import { useEngineStore } from '@/lib/store/engine'
-import { DESKTOP_BUILD } from '@/lib/data'
 
 export function EnginePanel({ compact = false }: { compact?: boolean }) {
-  const { local, checking, error, recheck, metrics } = useEngineStore()
-  const [copied, setCopied] = useState(false)
+  const { provider, checking, error, recheck, metrics } = useEngineStore()
 
-  /* Контракт data-атрибутов: четыре состояния интерфейса, а код ошибки —
-     отдельно. Так селекторы тестов и стили не зависят от каталога кодов. */
   const state: 'checking' | 'ok' | 'off' | 'error' = checking
     ? 'checking'
     : error
       ? 'error'
-      : local?.ok
+      : provider?.ok
         ? 'ok'
         : 'off'
-  const code = local?.code ?? null
-
+  const code = provider?.code ?? null
   const badge = state === 'ok' ? 'badge-ok' : state === 'checking' ? '' : 'badge-warn'
 
   const title =
     state === 'checking'
-      ? 'Проверяем движок…'
+      ? 'Проверяем подключение…'
       : state === 'error'
-        ? 'Статус движка недоступен'
+        ? 'Статус модели недоступен'
         : state === 'ok'
-          ? `Движок отвечает · ${local?.model ?? ''}`
-          : code === 'MODEL_NOT_PULLED'
-            ? 'Движок запущен, модели нет'
-            : 'Локальный движок не запущен'
-
-  const copy = (text: string) => {
-    void navigator.clipboard
-      ?.writeText(text)
-      .then(() => {
-        setCopied(true)
-        window.setTimeout(() => setCopied(false), 1500)
-      })
-      .catch(() => setCopied(false))
-  }
+          ? `${provider?.kindLabel ?? 'модель'} · ${provider?.model ?? ''}`
+          : 'Модель не подключена'
 
   return (
     <div
@@ -87,40 +69,16 @@ export function EnginePanel({ compact = false }: { compact?: boolean }) {
 
       {state === 'off' && (
         <div data-testid="engine-howto">
-          <p data-testid="engine-setup-hint">{DESKTOP_BUILD ? 'На главном ПК откройте «Программа → Настройка и подключение». Там можно продолжить скачивание или повторить запуск модели. Компьютер друга использует тот же ИИ.' : local?.hint}</p>
-          {!compact && !DESKTOP_BUILD && (
-            <ul>
-              <li>
-                Скачайте Ollama с ollama.com и запустите её — движок слушает{' '}
-                <span className="mono">{local?.base ?? 'localhost:11434'}</span>.
-              </li>
-              <li>
-                Модель для этого профиля: <span className="mono">{local?.model}</span>.
-              </li>
-            </ul>
-          )}
-          {local?.pull && !DESKTOP_BUILD && (
-            <div className="engine-panel-cmd">
-              <code className="mono" data-testid="engine-pull-cmd">
-                {local.pull}
-              </code>
-              <button
-                type="button"
-                className="btn btn-sm"
-                onClick={() => copy(local.pull!)}
-                data-testid="engine-copy-pull"
-              >
-                {copied ? 'Скопировано' : 'Скопировать команду'}
-              </button>
-            </div>
-          )}
+          <p data-testid="engine-setup-hint">
+            {provider?.hint ?? 'Откройте «Настройки → Подключение модели» и подключите свой сервер или OpenRouter.'}
+          </p>
         </div>
       )}
 
       {state === 'ok' && !compact && (
         <p data-testid="engine-location-info">
-          Установлено моделей на сервере приложения: <b className="num">{local?.models.length ?? 0}</b>. ИИ не обращается к внешнему провайдеру. При подключении друга запрос идёт на главный ПК. Адрес Ollama на сервере:{' '}
-          <span className="mono">{local?.base}</span>.
+          Запросы уходят на <span className="mono">{provider?.base}</span>. Картинки читает{' '}
+          <span className="mono">{provider?.visionModel || provider?.model}</span>.
         </p>
       )}
     </div>

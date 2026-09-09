@@ -1,47 +1,34 @@
-import { NextResponse, type NextRequest } from 'next/server'
-import { DEFAULT_MODEL, isModelId, type ModelId } from '@/lib/data'
-import { localStatus } from '@/lib/llm'
-import { log } from '@/lib/log'
-import { requestId } from '@/lib/ai-errors'
+import { NextResponse } from 'next/server'
+import { OPENROUTER_BASE, listProviderModels, readProvider } from '@/lib/ai-provider'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 /**
- * NF-9 · список моделей для настроек. Честный источник один: теги из
- * `GET <OLLAMA_URL>/api/tags` — то, что реально установлено в Ollama на
- * устройстве. Проверка идёт с сервера (браузер не стучится в localhost сам),
- * как и у /ai-api/engine. Захардкоженный список MODELS здесь не участвует.
- *
- * GET /ai-api/models?model=qwen-7b
- *  → { ok, base, models: string[], active: string | null, code, hint }
- *    models — установленные теги; active — тег выбранной модели, если она
- *    стоит; пустой движок или ошибка → models: [].
+ * Совместимость: прежний маршрут списка моделей теперь отвечает списком
+ * моделей подключённого провайдера. Единственный источник — сам провайдер
+ * (`GET <base>/models`), захардкоженных списков в продукте нет.
  */
-export async function GET(req: NextRequest) {
-  const rid = req.headers.get('x-request-id') ?? requestId()
-  const raw = req.nextUrl.searchParams.get('model')
-  const model: ModelId = isModelId(raw) ? raw : DEFAULT_MODEL
-
-  const local = await localStatus(model)
-
-  log('info', 'engine.models', {
-    rid,
-    route: '/ai-api/models',
-    status: 200,
-    engine: local.ok ? 'ollama' : 'off',
-    code: local.code ?? undefined,
-    count: local.models.length,
-  })
-
-  return NextResponse.json({
-    ok: local.ok,
-    base: local.base,
-    /** Только реально установленные теги Ollama (из /api/tags). */
-    models: local.models,
-    /** Тег выбранной модели, если он действительно установлен. */
-    active: local.ok ? local.model : null,
-    code: local.code,
-    hint: local.hint,
-  })
+export async function GET() {
+  const c = await readProvider()
+  try {
+    const models = await listProviderModels(c)
+    return NextResponse.json({
+      ok: true,
+      base: c.baseUrl || OPENROUTER_BASE,
+      models: models.map((m) => m.id),
+      active: c.model || null,
+      code: null,
+      hint: null,
+    })
+  } catch (e) {
+    return NextResponse.json({
+      ok: false,
+      base: c.baseUrl || null,
+      models: [],
+      active: c.model || null,
+      code: 'CLOUD_NOT_CONFIGURED',
+      hint: e instanceof Error ? e.message : 'Список моделей недоступен.',
+    })
+  }
 }
