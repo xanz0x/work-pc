@@ -55,6 +55,12 @@
   fill: none;
 }
 
+.fp-back .fp-card.is-compact {
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  width: min(560px, 100%);
+  height: min(66vh, 480px);
+}
+
 .fp-back .fp-head {
   display: flex;
   align-items: center;

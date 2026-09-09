@@ -193,22 +193,25 @@ function safeDiskName(raw: string): string {
 }
 
 /**
- * Записать байты в папку хранения под исходным именем. Имя занято —
- * «имя-1.ext», «имя-2.ext»… Возвращает относительный путь внутри папки.
+ * Записать байты в папку хранения под исходным именем. `relDir` — подпапка
+ * внутри корня (пусто — сам корень), она создаётся при необходимости.
+ * Имя занято — «имя-1.ext», «имя-2.ext»… Возвращает путь внутри корня.
  */
-async function writeIntoRoot(root: string, name: string, data: Uint8Array): Promise<string> {
+async function writeIntoRoot(root: string, name: string, data: Uint8Array, relDir = ''): Promise<string> {
   const safe = safeDiskName(name)
   const dot = safe.lastIndexOf('.')
   const stem = dot > 0 ? safe.slice(0, dot) : safe
   const ext = dot > 0 ? safe.slice(dot) : ''
   const candidates = [safe, ...Array.from({ length: 99 }, (_, i) => `${stem}-${i + 1}${ext}`)]
+  const segments = relDir.split('/').filter(Boolean).map(safeDiskName)
+  const dir = segments.length > 0 ? path.join(root, segments.join('/')) : root
   try {
-    await fs.mkdir(root, { recursive: true })
+    await fs.mkdir(dir, { recursive: true })
   } catch {
     throw new CloudError('PROVIDER', 'Папка хранения недоступна: проверьте путь и права доступа.')
   }
   for (const candidate of candidates) {
-    const target = path.join(root, candidate)
+    const target = path.join(dir, candidate)
     let handle: Awaited<ReturnType<typeof fs.open>>
     try {
       handle = await fs.open(target, 'wx', 0o600)
@@ -218,7 +221,7 @@ async function writeIntoRoot(root: string, name: string, data: Uint8Array): Prom
     }
     try {
       await handle.writeFile(data)
-      return candidate
+      return [...segments, candidate].join('/')
     } catch {
       await fs.rm(target, { force: true })
       throw new CloudError('PROVIDER', 'Не удалось записать файл в папку хранения. Проверьте свободное место и права доступа.')
@@ -275,7 +278,7 @@ async function migrateObjectsIntoRoot(root: string, previousRoot: string | null)
             throw new Error('файл лежит вне прежней папки хранения')
           }
           const data = new Uint8Array(await fs.readFile(from))
-          f.relPath = await writeIntoRoot(rootResolved, f.name, data)
+          f.relPath = await writeIntoRoot(rootResolved, f.name, data, f.dir)
           f.path = f.relPath
           report.copied += 1
         } catch (e) {
@@ -287,7 +290,7 @@ async function migrateObjectsIntoRoot(root: string, previousRoot: string | null)
       /* Легаси-объект — байты достаём из объектного хранилища. */
       try {
         const data = new Uint8Array((await getObject(f.path)).data)
-        f.relPath = await writeIntoRoot(rootResolved, f.name, data)
+        f.relPath = await writeIntoRoot(rootResolved, f.name, data, f.dir)
         f.path = f.relPath
         report.copied += 1
       } catch (e) {
@@ -526,6 +529,17 @@ async function createFolderImpl(parent: string, name: string): Promise<void> {
   if (!nm) throw new CloudError('INVALID_ARGS', 'Укажите имя папки.')
   const p = cleanDir(parent ? `${parent}/${nm}` : nm)
   if (!p) throw new CloudError('INVALID_ARGS', 'Некорректное имя папки.')
+  /* Папка настоящая: создаём её на диске внутри выбранной папки хранения. */
+  const root = await readStorageRoot()
+  if (root) {
+    const rel = p.split('/').map(safeDiskName).join('/')
+    const abs = path.resolve(root, rel)
+    try {
+      await fs.mkdir(/*turbopackIgnore: true*/ abs, { recursive: true })
+    } catch {
+      throw new CloudError('PROVIDER', 'Не удалось создать папку на диске: проверьте права доступа.')
+    }
+  }
   if (!d.folders.includes(p)) {
     d.folders.push(p)
     await writeDrive(d)
@@ -557,13 +571,15 @@ async function uploadFileImpl(
     if (existing) return existing
   }
   const nm = cleanName(name) || 'file'
+  const dirPath = cleanDir(dir)
   const root = await readStorageRoot()
   let objPath: string
   let relPath: string | undefined
   let size: number
   if (root) {
-    /* Выбрана папка на ПК: байты физически пишутся в неё под исходным именем. */
-    relPath = await writeIntoRoot(root, nm, data)
+    /* Выбрана папка на ПК: байты физически пишутся в неё (в подпапку, если
+       человек выбрал её при добавлении) под исходным именем. */
+    relPath = await writeIntoRoot(root, nm, data, dirPath)
     objPath = relPath
     size = data.byteLength
   } else {
@@ -576,7 +592,7 @@ async function uploadFileImpl(
   const file: CloudFile = {
     id: randomBytes(6).toString('hex'),
     name: nm,
-    dir: cleanDir(dir),
+    dir: dirPath,
     path: objPath,
     ...(relPath ? { relPath } : {}),
     sha256: createHash('sha256').update(data).digest('hex'),

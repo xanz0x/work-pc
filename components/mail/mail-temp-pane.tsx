@@ -8,7 +8,8 @@ import { IconClock, IconCopy, IconInbox, IconMail, IconRefresh, IconTrash } from
 import { isFail, tempApi, TEMP_LABEL, type TempBoxView, type TempFull, type TempRow } from '@/lib/mail-client'
 import { fmtMailDate, fmtMailDateFull, extractCode, letterWord, subjectCode } from '@/lib/mail-format'
 import { escapeHtml } from '@/lib/mail-html'
-import { MailContextMenu, type MailCtx } from './mail-context-menu'
+import { MailContextMenu } from './mail-context-menu'
+import { bridgeCsp, bridgeTag, useMailFrameBridge } from './mail-frame-bridge'
 import { useToast } from '@/lib/vault-store'
 
 type Props = { box: TempBoxView; onBox: (box: TempBoxView) => void; onRemove: () => void }
@@ -25,10 +26,10 @@ function left(expiresAt: number | null, now: number): string | null {
 
 function frameDoc(m: TempFull): string {
   const body = m.html ?? `<pre class="plain">${escapeHtml(m.text ?? '')}</pre>`
-  return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src 'self' https: http: data:; font-src 'none'; frame-src 'none'"><base target="_blank"><style>
+  return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src 'self' https: http: data:; ${bridgeCsp()}; font-src 'none'; frame-src 'none'"><base target="_blank"><style>
 html,body{margin:0;background:#fff;color:#1c1f24}body{padding:16px 18px;font:14px/1.55 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;word-break:break-word}
 img{max-width:100%;height:auto}a{color:#1a5fb4}pre.plain{white-space:pre-wrap;font:13.5px/1.55 ui-monospace,Menlo,Consolas,monospace;margin:0}table{max-width:100%}
-</style></head><body>${imgProxy(body)}</body></html>`
+</style></head><body>${imgProxy(body)}${bridgeTag()}</body></html>`
 }
 
 /** src картинок → серверный прокси: sandbox-iframe имеет opaque origin, часть
@@ -143,28 +144,14 @@ export function MailTempPane({ box, onBox, onRemove }: Props) {
   const code = useMemo(() => (msg ? extractCode(msg.html, msg.text) : null), [msg])
   const remain = left(box.expiresAt, now)
 
-  /* ПКМ внутри письма: sandbox-iframe не пускает событие до React — меню
-     показывает MailContextMenu по сообщению от моста главного процесса. */
+  /* ПКМ внутри письма: событие ловит мост внутри iframe и присылает наружу
+     всё, что было под курсором (тот же мост, что в обычных ящиках). */
   const frameRef = useRef<HTMLIFrameElement>(null)
-  const [ctx, setCtx] = useState<MailCtx | null>(null)
-  const closeCtx = useCallback(() => setCtx(null), [])
-  useEffect(() => {
-    const bridge = (
-      window as unknown as {
-        workspacexDesktop?: { onContextMenu?: (cb: (p: MailCtx) => void) => () => void }
-      }
-    ).workspacexDesktop
-    if (!bridge?.onContextMenu) return
-    return bridge.onContextMenu((p) => {
-      const rect = frameRef.current?.getBoundingClientRect()
-      if (!rect) return
-      if (p.x < rect.left || p.x > rect.right || p.y < rect.top || p.y > rect.bottom) return
-      setCtx({ x: p.x, y: p.y, linkURL: p.linkURL ?? null, text: p.text ?? '' })
-    })
-  }, [])
-  useEffect(() => {
-    setCtx(null)
-  }, [msg?.mid])
+  const { ctx, closeCtx, selectAll } = useMailFrameBridge(frameRef, {
+    subject: msg?.subject,
+    fromAddress: msg?.from ?? null,
+    resetKey: msg?.mid ?? null,
+  })
 
   async function copyCode(value: string) {
     try {
@@ -337,7 +324,7 @@ export function MailTempPane({ box, onBox, onRemove }: Props) {
                 ref={frameRef}
                 className="mail-frame"
                 title={`Письмо: ${msg.subject || 'без темы'}`}
-                sandbox="allow-popups allow-popups-to-escape-sandbox"
+                sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
                 referrerPolicy="no-referrer"
                 srcDoc={doc}
                 data-testid="mail-temp-frame"
@@ -353,7 +340,7 @@ export function MailTempPane({ box, onBox, onRemove }: Props) {
           </div>
         )}
       </section>
-      {ctx && <MailContextMenu ctx={ctx} onClose={closeCtx} />}
+      {ctx && <MailContextMenu ctx={ctx} onClose={closeCtx} onSelectAll={selectAll} />}
     </>
   )
 }

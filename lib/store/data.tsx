@@ -154,6 +154,8 @@ export type DataCtx = {
   cloudCopies: Record<string, string>
   /** Локальная папка хранения на этом ПК (null — не выбрана). */
   cloudRoot: string | null
+  /** Подпапки внутри локальной папки: пути через «/». */
+  cloudFolders: string[]
   notesFor: (fileId: string) => Note[]
   addNote: (n: Omit<Note, 'id' | 'createdAt'>) => string
   patchNote: (id: string, fn: (n: Note) => Note) => void
@@ -208,18 +210,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [cloudNotes, setCloudNotes] = useState<Note[]>([])
   const [cloudCopies, setCloudCopies] = useState<Record<string, string>>({})
   const [cloudRoot, setCloudRoot] = useState<string | null>(null)
+  const [cloudFolders, setCloudFolders] = useState<string[]>([])
   const loadCloud = useCallback(async () => {
-    const clear = () => { setCloudFiles([]); setCloudNotes([]); setCloudCopies({}); setCloudRoot(null) }
+    const clear = () => { setCloudFiles([]); setCloudNotes([]); setCloudCopies({}); setCloudRoot(null); setCloudFolders([]) }
     try {
       const r = await fetch('/ai-api/cloud', { cache: 'no-store' })
       if (!r.ok) return clear()
       const d = (await r.json()) as {
         member?: boolean
         storageRoot?: string | null
+        folders?: string[]
         files?: CloudLibraryItem[]
       }
       if (!d.member || !Array.isArray(d.files)) return clear()
       setCloudRoot(d.storageRoot ?? null)
+      setCloudFolders(Array.isArray(d.folders) ? d.folders : [])
       setCloudCopies(Object.fromEntries(d.files.filter((f) => f.source).map((f) => [`${f.source!.kind}:${f.source!.id}`, f.id])))
       setCloudNotes(d.files.filter((f) => f.kind === 'note' && f.note).map((f) => ({
         id: `cloud:${f.id}`, cloudId: f.id, shared: true,
@@ -236,6 +241,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
             shared: true,
             /* Файл на общем диске — или личный, лежащий в локальной папке. */
             cloudShared: f.shared !== false,
+            dir: f.dir ?? '',
             icon: c.icon,
             cluster: c.cluster,
             /* Имя в библиотеке — название от ИИ-архивариуса, если он его дал. */
@@ -796,6 +802,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       liveNotes,
       cloudCopies,
       cloudRoot,
+      cloudFolders,
       notesFor,
       addNote,
       patchNote,
@@ -823,7 +830,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       ready, files, views, fileById, viewById, addFiles, applyIndexed, setIndexing, dropIndexed,
       setReindexHandler, removeFile, retagFile, bulkPatchFiles, bulkRemoveFiles, restoreFiles,
       bulkPatchNotes, reindexAll, clearIndex, wipeVault, demo, clearDemo, setFiles, setNotes, notes,
-      liveNotes, cloudCopies, cloudRoot, notesFor, addNote, patchNote, burnNote, extendNote, patchNoteSecret, sessions,
+      liveNotes, cloudCopies, cloudRoot, cloudFolders, notesFor, addNote, patchNote, burnNote, extendNote, patchNoteSecret, sessions,
       activeSessionId, setActiveSessionId, addSession, patchSession, removeSession, drafts,
       setDraft, scrolls, setScroll, graph, clusters, mix, neighbors, stats,
     ],

@@ -1,8 +1,9 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef } from 'react'
 import { IconClip, IconClose, IconEye, IconEyeOff, IconMail } from '../icons'
-import { MailContextMenu, type MailCtx } from './mail-context-menu'
+import { MailContextMenu } from './mail-context-menu'
+import { bridgeCsp, bridgeTag, useMailFrameBridge } from './mail-frame-bridge'
 import { Star } from './mail-msg-list'
 import { fmtBytes } from '@/lib/data'
 import type { MessageFull } from '@/lib/mail-client'
@@ -16,72 +17,6 @@ type Props = {
   onFlag: (patch: { seen?: boolean; flagged?: boolean }) => void
   onBack?: () => void
 }
-
-/**
- * Тело письма живёт в iframe с opaque origin (нет allow-same-origin), поэтому
- * добраться до страницы приложения оно не может. Скрипты разрешены только
- * нашему мосту — по nonce в CSP: скрипты самого письма вырезает санитайзер
- * на сервере, а даже уцелевший inline-скрипт без nonce браузер не выполнит.
- * Мост нужен для честного правого клика внутри письма: он сообщает наружу,
- * что под курсором (ссылка, картинка, выделенный текст).
- */
-const BRIDGE_NONCE = 'wsxmailbridge'
-
-const BRIDGE = `
-(function () {
-  function anchorOf(node) {
-    while (node && node !== document) {
-      if (node.tagName === 'A' && node.getAttribute('href')) return node
-      node = node.parentNode
-    }
-    return null
-  }
-  function post(kind, extra) {
-    parent.postMessage(Object.assign({ wsxMail: kind }, extra || {}), '*')
-  }
-  function report(e) {
-    var a = anchorOf(e.target)
-    var img = e.target && e.target.tagName === 'IMG' ? e.target : null
-    post('ctx', {
-      x: e.clientX,
-      y: e.clientY,
-      linkURL: a ? a.href : null,
-      linkText: a ? (a.textContent || '').trim().slice(0, 300) : null,
-      imageSrc: img ? img.currentSrc || img.src : null,
-      selection: String(window.getSelection ? window.getSelection() : '').slice(0, 20000),
-      bodyText: (document.body.innerText || '').slice(0, 200000),
-    })
-  }
-  /* Правый клик: обычно приходит contextmenu. Если браузер (или среда
-     автотестов) его не присылает, спасает отложенный правый mousedown. */
-  var waiting = null
-  document.addEventListener('contextmenu', function (e) {
-    e.preventDefault()
-    if (waiting) { clearTimeout(waiting); waiting = null }
-    report(e)
-  })
-  document.addEventListener('mousedown', function (e) {
-    if (e.button !== 2) return
-    var snapshot = { target: e.target, clientX: e.clientX, clientY: e.clientY }
-    waiting = setTimeout(function () {
-      waiting = null
-      report(snapshot)
-    }, 220)
-  })
-  document.addEventListener('pointerdown', function (e) { if (e.button !== 2) post('close') })
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') post('close') })
-  document.addEventListener('scroll', function () { post('close') }, true)
-  window.addEventListener('message', function (e) {
-    if (e.data && e.data.wsxMailCmd === 'select-all') {
-      var r = document.createRange()
-      r.selectNodeContents(document.body)
-      var sel = window.getSelection()
-      sel.removeAllRanges()
-      sel.addRange(r)
-    }
-  })
-})()
-`
 
 /** cid:-ссылки заменяются данными из вложений: иначе встроенные картинки битые. */
 function inlineCids(html: string, m: MessageFull): string {
@@ -102,7 +37,7 @@ function frameDoc(m: MessageFull): string {
     "default-src 'none'",
     "style-src 'unsafe-inline'",
     'img-src https: http: data: blob:',
-    `script-src 'nonce-${BRIDGE_NONCE}'`,
+    bridgeCsp(),
     "font-src https: data:",
     "frame-src 'none'",
   ].join('; ')
@@ -112,7 +47,7 @@ function frameDoc(m: MessageFull): string {
 html,body{margin:0;background:#fff;color:#1c1f24}body{padding:16px 18px;font:14px/1.55 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;word-break:break-word}
 img{max-width:100%;height:auto}a{color:#1a5fb4}pre.plain{white-space:pre-wrap;font:13.5px/1.55 ui-monospace,Menlo,Consolas,monospace;margin:0}table{max-width:100%}
 ::selection{background:#cfe3ff}
-</style></head><body>${body}<script nonce="${BRIDGE_NONCE}">${BRIDGE}</script></body></html>`
+</style></head><body>${body}${bridgeTag()}</body></html>`
 }
 
 function AddrLine({ label, list }: { label: string; list: { name: string; address: string }[] }) {
@@ -128,59 +63,11 @@ function AddrLine({ label, list }: { label: string; list: { name: string; addres
 export function MailMsgView({ message: m, loading, error, onFlag, onBack }: Props) {
   const doc = useMemo(() => (m ? frameDoc(m) : ''), [m])
   const frameRef = useRef<HTMLIFrameElement>(null)
-  const [ctx, setCtx] = useState<MailCtx | null>(null)
-  const closeCtx = useCallback(() => setCtx(null), [])
-
-  const selectAll = useCallback(() => {
-    frameRef.current?.contentWindow?.postMessage({ wsxMailCmd: 'select-all' }, '*')
-  }, [])
-
-  /* Сообщения от моста внутри письма: координаты пересчитываем в окно. */
-  useEffect(() => {
-    if (!m) return
-    const onMessage = (e: MessageEvent) => {
-      const frame = frameRef.current
-      if (!frame) return
-      const d = e.data as {
-        wsxMail?: string
-        x?: number
-        y?: number
-        linkURL?: string | null
-        linkText?: string | null
-        imageSrc?: string | null
-        selection?: string
-        bodyText?: string
-      }
-      if (!d || typeof d.wsxMail !== 'string') return
-      /* Источник сверяем, только если браузер его отдал: у песочницы с
-         opaque origin e.source в части сборок приходит пустым. */
-      if (e.source && frame.contentWindow && e.source !== frame.contentWindow) return
-      if (d?.wsxMail === 'close') {
-        setCtx(null)
-        return
-      }
-      if (d?.wsxMail !== 'ctx') return
-      const rect = frame.getBoundingClientRect()
-      setCtx({
-        x: rect.left + (d.x ?? 0),
-        y: rect.top + (d.y ?? 0),
-        linkURL: d.linkURL ?? null,
-        linkText: d.linkText ?? null,
-        imageSrc: d.imageSrc ?? null,
-        text: d.selection ?? '',
-        bodyText: d.bodyText ?? '',
-        subject: m.subject,
-        fromAddress: m.from?.address ?? null,
-      })
-    }
-    window.addEventListener('message', onMessage)
-    return () => window.removeEventListener('message', onMessage)
-  }, [m])
-
-  /* Новое письмо — старое меню не нужно. */
-  useEffect(() => {
-    setCtx(null)
-  }, [m?.folder, m?.uid])
+  const { ctx, closeCtx, selectAll } = useMailFrameBridge(frameRef, {
+    subject: m?.subject,
+    fromAddress: m?.from?.address ?? null,
+    resetKey: m ? `${m.folder}:${m.uid}` : null,
+  })
 
   if (error) {
     return (

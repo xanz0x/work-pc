@@ -3,6 +3,7 @@
 /* AR-2: слой стилей библиотеки приезжает вместе с чанком экрана. */
 import '@/app/styles/screen-library.css'
 import './cloud-viewer.css'
+import './library-dirs.css'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   IconCheck,
@@ -74,6 +75,7 @@ import { trackAction, trackDrop } from '@/lib/telemetry'
 import { useAccount } from '@/lib/account'
 import { LibraryContextMenu, type LibraryMenuAction, type LibraryMenuTarget } from './library-context-menu'
 import { LibraryShareDialog, type LibraryShareRequest } from './library-share-dialog'
+import { IntakeDirDialog } from './intake-dir-dialog'
 import { SharedNoteInspector } from './shared-note-inspector'
 import { LibraryViewer, type LibraryViewerTarget } from './library-viewer'
 import { IntakeStrip } from './intake-strip'
@@ -145,6 +147,10 @@ export function ScreenLibrary() {
   const [cloudPreview, setCloudPreview] = useState<FileView | null>(null)
   /** Живой приём файлов: перенос в папку хранения и разбор ИИ. */
   const [intake, setIntake] = useState<IntakeTrack[]>([])
+  /** Открытая подпапка папки хранения ('' — её корень). */
+  const [dir, setDir] = useState('')
+  /** Файлы ждут ответа «куда положить». */
+  const [pendingFiles, setPendingFiles] = useState<File[] | null>(null)
   const [contextMenu, setContextMenu] = useState<LibraryMenuTarget | null>(null)
   const [shareRequest, setShareRequest] = useState<LibraryShareRequest | null>(null)
   const menuReturn = useRef<HTMLElement | null>(null)
@@ -284,9 +290,18 @@ export function ScreenLibrary() {
 
   const shownFiles = useMemo(() => {
     let list = cat === 'all' ? views : views.filter((f) => f.cluster === cat)
+    /* Подпапка выбранной папки на ПК: в ней видны только её файлы. Локальные
+       файлы без папки живут в корне. При поиске папка не мешает искать. */
+    if (!searching) list = list.filter((f) => (f.dir ?? '') === dir)
     if (searching) list = list.filter((f) => NAV.matchedFiles.has(f.id))
     return list
-  }, [views, cat, searching, NAV.matchedFiles])
+  }, [views, cat, dir, searching, NAV.matchedFiles])
+
+  /** Подпапки текущей папки — полоса над списком. */
+  const subDirs = useMemo(
+    () => D.cloudFolders.filter((f) => f.split('/').slice(0, -1).join('/') === dir).sort((a, b) => a.localeCompare(b, 'ru')),
+    [D.cloudFolders, dir],
+  )
 
   /**
    * NF-1: на папке из тысячи файлов рисовать всё сразу нельзя — каждая
@@ -294,7 +309,7 @@ export function ScreenLibrary() {
    * Показываем страницами, «Показать ещё» добавляет следующую.
    */
   const [fileLimit, setFileLimit] = useState(FILE_PAGE)
-  useEffect(() => setFileLimit(FILE_PAGE), [cat, searching, NAV.query, view])
+  useEffect(() => setFileLimit(FILE_PAGE), [cat, dir, searching, NAV.query, view])
   const pagedFiles = useMemo(
     () => (shownFiles.length > fileLimit ? shownFiles.slice(0, fileLimit) : shownFiles),
     [shownFiles, fileLimit],
@@ -1319,6 +1334,22 @@ export function ScreenLibrary() {
       onKeyDownCapture={(e) => { if ((e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) && openContext(e.target)) { e.preventDefault(); e.stopPropagation() } }}>
       {contextMenu && contextObject && <LibraryContextMenu target={contextMenu} title={contextTitle} actions={menuActions} onClose={closeContextMenu} />}
       {shareRequest && <LibraryShareDialog key={`${shareRequest.mode}:${shareRequest.kind}:${shareRequest.id}`} request={shareRequest} validate={validateShare} onClose={() => setShareRequest(null)} />}
+      {pendingFiles && (
+        <IntakeDirDialog
+          root={D.cloudRoot}
+          folders={D.cloudFolders}
+          initialDir={dir}
+          count={pendingFiles.length}
+          onCancel={() => setPendingFiles(null)}
+          onPick={(target) => {
+            const list = pendingFiles
+            setPendingFiles(null)
+            setDir(target)
+            void intakeFiles(list, setIntake, target)
+            trackAction('files.intake')
+          }}
+        />
+      )}
       {/* Единственная live-область на все доски: скринридер слышит
          каждое действие один раз, без дублей из двух смонтированных
          досок режима «Всё». */}
@@ -1403,12 +1434,12 @@ export function ScreenLibrary() {
                     setCat('all')
                     if (view === 'notes') setView('all')
                     /* Один файл — одна запись. Есть локальная папка хранения:
-                       файл физически уезжает туда, и его разбирает ИИ. Папки
-                       нет — работает прежний локальный индексатор. Раньше шли
-                       оба пути сразу, и в библиотеке появлялись две карточки. */
+                       спрашиваем подпапку, файл физически уезжает туда, и его
+                       разбирает ИИ. Папки нет — работает прежний локальный
+                       индексатор. Раньше шли оба пути сразу, и в библиотеке
+                       появлялись две карточки. */
                     if (account.has('cloud') && D.cloudRoot) {
-                      void intakeFiles(list, setIntake)
-                      trackAction('files.intake')
+                      setPendingFiles(list)
                     } else {
                       void M.runExclusive('index:files', () => idxa.indexFiles(list), {
                         errorMessage: 'Файлы не приняты. Сейф остался прежним.',
@@ -1495,9 +1526,46 @@ export function ScreenLibrary() {
             </div>
           </div>
 
+          {/* Полоса подпапок: те же настоящие папки внутри выбранной папки на ПК. */}
+          {account.has('cloud') && D.cloudRoot && (
+            <div className="lib-dirs panel" data-testid="lib-dirs">
+              <div className="lib-dirs-crumbs" data-testid="lib-dirs-crumbs">
+                <button
+                  className={`f-chip${dir === '' ? ' on' : ''}`}
+                  onClick={() => setDir('')}
+                  title={D.cloudRoot}
+                  data-testid="lib-dir-root"
+                >
+                  <IconFolder width={12} height={12} aria-hidden="true" /> Моя папка
+                </button>
+                {(dir ? dir.split('/') : []).map((c, i, arr) => {
+                  const p = arr.slice(0, i + 1).join('/')
+                  return (
+                    <button
+                      key={p}
+                      className={`f-chip${dir === p ? ' on' : ''}`}
+                      onClick={() => setDir(p)}
+                      data-testid="lib-dir-crumb"
+                    >
+                      / {c}
+                    </button>
+                  )
+                })}
+              </div>
+              {subDirs.length > 0 && (
+                <div className="lib-dirs-list">
+                  {subDirs.map((f) => (
+                    <button key={f} className="f-chip" onClick={() => setDir(f)} data-testid="lib-dir-open">
+                      <IconFolder width={12} height={12} aria-hidden="true" /> {f.split('/').slice(-1)[0]}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="lib-toolbar">
-            <div className="seg" role="group" aria-label="Слой библиотеки">
-              {(
+            <div className="seg" role="group" aria-label="Слой библиотеки">              {(
                 [
                   { v: 'all', l: 'Всё' },
                   { v: 'files', l: 'Файлы' },
