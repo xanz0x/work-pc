@@ -1,0 +1,23 @@
+name: Windows installer
+on:
+  workflow_dispatch:
+jobs:
+  installer:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: corepack enable
+      - run: corepack prepare yarn@1.22.22 --activate
+      - run: yarn install
+      - run: yarn --cwd desktop install --frozen-lockfile
+      - run: node desktop/scripts/build.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: WorkSpaceX-Windows-x64
+          path: |
+            desktop/release/WorkSpaceX-Setup-*.exe
+            desktop/staging/payload-report.json
+          if-no-files-found: error

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="6" failures="2" skipped="0" tests="8" time="3.036" timestamp="2026-09-06T11:53:19.267502+00:00" hostname="agent-env-43567888-13e5-4588-a28a-f9474d32fa64"><testcase classname="tests.api.test_cloud_sharing_iter51.TestCloudShareIter51" name="test_share_binary_and_download_preserves_all_bytes" time="0.683"><error message="failed on setup with &quot;AssertionError: {&quot;code&quot;:&quot;PROVIDER&quot;,&quot;error&quot;:&quot;Хранилище отклонило ключ (init 404).&quot;}&#10;assert 503 == 201&#10; +  where 503 = &lt;Response [503]&gt;.status_code&quot;">tests/api/test_cloud_sharing_iter51.py:136: in shared_artifacts
+    assert first.status_code == 201, first.text
+E   AssertionError: {"code":"PROVIDER","error":"Хранилище отклонило ключ (init 404)."}
+E   assert 503 == 201
+E    +  where 503 = &lt;Response [503]&gt;.status_code</error></testcase><testcase classname="tests.api.test_cloud_sharing_iter51.TestCloudShareIter51" name="test_share_idempotent_same_source_returns_same_cloud_id" time="0.000"><error message="failed on setup with &quot;AssertionError: {&quot;code&quot;:&quot;PROVIDER&quot;,&quot;error&quot;:&quot;Хранилище отклонило ключ (init 404).&quot;}&#10;assert 503 == 201&#10; +  where 503 = &lt;Response [503]&gt;.status_code&quot;">tests/api/test_cloud_sharing_iter51.py:136: in shared_artifacts
+    assert first.status_code == 201, first.text
+E   AssertionError: {"code":"PROVIDER","error":"Хранилище отклонило ключ (init 404)."}
+E   assert 503 == 201
+E    +  where 503 = &lt;Response [503]&gt;.status_code</error></testcase><testcase classname="tests.api.test_cloud_sharing_iter51.TestCloudShareIter51" name="test_share_concurrent_same_source_single_cloud_id" time="0.001"><error message="failed on setup with &quot;AssertionError: {&quot;code&quot;:&quot;PROVIDER&quot;,&quot;error&quot;:&quot;Хранилище отклонило ключ (init 404).&quot;}&#10;assert 503 == 201&#10; +  where 503 = &lt;Response [503]&gt;.status_code&quot;">tests/api/test_cloud_sharing_iter51.py:136: in shared_artifacts
+    assert first.status_code == 201, first.text
+E   AssertionError: {"code":"PROVIDER","error":"Хранилище отклонило ключ (init 404)."}
+E   assert 503 == 201
+E    +  where 503 = &lt;Response [503]&gt;.status_code</error></testcase><testcase classname="tests.api.test_cloud_sharing_iter51.TestCloudShareIter51" name="test_share_note_snapshot_and_download_json" time="0.000"><error message="failed on setup with &quot;AssertionError: {&quot;code&quot;:&quot;PROVIDER&quot;,&quot;error&quot;:&quot;Хранилище отклонило ключ (init 404).&quot;}&#10;assert 503 == 201&#10; +  where 503 = &lt;Response [503]&gt;.status_code&quot;">tests/api/test_cloud_sharing_iter51.py:136: in shared_artifacts
+    assert first.status_code == 201, first.text
+E   AssertionError: {"code":"PROVIDER","error":"Хранилище отклонило ключ (init 404)."}
+E   assert 503 == 201
+E    +  where 503 = &lt;Response [503]&gt;.status_code</error></testcase><testcase classname="tests.api.test_cloud_sharing_iter51.TestCloudShareIter51" name="test_soft_delete_then_republish_creates_new_copy" time="0.155"><failure message="AssertionError: {&quot;code&quot;:&quot;PROVIDER&quot;,&quot;error&quot;:&quot;Хранилище отклонило ключ (init 404).&quot;}&#10;assert 503 == 201&#10; +  where 503 = &lt;Response [503]&gt;.status_code">tests/api/test_cloud_sharing_iter51.py:249: in test_soft_delete_then_republish_creates_new_copy
+    assert first.status_code == 201, first.text
+E   AssertionError: {"code":"PROVIDER","error":"Хранилище отклонило ключ (init 404)."}
+E   assert 503 == 201
+E    +  where 503 = &lt;Response [503]&gt;.status_code</failure></testcase><testcase classname="tests.api.test_cloud_sharing_iter51.TestCloudShareIter51" name="test_upload_rename_delete_routes_still_work" time="0.132"><failure message="AssertionError: {&quot;code&quot;:&quot;PROVIDER&quot;,&quot;error&quot;:&quot;Хранилище отклонило ключ (init 404).&quot;}&#10;assert 503 == 201&#10; +  where 503 = &lt;Response [503]&gt;.status_code">tests/api/test_cloud_sharing_iter51.py:272: in test_upload_rename_delete_routes_still_work
+    assert up.status_code == 201, up.text
+E   AssertionError: {"code":"PROVIDER","error":"Хранилище отклонило ключ (init 404)."}
+E   assert 503 == 201
+E    +  where 503 = &lt;Response [503]&gt;.status_code</failure></testcase><testcase classname="tests.api.test_cloud_sharing_iter51.TestCloudShareIter51" name="test_drive_view_hides_path_and_hides_other_owner_source" time="1.426"><error message="failed on setup with &quot;AssertionError: {&quot;code&quot;:&quot;PROVIDER&quot;,&quot;error&quot;:&quot;Хранилище отклонило ключ (init 404).&quot;}&#10;assert 503 == 201&#10; +  where 503 = &lt;Response [503]&gt;.status_code&quot;">tests/api/test_cloud_sharing_iter51.py:136: in shared_artifacts
+    assert first.status_code == 201, first.text
+E   AssertionError: {"code":"PROVIDER","error":"Хранилище отклонило ключ (init 404)."}
+E   assert 503 == 201
+E    +  where 503 = &lt;Response [503]&gt;.status_code</error></testcase><testcase classname="tests.api.test_cloud_sharing_iter51.TestCloudShareIter51" name="test_permissions_member_nonmember_and_unauth" time="0.299"><error message="failed on setup with &quot;AssertionError: {&quot;code&quot;:&quot;PROVIDER&quot;,&quot;error&quot;:&quot;Хранилище отклонило ключ (init 404).&quot;}&#10;assert 503 == 201&#10; +  where 503 = &lt;Response [503]&gt;.status_code&quot;">tests/api/test_cloud_sharing_iter51.py:136: in shared_artifacts
+    assert first.status_code == 201, first.text
+E   AssertionError: {"code":"PROVIDER","error":"Хранилище отклонило ключ (init 404)."}
+E   assert 503 == 201
+E    +  where 503 = &lt;Response [503]&gt;.status_code</error></testcase></testsuite></testsuites>

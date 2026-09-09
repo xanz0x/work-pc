@@ -1,0 +1,13 @@
+{
+  "scope": "desktop chat and skills only",
+  "initial_agent_report": "/app/test_reports/iteration_52.json",
+  "build": "PASS",
+  "backend_targeted": "9 passed: server capability and disabled-skill enforcement",
+  "frontend_targeted": "1 consolidated spec passed in 42.8s after fixing test synchronization and isolating the conversation",
+  "log": "/app/test_reports/chat-final-e2e.log",
+  "desktop": ["1920x800 at 100%", "1920x800 at 150%", "1280x800 at 100%", "1280x800 at 150%"],
+  "verified": ["layout/action bounds", "search Escape", "skills save and focus restore", "real Claude password generation and encrypted saving", "double confirmation creates one entry", "generated plaintext absent from requests and chat history", "Gmail missing credentials truthful failure", "stop pending approval and next real turn", "password value cleared on navigation"],
+  "unverified": ["live Gmail issuance: MAIL_SECRET and SONJJ_API_KEY absent", "positive live mail read/delete flows", "all app features or all feature combinations"],
+  "mobile_tests": false,
+  "production_mocks_added": false
+}

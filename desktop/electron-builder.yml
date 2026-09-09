@@ -1,0 +1,58 @@
+appId: org.workspacex.desktop
+productName: WorkSpaceX
+copyright: WorkSpaceX
+asar: true
+npmRebuild: false
+toolsets:
+  nsis: '1.2.1'
+directories:
+  output: release
+  buildResources: assets
+extraMetadata:
+  name: workspacex-desktop
+  version: 1.0.0
+  description: Локальное рабочее пространство с ИИ и подключением к главному ПК
+  author: WorkSpaceX
+  main: index.js
+afterPack: scripts/afterpack.cjs
+files:
+  - index.js
+  - src/**/*
+  - ui/**/*
+  - assets/icon.png
+  - assets/icon.ico
+  - package.json
+  - '!**/*.map'
+extraResources:
+  - from: staging/server
+    to: server
+    filter:
+      - '**/*'
+      - '!**/.env*'
+      - '!**/.data/**'
+      - '!**/users/users.json'
+      - '!**/users/sessions.json'
+  - from: runtime.env
+    to: runtime.env
+  - from: ollama-release.json
+    to: ollama-release.json
+  - from: THIRD_PARTY.md
+    to: THIRD_PARTY.md
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: assets/icon.ico
+  signExecutable: false
+  signAndEditExecutable: true
+nsis:
+  script: assets/installer.nsi
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  deleteAppDataOnUninstall: false
+  artifactName: WorkSpaceX-Setup-${version}-${arch}.${ext}
+  installerLanguages: [ru_RU, en_US]
+  language: 1049

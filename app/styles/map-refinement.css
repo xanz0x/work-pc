@@ -1,0 +1,190 @@
+/* Локальный desktop-слой карты. Общие панели и существующие touch-правила не меняются. */
+@layer map-refinement {
+  @media (hover: hover) and (pointer: fine) {
+    .map-stage {
+      --map-gap: 16px;
+      --map-inspector-width: min(324px, 42%);
+      min-width: 0;
+    }
+    .map-stage .map-topleft {
+      top: var(--map-gap);
+      left: var(--map-gap);
+      width: max-content;
+      max-width: calc(100% - var(--map-inspector-width) - 3 * var(--map-gap));
+      gap: 8px;
+      z-index: 7;
+    }
+    .map-stage .map-controls {
+      width: 100%;
+      gap: 4px 8px;
+      padding: 6px;
+      background: var(--panel);
+      box-shadow: none;
+      border-color: var(--border-2);
+      border-radius: 4px;
+    }
+    .map-stage .map-zoom { border: 0; padding: 0; gap: 2px; }
+    .map-stage .map-zoom .icon-btn { width: 34px; height: 34px; flex: none; }
+    .map-stage .map-zoom-val { height: 34px; min-width: 52px; font-size: 12px; letter-spacing: 0; }
+    .map-stage .map-filter { min-width: 0; flex: 1 1 160px; }
+    .map-stage .map-filter .dd-trigger {
+      width: 100%;
+      min-height: 34px;
+      padding: 0 10px;
+      font-size: 12px;
+      letter-spacing: 0;
+      text-transform: none;
+      background: var(--raise-1);
+      border: 0;
+      box-shadow: none;
+    }
+    .map-stage .map-filter.on .dd-trigger { color: var(--accent); }
+    .map-stage .map-filter .dd-menu { max-width: none; }
+    .map-stage .map-filter .dd-list { max-height: none; overflow: visible; }
+    .map-stage .map-filter .dd-item { min-height: 32px; padding: 6px 10px; }
+    .map-stage .map-flow {
+      width: 100%;
+      max-width: 100%;
+      padding: 4px 6px;
+      min-height: 28px;
+      font-size: 11px;
+      background: transparent;
+      border: 0;
+      border-radius: 0;
+      box-shadow: none;
+    }
+    .map-stage .flow-seq { color: var(--text-2); }
+    .map-stage .map-status { max-width: 100%; font-size: 12px; white-space: normal; }
+    .map-stage .map-footer {
+      left: var(--map-gap);
+      right: var(--map-gap);
+      bottom: var(--map-gap);
+      padding: 8px 12px;
+      min-height: 36px;
+      background: var(--panel);
+      border-color: var(--border);
+      border-radius: 4px;
+      box-shadow: none;
+    }
+    .map-stage .map-legend { gap: 8px 20px; overflow: visible; flex-wrap: wrap; padding: 0; }
+    .map-stage .lg { font-size: 12px; }
+    .map-stage .lg i { width: 6px; height: 6px; animation: none; }
+
+    .map-stage .node-inspector {
+      top: var(--map-gap);
+      right: var(--map-gap);
+      bottom: auto;
+      left: auto;
+      width: var(--map-inspector-width);
+      max-width: none;
+      max-height: calc(100% - 84px);
+      padding: 0;
+      background: var(--panel);
+      border: 1px solid var(--border-2);
+      border-radius: 4px;
+      box-shadow: none;
+    }
+    .map-stage .node-inspector::before { display: none; }
+    .map-stage .ni-head {
+      position: static;
+      min-height: 52px;
+      margin: 0;
+      padding: 6px 10px 6px 16px;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+      background: var(--panel);
+    }
+    .map-stage .ni-head > .label-mono { font-size: 11px; color: var(--text-2); letter-spacing: 0; }
+    .map-stage .ni-close { flex: none; width: 36px; height: 36px; margin: 0; }
+    .map-stage .ni-scroll { flex: 0 1 auto; padding: 16px; scrollbar-gutter: auto; }
+    .map-stage .ni-file { gap: 10px; }
+    .map-stage .ni-icon { width: 24px; height: 24px; margin-top: 1px; border: 0; box-shadow: none; background: none; }
+    .map-stage .ni-file-text { flex: 1; }
+    .map-stage .ni-title-row { flex-wrap: wrap; gap: 6px; }
+    .map-stage .ni-file h3 {
+      flex: 1 0 100%;
+      max-width: 100%;
+      font-size: 14px;
+      line-height: 1.5;
+      letter-spacing: 0;
+      word-break: normal;
+      overflow-wrap: anywhere;
+    }
+    .map-stage .ni-badge { padding: 0; border: 0; font-size: 10px; letter-spacing: 0; color: var(--text-2); }
+    .map-stage .ni-file p { margin-top: 6px; font-size: 12px; line-height: 1.6; color: var(--text-2); overflow-wrap: anywhere; }
+    .map-stage .ni-cluster { margin-top: 14px; flex-wrap: wrap; font-size: 12px; color: var(--text-2); overflow-wrap: anywhere; }
+    .map-stage .ni-cluster .net-dot { flex: none; }
+    .map-stage .ni-found { font-size: 11px; font-weight: 400; letter-spacing: 0; }
+    .map-stage .ni-metrics { margin-top: 16px; border: 0; border-radius: 0; gap: 16px; overflow: visible; }
+    .map-stage .ni-metric { padding: 0; gap: 8px; }
+    .map-stage .ni-metric + .ni-metric { border-left: 1px solid var(--border); padding-left: 16px; }
+    .map-stage .ni-m-label { color: var(--text-2); font-size: 11px; letter-spacing: 0; text-transform: none; white-space: normal; overflow: visible; }
+    .map-stage .ni-m-val { font-size: 20px; line-height: 1.2; }
+    .map-stage .ni-m-unit { color: var(--text-2); }
+    .map-stage .ni-actions {
+      margin: 0;
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      gap: 8px;
+      background: var(--panel);
+    }
+    .map-stage .ni-actions .btn,
+    .map-stage .ni-empty .btn {
+      height: auto;
+      min-height: 36px;
+      min-width: 0;
+      padding: 8px 10px;
+      font-size: 12px;
+      line-height: 1.4;
+      text-transform: none;
+      letter-spacing: 0;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+    .map-stage .ni-actions svg { width: 14px; height: 14px; flex: none; }
+    .map-stage .ni-section { margin-top: 16px; padding-top: 14px; contain: none; }
+    .map-stage .ni-section > .label-mono { font-size: 11px; letter-spacing: 0; color: var(--text-2); }
+    .map-stage .ni-links { gap: 2px; margin-top: 8px; contain: none; }
+    .map-stage .ni-link {
+      grid-template-columns: 16px minmax(0, 1fr) 12px;
+      grid-template-rows: auto auto;
+      gap: 2px 8px;
+      padding: 8px 6px;
+      min-height: 42px;
+      border: 0;
+      border-radius: 3px;
+      background: transparent;
+      transform: none;
+    }
+    .map-stage .ni-link:hover { background: var(--raise-1); transform: none; }
+    .map-stage .ni-link-ico { grid-column: 1; grid-row: 1 / 3; }
+    .map-stage .ni-link-name { grid-column: 2; grid-row: 1; font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
+    .map-stage .ni-link-reason { grid-column: 2; grid-row: 2; font-size: 10px; color: var(--text-2); letter-spacing: 0; white-space: normal; }
+    .map-stage .ni-link-go { grid-column: 3; grid-row: 1 / 3; }
+    .map-stage .ni-activity > summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      min-height: 32px;
+      padding: 4px 0;
+      list-style: none;
+      cursor: pointer;
+      transition: color .15s ease;
+    }
+    .map-stage .ni-activity > summary::-webkit-details-marker { display: none; }
+    .map-stage .ni-activity > summary:hover { color: var(--text); }
+    .map-stage .ni-activity > summary svg { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; transition: transform .15s ease; }
+    .map-stage .ni-activity[open] > summary svg { transform: rotate(180deg); }
+    .map-stage .wave-log { font-size: 11px; line-height: 1.6; margin-bottom: 0; }
+    .map-stage .wave-text { white-space: normal; overflow-wrap: anywhere; }
+    .map-stage .ni-trace { contain: none; }
+    .map-stage .ni-trace-row { grid-template-columns: 6px minmax(0, 1fr); padding: 6px 2px; }
+    .map-stage .ni-trace-name { overflow-wrap: anywhere; }
+    .map-stage .ni-trace-row > .label-mono { grid-column: 2; color: var(--text-2); }
+    .map-stage .ni-empty { padding: 4px 0; gap: 12px; color: var(--text-2); line-height: 1.6; }
+    .map-stage .ni-empty-title { color: var(--text); font-size: 14px; font-weight: 500; }
+    .map-stage :is(button, summary):focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+    .map-stage button:disabled { cursor: not-allowed; opacity: .5; }
+  }
+}

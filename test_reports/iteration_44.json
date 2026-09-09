@@ -1,0 +1,71 @@
+{
+  "summary": "Backend regression is green (7/7). Frontend matrix significantly expanded: secret/file-key/backup/onboarding/admin/account/access flows mostly pass; two real accessibility/focus bugs are confirmed and nav stress shows intermittent external challenge flakiness.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Onboarding step2 PIN cells",
+        "issue": "ArrowLeft does not move focus to previous PIN cell (keyboard navigation broken).",
+        "selector": "[data-testid='onb-secret-0..5']",
+        "priority": "HIGH"
+      },
+      {
+        "component": "Lock screen focus isolation",
+        "issue": "While lock screen is visible, programmatic focus can move to background shell search input.",
+        "selector": "[data-testid='lock-screen'], [data-testid='shell-search-input']",
+        "priority": "CRITICAL"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Navigation stress run (8th fresh session)",
+        "issue": "One stress run was redirected to Cloudflare challenge query URL and login waitForURL timed out; isolated rerun passed.",
+        "affected_selectors": [
+          "[data-testid='login-submit']",
+          "[data-testid='nav-settings']"
+        ]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_access_auth_backend.py",
+    "/app/test_reports/pytest/iteration_44_backend.xml",
+    "/app/test_reports/access-iteration44-e2e.log",
+    "/app/test_reports/access-iteration44-nav-early.log",
+    "/app/test_reports/access-iteration44-nav-stress8-rerun.log",
+    "/app/test_reports/access-iteration44-admin-flow.log",
+    "/app/test_reports/access-iteration44-lock-notif.log",
+    "/app/test_reports/access-iteration44-lock-ctrlk.log",
+    "/app/test_reports/access-iteration44-lock-programmatic-focus.log",
+    "/app/tests/e2e/44-access-tail-matrix.spec.ts"
+  ],
+  "action_items": [
+    "Fix onboarding PIN keyboard behavior: add ArrowLeft/ArrowRight handling in MkPinRow so caret/focus moves between digits predictably.",
+    "Prevent focus escape behind lock: make app-shell siblings inert/aria-hidden (or equivalent focus guard) while [data-testid='lock-screen'] is mounted.",
+    "Stabilize preview auth/navigation under stress against intermittent Cloudflare challenge redirects.",
+    "Retest notification exact unlock text after lock setup in a deterministic lock-enabled scenario (current added test blocked by setup precondition, not by wording assertion itself)."
+  ],
+  "critical_code_review_comments": [
+    "components/mk-fields.tsx: MkPinRow handles Backspace only; no ArrowLeft/ArrowRight handlers, matching reproduced onboarding keyboard defect.",
+    "hooks/use-dialog.ts traps Tab/Escape but does not prevent programmatic focus on background app-shell nodes; reproduced with shell-search-input focus while locked.",
+    "tests/e2e/23-admin-accounts.spec.ts had stale selector nav-admin; current UI exposes admin entry as topbar-admin-btn. Test was updated and full admin flow now passes."
+  ],
+  "updated_files": [
+    "/app/tests/e2e/23-admin-accounts.spec.ts",
+    "/app/tests/e2e/44-access-tail-matrix.spec.ts",
+    "/app/test_reports/iteration_44.json"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "82%"
+  },
+  "seed_data_creation": "Disposable user created in admin flow e2e and deleted within the same test; temporary licenses exercised via test flow.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Main matrix rerun is largely green (04/09/11/16/23 plus lock/notifs), nav stress has one flaky challenge redirect, and two confirmed product bugs remain: onboarding ArrowLeft PIN navigation and programmatic focus escaping behind lock. New reusable spec added at tests/e2e/44-access-tail-matrix.spec.ts to reproduce both.",
+  "rca of the issue": "RCA-1: Onboarding PIN cells use MkPinRow where onKeyDown only handles Backspace; arrow navigation is not implemented, so ArrowLeft never shifts focus. RCA-2: Modal trap in useDialog handles Tab/Escape only; background app-shell stays focusable programmatically because non-dialog siblings are not inert, enabling focus to land on shell-search-input while lock screen is active. RCA-3 (flaky): stress run intermittently redirected to Cloudflare challenge login URL, causing waitForURL timeout without app code exception."
+}

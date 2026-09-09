@@ -1,0 +1,95 @@
+{
+  "summary": "Frontend-only critical regression retest executed on external preview. Added persistent Playwright spec tests/e2e/48-settings-refinement.spec.ts and ran targeted runs. Regression still reproduces: section targeting/selection breaks under scale + small screens, and security modal is cropped at 390x800 z150.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Settings section navigation",
+        "issue": "At scale matrix runs, selecting/clicking sections does not keep target in viewport; engine heading becomes offscreen (negative Y) while selected state can drift.",
+        "selector": "[data-testid='settings-section-select'], [data-testid='settings-scroll'], [data-testid='settings-engine-title']",
+        "priority": "CRITICAL"
+      },
+      {
+        "component": "Settings section selection sync",
+        "issue": "Selection desync observed: requesting journal results in selected='danger' and aria-current not on journal (1920x800 run).",
+        "selector": "[data-testid='settings-section-select'], [data-testid='settings-nav-journal']",
+        "priority": "HIGH"
+      },
+      {
+        "component": "Security modal",
+        "issue": "At 390x800 and 150% scale, modal bottom is cropped (outside viewport).",
+        "selector": "[data-testid='mk-modal']",
+        "priority": "HIGH"
+      },
+      {
+        "component": "UI scale reset behavior",
+        "issue": "Flow scale150 -> select ui -> reset does not preserve ui selection; select value reverts to engine.",
+        "selector": "[data-testid='ui-scale-reset'], [data-testid='settings-section-select']",
+        "priority": "HIGH"
+      },
+      {
+        "component": "Mobile settings layout",
+        "issue": "On 320-width screenshots, footer action labels are visually wrapped/cropped (buttons split across lines) and long text clipping is visible.",
+        "selector": "[data-testid='settings-save-bar']",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "settings-section-select('security') at small screens",
+        "issue": "At 320x800 z150, selected value stayed 'privacy' instead of 'security' in test run.",
+        "affected_selectors": [
+          "[data-testid='settings-section-select']",
+          "[data-testid='settings-security-title']"
+        ]
+      }
+    ],
+    "design_issues": [
+      {
+        "screen": "Settings mobile 320@150",
+        "issues": [
+          "Primary footer buttons text wraps awkwardly and appears clipped",
+          "Dense text blocks appear cropped in section cards"
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/tests/e2e/48-settings-refinement.spec.ts",
+    "/app/test-results/48-settings-refinement-set-43bcc-igation-coordinates-390x800-chromium/error-context.md",
+    "/app/test_reports/screenshots_iter49/mobile-390-notify-z150.jpeg",
+    "/app/test_reports/screenshots_iter49/mobile-390-secrets-z150.jpeg",
+    "/app/test_reports/screenshots_iter49/mobile-390-security-z150.jpeg",
+    "/app/test_reports/screenshots_iter49/mobile-320-ui-z150.jpeg",
+    "/app/test_reports/screenshots_iter49/mobile-320-security-z150.jpeg"
+  ],
+  "action_items": [
+    "Fix scroll target math/state sync so selected section and header coordinates remain inside settings-scroll viewport for scales 80/100/125/150 and all requested viewports.",
+    "Re-check scrollspy bottom override logic; it is overriding non-final targets (journal -> danger observed).",
+    "Fix security modal responsive height so dialog is fully visible at 390x800 with 150% scale.",
+    "Fix UI reset flow to preserve currently targeted UI section after reset and keep selector/nav state synchronized.",
+    "Tune 320-width settings footer/buttons and long-text wrapping to avoid clipped labels."
+  ],
+  "critical_code_review_comments": [
+    "Regression still active despite prior 'fixed' claim: coordinate-based assertions fail with offscreen headings and selection desync.",
+    "State coupling between scroll position, select value, and aria-current is unstable under zoom/short viewport conditions.",
+    "Responsive modal sizing lacks guard for small viewport + high scale and can render outside visible area."
+  ],
+  "updated_files": [
+    "/app/tests/e2e/48-settings-refinement.spec.ts",
+    "/app/test_reports/iteration_49.json"
+  ],
+  "success_rate": {
+    "backend": "N/A (frontend-only request)",
+    "frontend": "20% (screenshots captured; critical regression assertions failing)"
+  },
+  "test_credentials": "admin / IceKrymTeam13@ from /app/memory/test_credentials.md",
+  "seed_data_creation": "No destructive seed data created. Onboarding skip flag injected in browser localStorage for test contexts only.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Use APP_URL from /app/.env.local (external preview). Run: APP_URL=... APP_PASSWORD=... ADMIN_LOGIN=... npx playwright test tests/e2e/48-settings-refinement.spec.ts -g \"settings navigation coordinates @ 1920x800\" and -g \"security modal open/cancel/focus/warnings\". Repro is immediate with coordinate assertions (no toBeVisible-only checks).",
+  "rca of the issue": "Repro: login admin -> skip onboarding -> open settings -> apply scale presets -> navigate sections via select/nav. Observed selected value and aria-current divergence, and target headings offscreen with negative top coordinates. This indicates scroll target computation/active section synchronization is still inconsistent under zoom and edge-of-scroll conditions. Additional responsive issue: security modal exceeds viewport bottom at 390x800 z150, indicating modal sizing/overflow constraints are incomplete."
+}

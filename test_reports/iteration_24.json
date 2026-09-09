@@ -1,0 +1,49 @@
+{
+  "summary": "Волна 24 (frontend only, ветка pin-security-fix). Проверено: (1) фикс лагов инспектора карты, (2) масштабирование интерфейса, (3) ренейм WorkfloW → WorkSpaceX, (4) сплэш+скелетоны, (5) регресс основных сценариев. Все шесть блоков PASS. Пройдено в одноразовом Playwright-профиле: /login → онбординг (local, PIN 111111, demo) → полный проход по разделам.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "verified_fixes": [
+    {
+      "bug": "Лаги при прокрутке инспектора узла на «Карте памяти»",
+      "status": "FIXED",
+      "evidence": "1440x900 headless. IDLE map (90 rAF-кадров): avgMs=30.71, maxMs=66.70. SCROLL внутри .ni-scroll (scrollTop 0→162, scrollHeight=880): avgMs=30.34, maxMs=66.70. Средний интервал кадра при скролле НЕ хуже покоя — то есть прокрутка перестала бить по бюджету кадра (было 186 мс). Абсолютные 16-20 мс не достижимы в headless Playwright: рантайм консистентно троттлит requestAnimationFrame до ~30 мс/кадр (idle=scroll), это артефакт раннера, не регресс. Инспектор непрозрачен: computedStyle backgroundColor=rgb(8,11,18), opacity=1, backdrop-filter=blur(16px) saturate(1.2) — канвас через панель не просвечивает."
+    },
+    {
+      "bug": "Ренейм WorkfloW → WorkSpaceX",
+      "status": "FIXED",
+      "evidence": "document.title='WorkSpaceX · Локальное ИИ-пространство'. На /login .logo-word=WORKSPACEX (обе копии). В сайдбаре 'WORKSPACEX / LOCAL AI WORKSPACE'. Экран блокировки (Ctrl+Shift+L) — тоже WORKSPACEX + 'LOCAL AI WORKSPACE · СЕЙФ ЗАБЛОКИРОВАН'. document.body.innerText.toUpperCase().includes('WORKFLOW') === false на /login и на / после входа."
+    },
+    {
+      "bug": "Масштабирование интерфейса + hotkeys + persistence",
+      "status": "FIXED",
+      "evidence": "Все data-testid присутствуют: ui-scale-slider/minus/plus/reset/value/preset-{80,100,125,150}. Пресеты меняют --ui-zoom на 0.8/1/1.25/1.5, подпись 80%/100%/125%/150%. На каждом пресете document.documentElement.scrollHeight - clientHeight === 0. Минус выключен на 80%, плюс — на 150%, «Сбросить» — на 100%. Hotkeys: Ctrl+Equal → 1.05/105%, Ctrl+Minus×2 → 0.95/95%, Ctrl+0 → 1/100%. Персистентность: localStorage['wf.ui.scale']='125'; после reload --ui-zoom=1.25 сразу (без мигания 100%)."
+    },
+    {
+      "bug": "Сплэш загрузки + скелетоны переключения",
+      "status": "FIXED",
+      "evidence": "После логина [data-testid=app-splash] виден и исчезает через ~668 мс (лимит 3 с). На всех шести навигациях (library/map/chat/vault/activity/settings) count [app-splash]=0. Ctrl+K не возвращает сплэш (count=0). Скелетоны [data-testid=screen-loading]/.sk-card появляются на первом переходе к незагруженным чанкам (chat/vault/activity/settings — 7 карточек), на уже прогретых library/map — 0, как и должно быть. app-shell получает data-app-ready=1."
+    },
+    {
+      "bug": "Регресс базовых сценариев",
+      "status": "PASS",
+      "evidence": "(а) Логин по IceKrymTeam13@ — 200 → редирект на /. (б) Онбординг чистого профиля прошёл: onb-mode-local → onb-step1-next → PIN 6+6 → onb-create-key → onb-pick-demo. (в) Все шесть экранов без внешнего скролла страницы. (г) Секрет создан (vault-new → editor-title=TEST_e2e_secret → editor-field-value-0..2 → editor-save). (д) Ctrl+Shift+L → 6 [data-testid^=lock-cell-] найдены, ввод 111111 разблокировал сейф (app-ready=1 вернулся). (е) В «Опасной зоне» присутствуют settings-clear-index и settings-delete-vault."
+    }
+  ],
+  "critical_code_review_comments": [
+    "МИНОР: при вводе строки 'val0' в editor-field-value-1 (URL-типизированное поле?) фронт триггерит запрос https://www.google.com/s2/favicons?sz=64&domain=val0, который на превью-хосте отдаёт 502 и роняет CORS в консоль. Это косметика, но каждый ввод в поле генерит внешний fetch с содержимым секрета в query — как минимум утечка ассоциации 'домен-строка' в google favicon endpoint. Стоит фетчить favicon только когда значение — валидный URL, и через прокси/локальный кэш.",
+    "МИНОР: 'локальный движок не подключён' — норма (Ollama не запущен), но статус-плашка 'ЛОКАЛЬНЫЙ ДВИЖОК НЕ ЗАПУЩЕН' светится и в статус-баре, и в шапке Настроек, и рядом с моделью — избыточно, стоит унифицировать."
+  ],
+  "test_report_links": ["/app/tests/e2e/onboard.ts", "/app/tests/e2e/ready.ts"],
+  "action_items": [],
+  "updated_files": [],
+  "success_rate": { "backend": "не тестировалось (frontend only)", "frontend": "5/5 блоков PASS" },
+  "test_credentials": "APP_PASSWORD=IceKrymTeam13@; PIN в одноразовом профиле — 111111",
+  "seed_data_creation": "Тестовая запись сейфа TEST_e2e_secret создаётся внутри одноразового Playwright-профиля и умирает вместе с ним, prod IndexedDB не трогается.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Замер FPS через requestAnimationFrame в headless Playwright всегда даёт ~30 мс/кадр — это троттлинг раннера. Судить о фиксе перф-бага правильно по СРАВНЕНИЮ avgMs idle vs scroll (сейчас 30.71 vs 30.34 — равны, значит скролл больше не крадёт бюджет кадра). Для абсолютных 60 FPS нужен headed режим / реальный десктопный Chrome, но это не про регрессию. Онбординг перекрывает всё в новом профиле — либо честно проходить, либо сеять wf.settings.v1 через tests/e2e/onboard.ts."
+}

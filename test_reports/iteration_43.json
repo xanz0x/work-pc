@@ -1,0 +1,80 @@
+{
+  "summary": "Backend auth/API regression passed, but frontend E2E matrix is blocked by runtime asset-loading failures (Next chunks 403 + HMR 502) causing missing hydration and preventing completion of requested access/security workflows.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Login mobile brand/header",
+        "issue": "Brand text is visibly clipped on the left at 390x844.",
+        "selector": "[data-testid='login-form'] / top brand area",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Core app hydration and all post-login flows (settings/security/file-key/secret/backup/onboarding/account walls)",
+        "issue": "Critical frontend runtime failure: multiple Next chunk requests return 403 and HMR websocket returns 502, so hydration does not complete. Login submit falls back to native form behavior (URL remains /login?), app-shell/data-app-ready never appears, account splash can remain visible indefinitely.",
+        "affected_selectors": [
+          "[data-testid='login-submit']",
+          "[data-testid='app-shell']",
+          "[data-testid='account-splash']",
+          "[data-testid='nav-settings']"
+        ]
+      },
+      {
+        "flow": "Navigation stress 8x fresh loads + immediate/forced click comparison",
+        "issue": "Could not complete intended matrix because first stress run already blocks at login/hydration stage due runtime asset failures; nav flakiness cannot be reliably re-validated until chunk delivery is fixed.",
+        "affected_selectors": [
+          "[data-testid='nav-settings']",
+          "[data-testid='engine-cloud']",
+          "[data-testid='journal-section']"
+        ]
+      }
+    ],
+    "design_issues": [
+      {
+        "screen": "Login mobile (390x844)",
+        "issues": [
+          "Left-side logo clipping persists while right overflow is not present."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_access_auth_backend.py",
+    "/app/test_reports/pytest/iteration_43_backend.xml",
+    "/app/test_reports/access-existing-e2e.log",
+    "/root/.emergent/automation_output/20260905_221840/console_20260905_221840.log",
+    "/root/.emergent/automation_output/20260905_221857/console_20260905_221857.log"
+  ],
+  "action_items": [
+    "HIGH: Fix Next dev asset delivery on preview (403 for /_next/static/chunks/* and HMR 502). Without this, hydration and most UI/integration tests are invalid.",
+    "Fix origin/dev-host configuration (allowedDevOrigins / ingress host alignment) so preview host can load all Next resources.",
+    "After runtime fix, rerun required matrix: 04-secret-create, 09-file-key, 99-settings-nav-stress (>=8 fresh loads + immediate/forced click evidence), then continue full access workflows requested in review.",
+    "Fix mobile login brand clipping on the left at 390x844 after hydration issue is resolved."
+  ],
+  "critical_code_review_comments": [
+    "Runtime infrastructure issue dominates functional quality: app frequently serves HTML but blocks essential JS chunks (403), making authentication/navigation behavior appear flaky while actually non-hydrated.",
+    "Test adjustments were limited to reliability improvements only (splash/app-ready waits, stricter lock selectors, env-only stress config). No business logic or crypto/access policy changed.",
+    "Backend scaffold process is non-authoritative for this app and shows import failure in supervisor logs, but requested public auth endpoints used by app are responding and backend regression tests passed."
+  ],
+  "updated_files": [
+    "/app/tests/e2e/04-secret-create.spec.ts",
+    "/app/tests/e2e/09-file-key.spec.ts",
+    "/app/tests/e2e/99-settings-nav-stress.spec.ts",
+    "/app/memory/test_credentials.md",
+    "/app/test_reports/iteration_43.json"
+  ],
+  "success_rate": {
+    "backend": "100% (7/7)",
+    "frontend": "20% (login page render + evidence capture only; critical runtime blocker prevented full requested matrix)"
+  },
+  "seed_data_creation": "Disposable backend test user visual_access_test_* and one temporary license key were created by pytest and cleaned in teardown.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Recreated missing log at /app/test_reports/access-existing-e2e.log. Requested e2e specs (04/09/99) were rerun after minimal test-only fixes, but frontend remains blocked by chunk 403/hydration failures. Unit suite for crypto/lock/onboarding/backup passed and typecheck passes. Resume from runtime fix first, then rerun full access matrix in fresh contexts.",
+  "rca of the issue": "Repro: open preview URL /login or run Playwright 04/09/99; on submit or root load, many /_next/static/chunks/* requests fail 403 and _next/hmr websocket fails 502. Result: React hydration incomplete, login may degrade to native GET (/login?), app-shell readiness signal absent, account splash may remain. Mitigation: align preview ingress/dev host with Next allowedDevOrigins and ensure static chunk/HMR paths are allowed for the public preview origin before retesting feature flows."
+}

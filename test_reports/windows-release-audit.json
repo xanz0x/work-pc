@@ -1,0 +1,17 @@
+{
+  "artifact": "desktop/release/WorkSpaceX-Setup-1.0.0-x64.exe",
+  "bytes": 161871218,
+  "sha256": "40a468d89a6981551a06e916e259e105a084b43b917ee3188c1f567a03999524",
+  "nsis_build": "completed; windows-installer-final.log",
+  "archive_test": "7z t: Everything is Ok; installer-integrity.log",
+  "asar_private_paths": [],
+  "ollama_release_metadata": "size, digest, download URL match official v0.33.3 release",
+  "unit_tests_passed": 275,
+  "admin_shared_drive_api_tests_passed": 22,
+  "second_admin_tests_passed": 2,
+  "real_native_tls_client": "passed; electron-pairing-final.log",
+  "signature": "unsigned",
+  "download_verified": "external HTTPS HEAD 200, Content-Length 161871218; Range 0-1 returned MZ; public SHA256 matches artifact; embedded standalone server.js hash matches staging",
+  "unverified": ["execution on real Windows 10/11", "Windows DPAPI lifecycle", "Windows Ollama download/extraction/inference", "8GB hardware performance", "live SmailPro without user key"],
+  "note": "Supersedes the premature artifact assessment in iteration_56.json; actual NSIS warning was fixed and build rerun. Linux assembly is preliminary, not proof of Windows runtime success."
+}

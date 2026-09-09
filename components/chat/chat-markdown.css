@@ -1,0 +1,192 @@
+/* Markdown-рендер ответа модели: плотная вёрстка в духе чата, без сюрпризов. */
+
+.chat-refined .md-body {
+  white-space: normal; /* перебивает pre-wrap строки .m-ai-text: разметка сама управляет отступами */
+  color: var(--text);
+  font-size: inherit;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.chat-refined .md-body > :first-child {
+  margin-top: 0;
+}
+
+.chat-refined .md-body > :last-child {
+  margin-bottom: 0;
+}
+
+.chat-refined .md-body p,
+.chat-refined .md-body ul,
+.chat-refined .md-body ol,
+.chat-refined .md-body blockquote,
+.chat-refined .md-body table,
+.chat-refined .md-body pre,
+.chat-refined .md-body .md-code {
+  margin: 8px 0;
+}
+
+.chat-refined .md-body h1,
+.chat-refined .md-body h2,
+.chat-refined .md-body h3,
+.chat-refined .md-body h4 {
+  margin: 14px 0 6px;
+  font-size: 13.5px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  color: var(--text);
+}
+
+.chat-refined .md-body h1:first-child,
+.chat-refined .md-body h2:first-child,
+.chat-refined .md-body h3:first-child {
+  margin-top: 0;
+}
+
+.chat-refined .md-body ul,
+.chat-refined .md-body ol {
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.chat-refined .md-body ul {
+  list-style: disc;
+}
+
+.chat-refined .md-body ol {
+  list-style: decimal;
+}
+
+.chat-refined .md-body li::marker {
+  color: var(--text-3);
+}
+
+.chat-refined .md-body li > ul,
+.chat-refined .md-body li > ol {
+  margin: 3px 0 0;
+}
+
+.chat-refined .md-body input[type='checkbox'] {
+  margin-right: 6px;
+  accent-color: var(--accent);
+}
+
+.chat-refined .md-body blockquote {
+  padding: 6px 12px;
+  border-left: 2px solid var(--accent-line, var(--border-2));
+  background: var(--bg-input);
+  border-radius: 0 var(--r) var(--r) 0;
+  color: var(--text-2);
+}
+
+.chat-refined .md-body hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 12px 0;
+}
+
+.chat-refined .md-body .md-link {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.chat-refined .md-body .md-link:hover {
+  text-decoration-color: var(--accent);
+}
+
+/* Таблицы GFM: шапка фиксируется визуально, строки подсвечиваются на hover. */
+.chat-refined .md-body table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12.5px;
+  display: block;
+  overflow-x: auto;
+}
+
+.chat-refined .md-body th,
+.chat-refined .md-body td {
+  border: 1px solid var(--border-2);
+  padding: 5px 9px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.chat-refined .md-body th {
+  background: var(--bg-input);
+  font-weight: 620;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.chat-refined .md-body tbody tr {
+  transition: background 0.12s ease;
+}
+
+.chat-refined .md-body tbody tr:hover {
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+/* Блок кода с подписью языка и копированием. */
+.chat-refined .md-code {
+  border: 1px solid var(--border-2);
+  border-radius: var(--r, 8px);
+  background: var(--bg-input);
+  overflow: hidden;
+}
+
+.chat-refined .md-code-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-input) 88%, #000 12%);
+}
+
+.chat-refined .md-code-lang {
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.chat-refined .md-code-copy {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--text-2);
+  transition: color 0.12s ease, background 0.12s ease;
+}
+
+.chat-refined .md-code-copy:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.chat-refined .md-code-copy svg {
+  width: 12px;
+  height: 12px;
+}
+
+.chat-refined .md-code-pre {
+  margin: 0;
+  padding: 10px 12px;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text);
+  white-space: pre;
+  tab-size: 4;
+}

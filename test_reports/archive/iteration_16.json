@@ -1,0 +1,48 @@
+{
+  "summary": "Волна 3, независимая проверка: главный баг (настройки не открываются после входа) устранён и стабильно воспроизводится. Прогнал полный e2e-набор Playwright + отдельный stress-сценарий (8 холодных контекстов подряд + early-click до гидратации) + ручной прогон настроек/чата/палитры/статус-бара. Все критические пункты ТЗ прошли. Единственная деталь — при запуске spec 03-chat-tool-call с --repeat-each=6 (18 прогонов подряд) 2 запуска упали из-за настоящего RATE_LIMITED от /ai-api/chat (10 ходов/мин, 200/сутки — это документированный лимит, не баг приложения; подтверждено скриншотом карточки «Слишком часто · код RATE_LIMITED»).",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/tests/e2e/99-settings-nav-stress.spec.ts",
+    "/app/tests/e2e/03-chat-tool-call.spec.ts",
+    "/app/tests/e2e/12-journal.spec.ts",
+    "/app/tests/e2e/01-unlock.spec.ts",
+    "/app/tests/e2e/11-onboarding.spec.ts"
+  ],
+  "verified_scenarios": [
+    "БАГ (главное): вход -> waitAppReady -> клик nav-settings -> engine-cloud + journal-section видимы. 8/8 итераций в чистых контекстах прошли. Дополнительно: клик nav-settings ДО появления data-app-ready=1 не приводит к зависанию — повторный клик после гидратации штатно открывает экран.",
+    "Три чат-сценария (03-chat-tool-call.spec.ts): диалог, find_file, save_password с подтверждением tool-allow-btn — все зелёные в базовом прогоне и в 4/6 повторов; провалы 5-го/6-го повтора — 429 RATE_LIMITED от бэкенда (по документу лимит /ai-api/chat = 10/мин).",
+    "Замок (01-unlock.spec.ts): установка PIN, Ctrl+Shift+L, разблокировка верным PIN, ошибка на неверном — passed.",
+    "Настройки узкие подписки: engine-cloud кликается, settings-save становится enabled (dirty), после клика Save снова disabled; cloud-consent-accept появляется и принимается; в чате виден chat-cloud-badge='облако · Claude Sonnet 4.5'; Ctrl+K открывает командную палитру.",
+    "Онбординг (11-onboarding.spec.ts): три шага + PIN 123456 — passed.",
+    "Журнал (12-journal.spec.ts): стирание сейфа, notif-open-<id> ведёт на запись, jr-row.focused, journal-export, фильтр severe, регресс после перезагрузки — passed.",
+    "Чистый профиль: status-journal-alert и journal-filter-severe отсутствуют (count=0) — соответствует ТЗ.",
+    "Секреты (04) и уведомления (05): passed."
+  ],
+  "raw_playwright_results": {
+    "single_run_core": "01 + 03 (все 3) + 12 = 5/5 passed (33.2s)",
+    "single_run_extended": "01 + 04 + 05 + 11 + 12 = 5/5 passed (17.0s)",
+    "stress_settings_nav": "99-settings-nav-stress = 9/9 passed (22.7s), включая early-click до гидратации",
+    "stress_chat_tool_call": "03-chat-tool-call с --repeat-each=6 = 16/18 passed; 2 фейла на 5-6 повторе из-за RATE_LIMITED (внешний лимит бэкенда, не баг приложения)"
+  },
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Ограничение /ai-api/chat = 10/мин — правильно с точки зрения защиты бюджета, но при массовых прогонах e2e (например, playwright --repeat-each=N с N>=5 по трём чат-тестам) сценарии закономерно ловят 429. Это НЕ баг приложения, но стоит помнить: если основной агент захочет прогонять чат-набор в CI с повторениями, нужен либо отдельный whitelist для тестового IP/токена, либо тестовый режим с отключённым лимитом.",
+    "Хелпер waitAppReady работает, атрибут data-app-ready=1 честно ставится в components/app-shell.tsx после монтирования. Замечаний нет.",
+    "На чистом профиле journal-filter-severe в UI просто отсутствует (не рендерится вовсе) — это соответствует ТЗ («фильтра нет, когда нечему фильтровать»). Хороший UX-паттерн: не показывать пустую кнопку с «·0»."
+  ],
+  "updated_files": ["/app/tests/e2e/99-settings-nav-stress.spec.ts (новый файл — стресс-сценарий главного бага; не трогает исходный код приложения)"],
+  "success_rate": {
+    "backend": "н/п (только фронт)",
+    "frontend": "100% на всех однократных прогонах; 88.9% (16/18) в стрессе чата — фейлы из-за внешнего rate-limit, не бага приложения; 100% (9/9) стресса главного бага"
+  },
+  "test_credentials": "APP_PASSWORD=IceKrymTeam13@, PIN e2e=e2e-master-2026 / 123456 (в онбординге)",
+  "seed_data_creation": "В тесте вручную создалась одна тестовая сессия в чате с ответом 'RATE_LIMITED' — можно оставить как демо или очистить в UI.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Быстрая проверка главного бага: cd /app && PLAYWRIGHT_BROWSERS_PATH=/pw-browsers APP_URL=<preview> APP_PASSWORD='IceKrymTeam13@' node_modules/.bin/playwright test tests/e2e/99-settings-nav-stress.spec.ts. Если 9/9 зелёные — регрессии нет. Полный чат-набор пускать один раз (без --repeat-each), иначе поймаешь rate-limit."
+}

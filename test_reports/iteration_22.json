@@ -1,0 +1,27 @@
+{
+  "summary": "Приёмка волны (просмотр записи с иконками, PIN-ячейки для мастер-ключа, отключение замка ячейками, ленивая палитра, регрессы после CSS-перегенерации). 9/9 PASS.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": { "ui_bugs": [], "integration_issues": [], "design_issues": [] },
+  "verified_fixes": [
+    { "bug": "Просмотр записи в ритме редактора", "status": "FIXED", "evidence": "4 .vte-well в view, .vte-btn на сайте (link), логине (copy), пароле (reveal+copy). reveal-fld-* кликается." },
+    { "bug": "Замок/удаление внутри .vte-well, узкий чип .vte-kind", "status": "FIXED", "evidence": "wellsWithSecret=4 wellsWithDel=4 kindsCount=4 kindWidths=[84,84,84,84] rowChildren=3 — правой пустой колонки нет." },
+    { "bug": "Смена мастер-ключа шестью ячейками ×3", "status": "FIXED", "evidence": "mk-cur-*/mk-next1-*/mk-next2-* по 6 ячеек, submit disabled до 6+6+6 и совпадения повтора; 123456→654321 проходит, новый PIN разблокировал экран замка (Ctrl+Shift+L)." },
+    { "bug": "Выключение замка ячейками PIN", "status": "FIXED", "evidence": "mk-disable-secret-* × 6, 000000 → «Ключ не подходит», модалка не закрывается; 654321 → замок выключен, в статус-баре «ЗАМОК ВЫКЛЮЧЕН»." },
+    { "bug": "Ctrl+K ленивая палитра", "status": "FIXED", "evidence": "Ctrl+K открывает [role=dialog] с input, Esc закрывает, повторное открытие мгновенное." },
+    { "bug": "Регресс CSS на 6 экранах", "status": "FIXED", "evidence": "ext-scroll=0 на library/map/chat/vault/activity/settings; экраны рендерятся, панелей/отступов не потеряно." },
+    { "bug": "Настройки листаются до Опасной зоны", "status": "FIXED", "evidence": ".scroll-col sh=5371 ch=917, «Опасная зона» над футером." },
+    { "bug": "Фон карты памяти почти чёрный", "status": "FIXED", "evidence": "getComputedStyle('.map-space').backgroundColor = rgb(0,1,2)." }
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "lock-cells без data-testid (селектор .lock-cells .lock-cell) — перенос из iter_21 [ЗАКРЫТО в iteration_23: lock-cell-0..5]",
+    "settings-delete-vault / settings-clear-index в «Опасной зоне» без data-testid — перенос из iter_21 [ЗАКРЫТО в iteration_23]",
+    "Триггер и submit «Выключить» совпадают по имени [ЗАКРЫТО в iteration_23: submit → «Подтвердить»]"
+  ],
+  "success_rate": { "backend": "не тестировалось (frontend only)", "frontend": "9/9" },
+  "test_credentials": "IceKrymTeam13@ (пароль приложения), PIN онбординга 123456 → сменён на 654321 в одноразовых профилях Playwright",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Онбординг перекрывает интерфейс в каждом новом профиле — либо честно пройти три шага (onb-mode-local → PIN 6 цифр → onb-pick-demo), либо гасить wf.settings.v1.onboarding через tests/e2e/onboard.ts. Ячейки экрана блокировки теперь имеют data-testid lock-cell-0..5. Локальный Ollama не запущен — статус «локальный движок не подключён» это норма.",
+  "note": "Файл восстановлен вручную в iteration_23: оригинал не сохранился (лимит контекста прошлого чата), содержимое взято из отчёта тестировщика без изменений."
+}

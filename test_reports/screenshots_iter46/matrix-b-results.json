@@ -1,0 +1,338 @@
+[
+  {
+    "state": "b-secret-editor",
+    "viewport": "1920x800",
+    "zoom": 100,
+    "selector": "[data-testid=\"entry-editor\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "b-secret-editor",
+    "viewport": "1920x800",
+    "zoom": 150,
+    "selector": "[data-testid=\"entry-editor\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "b-secret-editor",
+    "viewport": "390x844",
+    "zoom": 100,
+    "selector": "[data-testid=\"entry-editor\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "b-secret-editor",
+    "viewport": "390x844",
+    "zoom": 150,
+    "selector": "[data-testid=\"entry-editor\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "b-secret-editor",
+    "viewport": "1280x420",
+    "zoom": 100,
+    "selector": "[data-testid=\"entry-editor\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "b-secret-editor",
+    "viewport": "1280x420",
+    "zoom": 150,
+    "selector": "[data-testid=\"entry-editor\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "b-io-import",
+    "viewport": "1920x800",
+    "zoom": 100,
+    "selector": "[data-testid=\"vault-io\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "b-io-import",
+    "viewport": "1920x800",
+    "zoom": 150,
+    "selector": "[data-testid=\"vault-io\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "b-io-import",
+    "viewport": "390x844",
+    "zoom": 100,
+    "selector": "[data-testid=\"vault-io\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "b-io-import",
+    "viewport": "390x844",
+    "zoom": 150,
+    "selector": "[data-testid=\"vault-io\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "b-io-import",
+    "viewport": "1280x420",
+    "zoom": 100,
+    "selector": "[data-testid=\"vault-io\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "b-io-import",
+    "viewport": "1280x420",
+    "zoom": 150,
+    "selector": "[data-testid=\"vault-io\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "b-io-export-danger",
+    "viewport": "1920x800",
+    "zoom": 100,
+    "selector": "[data-testid=\"vault-io\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "b-io-export-danger",
+    "viewport": "1920x800",
+    "zoom": 150,
+    "selector": "[data-testid=\"vault-io\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "b-io-export-danger",
+    "viewport": "390x844",
+    "zoom": 100,
+    "selector": "[data-testid=\"vault-io\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "b-io-export-danger",
+    "viewport": "390x844",
+    "zoom": 150,
+    "selector": "[data-testid=\"vault-io\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "b-io-export-danger",
+    "viewport": "1280x420",
+    "zoom": 100,
+    "selector": "[data-testid=\"vault-io\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "b-io-export-danger",
+    "viewport": "1280x420",
+    "zoom": 150,
+    "selector": "[data-testid=\"vault-io\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "b-io-backups",
+    "viewport": "1920x800",
+    "zoom": 100,
+    "selector": "[data-testid=\"vault-io\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "b-io-backups",
+    "viewport": "1920x800",
+    "zoom": 150,
+    "selector": "[data-testid=\"vault-io\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "b-io-backups",
+    "viewport": "390x844",
+    "zoom": 100,
+    "selector": "[data-testid=\"vault-io\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "b-io-backups",
+    "viewport": "390x844",
+    "zoom": 150,
+    "selector": "[data-testid=\"vault-io\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "b-io-backups",
+    "viewport": "1280x420",
+    "zoom": 100,
+    "selector": "[data-testid=\"vault-io\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "b-io-backups",
+    "viewport": "1280x420",
+    "zoom": 150,
+    "selector": "[data-testid=\"vault-io\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "b-file-set",
+    "viewport": "1920x800",
+    "zoom": 100,
+    "selector": "[data-testid=\"fk-set-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "b-file-set",
+    "viewport": "1920x800",
+    "zoom": 150,
+    "selector": "[data-testid=\"fk-set-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "b-file-set",
+    "viewport": "390x844",
+    "zoom": 100,
+    "selector": "[data-testid=\"fk-set-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "b-file-set",
+    "viewport": "390x844",
+    "zoom": 150,
+    "selector": "[data-testid=\"fk-set-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "b-file-set",
+    "viewport": "1280x420",
+    "zoom": 100,
+    "selector": "[data-testid=\"fk-set-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "b-file-set",
+    "viewport": "1280x420",
+    "zoom": 150,
+    "selector": "[data-testid=\"fk-set-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "b-file-ask",
+    "viewport": "1920x800",
+    "zoom": 100,
+    "selector": "[data-testid=\"fk-ask-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "b-file-ask",
+    "viewport": "1920x800",
+    "zoom": 150,
+    "selector": "[data-testid=\"fk-ask-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "b-file-ask",
+    "viewport": "390x844",
+    "zoom": 100,
+    "selector": "[data-testid=\"fk-ask-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "b-file-ask",
+    "viewport": "390x844",
+    "zoom": 150,
+    "selector": "[data-testid=\"fk-ask-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "b-file-ask",
+    "viewport": "1280x420",
+    "zoom": 100,
+    "selector": "[data-testid=\"fk-ask-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "b-file-ask",
+    "viewport": "1280x420",
+    "zoom": 150,
+    "selector": "[data-testid=\"fk-ask-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "b-backup-open-row",
+    "viewport": "1920x800",
+    "zoom": 100,
+    "selector": "[data-testid=\"backup-open-row\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "b-backup-open-row",
+    "viewport": "1920x800",
+    "zoom": 150,
+    "selector": "[data-testid=\"backup-open-row\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "b-backup-open-row",
+    "viewport": "390x844",
+    "zoom": 100,
+    "selector": "[data-testid=\"backup-open-row\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "b-backup-open-row",
+    "viewport": "390x844",
+    "zoom": 150,
+    "selector": "[data-testid=\"backup-open-row\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "b-backup-open-row",
+    "viewport": "1280x420",
+    "zoom": 100,
+    "selector": "[data-testid=\"backup-open-row\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "b-backup-open-row",
+    "viewport": "1280x420",
+    "zoom": 150,
+    "selector": "[data-testid=\"backup-open-row\"]",
+    "found": true,
+    "violations": []
+  }
+]

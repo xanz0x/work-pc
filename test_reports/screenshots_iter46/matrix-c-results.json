@@ -1,0 +1,194 @@
+[
+  {
+    "state": "c-onboarding-step2-pin",
+    "viewport": "1920x800",
+    "zoom": 100,
+    "selector": "[data-testid=\"onboarding\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "c-onboarding-step2-pin",
+    "viewport": "1920x800",
+    "zoom": 150,
+    "selector": "[data-testid=\"onboarding\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "c-onboarding-step2-pin",
+    "viewport": "390x844",
+    "zoom": 100,
+    "selector": "[data-testid=\"onboarding\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "c-onboarding-step2-pin",
+    "viewport": "390x844",
+    "zoom": 150,
+    "selector": "[data-testid=\"onboarding\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "c-onboarding-step2-pin",
+    "viewport": "1280x420",
+    "zoom": 100,
+    "selector": "[data-testid=\"onboarding\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "c-onboarding-step2-pin",
+    "viewport": "1280x420",
+    "zoom": 150,
+    "selector": "[data-testid=\"onboarding\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "c-onboarding-step2-password",
+    "viewport": "1920x800",
+    "zoom": 100,
+    "selector": "[data-testid=\"onboarding\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "c-onboarding-step2-password",
+    "viewport": "1920x800",
+    "zoom": 150,
+    "selector": "[data-testid=\"onboarding\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "c-onboarding-step2-password",
+    "viewport": "390x844",
+    "zoom": 100,
+    "selector": "[data-testid=\"onboarding\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "c-onboarding-step2-password",
+    "viewport": "390x844",
+    "zoom": 150,
+    "selector": "[data-testid=\"onboarding\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "c-onboarding-step2-password",
+    "viewport": "1280x420",
+    "zoom": 100,
+    "selector": "[data-testid=\"onboarding\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "c-onboarding-step2-password",
+    "viewport": "1280x420",
+    "zoom": 150,
+    "selector": "[data-testid=\"onboarding\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "c-onboarding-decline-warning",
+    "viewport": "1920x800",
+    "zoom": 100,
+    "selector": "[data-testid=\"onboarding\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "c-onboarding-decline-warning",
+    "viewport": "1920x800",
+    "zoom": 150,
+    "selector": "[data-testid=\"onboarding\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "c-onboarding-decline-warning",
+    "viewport": "390x844",
+    "zoom": 100,
+    "selector": "[data-testid=\"onboarding\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "c-onboarding-decline-warning",
+    "viewport": "390x844",
+    "zoom": 150,
+    "selector": "[data-testid=\"onboarding\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "c-onboarding-decline-warning",
+    "viewport": "1280x420",
+    "zoom": 100,
+    "selector": "[data-testid=\"onboarding\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "c-onboarding-decline-warning",
+    "viewport": "1280x420",
+    "zoom": 150,
+    "selector": "[data-testid=\"onboarding\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "c-vault-gate-before-setup",
+    "viewport": "1920x800",
+    "zoom": 100,
+    "selector": "[data-testid=\"vault-gate-lock\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "c-vault-gate-before-setup",
+    "viewport": "1920x800",
+    "zoom": 150,
+    "selector": "[data-testid=\"vault-gate-lock\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "c-vault-gate-before-setup",
+    "viewport": "390x844",
+    "zoom": 100,
+    "selector": "[data-testid=\"vault-gate-lock\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "c-vault-gate-before-setup",
+    "viewport": "390x844",
+    "zoom": 150,
+    "selector": "[data-testid=\"vault-gate-lock\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "c-vault-gate-before-setup",
+    "viewport": "1280x420",
+    "zoom": 100,
+    "selector": "[data-testid=\"vault-gate-lock\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "c-vault-gate-before-setup",
+    "viewport": "1280x420",
+    "zoom": 150,
+    "selector": "[data-testid=\"vault-gate-lock\"]",
+    "found": true,
+    "violations": []
+  }
+]

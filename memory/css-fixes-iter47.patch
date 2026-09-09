@@ -1,0 +1,138 @@
+diff --git a/app/styles/_monolith.css b/app/styles/_monolith.css
+index de9f575..a25a6cb 100644
+--- a/app/styles/_monolith.css
++++ b/app/styles/_monolith.css
+@@ -925,7 +925,9 @@ p {
+   bottom: 46px;
+   transform: translateX(-50%);
+   z-index: 220;
+-  max-width: min(560px, calc(100vw - 32px));
++  /* Сообщение только читают: клики уходят в интерфейс под ним. */
++  pointer-events: none;
++  max-width: min(560px, calc(100vw / var(--ui-zoom, 1) - 32px));
+   background: var(--panel);
+   border: 1px solid var(--border);
+   border-left: 2px solid var(--accent);
+@@ -7227,6 +7229,8 @@ html.lock-pending body::after {
+ .fk-modal {
+   position: fixed;
+   inset: 0;
++  width: calc(100vw / var(--ui-zoom, 1));
++  height: calc(100vh / var(--ui-zoom, 1));
+   z-index: var(--z-lock, 900);
+   display: flex;
+   align-items: center;
+@@ -7234,7 +7238,8 @@ html.lock-pending body::after {
+   background: rgba(6, 10, 9, 0.55);
+ }
+ .fk-modal .lock-card {
+-  width: min(340px, calc(100vw - 40px));
++  /* 100vw не масштабируется вместе с body{zoom}: делим на множитель. */
++  width: min(340px, calc(100vw / var(--ui-zoom, 1) - 40px));
+ }
+ .fk-modal .lk-head {
+   text-align: center;
+@@ -7274,8 +7279,13 @@ html.lock-pending body::after {
+ .fk-modal-row {
+   display: flex;
+   justify-content: flex-end;
++  flex-wrap: wrap;
+   gap: 8px;
+ }
++.fk-modal-row .btn {
++  min-width: 0;
++  max-width: 100%;
++}
+ 
+ /* Блокировка ввода во время анти-брутфорс задержки (п.2.2). */
+ .fk-modal .lock-input:disabled {
+@@ -8615,6 +8625,25 @@ h1 {
+   gap: 36px;
+   padding: 30px 40px 36px;
+ }
++/* Узкие экраны: рельс лентой сверху. Медиазапрос из блока раскладки
++   перекрывался этим блоком, и на 390px колонка 224px съедала контент. */
++@media (max-width: 1100px) {
++  .set-shell {
++    grid-template-columns: minmax(0, 1fr);
++    gap: 16px;
++    padding: 22px 22px 28px;
++  }
++}
++@media (max-width: 768px) {
++  .set-shell {
++    padding: 20px 18px 24px;
++  }
++}
++@media (max-width: 480px) {
++  .set-shell {
++    padding: 18px 12px 20px;
++  }
++}
+ /* Контентные секции не растягиваются на весь простор без нужды:
+    комфортная длина строки для чтения форм */
+ #set-security .lock-form-card,
+@@ -9242,6 +9271,10 @@ h1 {
+ .vt-modal-back {
+   position: fixed;
+   inset: 0;
++  /* body{zoom} не масштабирует inset:0 — считаем окно в масштабированных
++     единицах, иначе при zoom>1 карточка уезжает за правый край. */
++  width: calc(100vw / var(--ui-zoom, 1));
++  height: calc(100vh / var(--ui-zoom, 1));
+   z-index: 60;
+   display: grid;
+   place-items: center;
+@@ -9254,7 +9287,7 @@ h1 {
+   gap: 14px;
+   width: 100%;
+   max-width: 520px;
+-  max-height: 88vh;
++  max-height: calc(88vh / var(--ui-zoom, 1));
+   padding: 18px;
+   overflow-y: auto;
+   animation: vt-rise 180ms ease-out;
+@@ -9283,6 +9316,7 @@ h1 {
+ .vt-modal-foot {
+   display: flex;
+   align-items: center;
++  flex-wrap: wrap;
+   gap: 8px;
+   padding-top: 12px;
+   border-top: 1px solid var(--border);
+@@ -9447,6 +9481,10 @@ h1 {
+   color: var(--text-2);
+   font-family: var(--font-mono);
+ }
++.vt-backup-row > span {
++  min-width: 0;
++  overflow-wrap: anywhere;
++}
+ .vt-danger-box {
+   display: flex;
+   flex-direction: column;
+@@ -9468,6 +9506,7 @@ h1 {
+ .vt-backup-row {
+   display: flex;
+   align-items: center;
++  flex-wrap: wrap;
+   gap: 10px;
+   padding: 8px 10px;
+   border: 1px solid var(--border);
+@@ -10389,7 +10428,7 @@ button.chip:hover {
+ /* --- Редактор: всё в один экран --- */
+ .vt-modal.vt-editor {
+   max-width: 780px;
+-  max-height: calc(100vh - 32px);
++  max-height: calc((100vh - 32px) / var(--ui-zoom, 1));
+   padding: 16px 18px;
+   gap: 10px;
+   overflow: hidden;
+@@ -12067,6 +12106,7 @@ button.chip:hover {
+ .vt-det-head {
+   display: flex;
+   align-items: center;
++  flex-wrap: wrap;
+   gap: 10px;
+   padding-bottom: 8px;
+   border-bottom: 1px solid var(--border);

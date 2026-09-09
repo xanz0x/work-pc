@@ -1,0 +1,39 @@
+{
+  "summary": "Wave-1 (Правда и безопасность) full backend+frontend test. Backend: 12/12 pytest passes (tests/api/test_wave1.py) — auth gating (401 AUTH_REQUIRED без cookie для /ai-api/skills, /sessions, /mcp, /system, /chat), login wrong→401 / correct IceKrymTeam13@→200+wf_session cookie / logout→cookie стирается и /skills снова 401, engine=local→409 ENGINE_NOT_CONFIGURED, rate-limit 11-й вызов→429 RATE_LIMITED с Retry-After (после фикса; см. RCA), env-имена (AI_PROXY_URL/EMERGENT_LLM_KEY/APP_PASSWORD) и Traceback не утекают в ответы, GET /ai-api/mcp не отдаёт значение поля token, PUT /ai-api/mcp/notion c 'ntn_secret_test_xyz' не сохраняет секрет (в повторном GET его нет). Отдельно проверил живой SSE: /ai-api/chat engine=cloud text='скажи привет' → data:{t:'d',x:'Привет!'} → {t:'end'}. Frontend (viewport 1920x1080, внешний preview URL): /login блокирует неверный пароль (login-error='Пароль не подошёл.'), верный редиректит на /. По умолчанию engine=local: status-mode='ЛОКАЛЬНЫЙ ДВИЖОК НЕ ПОДКЛЮЧЁН', status-net='НЕТ ИСХОДЯЩИХ ЗАПРОСОВ', engine-pill='Локальный · Qwen 2.5 7B · не подключён' (без '26 ток/с', без '4,1 ГБ', без 'ЗАГРУЖЕНА'), в Настройки → Движок ИИ model-state='локальный движок не подключён' и метрики ОЗУ/токенов = '—' (9 прочерков в панели). Отправка в чате при local показывает ai-error-note с текстом 'Локальный движок не подключён', кнопками 'Сменить движок' (ai-error-engine) и 'Повторить' (ai-error-retry) и кодом ENGINE_NOT_CONFIGURED — сырых имён .env и стека нет. Переключение на 'Гибридный' → Сохранить: status-mode='ГИБРИДНЫЙ РЕЖИМ', status-net='ВНИМАНИЕ · ЕСТЬ ИСХОДЯЩИЕ', engine-pill='Гибридный · Claude Sonnet 4.5 · внешняя модель', composer-engine='Claude Sonnet 4.5 · внешняя модель'. Первый облачный ход показывает cloud-consent модалку со списком (текст, история диалога, индекс сейфа — 13 файлов, закреплённые файлы), cloud-consent-accept отправляет и модель реально отвечает ('Раз!'/'Два!'/'Три!'/'Привет!'), ai-author='Claude Sonnet 4.5 · облако'. Второй облачный ход модалку НЕ показывает. В колокольчике (notif-bell) появляется 'В облако ушло 13 имён файлов' в категории приватность. В Настройки → Приватность видна строка cloud-consent-row 'Дано 30.08.2026, 17:10:33' с кнопкой revoke-consent — после отзыва следующий облачный ход снова показывает cloud-consent. Тумблер 'Отправлять индекс сейфа во внешнюю модель' (button role=switch aria-checked) — переключается в OFF, сохраняется; после этого событие в ленте показывает '0 имён файлов'. Уведомления: notif-snooze-<id> убирает событие из ленты, notif-mute-<id> гасит категорию (в подвале 'Выключено категорий: 1'); ежедневная сводка (включается тумблером в Настройки → Уведомления) склеивает 3 события 'Переиндексация запущена' в одну запись 'Сводка конвейера: 3 события' с notif-digest-toggle-<id> и раскрывающимся notif-digest-list-<id> со всеми тремя пунктами. Ошибки консоли — только ожидаемые 401/409 из XHR.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/tests/api/test_wave1.py",
+    "/app/test_reports/pytest/wave1.xml"
+  ],
+  "action_items": [
+    "Добавить data-testid для тумблеров в components/screen-settings.tsx (например privacy-toggle-sendIndex, notify-toggle-digest) — сейчас селектор возможен только по aria-label, что хрупко и локализовано.",
+    "Зарегистрировать custom pytest-mark 'order' или удалить @pytest.mark.order('last') в tests/api/test_wave1.py (сейчас предупреждение PytestUnknownMarkWarning).",
+    "Устаревшая договорённость Next 16: dev-лог пишет 'The \"middleware\" file convention is deprecated. Please use \"proxy\" instead.' — файл /app/proxy.ts уже есть, но, судя по предупреждению, где-то остался middleware.ts. Проверить и удалить старый файл, чтобы не путать разработчиков (не влияет на прод).",
+    "tests/api/test_ai_api.py устарел (писался до P0-2 auth), теперь ожидаемо получает 401 — либо переписать под /ai-api/auth/login, либо удалить, чтобы не вводить в заблуждение (см. также замечание пользователя)."
+  ],
+  "critical_code_review_comments": [
+    "app/ai-api/chat/route.ts fail() возвращал 429 БЕЗ HTTP-заголовка Retry-After — клиенты (браузер, curl, стандартные HTTP-клиенты) не могут корректно уважать бэкофф, хотя тело содержит retryAfter. Исправлено: после fail() выставляется resp.headers.set('Retry-After', ...). Это же поведение стоит распространить на limitLogin (сейчас /ai-api/auth/login на 429 тоже, вероятно, без заголовка — не тестировалось, потому что легко исчерпать окно во время UI-прогонов).",
+    "components/screen-settings.tsx rows() рендерит критические privacy-переключатели (sendIndex, redact, telemetry) без data-testid — это прямо отмечено в Testability rules системного промпта. Добавьте data-testid={`toggle-${t.id}`}.",
+    "Тумблер 'Ежедневная сводка' в разделе Уведомления также без data-testid; тесты вынуждены цепляться за aria-label с частичным матчем.",
+    "tests/api/test_ai_api.py — оставшийся артефакт до-авторизационной эпохи; тесты 401'ятся и создают ложное впечатление регресса при беглом просмотре истории CI."
+  ],
+  "updated_files": [
+    "/app/app/ai-api/chat/route.ts (добавлен HTTP-заголовок Retry-After на 429)",
+    "/app/tests/api/test_wave1.py (создан)"
+  ],
+  "success_rate": {"backend": "100% (12/12)", "frontend": "100% (все сценарии из ТЗ)"},
+  "test_credentials": "Пароль приложения: IceKrymTeam13@ (страница /login). Cookie wf_session, HttpOnly, 12 часов. См. /app/memory/test_credentials.md",
+  "seed_data_creation": "Ничего постоянного. В браузерном контексте Playwright были созданы 4 диалога, включён Гибридный движок, дан + отозван consent, отключён sendIndex, включена ежедневная сводка. Все данные локальны для контекста, реальный AI_DIR не менялся.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Selectors: login-form/password/submit/error, status-mode, status-net, engine-pill, composer-engine, chat-input, chat-send-btn, ai-error-note+engine+retry, cloud-consent+accept+cancel+no-index+close, ai-author, notif-bell, notif-panel, notif-item-<id>, notif-snooze-<id>, notif-mute-<id>, notif-digest-toggle-<id>, notif-digest-list-<id>, cloud-consent-row, revoke-consent, model-state, nav-<id>. Rate-limit на /ai-api/chat — 10/мин на IP, общий для всех тестов; между прогонами делайте sleep 65. Тумблеры Настроек — button[role='switch'][aria-label='<title>'] (см. action_items — им нужны data-testid). Живой облачный ответ приходит за 1-2 сек, SSE d/end. При engine=local любой POST /ai-api/chat вернёт 409 — это дизайн-требование, а не баг.",
+  "rca_of_the_issue": "Единственный найденный баг — отсутствие HTTP-заголовка Retry-After в 429-ответе /ai-api/chat. Reproduction: POST /ai-api/chat 11 раз в минуту с авторизацией → 429 c телом {code:'RATE_LIMITED', retryAfter: <sec>}, но r.headers.get('Retry-After') == None. RCA: helper fail() в app/ai-api/chat/route.ts (стр. 97) кладёт retryAfter в JSON-тело, но не выставляет одноимённый HTTP-заголовок; вызывающий код (стр. 202-212) тоже его не проставлял. Mitigation: после fail() добавлена строка resp.headers.set('Retry-After', String(Math.max(1, Math.ceil(limit.retryAfter)))). После правки все 12 тестов зелёные, а браузер/curl-клиенты теперь могут уважать бэкофф без парсинга тела."
+}

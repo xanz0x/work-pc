@@ -1,0 +1,17 @@
+{
+  "scope": "Shared shell visual cleanup only",
+  "agent_report": "/app/test_reports/iteration_41.json",
+  "typecheck": "pass",
+  "targeted_unit_tests": "23/23 pass",
+  "modified_component_lint": "0 errors; 4 pre-existing warnings",
+  "followup": {
+    "zoom_150_reload": "3/3 at 1920x800 passed: app ready, splash dismissed and navigation clickable. Agent's single 1280x800/150 timeout passed on its own retry; exact cause remains unconfirmed, no speculative splash changes.",
+    "file_upload": "Real text file shell-visual-check.txt accepted via existing file-picker and displayed in library card and inspector.",
+    "file_cleanup": "Removed only test file via existing inspector delete button activated with keyboard. Absence verified after reload.",
+    "inspector_limitation": "Existing sticky inspector puts lower actions outside viewport in mouse automation; keyboard action works. Screen content left untouched as expressly requested.",
+    "dev_indicator": "Disabled Next development indicator that overlaid profile and bottom navigation. Verified final screenshot.",
+    "nav_preferences": "Restored original ai/nav.json after test customizations."
+  },
+  "unverified_out_of_scope": ["external AI/mail/cloud integrations", "full source screen content responsiveness"],
+  "mocked_apis_added": false
+}
