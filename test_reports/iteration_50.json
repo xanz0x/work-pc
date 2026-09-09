@@ -31,6 +31,6 @@
   "seed_data_creation": "No persistent seed data created. Used skipOnboarding + localStorage ui-scale in isolated test contexts. Long-name validation used DOM-only stress (no database writes/deletes).",
   "retest_needed": false,
   "should_main_agent_self_test": true,
-  "context_for_next_testing_agent": "Run with external preview and auth envs: APP_URL=https://intelligent-library-2.preview.emergentagent.com APP_PASSWORD='<APP_PASSWORD>' ADMIN_LOGIN=admin npx playwright test tests/e2e/50-map-refinement-desktop.spec.ts --reporter=list. Spec covers only desktop matrix and map page workflows.",
+  "context_for_next_testing_agent": "Run with external preview and auth envs: APP_URL=https://handoff-guide-3.preview.emergentagent.com APP_PASSWORD='<APP_PASSWORD>' ADMIN_LOGIN=admin npx playwright test tests/e2e/50-map-refinement-desktop.spec.ts --reporter=list. Spec covers only desktop matrix and map page workflows.",
   "rca of the issue": "No product bug reproduced in this iteration. Initial failures were environment/test-script issues only (missing Playwright browser binary and two brittle assertions), then fixed in test code; final run green."
 }

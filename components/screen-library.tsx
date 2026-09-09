@@ -2137,6 +2137,21 @@ export function ScreenLibrary() {
               </div>
             )}
 
+            {selFile && !selFile.shared && (
+              /* Просмотр локального файла: раньше открывался только правой
+                 кнопкой по карточке — кнопка делает путь очевидным. */
+              <div className="insp-actions">
+                <button
+                  className="btn btn-ghost btn-sm"
+                  data-testid="insp-file-view"
+                  onClick={() => (fk.isProtected(selFile.id) && !fk.isOpen(selFile.id) ? openFileTile(selFile.id) : setCloudPreview(selFile))}
+                >
+                  <IconDocPreview />
+                  Просмотр
+                </button>
+              </div>
+            )}
+
             {tab === 'details' ? (
               <div className="meta-grid">
                 <div>

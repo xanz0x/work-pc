@@ -1,8 +1,21 @@
+# Тестовые реквизиты (актуально: 2026-06, сессия «фикс сборки + E2E»)
+
+- Превью: https://<PREVIEW_INSTANCE>.preview.emergentagent.com
+- Вход: логин `admin`, пароль `<APP_PASSWORD>` (источник `/app/.env.local`: APP_PASSWORD, ADMIN_LOGIN)
+- `/app/.env.local` восстановлен после сброса пода: APP_SESSION_SECRET и MAIL_SECRET сгенерированы заново
+  (прежних в окружении не было). Ключи внешних сервисов (SONJJ и др.) отсутствуют и не выдумывались.
+- Модель: OpenRouter, ключ пользователя, модель `z-ai/glm-5.3-flash`; конфиг `/app/.data/ai/provider.json`
+  (ключ в документах не дублируем). Emergent LLM key в проекте не используется.
+- Фронтенд — прод-сборка: после правок `cd /app && pnpm run build && sudo supervisorctl restart frontend`.
+- Постоянных тестовых аккаунтов не создавалось; загруженные при проверке файлы и папка хранения удалены.
+
+---
+
 # Тестовые реквизиты (2026-09-06, чат и навыки)
 
 ## Текущий проход Windows-установщика
 - Для повторной проверки включён отдельный чистый preview AI_DIR=/app/desktop/.runtime/preview-data, CLOUD_STORAGE=local, admin с теми же тестовыми реквизитами ниже. Старые /app/.data и /app/ai сохранены; данные в них не мигрируются и не стираются.
-- Актуальный адрес из supervisor: https://intelligent-library-2.preview.emergentagent.com
+- Актуальный адрес из supervisor: https://handoff-guide-3.preview.emergentagent.com
 - Существующие admin / <APP_PASSWORD> сохранены. Восстановлен локальный файл окружения; служебный ключ cookie создан заново, поскольку исходный отсутствовал. Почтовый ключ не заменялся: прежние данные не трогать.
 - Desktop создаёт отдельное чистое хранилище в профиле Windows. Постоянных desktop-аккаунтов пока не создано: владелец задаёт пароль сам в мастере. В installer никакие тестовые пароли/ключи не включать.
 
@@ -12,7 +25,7 @@
 - Текущий внешний адрес взят из действующего `APP_URL` в `.env.local`/supervisor; `REACT_APP_BACKEND_URL` отсутствует в этом Next.js-окружении.
 
 ## Текущий проход чата
-- Превью: https://intelligent-library-2.preview.emergentagent.com
+- Превью: https://handoff-guide-3.preview.emergentagent.com
 - Существующий admin / <APP_PASSWORD> сохранён; восстановлена .env.local и служебный ключ cookie.
 - Claude Sonnet 4.5: прежний TypeScript-адаптер, конфигурация универсального ключа восстановлена через менеджер интеграций. Реальная генерация пароля, сохранение секрета и следующий ход после отмены проверены успешно.
 - 2026-06: `SONJJ_API_KEY` (внешний платный SmailPro) задан пользователем, `MAIL_SECRET` сгенерирован заново (прежнего в окружении не было). Оба в `/app/.env.local`, значения не дублировать в документах. Реальная выдача Gmail и бесплатного mail.tm проверена.
@@ -31,7 +44,7 @@ cd /app && APP_URL=http://localhost:3000 APP_PASSWORD='<APP_PASSWORD>' ADMIN_LOG
 
 ## Прочее
 - Мастер-ключ и пароли бэкапов создаются самими спеками (одноразовые), постоянных значений нет.
-- Внешний URL превью этого запуска (supervisor APP_URL): https://intelligent-library-2.preview.emergentagent.com
+- Внешний URL превью этого запуска (supervisor APP_URL): https://handoff-guide-3.preview.emergentagent.com
 - В задаче карты логин/пароль не менялись; использованы существующие реквизиты. Онбординг пропускается только в изолированном браузерном профиле теста через `tests/e2e/onboard.ts`.
 - После восстановления окружения .env.local содержит прежние admin/пароль, новый служебный ключ cookie и AI_DIR=/app/.data. Ключи внешних сервисов отсутствуют; не заменялись выдуманными.
 - Фронтенд — продакшн-сборка под supervisor (`next start`), после правок нужен `npx next build && sudo supervisorctl restart frontend`.

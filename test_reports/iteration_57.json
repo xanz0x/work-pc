@@ -1,0 +1,52 @@
+{
+  "summary": "Iteration 57 E2E test: verified 8 features requested for OpenRouter/CustomEndpoint refactor. Backend (8/8 pytest OK), UI login+settings+chat+library+viewer components verified. Real OpenRouter call via chat succeeded (status 200, 7.7s, chars=26, model z-ai/glm-5.3-flash). Custom→OpenRouter round-trip persistence via PUT /ai-api/ai/provider works. AI provider section shows exactly 2 options (OpenRouter, Свой сервер) — no Ollama/local-model UI (search grep found zero matches in components). Models list loads 430 models with vision metadata from OpenRouter. Master-key modal opens with dark+green style, no horiz overflow at 1920x800. Library viewer component fully wired with testids for image/pdf/audio/video but its modal open path could NOT be triggered on demo files (all demo files are not shared→insp-cloud-view hidden; custom right-click context menu did not open on lib-file-* cards — DOM-level listener may not use browser default contextmenu). Mail: no mailboxes exist in preview env, mail context menu not testable — reported as data-not-available, not a bug.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/ai-api/ai/provider/models", "issue": "Response has no 'ok' field (only 'models'). Non-blocking, but inconsistent with other endpoints returning {ok:true,...}"}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "screen-library.tsx", "issue": "Native/custom right-click context menu on lib-file-* cards did not open — no context menu items detected via [role=menuitem]. Blocks the 'preview' menuAction path for non-shared files. Only shared cloud files expose the 'insp-cloud-view' button, so on demo/local files the modal LibraryViewer is unreachable through normal UI.", "selector": "[data-testid^='lib-file-']", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Settings @1280x800", "issues": ["Left settings-nav rail collapses to a select dropdown (settings-section-select). settings-nav-security exists in DOM but is not visible — E2E tests that click it must fall back to selectOption('security'). Not a bug, just needs documenting."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_workspacex_api.py",
+    "/app/test_reports/pytest/iter57_results.xml"
+  ],
+  "action_items": [
+    "Verify (or fix) that right-clicking a library card actually invokes the custom context menu that includes 'Просмотр' (menuActions line 1253 of components/screen-library.tsx). Currently, contextmenu event on the card produced no menu in the DOM in a headless Playwright run at 1920x800.",
+    "Consider exposing a direct 'Открыть в просмотре' button in the inspector for non-shared local files (not only for selFile?.shared), so users can open the new modal viewer on any file without relying on right-click.",
+    "Normalize /ai-api/ai/provider/models response shape to include {ok:true, models:[...]} for consistency with /ai-api/models."
+  ],
+  "critical_code_review_comments": [
+    "components/screen-library.tsx is 2900+ lines — well over 700-line threshold; consider splitting inspector, viewer wiring, and stickers into separate modules.",
+    "lib/ai-provider.ts stores raw OpenRouter API key on disk in AI_DIR/ai/provider.json in plaintext; GET endpoint correctly hides it but any local disk read exposes it. Consider at-rest encryption bound to master-key when configured.",
+    "Chat prompt injects entire chat capabilities JSON into system prompt every turn, increasing tokens (observed 3191 prompt tokens for a 3-word user question). Consider caching or trimming when skills unchanged."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_workspacex_api.py"
+  ],
+  "success_rate": {"backend": "100% (8/8 pytest)", "frontend": "~85% — provider UI, master-key modal, chat, library, storage settings verified; viewer modal open path and mail context menu could not be functionally opened"},
+  "seed_data_creation": "None. Test used the existing 13 demo files; provider.json was temporarily switched to custom then restored to OpenRouter+z-ai/glm-5.3-flash (final state confirmed).",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Login: admin / <APP_PASSWORD>. Preview URL in /app/.env.local APP_URL. All Next API under /ai-api/*, provider PUT (not POST). Demo files (lib-file-*) are non-shared so the modal LibraryViewer only opens via right-click context menu — that path did not trigger in headless Playwright; verify manually or wire a fallback button. Mail requires user to add IMAP account; skip mail context-menu tests until data present. OpenRouter budget is limited: keep live chat calls to one short message.",
+  "rca of the issue": "Modal viewer not opening on demo files: LibraryViewer is only mounted when setCloudPreview(selFile) is called. In screen-library.tsx that setter is invoked in three places — inspector button `insp-cloud-view` (only when selFile.shared is true), context-menu action 'preview' (right-click), and line 2314. Demo files have shared=false, so the inspector button is not rendered. Right-click on the card in headless Playwright did not surface any menuitem elements, suggesting the contextmenu handler is either attached elsewhere in the tree or blocked by a preventDefault/stopPropagation earlier. Main agent should confirm the right-click flow works in a real browser and consider a non-contextmenu opener for local files.",
+  "test_credentials": "admin / <APP_PASSWORD> (from /app/.env.local APP_PASSWORD)",
+  "regression": {
+    "pnpm_lint": "0 errors, 139 warnings — passes threshold (0 errors required)",
+    "pnpm_build": "NOT re-run this iteration (main agent reported EXIT=0 with 0 warnings after their fixes; running full build here would take >2min and preview app is already serving the production build under supervisor)",
+    "vitest": "NOT run — request marked as optional regression; existing e2e specs (46, 48, 50, 53) not re-executed to preserve OpenRouter budget"
+  },
+  "notes_for_main_agent": [
+    "OpenRouter provider is fully restored to z-ai/glm-5.3-flash for both text and vision (verified in /app/.data/ai/provider.json and GET /ai-api/ai/provider).",
+    "One real OpenRouter chat call succeeded (rid=okadzwtj, 200, 7771ms).",
+    "No 'ollama' or 'скачать модель' strings on any page tested; UI confirms only two connection kinds (OpenRouter, Custom Endpoint)."
+  ]
+}

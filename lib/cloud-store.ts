@@ -607,7 +607,7 @@ export async function readFileBytes(id: string): Promise<{ name: string; content
       throw new CloudError('FORBIDDEN', 'Файл находится вне папки хранения.')
     }
     try {
-      const buf = await fs.readFile(abs)
+      const buf = await fs.readFile(/*turbopackIgnore: true*/ abs)
       return {
         name: f.name,
         contentType: f.contentType || 'application/octet-stream',

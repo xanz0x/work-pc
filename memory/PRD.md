@@ -1,4 +1,62 @@
-# WorkSpaceX — Windows installer, local AI and shared host
+# WorkSpaceX — PRD (последняя запись сверху)
+
+## 2026-06 · Починка production-сборки + E2E восьми пунктов OpenRouter/Custom
+
+### Задача
+Продолжение из `memory/HANDOFF_NEXT_CHAT.md`: P0 — починить `pnpm run build` (instrumentation.ts + ESLint
+`react-hooks/purity`), P1 — полное E2E по 8 реализованным пунктам, P2 — документация.
+Пользователь: «Начинаем с фикса сборки», «Сделай как считаешь лучше», «Полный список P1 через testing_agent»,
+ключ OpenRouter + модель `z-ai/glm-5.3-flash`.
+
+### Окружение
+Под был сброшен: восстановлены `pnpm install --frozen-lockfile` и `/app/.env.local`
+(APP_PASSWORD/ADMIN_LOGIN прежние, APP_SESSION_SECRET и MAIL_SECRET сгенерированы заново — прежних в
+окружении не было; AI_DIR=/app/.data, CLOUD_STORAGE=local). Внешний адрес превью сменился:
+`https://<PREVIEW_INSTANCE>.preview.emergentagent.com`. Фронтенд — прод-сборка под
+supervisor, hot-reload нет.
+
+### Сделано
+- **Сборка**: `pnpm run build` EXIT=0 и **0 предупреждений Turbopack** (было 7). Файловый автосев AI_DIR
+  вынесен из `instrumentation.ts` в `lib/boot-seed.ts` и грузится динамическим импортом только при
+  `NEXT_RUNTIME === 'nodejs'`; на рантайм-путях `/*turbopackIgnore: true*/`; то же для
+  `readFileBytes` в `lib/cloud-store.ts`. Edge-бандл больше не тянет fs/path.
+- **ESLint**: `pnpm lint` 0 ошибок (139 предупреждений старого долга hooks сохранены осознанно).
+  Плагин `react-hooks` берётся из `eslint-config-next` — отдельная установка ломалась на pnpm-симлинке
+  с peer-суффиксом; для `tests/**` `react-hooks/globals` понижено до warn.
+- **UX**: в инспекторе библиотеки добавлена кнопка `insp-file-view` «Просмотр» для локальных файлов —
+  до этого модальный просмотрщик открывался только правой кнопкой по карточке.
+- **Документация**: README приведён к правде — подключение модели только OpenRouter / свой
+  OpenAI-совместимый сервер, добавлена таблица «что нужно и где взять», убраны обещания локального
+  движка и Ollama. Историю в `docs/tasks/wave-*` не переписывали.
+- Провайдер настроен: `/app/.data/ai/provider.json` — OpenRouter, модель `z-ai/glm-5.3-flash`
+  (text+image, годится и как vision).
+
+### Проверено
+- testing_agent, `test_reports/iteration_57.json`: backend pytest 8/8; настройки модели показывают ровно
+  два способа (OpenRouter / Свой сервер), упоминаний Ollama в компонентах нет; живой список 430 моделей
+  OpenRouter; round-trip custom → openrouter; реальный ход чата 200 за 7.7 с; модал мастер-ключа в стиле
+  проекта без переполнения на 1920x800.
+- Ручные прогоны основного агента: правый клик по карточке библиотеки открывает меню и «Просмотр»
+  (замечание тест-агента о неработающем контекстном меню — артефакт координат в headless);
+  просмотрщик открывает изображение, PDF и DOCX (текст с разметкой), Escape закрывает;
+  выбор папки хранения через PUT `/ai-api/cloud/storage-root` + загрузка — файл реально ложится в папку;
+  `POST /ai-api/analyze` на PNG-«паспорте» → done с осмысленными названием/описанием/тегами (реальный
+  vision-вызов). Тестовые файлы и папка хранения после проверки удалены, конфиг возвращён к OpenRouter.
+- Регресс: vitest **319 тестов PASS**; 2 файла (`desktop-config`, `desktop-security`) не загрузились —
+  в `/app/desktop` не установлены `dotenv`/`selfsigned` (дефект окружения, не кода).
+
+### Не проверено / приоритеты
+- **P1**: контекстное меню в просмотрщике письма (copy text / link / image address / open in browser)
+  НЕ проверено — в окружении нет ни одного почтового ящика и писем. Нужен реальный IMAP-ящик или
+  `SONJJ_API_KEY` и входящее письмо. Загрузка картинок в письмах по этой же причине не подтверждена.
+- **P1**: установить зависимости `/app/desktop`, чтобы vitest был полностью зелёным.
+- **P2**: `/ai-api/ai/provider/models` отдаёт `{models:[…]}` без `ok:true` (расхождение с другими роутами);
+  `components/screen-library.tsx` > 2900 строк — просится разбивка; ключ OpenRouter лежит в
+  `provider.json` открытым текстом.
+
+---
+
+## (архив) WorkSpaceX — Windows installer, local AI and shared host
 
 ## 2026-09-06 — Windows: главный ПК и подключение друга
 
