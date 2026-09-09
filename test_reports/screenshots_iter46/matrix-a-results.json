@@ -1,0 +1,434 @@
+[
+  {
+    "state": "a-setup-pin",
+    "viewport": "1920x800",
+    "zoom": 100,
+    "selector": "[data-testid=\"mk-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-setup-pin",
+    "viewport": "1920x800",
+    "zoom": 150,
+    "selector": "[data-testid=\"mk-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-setup-pin",
+    "viewport": "390x844",
+    "zoom": 100,
+    "selector": "[data-testid=\"mk-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-setup-pin",
+    "viewport": "390x844",
+    "zoom": 150,
+    "selector": "[data-testid=\"mk-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-setup-pin",
+    "viewport": "1280x420",
+    "zoom": 100,
+    "selector": "[data-testid=\"mk-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-setup-pin",
+    "viewport": "1280x420",
+    "zoom": 150,
+    "selector": "[data-testid=\"mk-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-change-pin",
+    "viewport": "1920x800",
+    "zoom": 100,
+    "selector": "[data-testid=\"mk-change-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-change-pin",
+    "viewport": "1920x800",
+    "zoom": 150,
+    "selector": "[data-testid=\"mk-change-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-change-pin",
+    "viewport": "390x844",
+    "zoom": 100,
+    "selector": "[data-testid=\"mk-change-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-change-pin",
+    "viewport": "390x844",
+    "zoom": 150,
+    "selector": "[data-testid=\"mk-change-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-change-pin",
+    "viewport": "1280x420",
+    "zoom": 100,
+    "selector": "[data-testid=\"mk-change-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-change-pin",
+    "viewport": "1280x420",
+    "zoom": 150,
+    "selector": "[data-testid=\"mk-change-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-disable-pin",
+    "viewport": "1920x800",
+    "zoom": 100,
+    "selector": "[data-testid=\"mk-disable-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-disable-pin",
+    "viewport": "1920x800",
+    "zoom": 150,
+    "selector": "[data-testid=\"mk-disable-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-disable-pin",
+    "viewport": "390x844",
+    "zoom": 100,
+    "selector": "[data-testid=\"mk-disable-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-disable-pin",
+    "viewport": "390x844",
+    "zoom": 150,
+    "selector": "[data-testid=\"mk-disable-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-disable-pin",
+    "viewport": "1280x420",
+    "zoom": 100,
+    "selector": "[data-testid=\"mk-disable-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-disable-pin",
+    "viewport": "1280x420",
+    "zoom": 150,
+    "selector": "[data-testid=\"mk-disable-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-pin-lock",
+    "viewport": "1920x800",
+    "zoom": 100,
+    "selector": "[data-testid=\"lock-screen\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-pin-lock",
+    "viewport": "1920x800",
+    "zoom": 150,
+    "selector": "[data-testid=\"lock-screen\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-pin-lock",
+    "viewport": "390x844",
+    "zoom": 100,
+    "selector": "[data-testid=\"lock-screen\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-pin-lock",
+    "viewport": "390x844",
+    "zoom": 150,
+    "selector": "[data-testid=\"lock-screen\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-pin-lock",
+    "viewport": "1280x420",
+    "zoom": 100,
+    "selector": "[data-testid=\"lock-screen\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-pin-lock",
+    "viewport": "1280x420",
+    "zoom": 150,
+    "selector": "[data-testid=\"lock-screen\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-change-password",
+    "viewport": "1920x800",
+    "zoom": 100,
+    "selector": "[data-testid=\"mk-change-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-change-password",
+    "viewport": "1920x800",
+    "zoom": 150,
+    "selector": "[data-testid=\"mk-change-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-change-password",
+    "viewport": "390x844",
+    "zoom": 100,
+    "selector": "[data-testid=\"mk-change-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-change-password",
+    "viewport": "390x844",
+    "zoom": 150,
+    "selector": "[data-testid=\"mk-change-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-change-password",
+    "viewport": "1280x420",
+    "zoom": 100,
+    "selector": "[data-testid=\"mk-change-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-change-password",
+    "viewport": "1280x420",
+    "zoom": 150,
+    "selector": "[data-testid=\"mk-change-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-password-lock",
+    "viewport": "1920x800",
+    "zoom": 100,
+    "selector": "[data-testid=\"lock-screen\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-password-lock",
+    "viewport": "1920x800",
+    "zoom": 150,
+    "selector": "[data-testid=\"lock-screen\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-password-lock",
+    "viewport": "390x844",
+    "zoom": 100,
+    "selector": "[data-testid=\"lock-screen\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-password-lock",
+    "viewport": "390x844",
+    "zoom": 150,
+    "selector": "[data-testid=\"lock-screen\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-password-lock",
+    "viewport": "1280x420",
+    "zoom": 100,
+    "selector": "[data-testid=\"lock-screen\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-password-lock",
+    "viewport": "1280x420",
+    "zoom": 150,
+    "selector": "[data-testid=\"lock-screen\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-reset-confirm-nested",
+    "viewport": "1920x800",
+    "zoom": 100,
+    "selector": "[data-testid=\"reset-lock-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-reset-confirm-nested",
+    "viewport": "1920x800",
+    "zoom": 150,
+    "selector": "[data-testid=\"reset-lock-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-reset-confirm-nested",
+    "viewport": "390x844",
+    "zoom": 100,
+    "selector": "[data-testid=\"reset-lock-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-reset-confirm-nested",
+    "viewport": "390x844",
+    "zoom": 150,
+    "selector": "[data-testid=\"reset-lock-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-reset-confirm-nested",
+    "viewport": "1280x420",
+    "zoom": 100,
+    "selector": "[data-testid=\"reset-lock-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-reset-confirm-nested",
+    "viewport": "1280x420",
+    "zoom": 150,
+    "selector": "[data-testid=\"reset-lock-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-disable-password",
+    "viewport": "1920x800",
+    "zoom": 100,
+    "selector": "[data-testid=\"mk-disable-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-disable-password",
+    "viewport": "1920x800",
+    "zoom": 150,
+    "selector": "[data-testid=\"mk-disable-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-disable-password",
+    "viewport": "390x844",
+    "zoom": 100,
+    "selector": "[data-testid=\"mk-disable-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-disable-password",
+    "viewport": "390x844",
+    "zoom": 150,
+    "selector": "[data-testid=\"mk-disable-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-disable-password",
+    "viewport": "1280x420",
+    "zoom": 100,
+    "selector": "[data-testid=\"mk-disable-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-disable-password",
+    "viewport": "1280x420",
+    "zoom": 150,
+    "selector": "[data-testid=\"mk-disable-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-setup-password",
+    "viewport": "1920x800",
+    "zoom": 100,
+    "selector": "[data-testid=\"mk-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-setup-password",
+    "viewport": "1920x800",
+    "zoom": 150,
+    "selector": "[data-testid=\"mk-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-setup-password",
+    "viewport": "390x844",
+    "zoom": 100,
+    "selector": "[data-testid=\"mk-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-setup-password",
+    "viewport": "390x844",
+    "zoom": 150,
+    "selector": "[data-testid=\"mk-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-setup-password",
+    "viewport": "1280x420",
+    "zoom": 100,
+    "selector": "[data-testid=\"mk-modal\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "a-setup-password",
+    "viewport": "1280x420",
+    "zoom": 150,
+    "selector": "[data-testid=\"mk-modal\"]",
+    "found": true,
+    "violations": []
+  }
+]

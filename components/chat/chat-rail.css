@@ -1,0 +1,14 @@
+/* Кнопка переименования разговора в рельсе: живёт рядом с удалением,
+   наследует его вид и появляется вместе с ним при наведении на строку. */
+
+.chat-rail .rail-ren {
+  right: 38px;
+}
+
+.chat-refined .chat-rail .rail-ren {
+  right: 38px;
+}
+
+.chat-rail .rail-ren:focus-visible {
+  opacity: 1;
+}

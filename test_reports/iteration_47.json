@@ -1,0 +1,26 @@
+{
+  "summary": "Frontend-only regression on WhiteFox after focus-return, reset-dialog, lock-store and CSS fixes. All target specs pass on the production build served by supervisor. Matrix A-D (46), tail matrix (44), reset/io/responsive (45), settings nav stress including new 1280x800 @150% (99), and journal notification click (12) — 22/22 green.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/tests/e2e/46-access-layout.spec.ts",
+    "/app/tests/e2e/45-access-reset-io-responsive.spec.ts",
+    "/app/tests/e2e/44-access-tail-matrix.spec.ts",
+    "/app/tests/e2e/99-settings-nav-stress.spec.ts",
+    "/app/tests/e2e/12-journal.spec.ts"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (frontend-only scope)", "frontend": "100% (22/22 targeted tests passed)"},
+  "test_credentials": "admin / <APP_PASSWORD> (APP_PASSWORD from /app/.env.local)",
+  "seed_data_creation": "Specs create disposable state (uploaded files, secrets, backups) inside browser storage under /app/.data profile. No manual seeding performed.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Production build is served via supervisor (next start) — no HMR. Run tests directly: cd /app && APP_URL=http://localhost:3000 APP_PASSWORD='<APP_PASSWORD>' ADMIN_LOGIN=admin npx playwright test tests/e2e/<spec>. Targeted specs 46 (4 tests, ~1.7m), 45 (3), 44 (4), 99 (10), 12 (1) all green in iter47. Known pre-existing (out-of-scope) failures per E1 note: 06-storage-migration.spec.ts:107, 14/15-bulk-*, 21-mcp-external — not related to focus-return/reset/CSS changes.",
+  "rca of the issue": "Not applicable — iter45 P1 bugs (reset accepts 'СБРОСИТЬ\\n' and uploaded file lost after reset) are confirmed fixed: 45-P1 now green (strict confirm variants + file-key map cleared + login unchanged). Matrix A focus-return-after-Escape confirmed working across 1920x800, 390x844 and short 1280x420 at 100%/150%."
+}

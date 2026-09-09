@@ -1,0 +1,60 @@
+{
+  "summary": "Executed backend+frontend targeted regression for cloud sharing and library context menu. Backend cloud write flows are blocked by provider 503; desktop context-menu accessibility flow passes in smoke.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "/ai-api/cloud/share",
+        "issue": "Returns 503 {code: PROVIDER, error: 'Хранилище отклонило ключ (init 404).'} for valid multipart and note JSON payloads, blocking real cloud copy creation.",
+        "priority": "CRITICAL"
+      },
+      {
+        "endpoint": "/ai-api/cloud/upload",
+        "issue": "Returns 503 PROVIDER (same init 404 path), so legacy upload/rename/delete regression cannot complete.",
+        "priority": "HIGH"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Library share/remove publish flows",
+        "issue": "Cannot validate successful publish/remove UI integration because backend cloud storage init fails with 503 before copy creation.",
+        "affected_selectors": [
+          "[data-testid='library-share-confirm']",
+          "[data-testid='library-share-error']"
+        ]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/tests/api/test_cloud_sharing_iter51.py",
+    "/app/test_reports/pytest/iteration_51_backend.xml"
+  ],
+  "action_items": [
+    "Fix cloud object storage init URL construction in /app/lib/cloud-store.ts for environments where INTEGRATION_PROXY_URL already contains '/llm' (currently produces /llm/objstore/... and 404).",
+    "After backend fix, rerun /app/tests/api/test_cloud_sharing_iter51.py to validate binary integrity, idempotency, soft-delete republish, and member/nonmember permissions end-to-end.",
+    "Recheck proxy feature-gate expectation for cloud routes in /app/proxy.ts (cloud endpoints are currently not mapped in FEATURE_BY_PREFIX)."
+  ],
+  "critical_code_review_comments": [
+    "Cloud store currently hardcodes objstore path append on top of INTEGRATION_PROXY_URL; with '/llm' base this breaks provider init at runtime.",
+    "cloud-store has env fallbacks (AI_DIR and integration URL defaults), which can mask misconfiguration and diverges from strict fail-fast env policy.",
+    "Potential policy gap: /ai-api/cloud is not included in FEATURE_BY_PREFIX in proxy.ts despite requirement to preserve cloud gating behavior."
+  ],
+  "updated_files": [
+    "/app/tests/api/test_cloud_sharing_iter51.py",
+    "/app/memory/test_credentials.md",
+    "/app/test_reports/iteration_51.json"
+  ],
+  "success_rate": {
+    "backend": "25% (auth/user setup and cloud list/join path worked; cloud write flows blocked by provider)",
+    "frontend": "40% (desktop context-menu keyboard/mouse smoke passed; share success flows blocked by backend)"
+  },
+  "seed_data_creation": "Created 2 disposable users for member/nonmember checks via admin API and removed both in teardown; no persistent new test accounts remain.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Run with APP_URL=https://ai-ready-launcher.preview.emergentagent.com APP_PASSWORD=<admin password> ADMIN_LOGIN=admin. First verify /ai-api/cloud/share returns 201 for multipart; if fixed, rerun full file /app/tests/api/test_cloud_sharing_iter51.py and then execute UI publish/remove scenarios.",
+  "rca of the issue": "Repro: POST /ai-api/cloud/share or /ai-api/cloud/upload as admin with valid payload -> 503 PROVIDER and message 'init 404'. Backend env has INTEGRATION_PROXY_URL ending with '/llm'. cloud-store builds STORAGE_URL as `${INTEGRATION_PROXY_URL}/objstore/api/v1/storage`, resulting in '/llm/objstore/.../init' which returns 404. Because all share/upload paths depend on initStorage(), backend cloud copy creation is blocked and downstream UI/integration validations fail."
+}

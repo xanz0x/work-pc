@@ -1,0 +1,91 @@
+# v0 sandbox internal files
+__v0_runtime_loader.js
+__v0_devtools.tsx
+__v0_jsx-dev-runtime.ts
+.snowflake/
+.v0-trash/
+.vercel/
+
+# Environment variables
+.env*.local
+
+# Dependencies & builds
+node_modules
+.next/
+out/
+build/
+
+# TypeScript incremental cache
+*.tsbuildinfo
+
+# OS noise
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Editor
+.idea/
+.vscode/
+*.swp
+
+# Nested build-artifacts checkout (not part of the project)
+.env
+.env.*
+*.env
+credentials.json
+*.pem
+*.key
+.credentials
+
+# Пакетный менеджер в проекте один — pnpm (§4.1 хвоста волны 2).
+# Платформа иногда запускает `yarn install` сама: лок-файл yarn в репозиторий
+# попадать не должен, иначе CI с --frozen-lockfile теряет смысл.
+yarn.lock
+
+# Артефакты тестов
+test-results/
+playwright-report/
+.screenshots/
+
+# Локальный store пакетного менеджера и кеши инструментов
+.pnpm-store/
+.ruff_cache/
+__pycache__/
+*.pyc
+
+# Приватные данные ИИ-слоя: диалоги пользователя не место в репозитории
+ai/sessions/*.json
+!ai/sessions/.gitkeep
+# Пользователи запуска (логины и хеши паролей) — данные установки, не исходники
+ai/users/
+
+# NF-9: принятые агрегаты телеметрии — данные запуска, не исходники
+ai/telemetry/
+
+# Desktop output and local runtime are never source data.
+desktop/release/
+desktop/staging/
+desktop/.runtime/
+desktop/.cache/
+!desktop/runtime.env
+!desktop/yarn.lock
+.desktop-build.lock
+.next-desktop/
+public/downloads/
+test_reports/wsx-electron-*/
+test_reports/electron-user-data/
+
+# Локальные данные и артефакты запусков (не исходники)
+.data/
+.vitest-reports/
+npm-features.log
+tsc-check.log
+.hermes/plans/*-status.md
+
+# Токены MCP-доступа (данные запуска)
+ai/mcp-access/

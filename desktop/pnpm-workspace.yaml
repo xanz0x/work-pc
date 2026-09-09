@@ -1,0 +1,5 @@
+# pnpm 11: разрешаем postinstall электрона (скачивает бинарник) без интерактивного approve-builds
+allowBuilds:
+  electron: true
+  electron-winstaller: true
+  node: true

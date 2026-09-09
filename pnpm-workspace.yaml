@@ -1,0 +1,15 @@
+minimumReleaseAge: 0
+# Сборочные скрипты, которым разрешено выполняться: без них vitest (esbuild)
+# и eslint (unrs-resolver) остаются без нативных бинарников.
+# pnpm 11 читает allowBuilds; onlyBuiltDependencies оставлен для pnpm 10 в CI.
+allowBuilds:
+  esbuild: true
+  unrs-resolver: true
+  '@tailwindcss/oxide': true
+  sharp: true
+  exifreader: true
+onlyBuiltDependencies:
+  - esbuild
+  - unrs-resolver
+  - '@tailwindcss/oxide'
+  - sharp

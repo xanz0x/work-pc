@@ -1,0 +1,69 @@
+{
+  "summary": "Frontend-only regression executed with new durable spec for reset/io/responsive flows. P2 and P3 passed; P1 exposed two critical product bugs in real reset flow.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "ResetLockDialog",
+        "issue": "Confirmation variant with trailing newline (\"СБРОСИТЬ\\n\") triggers reset, although it must be rejected as non-exact variant.",
+        "selector": "[data-testid='reset-lock-confirmation'], [data-testid='reset-lock-modal']",
+        "priority": "CRITICAL"
+      },
+      {
+        "component": "Master reset data persistence",
+        "issue": "After reset from lock screen and reload, user-uploaded file disappears (library returns to demo-only set). Requirement says uploaded file must remain.",
+        "selector": "[data-tile-key='file:<uploaded-id>'], [data-testid='nav-library']",
+        "priority": "CRITICAL"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "P1 actual reset end-to-end",
+        "issue": "Lock config/state and file-key map are cleared as expected, but reset side-effects also remove user-uploaded file unexpectedly.",
+        "affected_selectors": [
+          "[data-testid='mk-setup-open']",
+          "[data-testid='reset-lock-confirmation']",
+          "[data-tile-key='file:<uploaded-id>']"
+        ]
+      }
+    ],
+    "design_issues": [
+      {
+        "screen": "Access responsive matrix",
+        "issues": [
+          "Checked login/register at 1920x800 and 390x844, short-height simulation at 1920x360, and CSS zoom 125/150/200; no horizontal overflow found on active login form.",
+          "Short-height 360px is a simulation; real mobile keyboard insets were not emulated by browser virtual keyboard APIs in this run."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/tests/e2e/45-access-reset-io-responsive.spec.ts",
+    "/app/test_reports/access-iteration45.log"
+  ],
+  "action_items": [
+    "Fix reset confirmation comparator/input handling so \"СБРОСИТЬ\\n\" and other non-exact variants cannot trigger reset.",
+    "Fix reset flow so user-uploaded files persist across reset+reload while only lock config/file-key wrappers are wiped.",
+    "After fixes, rerun /app/tests/e2e/45-access-reset-io-responsive.spec.ts and verify P1 fully green."
+  ],
+  "critical_code_review_comments": [
+    "components/reset-lock-dialog.tsx relies on a plain input + equality check (`confirmation === 'СБРОСИТЬ'`) in submit path; newline normalization in input allows bypass of intended 'variant must fail' rule.",
+    "lib/store/lock.tsx::resetLock calls wipeLockData() only, but observed runtime behavior drops uploaded file data after reset/reload; investigate lock-reset side effects in storage rehydration/seed initialization path."
+  ],
+  "updated_files": [
+    "/app/tests/e2e/45-access-reset-io-responsive.spec.ts",
+    "/app/test_reports/iteration_45.json"
+  ],
+  "success_rate": {
+    "backend": "N/A (frontend-only scope)",
+    "frontend": "67% (2/3 tests passed)"
+  },
+  "seed_data_creation": "Created disposable local test data in browser context: one uploaded file, one vault secret entry, one encrypted export file. No backend seed changes.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Use /app/tests/e2e/45-access-reset-io-responsive.spec.ts. Current status: P2 (secret IO + backup open validation) and P3 (responsive/zoom matrix smoke) pass; P1 fails on newline variant reset and uploaded-file persistence after reset. Evidence in /app/test_reports/access-iteration45.log and screenshots_iter45.",
+  "rca of the issue": "RCA-1: Reset confirmation uses direct string equality on normalized single-line input, so pasted/newline variant can collapse to exact token and pass. Repro: open lock reset dialog -> fill 'СБРОСИТЬ\\n' -> Enter -> reset triggers. RCA-2: In actual reset flow from lock screen, post-reset reload returns library to demo-only dataset and uploaded file id cannot be found, indicating unintended data wipe/reinit beyond lock/file-key cleanup. Repro from spec P1 with persisted uploaded file id and post-reload lookup by data-tile-key." 
+}

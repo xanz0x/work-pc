@@ -1,0 +1,19 @@
+/* Графика WorkSpaceX: только брендовые слоты, без изменений раскладки экранов. */
+.workspace-logo {
+  display: inline-block;
+  height: auto;
+  max-width: 100%;
+  object-fit: contain;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.workspace-logo-full { width: 204px; aspect-ratio: 930 / 144; }
+.workspace-logo-word { width: 130px; aspect-ratio: 646 / 112; }
+.splash-word.workspace-logo { width: 208px; }
+
+/* До гидратации показываем тот же знак вместо прежней текстовой заглушки. */
+html.lock-pending body::after {
+  content: '';
+  background: url('/brand/workspacex-logo.png') center / 204px auto no-repeat;
+}

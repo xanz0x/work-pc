@@ -1,0 +1,502 @@
+/* ============================================================
+   РАЗДЕЛ «ОБЩЕЕ ОБЛАКО»
+   Тёмная палитра каркаса (переменные из globals.css). Иконки в
+   этом разделе — линейные: задаём им stroke, т.к. глобальный
+   stroke стоит только на .btn svg, а здесь много не-кнопок.
+   ============================================================ */
+
+#set-cloud svg {
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.cloud-empty {
+  padding: 18px 2px;
+  color: var(--text-3r);
+}
+
+/* ---------- приглашение ---------- */
+
+.cloud-invite {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  border: 1px solid var(--accent-line);
+  background:
+    radial-gradient(120% 140% at 0% 0%, rgba(47, 190, 126, 0.12), transparent 60%),
+    var(--panel-2);
+  overflow: hidden;
+}
+
+.cloud-invite::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: linear-gradient(180deg, var(--accent), #38bdf8);
+}
+
+.cloud-invite-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 220px;
+  flex: 1;
+}
+
+.cloud-code {
+  font-size: 26px;
+  line-height: 1;
+  letter-spacing: 5px;
+  color: var(--accent);
+  text-shadow: 0 0 24px rgba(47, 190, 126, 0.35);
+}
+
+/* ---------- join (не участник) ---------- */
+
+.cloud-join {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+  padding: 18px;
+  border-radius: 14px;
+  border: 1px dashed var(--border-3);
+  background: var(--panel-2);
+  color: var(--accent);
+}
+
+.cloud-join-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 220px;
+  flex: 1;
+  color: var(--text);
+}
+
+/* ---------- папка хранения ---------- */
+
+.cloud-storage {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  border: 1px solid var(--border-2);
+  background: var(--panel-2);
+  color: var(--accent);
+}
+
+.cloud-storage-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 220px;
+  flex: 1;
+  color: var(--text);
+}
+
+.cloud-storage-path {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+  color: var(--text);
+}
+
+.cloud-storage svg {
+  flex: none;
+}
+
+/* Ручной ввод пути — фолбэк, когда мост Electron недоступен (браузер). */
+.cloud-storage-manual {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex-basis: 100%;
+}
+
+.cloud-storage-manual .input {
+  flex: 1;
+  min-width: 240px;
+}
+
+/* ---------- статусы анализа загрузок ---------- */
+
+.cloud-uploads {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.cloud-upload {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border-2);
+  background: var(--panel-2);
+}
+
+.cloud-upload-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: 9px;
+  border: 1px solid var(--accent-line);
+  color: var(--accent);
+}
+
+.cloud-upload-icon.danger {
+  border-color: color-mix(in oklab, var(--danger) 55%, transparent);
+  color: var(--danger);
+}
+
+.cloud-spin {
+  animation: idx-spin 1.6s linear infinite;
+}
+
+.cloud-upload-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.cloud-upload-text b {
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.cloud-upload-text .setting-note {
+  overflow-wrap: anywhere;
+}
+
+/* ---------- панель действий и крошки ---------- */
+
+.cloud-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 22px 0 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.cloud-crumbs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: wrap;
+}
+
+.crumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 9px;
+  font-size: 13px;
+  color: var(--text-2);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.crumb:hover {
+  color: var(--text);
+  background: var(--border);
+}
+
+.crumb.on {
+  color: var(--text);
+  background: var(--border-2);
+}
+
+.crumb-sep {
+  opacity: 0.35;
+  margin-right: 4px;
+}
+
+/* ---------- папки ---------- */
+
+.cloud-folders {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.cloud-folder {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border-2);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--panel-2);
+  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.cloud-folder:hover {
+  border-color: var(--accent-line);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px -18px rgba(0, 0, 0, 0.9);
+}
+
+.cloud-folder-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  max-width: 200px;
+  color: var(--text);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 13.5px;
+}
+
+.cloud-folder-open svg {
+  color: var(--accent);
+  flex: none;
+}
+
+.cloud-folder .cloud-mini {
+  margin-right: 8px;
+  opacity: 0;
+  transform: scale(0.9);
+  transition: opacity 0.15s ease, transform 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.cloud-folder:hover .cloud-mini {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* ---------- сетка файлов ---------- */
+
+.cloud-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(172px, 1fr));
+  gap: 16px;
+}
+
+.cloud-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 12px 14px;
+  border: 1px solid var(--border-2);
+  border-radius: 14px;
+  background: var(--panel-2);
+  transition: border-color 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.cloud-card:hover {
+  border-color: var(--accent-line);
+  transform: translateY(-3px);
+  box-shadow: 0 18px 40px -26px rgba(0, 0, 0, 1);
+}
+
+/* Плашка «облако · общий» — отличает файл от локальных на ПК. */
+.cloud-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 9.5px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: #04231a;
+  background: linear-gradient(90deg, var(--accent), #38bdf8);
+  box-shadow: 0 4px 14px -4px rgba(47, 190, 126, 0.6);
+}
+
+.cloud-badge svg {
+  color: #04231a;
+}
+
+.cloud-thumb {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 104px;
+  border-radius: 10px;
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, var(--bg-input), var(--bg));
+  border: 1px solid var(--border);
+  color: var(--text-3r);
+}
+
+.cloud-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cloud-thumb-tag {
+  position: absolute;
+  right: 7px;
+  bottom: 7px;
+  display: inline-flex;
+  padding: 4px;
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  backdrop-filter: blur(4px);
+}
+
+.cloud-name {
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.cloud-meta {
+  font-size: 11px;
+  color: var(--text-3r);
+  letter-spacing: 0.3px;
+}
+
+.cloud-rename {
+  display: flex;
+  gap: 6px;
+}
+
+.cloud-actions {
+  display: flex;
+  gap: 7px;
+  margin-top: 3px;
+  opacity: 0.55;
+  transition: opacity 0.15s ease;
+}
+
+.cloud-card:hover .cloud-actions {
+  opacity: 1;
+}
+
+.cloud-mini {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  border: 1px solid var(--border-2);
+  background: var(--bg-input);
+  color: var(--text-2);
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease, transform 0.12s ease;
+}
+
+.cloud-mini:hover {
+  color: var(--text);
+  border-color: var(--accent-line);
+  background: var(--panel);
+  transform: translateY(-1px);
+}
+
+.cloud-mini.danger:hover {
+  color: var(--danger);
+  border-color: color-mix(in oklab, var(--danger) 55%, transparent);
+}
+
+/* ---------- подсказка «файлы в библиотеке» ---------- */
+
+.cloud-hint {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-top: 6px;
+  padding: 14px 16px;
+  border: 1px dashed var(--border-3);
+  border-radius: 12px;
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.cloud-hint svg {
+  color: var(--accent);
+  flex: none;
+  margin-top: 1px;
+}
+
+.cloud-hint b {
+  color: var(--text);
+}
+
+.cloud-hint-badge {
+  display: inline-flex;
+  margin: 0 5px;
+  padding: 1px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--accent-line);
+  color: var(--accent);
+  font-size: 11px;
+  vertical-align: middle;
+}
+
+
+/* ---------- узкие экраны ---------- */
+
+@media (max-width: 720px) {
+  .cloud-invite,
+  .cloud-join,
+  .cloud-storage {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .cloud-invite .tm-actions,
+  .cloud-join .tm-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .cloud-code {
+    font-size: 20px;
+    letter-spacing: 3px;
+    overflow-wrap: anywhere;
+  }
+
+  .cloud-bar {
+    gap: 6px;
+  }
+
+  .cloud-grid {
+    grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+    gap: 12px;
+  }
+}
+

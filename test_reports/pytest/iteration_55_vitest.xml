@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites name="vitest tests" tests="16" failures="0" errors="0" time="0.412034066">
+    <testsuite name="tests/unit/desktop-config.test.ts" timestamp="2026-09-06T15:08:52.775Z" hostname="agent-env-740f42ae-8f7f-41f8-9cf3-18e33fd981ed" tests="5" failures="0" errors="0" skipped="0" time="0.01434582">
+        <testcase classname="tests/unit/desktop-config.test.ts" name="desktop config: host/invite/env validation &gt; accepts valid host input and normalizes login+host" time="0.005368504">
+        </testcase>
+        <testcase classname="tests/unit/desktop-config.test.ts" name="desktop config: host/invite/env validation &gt; rejects malformed hosts/invites (http, credentials, path, bad pin)" time="0.001443054">
+        </testcase>
+        <testcase classname="tests/unit/desktop-config.test.ts" name="desktop config: host/invite/env validation &gt; encodes and decodes a strict allowlisted invite" time="0.000701976">
+        </testcase>
+        <testcase classname="tests/unit/desktop-config.test.ts" name="desktop config: host/invite/env validation &gt; atomicWrite replaces content without leaving temp artifacts" time="0.002639341">
+        </testcase>
+        <testcase classname="tests/unit/desktop-config.test.ts" name="desktop config: host/invite/env validation &gt; runtimeEnv validates required keys and returns computed paths" time="0.003372593">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/desktop-security.test.ts" timestamp="2026-09-06T15:08:52.836Z" hostname="agent-env-740f42ae-8f7f-41f8-9cf3-18e33fd981ed" tests="3" failures="0" errors="0" skipped="0" time="0.202660265">
+        <testcase classname="tests/unit/desktop-security.test.ts" name="desktop security: cert generation, pinning, health checks &gt; creates real selfsigned cert and reuses existing pair" time="0.086231501">
+        </testcase>
+        <testcase classname="tests/unit/desktop-security.test.ts" name="desktop security: cert generation, pinning, health checks &gt; verifyPinned validates exact SHA256, host and cert lifetime window" time="0.01061112">
+        </testcase>
+        <testcase classname="tests/unit/desktop-security.test.ts" name="desktop security: cert generation, pinning, health checks &gt; checkConnection succeeds with correct pin and fails with wrong pin" time="0.104915784">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/local-objects-downloads.test.ts" timestamp="2026-09-06T15:08:52.837Z" hostname="agent-env-740f42ae-8f7f-41f8-9cf3-18e33fd981ed" tests="3" failures="0" errors="0" skipped="0" time="0.118839199">
+        <testcase classname="tests/unit/local-objects-downloads.test.ts" name="desktop local objects and verified download &gt; stores bytes under opaque SHA256 filename (no path traversal)" time="0.010828578">
+        </testcase>
+        <testcase classname="tests/unit/local-objects-downloads.test.ts" name="desktop local objects and verified download &gt; downloadVerified resumes with Range and keeps verified bytes" time="0.101368033">
+        </testcase>
+        <testcase classname="tests/unit/local-objects-downloads.test.ts" name="desktop local objects and verified download &gt; downloadVerified removes file on checksum mismatch" time="0.004152169">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/ollama-adapter-extra.test.ts" timestamp="2026-09-06T15:08:52.839Z" hostname="agent-env-740f42ae-8f7f-41f8-9cf3-18e33fd981ed" tests="5" failures="0" errors="0" skipped="0" time="0.076188782">
+        <testcase classname="tests/unit/ollama-adapter-extra.test.ts" name="ollama adapter: model matching and stream handling &gt; hasModel keeps model-size strict but allows quant suffix" time="0.000946937">
+        </testcase>
+        <testcase classname="tests/unit/ollama-adapter-extra.test.ts" name="ollama adapter: model matching and stream handling &gt; ollamaMessages converts persisted history to object arguments + tool_name" time="0.000649976">
+        </testcase>
+        <testcase classname="tests/unit/ollama-adapter-extra.test.ts" name="ollama adapter: model matching and stream handling &gt; NDJSON error line surfaces as LlmFail" time="0.000395595">
+        </testcase>
+        <testcase classname="tests/unit/ollama-adapter-extra.test.ts" name="ollama adapter: model matching and stream handling &gt; provider collects calls and fails on truncated stream without usage" time="0.072485421">
+        </testcase>
+        <testcase classname="tests/unit/ollama-adapter-extra.test.ts" name="ollama adapter: model matching and stream handling &gt; provider yields text, usage and collected calls on complete stream" time="0.000872602">
+        </testcase>
+    </testsuite>
+</testsuites>

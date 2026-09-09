@@ -1,0 +1,242 @@
+[
+  {
+    "state": "d-temp-password-wall",
+    "viewport": "1920x800",
+    "zoom": 100,
+    "selector": "[data-testid=\"access-wall\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "d-temp-password-wall",
+    "viewport": "1920x800",
+    "zoom": 150,
+    "selector": "[data-testid=\"access-wall\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "d-temp-password-wall",
+    "viewport": "390x844",
+    "zoom": 100,
+    "selector": "[data-testid=\"access-wall\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "d-temp-password-wall",
+    "viewport": "390x844",
+    "zoom": 150,
+    "selector": "[data-testid=\"access-wall\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "d-temp-password-wall",
+    "viewport": "1280x420",
+    "zoom": 100,
+    "selector": "[data-testid=\"access-wall\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "d-temp-password-wall",
+    "viewport": "1280x420",
+    "zoom": 150,
+    "selector": "[data-testid=\"access-wall\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "d-license-wall",
+    "viewport": "1920x800",
+    "zoom": 100,
+    "selector": "[data-testid=\"access-wall\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "d-license-wall",
+    "viewport": "1920x800",
+    "zoom": 150,
+    "selector": "[data-testid=\"access-wall\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "d-license-wall",
+    "viewport": "390x844",
+    "zoom": 100,
+    "selector": "[data-testid=\"access-wall\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "d-license-wall",
+    "viewport": "390x844",
+    "zoom": 150,
+    "selector": "[data-testid=\"access-wall\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "d-license-wall",
+    "viewport": "1280x420",
+    "zoom": 100,
+    "selector": "[data-testid=\"access-wall\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "d-license-wall",
+    "viewport": "1280x420",
+    "zoom": 150,
+    "selector": "[data-testid=\"access-wall\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "d-blocked-wall-simulated",
+    "viewport": "1920x800",
+    "zoom": 100,
+    "selector": "[data-testid=\"access-wall\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "d-blocked-wall-simulated",
+    "viewport": "1920x800",
+    "zoom": 150,
+    "selector": "[data-testid=\"access-wall\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "d-blocked-wall-simulated",
+    "viewport": "390x844",
+    "zoom": 100,
+    "selector": "[data-testid=\"access-wall\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "d-blocked-wall-simulated",
+    "viewport": "390x844",
+    "zoom": 150,
+    "selector": "[data-testid=\"access-wall\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "d-blocked-wall-simulated",
+    "viewport": "1280x420",
+    "zoom": 100,
+    "selector": "[data-testid=\"access-wall\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "d-blocked-wall-simulated",
+    "viewport": "1280x420",
+    "zoom": 150,
+    "selector": "[data-testid=\"access-wall\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "d-login",
+    "viewport": "1920x800",
+    "zoom": 100,
+    "selector": "[data-testid=\"login-form\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "d-login",
+    "viewport": "1920x800",
+    "zoom": 150,
+    "selector": "[data-testid=\"login-form\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "d-login",
+    "viewport": "390x844",
+    "zoom": 100,
+    "selector": "[data-testid=\"login-form\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "d-login",
+    "viewport": "390x844",
+    "zoom": 150,
+    "selector": "[data-testid=\"login-form\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "d-login",
+    "viewport": "1280x420",
+    "zoom": 100,
+    "selector": "[data-testid=\"login-form\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "d-login",
+    "viewport": "1280x420",
+    "zoom": 150,
+    "selector": "[data-testid=\"login-form\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "d-register",
+    "viewport": "1920x800",
+    "zoom": 100,
+    "selector": "[data-testid=\"login-form\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "d-register",
+    "viewport": "1920x800",
+    "zoom": 150,
+    "selector": "[data-testid=\"login-form\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "d-register",
+    "viewport": "390x844",
+    "zoom": 100,
+    "selector": "[data-testid=\"login-form\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "d-register",
+    "viewport": "390x844",
+    "zoom": 150,
+    "selector": "[data-testid=\"login-form\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "d-register",
+    "viewport": "1280x420",
+    "zoom": 100,
+    "selector": "[data-testid=\"login-form\"]",
+    "found": true,
+    "violations": []
+  },
+  {
+    "state": "d-register",
+    "viewport": "1280x420",
+    "zoom": 150,
+    "selector": "[data-testid=\"login-form\"]",
+    "found": true,
+    "violations": []
+  }
+]

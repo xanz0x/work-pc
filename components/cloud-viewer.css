@@ -1,0 +1,294 @@
+/* Полноэкранный просмотр файла общего диска (картинки, PDF). */
+
+.cloud-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  background: rgba(3, 5, 7, 0.82);
+  backdrop-filter: blur(6px);
+  animation: cloud-viewer-fade 0.16s ease;
+}
+
+@keyframes cloud-viewer-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.cloud-viewer-panel {
+  display: flex;
+  flex-direction: column;
+  width: min(1100px, 100%);
+  height: min(88vh, 900px);
+  background: var(--panel);
+  border: 1px solid var(--border-2);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 40px 120px -40px #000;
+  animation: cloud-viewer-pop 0.18s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+@keyframes cloud-viewer-pop {
+  from {
+    transform: translateY(10px) scale(0.98);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+.cloud-viewer-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.cloud-viewer-head b {
+  color: var(--text);
+  font-size: 14px;
+  max-width: 42ch;
+}
+
+.cloud-viewer-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  overflow: auto;
+}
+
+.cloud-viewer-body img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.cloud-viewer-body iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #fff;
+}
+
+.cloud-viewer-head .lv-size {
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+.cloud-viewer-head a.is-off {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+/* ---------- содержимое просмотрщика ---------- */
+
+.lv-doc,
+.lv-zip {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.lv-doc-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-3);
+  flex: none;
+}
+
+.lv-doc-bar .m-act {
+  transition: color 0.12s ease;
+}
+
+.lv-md {
+  overflow: auto;
+  padding: 18px 22px 26px;
+  font-size: 13.5px;
+  animation: lv-fade-in 0.16s ease;
+}
+
+.lv-md .md-body {
+  max-width: 76ch;
+  margin: 0 auto;
+}
+
+.lv-code {
+  flex: 1;
+  overflow: auto;
+  margin: 0;
+  padding: 14px 18px 22px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text);
+  white-space: pre;
+  tab-size: 4;
+  animation: lv-fade-in 0.16s ease;
+}
+
+@keyframes lv-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Список содержимого архива. */
+.lv-entries {
+  list-style: none;
+  margin: 0;
+  padding: 8px 12px 16px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.lv-entries .lv-entry {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  cursor: pointer;
+  color: var(--text);
+  font-size: 13px;
+  text-align: left;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.lv-entries .lv-entry:hover {
+  background: var(--bg-input);
+  border-color: var(--border-2);
+}
+
+.lv-entries .lv-entry:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.lv-entries .lv-entry.is-dir {
+  cursor: default;
+  color: var(--text-2);
+}
+
+.lv-entries .lv-entry.is-dir:hover {
+  background: none;
+  border-color: transparent;
+}
+
+.lv-entries .lv-entry svg {
+  flex: none;
+  color: var(--text-3);
+}
+
+.lv-entry-size {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+.lv-entry-view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border-2);
+  min-height: 0;
+  animation: lv-fade-in 0.16s ease;
+}
+
+.lv-entry-view .lv-code {
+  background: var(--bg-input);
+}
+
+.lv-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-width: 44ch;
+  text-align: center;
+  color: var(--text-2);
+  font-size: 13px;
+}
+
+.lv-empty svg {
+  color: var(--text-3);
+}
+
+.lv-empty-sub {
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+.lv-empty-note {
+  padding: 6px 16px;
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+
+.lv-empty-note.is-err {
+  color: var(--warn, #e0a35c);
+}
+
+/* Скелетон загрузки: мягкие полосы вместо прыжка контента. */
+.lv-skeleton {
+  width: min(560px, 80%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.lv-sk-line {
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--bg-input) 25%, var(--border-2) 50%, var(--bg-input) 75%);
+  background-size: 200% 100%;
+  animation: lv-shimmer 1.2s ease-in-out infinite;
+}
+
+.lv-sk-line.w40 { width: 40%; }
+.lv-sk-line.w60 { width: 60%; }
+.lv-sk-line.w80 { width: 80%; }
+.lv-sk-line.w90 { width: 90%; }
+
+@keyframes lv-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (max-width: 720px) {
+  .cloud-viewer {
+    padding: 12px;
+  }
+  .cloud-viewer-head {
+    flex-wrap: wrap;
+  }
+}
