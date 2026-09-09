@@ -354,6 +354,13 @@ export type CloudFile = {
   by: string
   at: string
   deleted: boolean
+  /**
+   * Файл лежит на общем диске (виден всем участникам). false — личный файл:
+   * он физически в локальной папке хранения и виден только владельцу, пока
+   * тот не добавит его в общую папку вручную. Старые записи без поля
+   * считаются общими: раньше весь диск был общим.
+   */
+  shared?: boolean
   kind?: 'file' | 'note'
   source?: CloudSource
   note?: CloudNoteSnapshot
@@ -405,6 +412,9 @@ async function writeDrive(d: Drive): Promise<void> {
 /* ---------- доступ ---------- */
 
 const isAdmin = (): boolean => requireUser().role === 'admin'
+
+/** Записи без поля shared остались со времён, когда весь диск был общим. */
+const isShared = (f: { shared?: boolean }): boolean => f.shared !== false
 
 /** Менять общий диск (загрузка, удаление, папки) может только администратор. */
 function requireAdmin(): void {
@@ -473,8 +483,11 @@ export async function driveView(): Promise<DriveView> {
     membersCount: admin ? d.members.length : undefined,
     ...(admin ? { storageRoot: root } : {}),
     folders: d.folders.slice().sort(),
-    files: d.files.filter((f) => !f.deleted).map(({ path: _p, source, ...rest }) => ({
+    /* Личные файлы (shared:false) видит только их владелец: локальная папка
+       на ПК — личное хранилище, общим становится лишь добавленное вручную. */
+    files: d.files.filter((f) => !f.deleted && (isShared(f) || f.by === uid)).map(({ path: _p, source, ...rest }) => ({
       ...rest,
+      shared: isShared(rest as CloudFile),
       /* absPath нужен админу для «Открыть на ПК»/«Показать в папке» через мост. */
       ...(admin && root && rest.relPath ? { absPath: absPathInRoot(root, rest.relPath) ?? undefined } : {}),
       // Связь с личным оригиналом нужна только создателю копии.
@@ -529,7 +542,14 @@ async function removeFolderImpl(dirPath: string): Promise<void> {
   await writeDrive(d)
 }
 
-async function uploadFileImpl(name: string, dir: string, data: Uint8Array, contentType: string, source?: CloudSource, note?: CloudNoteSnapshot): Promise<CloudFile> {
+async function uploadFileImpl(
+  name: string,
+  dir: string,
+  data: Uint8Array,
+  contentType: string,
+  opts: { shared?: boolean; source?: CloudSource; note?: CloudNoteSnapshot } = {},
+): Promise<CloudFile> {
+  const { shared = true, source, note } = opts
   const d = await readDrive()
   requireAdmin()
   if (source) {
@@ -565,6 +585,7 @@ async function uploadFileImpl(name: string, dir: string, data: Uint8Array, conte
     by: requireUser().uid,
     at: new Date().toISOString(),
     deleted: false,
+    shared,
     ...(source ? { source, kind: source.kind } : {}),
     ...(note ? { note } : {}),
   }
@@ -598,6 +619,9 @@ export async function readFileBytes(id: string): Promise<{ name: string; content
   requireMember(d)
   const f = d.files.find((x) => x.id === id && !x.deleted)
   if (!f) throw new CloudError('NOT_FOUND', 'Файл не найден.')
+  if (!isShared(f) && f.by !== requireUser().uid) {
+    throw new CloudError('FORBIDDEN', 'Это личный файл владельца локальной папки.')
+  }
   if (f.relPath) {
     /* Новый файл лежит в папке хранения под исходным именем. */
     const root = await readStorageRoot()
@@ -701,14 +725,34 @@ export const createFolder = (parent: string, name: string) => cloudWrite(() => c
 export const removeFolder = (dir: string) => cloudWrite(() => removeFolderImpl(dir))
 export const renameFile = (id: string, name: string) => cloudWrite(() => renameFileImpl(id, name))
 export const deleteFile = (id: string) => cloudWrite(() => deleteFileImpl(id))
-export const uploadFile = (name: string, dir: string, data: Uint8Array, contentType: string) =>
-  cloudWrite(() => uploadFileImpl(name, dir, data, contentType))
+export const uploadFile = (name: string, dir: string, data: Uint8Array, contentType: string, shared = true) =>
+  cloudWrite(() => uploadFileImpl(name, dir, data, contentType, { shared }))
 
 /** Повторный запрос для того же личного объекта возвращает прежнюю общую копию. */
 export const shareFile = (sourceId: string, name: string, data: Uint8Array, contentType: string) =>
-  cloudWrite(() => uploadFileImpl(name, '', data, contentType, { kind: 'file', id: sourceId }))
+  cloudWrite(() => uploadFileImpl(name, '', data, contentType, { shared: true, source: { kind: 'file', id: sourceId } }))
 
 export const shareNote = (sourceId: string, note: CloudNoteSnapshot) => cloudWrite(() => {
   const bytes = new TextEncoder().encode(JSON.stringify(note))
-  return uploadFileImpl(`${note.title}.json`, '', bytes, 'application/json; charset=utf-8', { kind: 'note', id: sourceId }, note)
+  return uploadFileImpl(`${note.title}.json`, '', bytes, 'application/json; charset=utf-8', {
+    shared: true,
+    source: { kind: 'note', id: sourceId },
+    note,
+  })
 })
+
+/**
+ * Перевести файл между «моей папкой» и общим диском. Байты не двигаются:
+ * файл так и лежит в локальной папке хранения, меняется только видимость
+ * для участников. Так задумано: локальная папка — личная, в общую попадает
+ * только то, что человек добавил сам.
+ */
+export const setFileShared = (id: string, shared: boolean) =>
+  cloudWrite(async () => {
+    const d = await readDrive()
+    requireAdmin()
+    const f = d.files.find((x) => x.id === id && !x.deleted)
+    if (!f) throw new CloudError('NOT_FOUND', 'Файл не найден.')
+    f.shared = shared
+    await writeDrive(d)
+  })

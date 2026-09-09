@@ -14,7 +14,9 @@ export const POST = withRoute('/ai-api/cloud/upload', async (req: NextRequest) =
     if (!(file instanceof File)) return NextResponse.json({ code: 'INVALID_ARGS', error: 'Файл не передан.' }, { status: 400 })
     const dir = String(form.get('dir') ?? '')
     const data = new Uint8Array(await file.arrayBuffer())
-    const saved = await uploadFile(file.name, dir, data, file.type || 'application/octet-stream')
+    /* scope=local — файл личный: лежит в локальной папке и виден только владельцу. */
+    const shared = String(form.get('scope') ?? '') !== 'local'
+    const saved = await uploadFile(file.name, dir, data, file.type || 'application/octet-stream', shared)
     const { path: _p, ...view } = saved
     void _p
     return NextResponse.json({ file: view }, { status: 201 })

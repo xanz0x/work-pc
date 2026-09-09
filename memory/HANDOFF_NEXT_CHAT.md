@@ -11,7 +11,7 @@
   CLOUD_STORAGE=local, APP_URL). Ключи внешних сервисов (SONJJ и т.п.) в окружении отсутствуют.
 - Фронтенд — ПРОДАКШН-сборка под supervisor: после правок обязательно
   `cd /app && pnpm run build && sudo supervisorctl restart frontend` (hot-reload нет).
-- Внешний адрес превью: `https://<PREVIEW_INSTANCE>.preview.emergentagent.com`
+- Внешний адрес превью: `https://folder-picker-ui-fix.preview.emergentagent.com`
   (берётся из supervisor `APP_URL`, старые ссылки из истории неактуальны).
 - Провайдер модели: OpenRouter, ключ пользователя, модель `z-ai/glm-5.3-flash` (text+image),
   конфиг `/app/.data/ai/provider.json`. Emergent LLM key НЕ используется.

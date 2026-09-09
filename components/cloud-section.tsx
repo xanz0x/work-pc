@@ -252,7 +252,7 @@ export function CloudSection() {
   }
 
   const rootNote = (root: string | null) =>
-    root ? `Файлы будут сохраняться в «${root}»` : 'Папка хранения отключена — файлы снова идут во внутреннее хранилище'
+    root ? `Ваши файлы будут сохраняться в «${root}»` : 'Локальная папка отключена — файлы снова идут во внутреннее хранилище'
 
   async function pickRoot() {
     /* Нативный диалог — через мост рабочего стола: window.prompt в
@@ -408,16 +408,19 @@ export function CloudSection() {
         </div>
       )}
 
-      {/* Папка хранения — куда физически пишутся новые файлы (только админ). */}
+      {/* Локальная папка на ПК: личное хранилище файлов (только админ). */}
       {data.isAdmin && (
         <div className="cloud-storage" data-testid="cloud-storage">
           <IconFolder width={18} height={18} stroke="currentColor" strokeWidth={1.5} aria-hidden="true" />
           <div className="cloud-storage-text">
-            <span className="label-mono">Папка хранения</span>
+            <span className="label-mono">Моя локальная папка</span>
             <b className="mono cloud-storage-path" data-testid="cloud-storage-path" title={data.storageRoot ?? undefined}>
               {data.storageRoot || 'Не выбрана — файлы хранятся во внутреннем хранилище программы'}
             </b>
-            <span className="setting-note">Новые загрузки физически записываются в эту папку на ПК под исходными именами.</span>
+            <span className="setting-note">
+              Личное хранилище: добавленные файлы физически ложатся сюда под исходными именами и видны только вам.
+              В общую папку файл попадает лишь по вашему действию — из карточки файла в библиотеке.
+            </span>
           </div>
           <div className="tm-actions">
             <button className="btn btn-ghost btn-sm" disabled={busy} onClick={() => void pickRoot()} data-testid="cloud-storage-change">

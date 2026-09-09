@@ -42,6 +42,8 @@ async function uploadOne(file: File, dir: string): Promise<{ id: string; name: s
   const fd = new FormData()
   fd.append('file', file)
   fd.append('dir', dir)
+  /* Файл личный: он ложится в локальную папку и в общий диск не попадает. */
+  fd.append('scope', 'local')
   const r = await fetch('/ai-api/cloud/upload', { method: 'POST', body: fd })
   const body = (await r.json().catch(() => ({}))) as { file?: { id: string; name: string }; error?: string }
   if (!r.ok || !body.file?.id) throw new Error(body.error ?? `Загрузка не удалась (${r.status})`)

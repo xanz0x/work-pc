@@ -16,7 +16,7 @@ from email.message import EmailMessage
 import pytest
 import requests
 
-APP_URL = os.environ.get("APP_URL", "https://handoff-guide-3.preview.emergentagent.com").rstrip("/")
+APP_URL = os.environ.get("APP_URL", "https://folder-picker-ui-fix.preview.emergentagent.com").rstrip("/")
 PASSWORD = os.environ.get("APP_PASSWORD", "<APP_PASSWORD>")
 LOGIN = os.environ.get("ADMIN_LOGIN", "admin")
 API = f"{APP_URL}/ai-api"

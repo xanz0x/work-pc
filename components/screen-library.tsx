@@ -1206,8 +1206,24 @@ export function ScreenLibrary() {
     [liveNotes, selFile],
   )
 
-  function validateShare(request: LibraryShareRequest): string | null {
-    if (!account.isAdmin || !account.has('cloud')) return 'Изменять общий диск может только администратор.'
+  /** Перевести серверный файл между «моей папкой» и общим диском. */
+  async function setCloudShared(cloudId: string, shared: boolean) {
+    try {
+      const r = await fetch(`/ai-api/cloud/file/${encodeURIComponent(cloudId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shared }),
+      })
+      const body = (await r.json().catch(() => ({}))) as { error?: string }
+      if (!r.ok) throw new Error(body.error ?? `Ошибка ${r.status}`)
+      window.dispatchEvent(new Event('wsx:cloud-changed'))
+      flash(shared ? 'Файл добавлен в общую папку' : 'Файл убран из общей папки — он остался в вашей')
+    } catch (e) {
+      flash(e instanceof Error ? e.message : 'Не удалось изменить доступ к файлу')
+    }
+  }
+
+  function validateShare(request: LibraryShareRequest): string | null {    if (!account.isAdmin || !account.has('cloud')) return 'Изменять общий диск может только администратор.'
     if (LK.lock.status === 'locked' || LK.lock.busy) return 'Сначала разблокируйте сейф.'
     if (request.mode === 'remove') return null
     if (request.kind === 'note') {
@@ -1259,7 +1275,17 @@ export function ScreenLibrary() {
     }
     menuActions.push({ id: 'map', label: 'Показать на карте', icon: <IconGraph />, run: () => NAV.openOnMap(id) })
     if (contextFile && !contextFile.shared) menuActions.push({ id: 'pin-note', label: 'Приколоть заметку', icon: <IconSticker />, run: () => startNew(id) })
-    if (account.isAdmin && account.has('cloud')) {
+    if (account.isAdmin && account.has('cloud') && contextFile?.shared && contextFile.cloudId) {
+      /* Файл уже лежит в локальной папке на ПК: в общую папку он попадает
+         одним действием — байты при этом остаются на месте. */
+      const toShared = contextFile.cloudShared === false
+      menuActions.push({
+        id: toShared ? 'to-shared' : 'to-local',
+        label: toShared ? 'Добавить в общую папку' : 'Убрать из общей папки',
+        icon: <IconDatabase />,
+        run: () => void setCloudShared(contextFile.cloudId!, toShared),
+      })
+    } else if (account.isAdmin && account.has('cloud')) {
       const cloudId = contextObject.shared ? contextObject.cloudId : D.cloudCopies[`${kind}:${id}`]
       const request: LibraryShareRequest = { mode: cloudId ? 'remove' : 'share', kind, id, title: contextTitle, cloudId }
       const reason = validateShare(request)
@@ -1376,17 +1402,21 @@ export function ScreenLibrary() {
                   if (list.length > 0) {
                     setCat('all')
                     if (view === 'notes') setView('all')
-                    void M.runExclusive('index:files', () => idxa.indexFiles(list), {
-                      errorMessage: 'Файлы не приняты. Сейф остался прежним.',
-                    }).then((r) => {
-                      /* NF-9: счётчик исхода приёма — без имён и размеров. */
-                      if (r.ok) trackAction('files.intake')
-                      else if (r.reason === 'error') trackDrop('files.intake.failed')
-                    })
-                    /* Главный сценарий: файл уезжает в выбранную папку хранения,
-                       и ИИ-архивариус даёт ему название, описание и метки. */
-                    if (account.has('cloud')) {
+                    /* Один файл — одна запись. Есть локальная папка хранения:
+                       файл физически уезжает туда, и его разбирает ИИ. Папки
+                       нет — работает прежний локальный индексатор. Раньше шли
+                       оба пути сразу, и в библиотеке появлялись две карточки. */
+                    if (account.has('cloud') && D.cloudRoot) {
                       void intakeFiles(list, setIntake)
+                      trackAction('files.intake')
+                    } else {
+                      void M.runExclusive('index:files', () => idxa.indexFiles(list), {
+                        errorMessage: 'Файлы не приняты. Сейф остался прежним.',
+                      }).then((r) => {
+                        /* NF-9: счётчик исхода приёма — без имён и размеров. */
+                        if (r.ok) trackAction('files.intake')
+                        else if (r.reason === 'error') trackDrop('files.intake.failed')
+                      })
                     }
                   }
                   e.target.value = ''
@@ -2099,12 +2129,23 @@ export function ScreenLibrary() {
             {selFile?.shared && (
               <div className="insp-block panel" data-testid="insp-cloud">
                 <div className="blk-head">
-                  <span className="label-mono">Общий диск</span>
-                  <span className="chip" style={{ borderColor: 'var(--accent-line)', color: 'var(--accent)' }}>
-                    облако
+                  <span className="label-mono">{selFile.cloudShared === false ? 'Моя папка на ПК' : 'Общий диск'}</span>
+                  <span
+                    className="chip"
+                    style={
+                      selFile.cloudShared === false
+                        ? { borderColor: 'var(--line)', color: 'var(--muted)' }
+                        : { borderColor: 'var(--accent-line)', color: 'var(--accent)' }
+                    }
+                  >
+                    {selFile.cloudShared === false ? 'личный' : 'облако'}
                   </span>
                 </div>
-                <p>Файл лежит в общем облаке — его видят все участники. В библиотеке и на карте он помечен «общий диск».</p>
+                <p>
+                  {selFile.cloudShared === false
+                    ? 'Файл лежит в вашей локальной папке на этом ПК и виден только вам. В общую папку он попадёт, только если вы добавите его сами.'
+                    : 'Файл в общей папке — его видят все участники. В библиотеке и на карте он помечен «общий диск».'}
+                </p>
                 <div className="insp-actions">
                   <button className="btn btn-primary btn-sm" data-testid="insp-cloud-view" onClick={() => setCloudPreview(selFile)}>
                     <IconDocPreview />
@@ -2119,17 +2160,30 @@ export function ScreenLibrary() {
                     Скачать
                   </a>
                   {account.isAdmin ? (
-                    <button
-                      className="btn btn-ghost btn-sm"
-                      data-testid="insp-cloud-delete"
-                      onClick={() => {
-                        if (!selFile?.cloudId) return
-                        setShareRequest({ mode: 'remove', kind: 'file', id: selFile.id, title: selFile.name, cloudId: selFile.cloudId })
-                      }}
-                    >
-                      <IconTrash />
-                      Удалить с диска
-                    </button>
+                    <>
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        data-testid="insp-cloud-toggle-shared"
+                        onClick={() => {
+                          if (!selFile?.cloudId) return
+                          void setCloudShared(selFile.cloudId, selFile.cloudShared === false)
+                        }}
+                      >
+                        <IconDatabase />
+                        {selFile.cloudShared === false ? 'Добавить в общую папку' : 'Убрать из общей папки'}
+                      </button>
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        data-testid="insp-cloud-delete"
+                        onClick={() => {
+                          if (!selFile?.cloudId) return
+                          setShareRequest({ mode: 'remove', kind: 'file', id: selFile.id, title: selFile.name, cloudId: selFile.cloudId })
+                        }}
+                      >
+                        <IconTrash />
+                        Удалить файл
+                      </button>
+                    </>
                   ) : (
                     <span className="setting-note" data-testid="insp-cloud-readonly">только просмотр · удаление у администратора</span>
                   )}
@@ -2855,11 +2909,15 @@ function FileCardContent({
         {file.shared && (
           <span
             className="chip"
-            title="Файл из общего облака"
+            title={file.cloudShared === false ? 'Личный файл в вашей локальной папке' : 'Файл из общего облака'}
             data-testid={`shared-tag-${file.id}`}
-            style={{ borderColor: 'var(--accent-line)', color: 'var(--accent)' }}
+            style={
+              file.cloudShared === false
+                ? { borderColor: 'var(--line)', color: 'var(--muted)' }
+                : { borderColor: 'var(--accent-line)', color: 'var(--accent)' }
+            }
           >
-            общий диск
+            {file.cloudShared === false ? 'моя папка' : 'общий диск'}
           </span>
         )}
         <button

@@ -39,8 +39,7 @@ const BRIDGE = `
   function post(kind, extra) {
     parent.postMessage(Object.assign({ wsxMail: kind }, extra || {}), '*')
   }
-  document.addEventListener('contextmenu', function (e) {
-    e.preventDefault()
+  function report(e) {
     var a = anchorOf(e.target)
     var img = e.target && e.target.tagName === 'IMG' ? e.target : null
     post('ctx', {
@@ -52,8 +51,24 @@ const BRIDGE = `
       selection: String(window.getSelection ? window.getSelection() : '').slice(0, 20000),
       bodyText: (document.body.innerText || '').slice(0, 200000),
     })
+  }
+  /* Правый клик: обычно приходит contextmenu. Если браузер (или среда
+     автотестов) его не присылает, спасает отложенный правый mousedown. */
+  var waiting = null
+  document.addEventListener('contextmenu', function (e) {
+    e.preventDefault()
+    if (waiting) { clearTimeout(waiting); waiting = null }
+    report(e)
   })
-  document.addEventListener('pointerdown', function () { post('close') })
+  document.addEventListener('mousedown', function (e) {
+    if (e.button !== 2) return
+    var snapshot = { target: e.target, clientX: e.clientX, clientY: e.clientY }
+    waiting = setTimeout(function () {
+      waiting = null
+      report(snapshot)
+    }, 220)
+  })
+  document.addEventListener('pointerdown', function (e) { if (e.button !== 2) post('close') })
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') post('close') })
   document.addEventListener('scroll', function () { post('close') }, true)
   window.addEventListener('message', function (e) {
@@ -125,7 +140,7 @@ export function MailMsgView({ message: m, loading, error, onFlag, onBack }: Prop
     if (!m) return
     const onMessage = (e: MessageEvent) => {
       const frame = frameRef.current
-      if (!frame || e.source !== frame.contentWindow) return
+      if (!frame) return
       const d = e.data as {
         wsxMail?: string
         x?: number
@@ -136,6 +151,10 @@ export function MailMsgView({ message: m, loading, error, onFlag, onBack }: Prop
         selection?: string
         bodyText?: string
       }
+      if (!d || typeof d.wsxMail !== 'string') return
+      /* Источник сверяем, только если браузер его отдал: у песочницы с
+         opaque origin e.source в части сборок приходит пустым. */
+      if (e.source && frame.contentWindow && e.source !== frame.contentWindow) return
       if (d?.wsxMail === 'close') {
         setCtx(null)
         return

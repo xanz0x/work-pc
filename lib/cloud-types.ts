@@ -14,6 +14,8 @@ export type CloudLibraryItem = {
   size: number
   at: string
   kind?: 'file' | 'note'
+  /** true — файл на общем диске; false — личный файл в локальной папке. */
+  shared?: boolean
   source?: CloudSource
   note?: CloudNoteSnapshot
   /** Абсолютный путь в папке хранения — отдаётся только администратору. */

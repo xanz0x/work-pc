@@ -12,7 +12,7 @@
 Под был сброшен: восстановлены `pnpm install --frozen-lockfile` и `/app/.env.local`
 (APP_PASSWORD/ADMIN_LOGIN прежние, APP_SESSION_SECRET и MAIL_SECRET сгенерированы заново — прежних в
 окружении не было; AI_DIR=/app/.data, CLOUD_STORAGE=local). Внешний адрес превью сменился:
-`https://<PREVIEW_INSTANCE>.preview.emergentagent.com`. Фронтенд — прод-сборка под
+`https://folder-picker-ui-fix.preview.emergentagent.com`. Фронтенд — прод-сборка под
 supervisor, hot-reload нет.
 
 ### Сделано
@@ -411,3 +411,55 @@ User has a smailpro.com *web* Premium subscription but no API key, and asked to 
 - Removed 'admin' from sidebar-nav (available filter now excludes it entirely).
 - Added shield icon-btn in app-shell topbar (data-testid=topbar-admin-btn), admin-only (account.isAdmin), onClick v.go('admin'); IconShield. Verified via screenshot.
 - Admin password set to <APP_PASSWORD> (APP_PASSWORD in /app/.env + /app/.env.local; auto re-synced by seedAdmin).
+
+---
+
+## Итерация 60 (2026-06) · «локальная папка ≠ общая», дедуп приёма, новый выбор папки
+
+### Запрос пользователя
+1. Папка, выбираемая в онбординге/настройках, — ЛИЧНАЯ локальная папка, а не общий диск;
+   в общую папку файл попадает только по явному действию.
+2. Баг: при добавлении одного файла появлялись ДВА (локальный индекс + общий диск) — оставить
+   только запись в выбранную локальную папку.
+3. Диалог выбора папки: «дерево слева + содержимое справа» (иконки папок были огромными).
+4. Починить bridge/postMessage контекстного меню в теле письма.
+
+### Сделано
+- `lib/cloud-store.ts`: у файла появился признак `shared`. Загрузка из библиотеки — личная
+  (`shared:false`), `shareFile`/`shareNote` и загрузка из раздела «Общее облако» — общие.
+  `driveView` показывает личные файлы только владельцу, `readFileBytes` запрещает чужие личные,
+  добавлен `setFileShared(id, shared)`; записи без поля считаются общими (совместимость).
+- `POST /ai-api/cloud/upload` принимает `scope=local`; `lib/intake.ts` всегда его отправляет.
+- `PATCH /ai-api/cloud/file/[id]` принимает `{shared}` — перевод между «моей» и общей папкой
+  без перемещения байтов.
+- `components/screen-library.tsx`: приём файла идёт ОДНИМ путём (есть локальная папка → сервер и
+  ИИ-разбор, иначе локальный индексатор) — двойных карточек больше нет; чип карточки «моя папка»
+  или «общий диск»; пункт меню «Добавить/Убрать из общей папки» и кнопка
+  `insp-cloud-toggle-shared` в инспекторе.
+- `lib/store/data.tsx` + `lib/data.ts`: `cloudRoot` и `cloudShared` в клиентском сторе.
+- `components/folder-picker-dialog.tsx` + `folder-picker.css`: новый диалог — дерево с ленивым
+  раскрытием слева, содержимое справа, крошки пути; стили вынесены из `@layer` и размеры иконок
+  заданы явно (причина «огромных папок»: `.onb svg` без размеров перебивал слоёные правила).
+- `components/mail/mail-msg-view.tsx`: мост письма получил запасной путь (правый `mousedown`
+  с задержкой, если `contextmenu` не пришёл), `pointerdown` больше не гасит меню на правой кнопке,
+  а родитель сверяет источник сообщения только когда браузер его отдал.
+
+### Проверено
+- Ручные curl: storage-root, upload `scope=local` → `shared:false` и физический файл в папке,
+  PATCH `{shared}` в обе стороны, DELETE.
+- E2E (iteration_59): новый диалог (иконки 14×14, дерево/содержимое/крошки, создание папки),
+  Настройки → «Моя локальная папка» с точным путём, приём файла → РОВНО одна карточка с чипом
+  «моя папка» и файл на диске, инспектор с правильными подписями.
+- `vitest`: 319 тестов PASS (2 файла `desktop/*` не грузятся — нет зависимостей окружения),
+  `next build` EXIT=0, `tsc --noEmit` чисто, eslint 0 ошибок.
+
+### Не проверено
+- Контекстное меню письма: в окружении нет почтового ящика (нет `SONJJ_API_KEY`) — правку моста
+  нужно подтвердить вручную на реальном письме.
+- Правый клик по карточке библиотеки в headless Playwright по-прежнему не открывает своё меню
+  (ограничение среды, как в iter57/58); та же логика проверена через кнопку инспектора.
+
+### Бэклог
+- P1: разбить `components/screen-library.tsx` (2900+ строк).
+- P2: `/ai-api/ai/provider/models` без обёртки `{ok:true}`.
+- P2: поставить зависимости `/app/desktop`, чтобы vitest был полностью зелёным.

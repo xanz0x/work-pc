@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { withRoute } from '@/lib/route-log'
-import { deleteFile, readFileBytes, renameFile } from '@/lib/cloud-store'
+import { deleteFile, readFileBytes, renameFile, setFileShared } from '@/lib/cloud-store'
 import { cloudError } from '@/lib/cloud-route'
 
 export const runtime = 'nodejs'
@@ -30,11 +30,15 @@ export const GET = withRoute('/ai-api/cloud/file/[id]', async (req: NextRequest,
   }
 })
 
-/** { name } — переименовать. */
+/** { name } — переименовать; { shared } — перевести между моей и общей папкой. */
 export const PATCH = withRoute('/ai-api/cloud/file/[id]', async (req: NextRequest, ctx: Ctx) => {
   const { id } = await ctx.params
-  const body = (await req.json().catch(() => ({}))) as { name?: unknown }
+  const body = (await req.json().catch(() => ({}))) as { name?: unknown; shared?: unknown }
   try {
+    if (typeof body.shared === 'boolean') {
+      await setFileShared(id, body.shared)
+      return NextResponse.json({ ok: true, shared: body.shared })
+    }
     await renameFile(id, String(body.name ?? ''))
     return NextResponse.json({ ok: true })
   } catch (e) {
