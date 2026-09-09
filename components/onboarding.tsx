@@ -22,11 +22,13 @@ import {
   type PrivacyMode,
   type StartChoice,
 } from '@/lib/onboarding'
+import { useAccount } from '@/lib/account'
 import { useIndexActions, useIndexSummary } from '@/lib/indexer/context'
 import { logJournal } from '@/lib/journal'
 import { useLockStore, useNavStore, useNotifsStore, useSettingsStore } from '@/lib/vault-store'
 import { IconCheck, IconFolder, IconLockRound, IconShield } from './icons'
 import { MkPassField, MkPinRow, strengthPw } from './mk-fields'
+import { FolderPickerDialog } from './folder-picker-dialog'
 import { RecoveryCodeCard } from './recovery-key-dialog'
 import { useDialog } from '@/hooks/use-dialog'
 import '@/app/styles/onboarding.css'
@@ -39,6 +41,7 @@ export function Onboarding() {
   const L = useLockStore()
   const NAV = useNavStore()
   const { notify } = useNotifsStore()
+  const account = useAccount()
   const idxa = useIndexActions()
   const idx = useIndexSummary()
 
@@ -56,6 +59,8 @@ export function Onboarding() {
   const [recoveryCode, setRecoveryCode] = useState<string | null>(null)
   const [keyChoice, setKeyChoice] = useState<KeyChoice | null>(null)
   const [declining, setDeclining] = useState(false)
+  const [pickingFolder, setPickingFolder] = useState(false)
+  const [folderError, setFolderError] = useState<string | null>(null)
   const dirPicker = useRef<HTMLInputElement>(null)
   const { dialogProps } = useDialog({
     onClose: () => {},
@@ -160,24 +165,43 @@ export function Onboarding() {
   }
 
   function pickFolder() {
-    finish('folder')
     // В Electron-приложении «папка» — это и хранилище общего диска: выбираем
     // её нативным диалогом и сохраняем серверно (файлы будут писаться туда).
     const pick = (window as unknown as { workspacexDesktop?: { pickFolder?: () => Promise<string | null> } }).workspacexDesktop?.pickFolder
     if (typeof pick === 'function') {
+      finish('folder')
       void pick().then(async (root) => {
         if (!root || !root.trim()) return
         try {
-          await fetch('/ai-api/cloud/storage-root', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ root: root.trim(), migrate: true }),
-          })
+          await saveStorageRoot(root.trim())
         } catch { /* онбординг не блокируем: папку можно выбрать в настройках диска */ }
       })
+      if (idx.fsaSupported) void idxa.connectFolder()
+      else dirPicker.current?.click()
+      return
     }
-    if (idx.fsaSupported) void idxa.connectFolder()
-    else dirPicker.current?.click()
+    /* В браузере абсолютного пути не получить, а серверу нужен именно он:
+       выбираем папку обзором на этой машине — тем же диалогом, что в настройках.
+       Папка диска общая, менять её может только администратор. */
+    if (!account.isAdmin) {
+      setFolderError('папку диска задаёт администратор')
+      if (idx.fsaSupported) void idxa.connectFolder()
+      else dirPicker.current?.click()
+      return
+    }
+    setPickingFolder(true)
+  }
+
+  async function saveStorageRoot(root: string): Promise<void> {
+    const r = await fetch('/ai-api/cloud/storage-root', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ root, migrate: true }),
+    })
+    if (!r.ok) {
+      const j = (await r.json().catch(() => ({}))) as { error?: string }
+      throw new Error(j.error ?? `сервер ответил ${r.status}`)
+    }
   }
 
   const canNext1 = mode === 'hybrid' || ack
@@ -520,9 +544,8 @@ export function Onboarding() {
                     <span className="onb-pick-name">Подключить папку</span>
                   </span>
                   <span className="onb-pick-sub">
-                    {idx.fsaSupported
-                      ? 'Выберите папку: она станет хранилищем общего диска, а её файлы проиндексируются для поиска — всё на этом устройстве.'
-                      : 'Выберите папку: она станет хранилищем общего диска; файлы проиндексируются через диалог выбора.'}
+                    Выберите папку на этом компьютере: она станет диском программы — каждый
+                    добавленный файл физически ложится в неё, а её путь виден в настройках.
                   </span>
                 </button>
                 <button
@@ -542,6 +565,12 @@ export function Onboarding() {
                   </span>
                 </button>
               </div>
+
+              {folderError && (
+                <p className="onb-lede" data-testid="onb-folder-error">
+                  Папку не удалось сохранить: {folderError}. Её можно выбрать позже в «Настройки → Общее облако».
+                </p>
+              )}
 
               {/* Фолбэк без File System Access API (Firefox/Safari). */}
               <input
@@ -583,6 +612,19 @@ export function Onboarding() {
           </>
         )}
       </div>
+      {pickingFolder && (
+        <FolderPickerDialog
+          current={null}
+          onClose={() => setPickingFolder(false)}
+          onPick={(root) => {
+            setPickingFolder(false)
+            setFolderError(null)
+            void saveStorageRoot(root)
+              .then(() => finish('folder'))
+              .catch((e: unknown) => setFolderError(e instanceof Error ? e.message : 'неизвестная ошибка'))
+          }}
+        />
+      )}
     </div>
   )
 }

@@ -10,8 +10,43 @@
 
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
-import { randomBytes } from 'node:crypto'
+import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'node:crypto'
 import { requireUser } from './request-context'
+import { log } from './log'
+
+/* ---------- ключ провайдера на диске: только шифротекст ----------
+   Токен нужен серверу постоянно (чат, разбор файлов, Vision — и в фоне),
+   поэтому шифруем его серверным секретом APP_SESSION_SECRET, а не
+   мастер-ключом из браузера: иначе фоновые задачи ломались бы. */
+
+let keyCache: { secret: string; key: Buffer } | null = null
+
+function atRestKey(): Buffer {
+  const secret = process.env.APP_SESSION_SECRET?.trim() ?? ''
+  if (secret.length < 32) throw new Error('APP_SESSION_SECRET не задан или короче 32 символов')
+  if (!keyCache || keyCache.secret !== secret) {
+    keyCache = { secret, key: scryptSync(secret, 'wsx-provider-v1', 32, { N: 16384, r: 8, p: 1 }) }
+  }
+  return keyCache.key
+}
+
+/** iv:tag:ciphertext, все части base64. */
+function sealKey(plain: string): string {
+  if (!plain) return ''
+  const iv = randomBytes(12)
+  const c = createCipheriv('aes-256-gcm', atRestKey(), iv)
+  const ct = Buffer.concat([c.update(plain, 'utf8'), c.final()])
+  return [iv, c.getAuthTag(), ct].map((b) => b.toString('base64')).join(':')
+}
+
+function openKey(enc: string): string {
+  const parts = enc.split(':')
+  if (parts.length !== 3) throw new Error('повреждённый формат')
+  const [iv, tag, ct] = parts.map((s) => Buffer.from(s, 'base64'))
+  const d = createDecipheriv('aes-256-gcm', atRestKey(), iv)
+  d.setAuthTag(tag)
+  return Buffer.concat([d.update(ct), d.final()]).toString('utf8')
+}
 
 function aiRoot(): string {
   const v = process.env.AI_DIR?.trim()
@@ -55,18 +90,60 @@ const configFile = () => path.join(aiRoot(), 'ai', 'provider.json')
 
 export async function readProvider(): Promise<AiProviderConfig> {
   try {
-    const raw = JSON.parse(await fs.readFile(configFile(), 'utf8')) as Partial<AiProviderConfig>
+    const raw = JSON.parse(await fs.readFile(configFile(), 'utf8')) as Partial<AiProviderConfig> & {
+      apiKeyEnc?: unknown
+    }
     const kind: AiProviderKind = raw.kind === 'custom' ? 'custom' : 'openrouter'
-    return {
+    /* Токен хранится шифротекстом; открытый apiKey — наследие старых файлов,
+       он принимается один раз и тут же переписывается в закрытом виде. */
+    let apiKey = ''
+    if (typeof raw.apiKeyEnc === 'string' && raw.apiKeyEnc) {
+      try {
+        apiKey = openKey(raw.apiKeyEnc)
+      } catch (e) {
+        log('error', 'provider.key-unreadable', { reason: e instanceof Error ? e.message : 'неизвестно' })
+      }
+    } else if (typeof raw.apiKey === 'string' && raw.apiKey) {
+      apiKey = raw.apiKey
+    }
+    const cfg: AiProviderConfig = {
       kind,
       baseUrl: typeof raw.baseUrl === 'string' && raw.baseUrl.trim() ? raw.baseUrl.trim() : kind === 'openrouter' ? OPENROUTER_BASE : '',
-      apiKey: typeof raw.apiKey === 'string' ? raw.apiKey : '',
+      apiKey,
       model: typeof raw.model === 'string' ? raw.model.trim() : '',
       visionModel: typeof raw.visionModel === 'string' ? raw.visionModel.trim() : '',
     }
+    if (typeof raw.apiKey === 'string' && raw.apiKey) void migrateToSealed(cfg)
+    return cfg
   } catch {
     return { ...EMPTY_PROVIDER }
   }
+}
+
+/** Разовый перевод старого открытого токена в шифротекст. */
+async function migrateToSealed(cfg: AiProviderConfig): Promise<void> {
+  try {
+    await saveProviderFile(cfg)
+    log('info', 'provider.key-sealed', {})
+  } catch (e) {
+    log('error', 'provider.key-seal-failed', { reason: e instanceof Error ? e.message : 'неизвестно' })
+  }
+}
+
+/** Запись файла конфигурации: на диск уходит только закрытый токен. */
+async function saveProviderFile(cfg: AiProviderConfig): Promise<void> {
+  const body = {
+    kind: cfg.kind,
+    baseUrl: cfg.baseUrl,
+    apiKeyEnc: sealKey(cfg.apiKey),
+    model: cfg.model,
+    visionModel: cfg.visionModel,
+  }
+  const p = configFile()
+  await fs.mkdir(path.dirname(p), { recursive: true })
+  const tmp = `${p}.${process.pid}.${randomBytes(5).toString('hex')}.tmp`
+  await fs.writeFile(tmp, `${JSON.stringify(body, null, 2)}\n`, { encoding: 'utf8', mode: 0o600 })
+  await fs.rename(tmp, p)
 }
 
 export function providerReady(c: AiProviderConfig): boolean {
@@ -133,11 +210,7 @@ export async function writeProvider(patch: ProviderPatch): Promise<AiProviderCon
   if (next.model.length > 200 || next.visionModel.length > 200) {
     throw new ProviderError('INVALID_ARGS', 'Имя модели слишком длинное.')
   }
-  const p = configFile()
-  await fs.mkdir(path.dirname(p), { recursive: true })
-  const tmp = `${p}.${process.pid}.${randomBytes(5).toString('hex')}.tmp`
-  await fs.writeFile(tmp, `${JSON.stringify(next, null, 2)}\n`, { encoding: 'utf8', mode: 0o600 })
-  await fs.rename(tmp, p)
+  await saveProviderFile(next)
   return next
 }
 
