@@ -36,6 +36,25 @@
       "at": "2026-09-10T01:16:58.437Z",
       "deleted": true,
       "shared": false
+    },
+    {
+      "id": "a920df9b7908",
+      "name": "PROJECT_MASTER.md",
+      "dir": "",
+      "path": "PROJECT_MASTER.md",
+      "relPath": "PROJECT_MASTER.md",
+      "sha256": "db46ae58b8ce5c09865b57935013095164ca74d2cde01b96edc863aea273109c",
+      "contentType": "text/markdown",
+      "size": 100968,
+      "by": "001c86a214e9d060",
+      "at": "2026-09-10T15:15:33.985Z",
+      "deleted": false,
+      "shared": false,
+      "analysisStatus": "failed",
+      "title": "PROJECT MASTER",
+      "analysisKind": "markdown",
+      "analyzedAt": "2026-09-10T15:15:34.299Z",
+      "analysisError": "Не удалось прочитать файл: Файл находится вне папки хранения."
     }
   ]
 }

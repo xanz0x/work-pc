@@ -209,6 +209,11 @@
 
 .lv-entries .lv-entry svg {
   flex: none;
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.5px;
   color: var(--text-3);
 }
 
@@ -243,6 +248,8 @@
 }
 
 .lv-empty svg {
+  stroke: currentColor;
+  fill: none;
   color: var(--text-3);
 }
 
@@ -460,6 +467,12 @@
   font-size: 10.5px;
 }
 
+.lv-info-tag svg {
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.6px;
+}
+
 .lv-info-state {
   font-size: 12px !important;
 }
@@ -536,4 +549,7 @@
 .lv-x svg {
   width: 13px;
   height: 13px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.6px;
 }
