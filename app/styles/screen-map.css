@@ -139,6 +139,15 @@
     color: var(--text-3r);
     white-space: nowrap;
   }
+  /* Облегчённый режим — служебная отметка: тише остальной легенды. */
+  .lg-lite {
+    color: var(--text-3r);
+    letter-spacing: 0.02em;
+  }
+  .lg-lite-n {
+    color: var(--text-3);
+    font-weight: 400;
+  }
   /* Инспектор — главный элемент экрана: плотнее фон, своя тень
      и акцентная линия сверху, чтобы он не читался как легенда. */
   .node-inspector {
