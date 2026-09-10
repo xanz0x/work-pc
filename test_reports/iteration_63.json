@@ -1,0 +1,58 @@
+{
+  "summary": "Focused mail-scroll regression validation completed for WorkSpaceX mail viewers. Added deterministic Playwright fixture test for long HTML with sender root overflow:hidden (including !important variant), plain text fallback, scroll reset, keyboard navigation, and iframe safety checks; plus shared-style unit guard. Desktop 1920x800 and 1280x800 pass for both MailMsgView and MailTempPane. Mobile 390x800 still fails in account-viewer wheel-to-last scenario.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "MailMsgView iframe scrolling (mobile layout)",
+        "issue": "At 390x800, real mouse wheel did not bring #last paragraph into iframe viewport in deterministic account-view fixture.",
+        "selector": "[data-testid='mail-msg-view-frame']",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Mail mobile stacked layout",
+        "issues": [
+          "Potential clipping/scroll routing conflict for opened message at narrow viewport; needs manual confirmation on real touch device."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/tests/e2e/63-mail-scroll-regression.spec.ts",
+    "/app/tests/e2e/61-mail-ctx-menu.spec.ts",
+    "/app/tests/unit/mail-frame-style.test.ts",
+    "/app/tests/unit/mail-read.test.ts",
+    "/app/tests/unit/mail-img.test.ts",
+    "/app/tests/unit/temp-mail.test.ts"
+  ],
+  "action_items": [
+    "Investigate mobile (390x800) wheel-scroll path in MailMsgView iframe and confirm whether event is routed to iframe or outer container.",
+    "After fix, re-run tests/e2e/63-mail-scroll-regression.spec.ts for all three viewports.",
+    "Optionally add a dedicated touch-scroll assertion for true mobile gesture behavior if product requires phone support."
+  ],
+  "critical_code_review_comments": [
+    "screen-mail.css mobile section sets fixed message body height (520px) and page-level overflow-y:auto; this can create nested scroll behavior conflicts for narrow layouts.",
+    "Keep CSP/sandbox strict: current regression confirms sender inline script remains blocked; do not relax script restrictions while adjusting scroll behavior."
+  ],
+  "updated_files": [
+    "/app/tests/e2e/63-mail-scroll-regression.spec.ts",
+    "/app/tests/unit/mail-frame-style.test.ts",
+    "/app/test_reports/iteration_63.json"
+  ],
+  "success_rate": {
+    "backend": "n/a",
+    "frontend": "98%"
+  },
+  "test_credentials": "Read from /app/memory/test_credentials.md: admin / WsxQa2026!lib",
+  "seed_data_creation": "Deterministic fixtures used in 63-mail-scroll-regression.spec.ts (MOCKED network at browser-route level for mail APIs). Real-provider smoke executed via 61-mail-ctx-menu.spec.ts using rich-mail helper; temporary box cleanup handled by existing helper logic.",
+  "retest_needed": true,
+  "main_agent_can_self_test": false,
+  "context_for_next_testing_agent": "Do not rework desktop assertions; 1920x800 and 1280x800 are stable. Current unresolved point is only 390x800 wheel-to-last in account viewer path. Three attempts were made to stabilize wheel routing (scrollIntoView, iframe body focus click, increased wheel loops) but mobile case still failed. Avoid further selector churn; investigate runtime scroll target/overflow chain first.",
+  "rca of the issue": "Repro: run APP_URL=<preview> npx playwright test tests/e2e/63-mail-scroll-regression.spec.ts --project=chromium. Result: desktop tests pass, mobile case fails at wheel-based last-paragraph reach in account viewer. Likely cause: nested scroll chain on mobile layout (.mail-page overflow-y:auto + constrained .mail-view-body) can intercept wheel before iframe document consumes it. Mitigation: confirm active scrolling element during wheel in mobile layout and ensure iframe region receives wheel input when hovered/focused."
+}

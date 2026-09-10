@@ -1,11 +1,11 @@
-# Тестовые реквизиты (актуально: 2026-06, сессия «рефакторинг Библиотеки + картинки в письмах»)
+# Тестовые реквизиты (актуально: сессия «прокрутка открытого письма»)
 
-- Превью: https://b980957d-3df9-4944-9578-3113c53b582c.preview.emergentagent.com (локально http://localhost:3000)
+- Превью: https://bb33431c-b483-49a3-9a1a-4eb300fe5e7c.preview.emergentagent.com (локально http://localhost:3000)
 - Вход: логин `admin`, пароль `WsxQa2026!lib` (значение лежит в `/app/.env.local` → `APP_PASSWORD`, `ADMIN_LOGIN=admin`).
   Поля входа: `data-testid=login-login`, `data-testid=login-password`.
-- `/app/.env.local` пересоздан после сброса пода: `APP_SESSION_SECRET` и `MAIL_SECRET` **новые**,
-  `AI_DIR=/app/ai`, `CLOUD_STORAGE=local`. Из-за нового `MAIL_SECRET` прежние временные ящики
-  mail.tm нечитаемы — создавать новые.
+- `/app/.env.local` восстановлен после сброса пода: `APP_SESSION_SECRET` и `MAIL_SECRET` **новые**,
+  `AI_DIR=/app/ai`, `CLOUD_STORAGE=local`. Перед восстановлением `ai/mail/temp.json` был пуст.
+- Пользовательский токен SmailPro сохранён только в `.env.local` как `SONJJ_API_KEY`; не печатать его в отчётах.
 - Ключей внешних ИИ-сервисов нет: модель не подключена, ИИ-разбор файла отвечает
   «модель не подключена» — это ожидаемо и не баг.
 - Временная почта mail.tm работает без ключей; тестовое письмо с кнопкой, текстом и картинкой:

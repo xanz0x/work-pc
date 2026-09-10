@@ -2234,6 +2234,7 @@
       overflow-y: auto;
     }
     .mail-client {
+      flex: 0 0 auto;
       grid-template-columns: 1fr;
       overflow: visible;
     }
@@ -2255,6 +2256,7 @@
       max-height: 360px;
     }
     .mail-view-body {
+      flex: 0 0 auto;
       height: 520px;
     }
   }
@@ -2266,6 +2268,21 @@
     .mail-bar {
       flex-direction: column;
       align-items: flex-start;
+    }
+    .mail-view-title,
+    .mail-view-tools,
+    .mail-view-meta {
+      flex-wrap: wrap;
+    }
+    .mail-view-title h2 {
+      flex: 1 1 100%;
+    }
+    .mail-view-who {
+      flex-basis: 200px;
+    }
+    .mail-view-date {
+      flex-shrink: 1;
+      overflow-wrap: anywhere;
     }
     .mail-ep-row {
       grid-template-columns: 1fr;
