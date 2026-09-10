@@ -359,7 +359,6 @@ export function AppShell({ children }: { children: ReactNode }) {
             </span>
             <span className="brand-words">
               <LogoWord withMark={false} testId="sidebar-logo-wordmark" />
-              <span className="logo-sub">local ai workspace</span>
             </span>
             <button
               className="sidebar-toggle"

@@ -12,6 +12,10 @@
 .workspace-logo-word { width: 130px; aspect-ratio: 646 / 112; }
 .splash-word.workspace-logo { width: 208px; }
 
+/* В боковом меню знак и слово мельче: шапка не перетягивает внимание с меню.
+   Правило вне @layer — иначе его перебивает базовая ширина выше. */
+.sidebar .workspace-logo-word { width: 98px; }
+
 /* До гидратации показываем тот же знак вместо прежней текстовой заглушки. */
 html.lock-pending body::after {
   content: '';
