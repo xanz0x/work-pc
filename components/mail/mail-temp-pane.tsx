@@ -30,6 +30,7 @@ function frameDoc(body: string): string {
   return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src 'self' https: http: data:; ${bridgeCsp()}; font-src 'none'; frame-src 'none'"><base target="_blank"><style>
 html,body{margin:0;background:#fff;color:#1c1f24}body{padding:16px 18px;font:14px/1.55 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;word-break:break-word}
 img{max-width:100%;height:auto}a{color:#1a5fb4}pre.plain{white-space:pre-wrap;font:13.5px/1.55 ui-monospace,Menlo,Consolas,monospace;margin:0}table{max-width:100%}
+::selection{background:#cfe3ff}
 </style></head><body>${body}${MAIL_FRAME_SCROLL_STYLE}${bridgeTag()}</body></html>`
 }
 

@@ -195,10 +195,38 @@ export function useMailFrameBridge(frameRef: RefObject<HTMLIFrameElement | null>
     setFrameHeight(null)
     const pane = frameRef.current?.closest('.mail-view-body') as HTMLElement | null
     if (pane) pane.scrollTop = 0
+    /* Открытие письма не должно тащить за собой выделение, начатое в
+       списке: страница перерисовывает правую колонку, и такой «хвост»
+       растягивается на весь интерфейс. */
+    const sel = window.getSelection()
+    if (sel && !sel.isCollapsed) {
+      const el = document.activeElement as HTMLElement | null
+      const inField =
+        !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)
+      if (!inField) sel.removeAllRanges()
+    }
   }, [meta.resetKey, frameRef])
 
   const selectAll = useCallback(() => {
     frameRef.current?.contentWindow?.postMessage({ wsxMailCmd: 'select-all' }, '*')
+  }, [frameRef])
+
+  /* Ctrl+A на экране почты означает «выделить письмо», а не «закрасить
+     весь интерфейс»: выделение уходит внутрь iframe письма. */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'a' && e.key !== 'A' && e.key !== 'ф' && e.key !== 'Ф') return
+      if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return
+      const frame = frameRef.current
+      if (!frame) return
+      const el = document.activeElement as HTMLElement | null
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return
+      e.preventDefault()
+      window.getSelection()?.removeAllRanges()
+      frame.contentWindow?.postMessage({ wsxMailCmd: 'select-all' }, '*')
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
   }, [frameRef])
 
   return { ctx, closeCtx, selectAll, frameHeight }

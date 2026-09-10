@@ -1,6 +1,23 @@
-# Тестовые реквизиты (актуально: сессия «прокрутка открытого письма»)
+# Тестовые реквизиты (актуально: сессия «выделение в почте + одно меню в инспекторе»)
 
-- Превью: https://tokens-84.preview.emergentagent.com (локально http://localhost:3000)
+- **Под снова сбрасывали**: пропали `node_modules` и `/app/.env.local`, фронтенд был `FATAL`.
+  Восстановлено: `corepack enable && pnpm install` в `/app` и `pnpm install --prod --ignore-scripts`
+  в `/app/desktop`, заново создан `/app/.env.local` (**новые** `APP_SESSION_SECRET` и `MAIL_SECRET`),
+  затем `node_modules/.bin/next build` и `sudo supervisorctl restart frontend`.
+- **`SONJJ_API_KEY` (SmailPro / Gmail-ящики) потерян вместе с `.env.local`** — пользователь сказал,
+  что токена нет. Gmail-ящики во «Временных» создать нельзя, проверять почту нужно на mail.tm.
+- Прежний временный ящик `c1813a12de3f@uberip.com` стал нечитаем (другой `MAIL_SECRET`) и удалён.
+  Для проверок оставлен рабочий ящик `2034af68977e@uberip.com` (id `c7c4cbd2`) с двумя QA-письмами.
+- Онбординг в чистом профиле браузера быстрее пропускать через localStorage:
+  `wf.settings.v1` → `onboarding: {at: 1700000000000, mode:'hybrid', keyChoice:'declined', start:'demo'}`
+  и перезагрузить страницу.
+- Playwright в скриншот-инструменте — **асинхронный API**: без `await` вызовы молча не выполняются.
+
+---
+
+# Прежние реквизиты (сессия «прокрутка открытого письма»)
+
+- Превью: https://ui-cleanup-34.preview.emergentagent.com (локально http://localhost:3000)
 - Онбординг в чистом профиле: «Дальше · мастер-ключ» → «Продолжить без защиты» → «Да, продолжить без защиты» → «Посмотреть демо».
 - Вход: логин `admin`, пароль `WsxQa2026!lib` (значение лежит в `/app/.env.local` → `APP_PASSWORD`, `ADMIN_LOGIN=admin`).
   Поля входа: `data-testid=login-login`, `data-testid=login-password`.

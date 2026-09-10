@@ -7,7 +7,7 @@ import os
 import pytest
 import requests
 
-BASE_URL = os.environ.get("APP_URL", "https://tokens-84.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("APP_URL", "https://ui-cleanup-34.preview.emergentagent.com").rstrip("/")
 LOGIN = os.environ.get("ADMIN_LOGIN", "admin")
 PASSWORD = os.environ.get("APP_PASSWORD", "<APP_PASSWORD>")
 

@@ -361,4 +361,26 @@
     .vt-modal { max-height: calc((100dvh - 124px) / var(--ui-zoom, 1)); }
     .vt-modal.vt-editor { max-height: calc((100dvh - 124px) / var(--ui-zoom, 1)); }
   }
+
+  /* ============================================================
+     ВЫДЕЛЕНИЕ ТЕКСТА В ОБОЛОЧКЕ
+     Меню, верхняя полоса и статусная строка — это органы управления,
+     а не текст для копирования. Раньше Ctrl+A или случайное движение
+     мышью закрашивали их вместе со всем окном, и человек видел «плёнку
+     поверх интерфейса». Поля ввода и всплывающие панели с текстом
+     выделение сохраняют.
+     ============================================================ */
+  .app .sidebar,
+  .app .topbar,
+  .app .shell-statusbar {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  .app .sidebar :is(input, textarea),
+  .app .topbar :is(input, textarea),
+  .app .topbar .notif-panel {
+    -webkit-user-select: text;
+    user-select: text;
+  }
 }

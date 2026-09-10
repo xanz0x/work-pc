@@ -2352,4 +2352,34 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
+
+  /* ============================================================
+     ВЫДЕЛЕНИЕ ТЕКСТА НА ЭКРАНЕ ПОЧТЫ
+     Оболочка (рейл ящиков, список писем, шапки, кнопки) выделяться
+     не должна: одно движение мышью по списку или Ctrl+A красили весь
+     интерфейс — казалось, что поверх легла плёнка и клики не проходят.
+     Само письмо живёт в iframe и выделяется своим документом, а снаружи
+     копировать имеет смысл только адрес ящика, тему, отправителя,
+     дату, вложения и поля ввода — им выделение возвращаем.
+     ============================================================ */
+  .mail-page {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  .mail-page :is(input, textarea, select, [contenteditable='']),
+  .mail-page [contenteditable='true'],
+  .mail-page .mail-dlg,
+  .mail-page [data-testid='mail-temp-address'],
+  .mail-page .mail-view-title h2,
+  .mail-page .mail-view-who,
+  .mail-page .mail-view-date,
+  .mail-page .mail-view-addr,
+  .mail-page .mail-view-hint,
+  .mail-page .mail-file-name,
+  .mail-page .mail-list-state,
+  .mail-page .mail-view-state {
+    -webkit-user-select: text;
+    user-select: text;
+  }
 }
