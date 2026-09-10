@@ -144,63 +144,9 @@ export function LibraryFileInspector({
               ? 'Файл лежит в вашей локальной папке на этом ПК и виден только вам. В общую папку он попадёт, только если вы добавите его сами.'
               : 'Файл в общей папке — его видят все участники. В библиотеке и на карте он помечен «общий диск».'}
           </p>
-          <div className="insp-actions">
-            <button className="btn btn-primary btn-sm" data-testid="insp-cloud-view" onClick={() => setCloudPreview(selFile)}>
-              <IconDocPreview />
-              Просмотр
-            </button>
-            <a
-              className="btn btn-ghost btn-sm"
-              href={`/ai-api/cloud/file/${selFile.cloudId}`}
-              data-testid="insp-cloud-download"
-            >
-              <IconExternal />
-              Скачать
-            </a>
-            {isAdmin ? (
-              <>
-                <button
-                  className="btn btn-ghost btn-sm"
-                  data-testid="insp-cloud-toggle-shared"
-                  onClick={() => {
-                    if (!selFile?.cloudId) return
-                    void setCloudShared(selFile.cloudId, selFile.cloudShared === false)
-                  }}
-                >
-                  <IconDatabase />
-                  {selFile.cloudShared === false ? 'Добавить в общую папку' : 'Убрать из общей папки'}
-                </button>
-                <button
-                  className="btn btn-ghost btn-sm"
-                  data-testid="insp-cloud-delete"
-                  onClick={() => {
-                    if (!selFile?.cloudId) return
-                    setShareRequest({ mode: 'remove', kind: 'file', id: selFile.id, title: selFile.name, cloudId: selFile.cloudId })
-                  }}
-                >
-                  <IconTrash />
-                  Удалить файл
-                </button>
-              </>
-            ) : (
-              <span className="setting-note" data-testid="insp-cloud-readonly">только просмотр · удаление у администратора</span>
-            )}
-          </div>
-        </div>
-      )}
-
-      {selFile && !selFile.shared && (
-        /* Просмотр локального файла: раньше открывался только правой
-           кнопкой по карточке — кнопка делает путь очевидным. */
-        <div className="insp-actions">
-          <button
-            className="btn btn-ghost btn-sm"
-            data-testid="insp-file-view"
-            onClick={() => (fk.isProtected(selFile.id) && !fk.isOpen(selFile.id) ? openFileTile(selFile.id) : setCloudPreview(selFile))}
-          >
-            <IconDocPreview />
-            Просмотр
-          </button>
+          {!isAdmin && (
+            <span className="setting-note" data-testid="insp-cloud-readonly">только просмотр · удаление у администратора</span>
+          )}
         </div>
       )}
 
@@ -378,6 +324,10 @@ export function LibraryFileInspector({
               setFkCooldownUntil(0)
               return
             }
+            if (!selFile.shared && fk.isProtected(selFile.id) && !fk.isOpen(selFile.id)) {
+              openFileTile(selFile.id)
+              return
+            }
             setCloudPreview(selFile)
           }}
           disabled={!selFile}
@@ -386,6 +336,16 @@ export function LibraryFileInspector({
           <IconDocPreview />
           Просмотр файла
         </button>
+        {selFile?.shared && selFile.cloudId ? (
+          <a
+            className="btn btn-ghost btn-full"
+            href={`/ai-api/cloud/file/${selFile.cloudId}`}
+            data-testid="insp-cloud-download"
+          >
+            <IconExternal />
+            Скачать
+          </a>
+        ) : null}
         <button
           className="btn btn-ghost btn-full"
           onClick={() => {
@@ -422,19 +382,46 @@ export function LibraryFileInspector({
           <IconGraph />
           Показать на карте
         </button>
-        <button
-          className="btn btn-ghost btn-full btn-danger"
-          onClick={() => {
-            if (!selFile) return
-            if (selFile.shared) return
-            fk.forgetKey(selFile.id)
-            D.removeFile(selFile.id)
-          }}
-          disabled={!selFile || selFile.shared}
-        >
-          <IconTrash />
-          Удалить из сейфа
-        </button>
+        {selFile?.shared && isAdmin ? (
+          <>
+            <button
+              className="btn btn-ghost btn-full"
+              data-testid="insp-cloud-toggle-shared"
+              onClick={() => {
+                if (!selFile?.cloudId) return
+                void setCloudShared(selFile.cloudId, selFile.cloudShared === false)
+              }}
+            >
+              <IconDatabase />
+              {selFile.cloudShared === false ? 'Добавить в общую папку' : 'Убрать из общей папки'}
+            </button>
+            <button
+              className="btn btn-ghost btn-full btn-danger"
+              data-testid="insp-cloud-delete"
+              onClick={() => {
+                if (!selFile?.cloudId) return
+                setShareRequest({ mode: 'remove', kind: 'file', id: selFile.id, title: selFile.name, cloudId: selFile.cloudId })
+              }}
+            >
+              <IconTrash />
+              Удалить из общей папки
+            </button>
+          </>
+        ) : (
+          <button
+            className="btn btn-ghost btn-full btn-danger"
+            onClick={() => {
+              if (!selFile) return
+              if (selFile.shared) return
+              fk.forgetKey(selFile.id)
+              D.removeFile(selFile.id)
+            }}
+            disabled={!selFile || selFile.shared}
+          >
+            <IconTrash />
+            Удалить из сейфа
+          </button>
+        )}
       </div>
     </aside>
   )
