@@ -1,40 +1,30 @@
-# С чего продолжать (обновлено: 2026-06, сессия «подпапки + меню письма»)
+# С чего продолжать (обновлено: 2026-06, сессия «доводка рефакторинга Библиотеки + картинки в письмах»)
 
-## Состояние: обе задачи из `docs/tasks/NEXT-CHAT-INSTRUCTIONS.md` закрыты и проверены
+## Состояние: обе задачи прошлого чата закрыты и проверены
 
 | Задача | Код | Проверка |
 |---|---|---|
-| Локальная папка = личная, без авто-дубля | ✅ | E2E 60/62 — `shared:false`, одна карточка |
-| Новый folder picker (дерево + содержимое) | ✅ | было в iter59 |
-| Подпапки локального хранилища (реальные папки + UI) | ✅ | E2E 60/62: `<root>/A/B/файл`, полоса папок, крошки |
-| Контекстное меню внутри письма | ✅ | E2E 61/62: CTA, текст, выделение, картинка, закрытие |
-| vitest `desktop-config` / `desktop-security` | ✅ | зелёные после `pnpm install --prod` в `/app/desktop` |
+| Разбить `components/screen-library.tsx` | ✅ 3043 → 1891 строка; вынесены `library-cards`, `library-dir-strip`, `library-toolbar`, `library-file-inspector`, `library-note-inspector`, `library-fk-dialogs`, `library-shared` | UI-регрессия Библиотеки 100% (`test_reports/iteration_61.json`): тулбар, карточки, инспекторы, полоса папок, bulk, контекстное меню, 0 ошибок консоли |
+| Внешние картинки в письмах грузятся сразу (без «Показать картинки») | ✅ `lib/mail-img.ts` + `mail-msg-view.tsx` (обычные/IMAP-ящики) + `mail-temp-pane.tsx` | Письмо в mail.tm: `src="data:image/jpeg;base64,…"`, оригинал в `data-wsx-src`, кнопки показа картинок нет. **НЕ проверено на реальном IMAP-ящике — почтового аккаунта в среде нет** |
+| Прокси `/ai-api/mail/img` | ✅ | curl: 200 `image/jpeg`; 403 на `127.0.0.1`/`localhost`; 400 на `ftp://` |
+| Unit-тесты картинок письма | ✅ новый `tests/unit/mail-img.test.ts` (7 тестов) | зелёные |
 
-Регресс: `npx vitest run` 327/327, `next build` EXIT=0, `tsc --noEmit` чисто, eslint 0 ошибок.
-Независимый отчёт: `test_reports/iteration_60.json` — 100%, багов нет.
+Регресс: `npx vitest run` 333/333 (+7 новых), `npx tsc --noEmit` чисто, eslint 0 ошибок (140 warnings), `npx next build` EXIT=0.
+
+## Что сделано в этой сессии
+- Восстановлена среда после сброса пода: `pnpm install` в `/app` и `/app/desktop` (иначе падают `desktop-config`/`desktop-security`), пересоздан `/app/.env.local` (**новые** `APP_SESSION_SECRET`, `MAIL_SECRET` ⇒ прежние временные ящики нечитаемы).
+- Добавлен суммарный бюджет инлайна картинок 12 МБ в `lib/mail-img.ts` (плюс прежний лимит 4 МБ на картинку), чтобы `srcDoc` письма не раздувался.
 
 ## Как запускать
 ```bash
 cd /app && pnpm install && (cd desktop && pnpm install --prod --ignore-scripts)
-npx next build && sudo supervisorctl restart frontend      # прод-сборка под supervisor
-APP_URL=http://localhost:3000 APP_PASSWORD='<из .env.local>' ADMIN_LOGIN=admin \
-  npx playwright test tests/e2e/60-local-subdirs.spec.ts tests/e2e/61-mail-ctx-menu.spec.ts tests/e2e/62-independent-verification.spec.ts
+npx next build && sudo supervisorctl restart frontend
 ```
-Спеки самодостаточны: сами задают папку хранения, сами заводят ящик mail.tm, сами доставляют
-письмо (`scripts/qa-send-rich-mail.py`, прямой SMTP на in.mail.tm:25) и убирают всё за собой.
-
-## Что важно знать
-- `/app/.env.local` пересоздан: `APP_SESSION_SECRET` и `MAIL_SECRET` НОВЫЕ. Прежние временные
-  ящики после смены `MAIL_SECRET` не читаются — их надо удалять и создавать заново.
-- Ключей внешних сервисов нет: модель не подключена (ИИ-разбор файла отвечает «модель не
-  подключена» — это не баг), SmailPro/Gmail недоступны, mail.tm работает без ключей.
-- Из sandbox-iframe письма cookie сессии НЕ уходит (opaque origin ⇒ кросс-сайт), поэтому любые
-  наши серверные ресурсы внутри письма надо готовить на странице и подставлять как `data:`.
-- Папка хранения сейчас НЕ выбрана (`ai/cloud/storage-root.json` отсутствует), диск пуст.
+Playwright-браузеры в среде не установлены: перед `npx playwright test` — `npx playwright install chromium`.
 
 ## Бэклог (по приоритету)
-1. P1 — разбить `components/screen-library.tsx` (3000+ строк).
-2. P1 — `data:`-картинки и для обычных ящиков (`components/mail/mail-msg-view.tsx`).
+1. P1 — продолжить декомпозицию `screen-library.tsx` (1891 строка): хуки `useLibraryState`, `useBulkActions`, drag&drop и работа с ключами файлов.
+2. P1 — проверка картинок на реальном IMAP-ящике, когда появится аккаунт.
 3. P2 — переименование/удаление подпапок из полосы папок Библиотеки.
 4. P2 — `/ai-api/ai/provider/models` без обёртки `{ok:true}`.
-5. P3 — eslint: 123 предупреждения (в основном `react-hooks/refs` в сторах и тестах).
+5. P3 — eslint: 140 предупреждений (в основном `react-hooks/refs` в сторах и тестах).

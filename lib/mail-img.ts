@@ -14,6 +14,8 @@ const SRC_RE = /(\ssrc\s*=\s*)(["'])(https?:\/\/[^"']+)\2/gi
 export const hasRemoteImages = (html: string): boolean => /\ssrc\s*=\s*["']https?:/i.test(html)
 
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024
+/* Суммарный бюджет: srcDoc письма не должен раздуваться на десятки МБ. */
+const MAX_TOTAL_BYTES = 12 * 1024 * 1024
 
 async function toDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -32,6 +34,7 @@ export async function inlineRemoteImages(html: string): Promise<string> {
   const urls = Array.from(new Set(Array.from(html.matchAll(SRC_RE), (m) => m[3])))
   if (urls.length === 0) return html
   const done = new Map<string, string>()
+  let total = 0
   await Promise.all(
     urls.map(async (url) => {
       try {
@@ -39,6 +42,8 @@ export async function inlineRemoteImages(html: string): Promise<string> {
         if (!r.ok) return
         const blob = await r.blob()
         if (blob.size === 0 || blob.size > MAX_IMAGE_BYTES) return
+        if (total + blob.size > MAX_TOTAL_BYTES) return
+        total += blob.size
         done.set(url, await toDataUrl(blob))
       } catch {
         /* картинка не открылась — письмо важнее картинки */

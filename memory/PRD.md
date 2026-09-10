@@ -12,7 +12,7 @@
 Под был сброшен: восстановлены `pnpm install --frozen-lockfile` и `/app/.env.local`
 (APP_PASSWORD/ADMIN_LOGIN прежние, APP_SESSION_SECRET и MAIL_SECRET сгенерированы заново — прежних в
 окружении не было; AI_DIR=/app/.data, CLOUD_STORAGE=local). Внешний адрес превью сменился:
-`https://next-chat-build.preview.emergentagent.com`. Фронтенд — прод-сборка под
+`https://screen-breakdown-1.preview.emergentagent.com`. Фронтенд — прод-сборка под
 supervisor, hot-reload нет.
 
 ### Сделано
@@ -527,3 +527,26 @@ User has a smailpro.com *web* Premium subscription but no API key, and asked to 
   адреса CDN, часть отдаёт 403 на запрос из песочницы; проверить не на чем (нет IMAP-аккаунта).
 - P2: переименование и удаление подпапок прямо из полосы папок Библиотеки.
 - P2: `/ai-api/ai/provider/models` без обёртки `{ok:true}`.
+
+---
+
+## 2026-06 · Сессия «доводка рефакторинга Библиотеки + картинки в письмах»
+
+Задачи прошлого чата проверены и закрыты:
+
+1. **Разбиение `components/screen-library.tsx`** (было 3043 строки → 1891). Вынесены:
+   `library-cards.tsx` (карточка файла и карточка стикера), `library-dir-strip.tsx` (полоса папок),
+   `library-toolbar.tsx` (тулбар), `library-file-inspector.tsx`, `library-note-inspector.tsx`,
+   `library-fk-dialogs.tsx` (диалоги ключей файла), `library-shared.ts` (общие утилиты).
+   Поведение не менялось; UI-регрессия Библиотеки — 100% (`test_reports/iteration_61.json`).
+2. **Внешние картинки в письмах грузятся сразу**, без кнопки «Показать картинки»
+   (`lib/mail-img.ts` + `mail-msg-view.tsx` для обычных/IMAP-ящиков + `mail-temp-pane.tsx`).
+   Страница качает картинки через прокси `/ai-api/mail/img` (SSRF-защита, лимит 8 МБ) и
+   подставляет их как `data:`-URI, исходный адрес сохраняется в `data-wsx-src`.
+   Добавлен суммарный бюджет инлайна 12 МБ (на картинку — 4 МБ).
+   **Не проверено на реальном IMAP-ящике: почтового аккаунта в среде нет.**
+3. Новый `tests/unit/mail-img.test.ts` (7 тестов). Итог: vitest 333/333, tsc чисто,
+   eslint 0 ошибок, `next build` EXIT=0.
+
+Бэклог: продолжить декомпозицию `screen-library.tsx` (хуки состояния/bulk/drag&drop),
+проверка картинок на реальном IMAP, переименование/удаление подпапок в полосе папок Библиотеки.
