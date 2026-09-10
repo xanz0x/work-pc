@@ -1,6 +1,6 @@
 """Итерация 28 · Тарифы, ключи лицензий, регистрация по ключу, админ-действия.
 
-Прогон: APP_URL=https://folder-picker-ui-fix.preview.emergentagent.com \
+Прогон: APP_URL=https://next-chat-build.preview.emergentagent.com \
         python3 -m pytest tests/api/test_plans_licensing.py -q
 """
 import os

@@ -1,0 +1,29 @@
+{
+  "summary": "Независимая проверка двух фич: (1) подпапки локального хранилища при добавлении файла и (2) контекстное меню внутри iframe письма. Прогнал существующие спеки 60/61 и написал дополнительную 62 (лево-меню + двухуровневая вложенность + закрытие меню по клику мимо/переключению письма). Все 4 теста зелёные. Storage root возвращён в исходное значение /root/wsx-shot.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/tests/e2e/60-local-subdirs.spec.ts",
+    "/app/tests/e2e/61-mail-ctx-menu.spec.ts",
+    "/app/tests/e2e/62-independent-verification.spec.ts"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "components/app-shell.tsx — оба пути (file-add-btn + скрытый file-picker) идут через queueIntake только когда есть D.cloudRoot; при отсутствии локальной папки старый idxa.indexFiles сохраняется, что соответствует спецификации, но стоит убедиться, что диалог подпапки никогда не пропадает при cloud=on — в текущей реализации всё корректно.",
+    "components/mail/mail-frame-bridge.ts — data-wsx-src используется как источник исходного адреса картинки; полезно было бы добавить sanitize для случаев, когда data-wsx-src отсутствует (сейчас fallback на src=data: даёт title='data:...' что нежелательно); в тестируемом сценарии не воспроизвелось, потому что inlineRemoteImages всегда проставляет data-wsx-src."
+  ],
+  "updated_files": [
+    "/app/tests/e2e/62-independent-verification.spec.ts"
+  ],
+  "success_rate": { "backend": "n/a", "frontend": "100%" },
+  "test_credentials": "admin / IceKrymTeam13@ (из /app/.env.local)",
+  "seed_data_creation": "Тесты сами создавали и удаляли временные подпапки в /root/wsx-e2e-* и файлы; storage root восстановлен в /root/wsx-shot.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Спеки 60/61/62 все зелёные локально. Прогонять: APP_URL=http://localhost:3000 APP_PASSWORD='IceKrymTeam13@' ADMIN_LOGIN=admin npx playwright test tests/e2e/60-local-subdirs.spec.ts tests/e2e/61-mail-ctx-menu.spec.ts tests/e2e/62-independent-verification.spec.ts. Тестовое письмо в mail.tm ящике должно быть — при отсутствии отправить python3 scripts/qa-send-rich-mail.py <адрес>.",
+  "rca of the issue": "N/A — проверка прошла успешно."
+}

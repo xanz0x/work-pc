@@ -18,6 +18,8 @@ import { JournalAlert } from './journal-alert'
 import { useEngineStore } from '@/lib/store/engine'
 import { useVault } from '@/lib/vault-store'
 import { useAccount } from '@/lib/account'
+import { useDataStore } from '@/lib/store/data'
+import { queueIntake } from '@/lib/intake-queue'
 import { useIndexActions } from '@/lib/indexer/context'
 import { fmtBytes } from '@/lib/data'
 import { SCOPES } from '@/lib/search'
@@ -87,6 +89,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   /* NF-2: скорость движка — из его же ответа, а не из выдуманной метрики. */
   const engine = useEngineStore()
   const idxa = useIndexActions()
+  const D = useDataStore()
   const { stats, clusters } = v
 
   const [collapsed, setCollapsed] = useState(false)
@@ -382,8 +385,17 @@ export function AppShell({ children }: { children: ReactNode }) {
             tabIndex={-1}
             onChange={(e) => {
               const list = Array.from(e.target.files ?? [])
-              /* NF-1: файлы читаются по-настоящему — метаданными не отделаться. */
-              if (list.length > 0) void idxa.indexFiles(list)
+              /* NF-1: файлы читаются по-настоящему — метаданными не отделаться.
+                 Есть личная папка на ПК — приём идёт через библиотеку: она
+                 спросит подпапку и физически положит файл туда. */
+              if (list.length > 0) {
+                if (account.has('cloud') && D.cloudRoot) {
+                  v.go('library')
+                  queueIntake(list)
+                } else {
+                  void idxa.indexFiles(list)
+                }
+              }
               e.target.value = ''
             }}
           />

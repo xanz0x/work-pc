@@ -37,7 +37,7 @@ export const MAIL_BRIDGE = `
       y: e.clientY,
       linkURL: a ? a.href : null,
       linkText: a ? (a.textContent || '').trim().slice(0, 300) : null,
-      imageSrc: img ? img.currentSrc || img.src : null,
+      imageSrc: img ? img.getAttribute('data-wsx-src') || img.currentSrc || img.src : null,
       selection: String(window.getSelection ? window.getSelection() : '').slice(0, 20000),
       bodyText: (document.body.innerText || '').slice(0, 200000),
     })

@@ -80,6 +80,7 @@ import { SharedNoteInspector } from './shared-note-inspector'
 import { LibraryViewer, type LibraryViewerTarget } from './library-viewer'
 import { IntakeStrip } from './intake-strip'
 import { intakeFiles, type IntakeTrack } from '@/lib/intake'
+import { QUEUE_EVENT, takeIntake } from '@/lib/intake-queue'
 
 /** Локальный алиас: короче в объявлении состояния доски. */
 const usePersisted = usePersistedState
@@ -151,6 +152,16 @@ export function ScreenLibrary() {
   const [dir, setDir] = useState('')
   /** Файлы ждут ответа «куда положить». */
   const [pendingFiles, setPendingFiles] = useState<File[] | null>(null)
+  /* Кнопка «Добавить файл» в меню отдаёт файлы сюда — спрашиваем подпапку. */
+  useEffect(() => {
+    const pick = () => {
+      const list = takeIntake()
+      if (list.length > 0) setPendingFiles(list)
+    }
+    pick()
+    window.addEventListener(QUEUE_EVENT, pick)
+    return () => window.removeEventListener(QUEUE_EVENT, pick)
+  }, [])
   const [contextMenu, setContextMenu] = useState<LibraryMenuTarget | null>(null)
   const [shareRequest, setShareRequest] = useState<LibraryShareRequest | null>(null)
   const menuReturn = useRef<HTMLElement | null>(null)
@@ -1565,7 +1576,8 @@ export function ScreenLibrary() {
           )}
 
           <div className="lib-toolbar">
-            <div className="seg" role="group" aria-label="Слой библиотеки">              {(
+            <div className="seg" role="group" aria-label="Слой библиотеки">
+              {(
                 [
                   { v: 'all', l: 'Всё' },
                   { v: 'files', l: 'Файлы' },

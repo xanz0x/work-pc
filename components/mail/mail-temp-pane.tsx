@@ -8,6 +8,7 @@ import { IconClock, IconCopy, IconInbox, IconMail, IconRefresh, IconTrash } from
 import { isFail, tempApi, TEMP_LABEL, type TempBoxView, type TempFull, type TempRow } from '@/lib/mail-client'
 import { fmtMailDate, fmtMailDateFull, extractCode, letterWord, subjectCode } from '@/lib/mail-format'
 import { escapeHtml } from '@/lib/mail-html'
+import { hasRemoteImages, inlineRemoteImages } from '@/lib/mail-img'
 import { MailContextMenu } from './mail-context-menu'
 import { bridgeCsp, bridgeTag, useMailFrameBridge } from './mail-frame-bridge'
 import { useToast } from '@/lib/vault-store'
@@ -24,19 +25,14 @@ function left(expiresAt: number | null, now: number): string | null {
   return `${Math.ceil(s / 60)} мин`
 }
 
-function frameDoc(m: TempFull): string {
-  const body = m.html ?? `<pre class="plain">${escapeHtml(m.text ?? '')}</pre>`
+function frameDoc(body: string): string {
   return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src 'self' https: http: data:; ${bridgeCsp()}; font-src 'none'; frame-src 'none'"><base target="_blank"><style>
 html,body{margin:0;background:#fff;color:#1c1f24}body{padding:16px 18px;font:14px/1.55 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;word-break:break-word}
 img{max-width:100%;height:auto}a{color:#1a5fb4}pre.plain{white-space:pre-wrap;font:13.5px/1.55 ui-monospace,Menlo,Consolas,monospace;margin:0}table{max-width:100%}
-</style></head><body>${imgProxy(body)}${bridgeTag()}</body></html>`
+</style></head><body>${body}${bridgeTag()}</body></html>`
 }
 
-/** src картинок → серверный прокси: sandbox-iframe имеет opaque origin, часть
-    CDN отвечает 403 таким запросам. data:-URI не трогаем. */
-function imgProxy(html: string): string {
-  return html.replace(/(\ssrc\s*=\s*)(["'])(https?:\/\/[^"']+)\2/gi, (_m, pre, q, url) => `${pre}${q}/ai-api/mail/img?url=${encodeURIComponent(url)}${q}`)
-}
+const bodyOf = (m: TempFull): string => m.html ?? `<pre class="plain">${escapeHtml(m.text ?? '')}</pre>`
 
 export function MailTempPane({ box, onBox, onRemove }: Props) {
   const { flash } = useToast()
@@ -140,7 +136,27 @@ export function MailTempPane({ box, onBox, onRemove }: Props) {
     flash('Ящик продлён на 10 минут')
   }
 
-  const doc = useMemo(() => (msg ? frameDoc(msg) : ''), [msg])
+  /* Картинки письма скачивает страница и вставляет как data:-URI: из песочницы
+     iframe cookie сессии не уходит, и прокси ответил бы отказом. */
+  const [doc, setDoc] = useState('')
+  useEffect(() => {
+    if (!msg) {
+      setDoc('')
+      return
+    }
+    const raw = bodyOf(msg)
+    if (!hasRemoteImages(raw)) {
+      setDoc(frameDoc(raw))
+      return
+    }
+    let alive = true
+    void inlineRemoteImages(raw).then((html) => {
+      if (alive) setDoc(frameDoc(html))
+    })
+    return () => {
+      alive = false
+    }
+  }, [msg])
   const code = useMemo(() => (msg ? extractCode(msg.html, msg.text) : null), [msg])
   const remain = left(box.expiresAt, now)
 

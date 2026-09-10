@@ -115,7 +115,7 @@ export function MailContextMenu({
       label: 'Копировать адрес картинки',
       run: () => copy(ctx.imageSrc!, 'copy-img'),
       disabled: ctx.imageSrc.startsWith('data:'),
-      hint: ctx.imageSrc.startsWith('data:') ? 'встроенная картинка без адреса' : undefined,
+      hint: ctx.imageSrc.startsWith('data:') ? 'встроенная картинка без адреса' : ctx.imageSrc,
     })
     items.push({ sep: true })
   }

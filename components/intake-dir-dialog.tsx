@@ -166,8 +166,8 @@ export function IntakeDirDialog({
               <button type="button" className="fp-btn" disabled={busy || !newName.trim()} onClick={() => void create()} data-testid="intake-dir-new-create">
                 Создать
               </button>
-              <button type="button" className="fp-btn" onClick={() => setCreating(false)}>
-                Отмена
+              <button type="button" className="fp-btn" onClick={() => setCreating(false)} data-testid="intake-dir-new-cancel">
+                Не создавать
               </button>
             </span>
           ) : (

@@ -1,5 +1,11 @@
 # Инструкция для следующего чата — как довести все задачи до конца
 
+> **СТАТУС 2026-06: ВСЁ ВЫПОЛНЕНО.** Все шаги 0–5 пройдены, обе задачи (подпапки и меню
+> внутри письма) закрыты и проверены E2E (`tests/e2e/60`, `61`, `62`), тестовые данные убраны,
+> vitest 327/327. Итог — в `memory/PRD.md` (последний раздел), `memory/NEXT_SESSION.md`,
+> `memory/HANDOFF_NEXT_CHAT.md`, отчёт — `test_reports/iteration_60.json`.
+> Текст ниже оставлен как история задачи.
+
 > Проект: **WorkSpaceX** (Next.js из корня `/app`). Реальное приложение стартует как root Next.js app, `sudo supervisorctl restart frontend` при необходимости. Собственные dev-серверы не запускать.
 > Перед стартом прочитать: `/app/memory/PRD.md`, `/app/memory/NEXT_SESSION.md`, `/app/memory/HANDOFF_NEXT_CHAT.md`, `/app/memory/test_credentials.md`, последний `/app/test_reports/iteration_*.json`.
 

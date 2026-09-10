@@ -12,7 +12,7 @@
 Под был сброшен: восстановлены `pnpm install --frozen-lockfile` и `/app/.env.local`
 (APP_PASSWORD/ADMIN_LOGIN прежние, APP_SESSION_SECRET и MAIL_SECRET сгенерированы заново — прежних в
 окружении не было; AI_DIR=/app/.data, CLOUD_STORAGE=local). Внешний адрес превью сменился:
-`https://folder-picker-ui-fix.preview.emergentagent.com`. Фронтенд — прод-сборка под
+`https://next-chat-build.preview.emergentagent.com`. Фронтенд — прод-сборка под
 supervisor, hot-reload нет.
 
 ### Сделано
@@ -463,3 +463,67 @@ User has a smailpro.com *web* Premium subscription but no API key, and asked to 
 - P1: разбить `components/screen-library.tsx` (2900+ строк).
 - P2: `/ai-api/ai/provider/models` без обёртки `{ok:true}`.
 - P2: поставить зависимости `/app/desktop`, чтобы vitest был полностью зелёным.
+
+---
+
+## 2026-06 · Подпапки локальной папки + контекстное меню внутри письма (ЗАВЕРШЕНО)
+
+Запрос пользователя (инструкция `docs/tasks/NEXT-CHAT-INSTRUCTIONS.md`): довести две задачи —
+(1) при добавлении файла выбирать/создавать НАСТОЯЩУЮ подпапку внутри личной папки на ПК,
+в Библиотеке — полоса папок и крошки; (2) правый клик внутри письма по кнопке/тексту/картинке.
+Выбор пользователя в этой сессии: тестировать на реальном storage root, объём тестов —
+только эти две задачи, падающие vitest `desktop-*` починить попутно.
+
+### Восстановление среды (пода сбросили)
+- Не было `node_modules` и `/app/.env.local` → `pnpm install` в корне, `pnpm install --prod` в
+  `/app/desktop` (это и есть причина падавших `desktop-config`/`desktop-security` — нет `dotenv`
+  и `selfsigned`), `.env.local` создан заново: `APP_SESSION_SECRET` и `MAIL_SECRET` новые,
+  `AI_DIR=/app/ai`, `CLOUD_STORAGE=local`. Из-за нового `MAIL_SECRET` прежний временный ящик
+  стал нечитаемым — удалён.
+
+### Сделано
+- `lib/cloud-store.ts`: `writeIntoRoot(root, name, data, relDir)` пишет в `<root>/<relDir>/<name>`
+  и возвращает путь с подпапкой; `createFolder` создаёт настоящую папку на диске;
+  `uploadFile` прокидывает `dir`; миграция объектов учитывает `f.dir`.
+- `components/intake-dir-dialog.tsx` — диалог «Куда положить файл»: крошки, вход в подпапку,
+  уровень выше, создание подпапки (`POST /ai-api/cloud/folder`), подтверждение с именем цели.
+- `components/screen-library.tsx`: фильтр списка по открытой подпапке, полоса папок
+  (`lib-dirs`, `lib-dir-root`, `lib-dir-crumb`, `lib-dir-open`), приём файлов через диалог.
+- `lib/intake-queue.ts` + `components/app-shell.tsx`: кнопка «Добавить файл» в ЛЕВОМ меню
+  раньше вообще не проходила через приём в локальную папку (шла в локальный индексатор) —
+  теперь при выбранной папке отдаёт файлы библиотеке и открывает тот же диалог подпапки.
+- `lib/mail-img.ts` + `components/mail/mail-temp-pane.tsx`: картинки письма скачивает сама
+  страница (её cookie на месте) и вставляет как `data:`-URI. Прежний серверный прокси в
+  `src` не работал: у sandbox-iframe opaque origin, запрос считается кросс-сайтовым и
+  cookie сессии `SameSite=lax` не уходит → `/ai-api/mail/img` отвечал отказом.
+  Исходный адрес сохраняется в `data-wsx-src`, мост письма берёт его для меню.
+- `components/mail/mail-frame-bridge.ts`: `imageSrc` = `data-wsx-src` → `currentSrc` → `src`.
+- `components/mail/mail-context-menu.tsx`: у «Копировать адрес картинки» подсказка — сам адрес.
+- `components/folder-picker.css`: на 390px подвал диалога переносится по строкам (кнопка
+  «Положить в …» уезжала за край), длинный путь в шапке переносится.
+- `tests/unit/cloud-storage.test.ts` обновлён под новое поведение (`dir` = настоящая подпапка).
+
+### Проверено
+- E2E (все зелёные, самодостаточные): `tests/e2e/60-local-subdirs.spec.ts`,
+  `tests/e2e/61-mail-ctx-menu.spec.ts`, `tests/e2e/62-independent-verification.spec.ts`
+  (написан testing agent) + помощник `tests/e2e/rich-mail.ts` и
+  `scripts/qa-send-rich-mail.py` (доставка письма прямым SMTP на in.mail.tm:25).
+  Покрыто: физический путь `<root>/<A>/<B>/<файл>`, `shared:false`, отсутствие дубля и
+  авто-публикации, полоса папок и фильтр, ПКМ по CTA / тексту / выделенному тексту / картинке,
+  закрытие меню по Escape, по клику мимо и при переключении письма.
+- `npx vitest run` 327/327 PASS (включая починенные `desktop-*`), `next build` EXIT=0,
+  `tsc --noEmit` чисто, eslint 0 ошибок.
+- Отчёт независимой проверки: `test_reports/iteration_60.json` (100%, багов нет).
+- Скриншоты 1920 и 390: `test_reports/shot-lib-dirs-*.jpeg`, `shot-intake-dir-*.jpeg`.
+
+### Уборка
+- Тестовые файлы, подпапки и временные ящики удалены; `ai/cloud/drive.json` пуст,
+  `storage-root.json` отсутствует (папка хранения не выбрана), `ai/mail/temp.json` пуст,
+  каталоги `/root/wsx-*` удалены.
+
+### Бэклог
+- P1: разбить `components/screen-library.tsx` (3000+ строк).
+- P1: те же `data:`-картинки для обычных ящиков (`mail-msg-view.tsx`) — сейчас там прямые
+  адреса CDN, часть отдаёт 403 на запрос из песочницы; проверить не на чем (нет IMAP-аккаунта).
+- P2: переименование и удаление подпапок прямо из полосы папок Библиотеки.
+- P2: `/ai-api/ai/provider/models` без обёртки `{ok:true}`.

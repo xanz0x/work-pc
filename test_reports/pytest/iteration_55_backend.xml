@@ -86,7 +86,7 @@ E           json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char
 During handling of the above exception, another exception occurred:
 
 admin = &lt;requests.sessions.Session object at 0xfb9009ca0b10&gt;
-base_url = 'https://folder-picker-ui-fix.preview.emergentagent.com'
+base_url = 'https://next-chat-build.preview.emergentagent.com'
 
     @pytest.fixture(scope='module', autouse=True)
     def cleanup_test_copies(admin, base_url):
@@ -200,7 +200,7 @@ E           json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char
 During handling of the above exception, another exception occurred:
 
 admin = &lt;requests.sessions.Session object at 0xfb9009ca0b10&gt;
-base_url = 'https://folder-picker-ui-fix.preview.emergentagent.com'
+base_url = 'https://next-chat-build.preview.emergentagent.com'
 
     @pytest.fixture(scope='module', autouse=True)
     def cleanup_test_copies(admin, base_url):
@@ -314,7 +314,7 @@ E           json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char
 During handling of the above exception, another exception occurred:
 
 admin = &lt;requests.sessions.Session object at 0xfb9009ca0b10&gt;
-base_url = 'https://folder-picker-ui-fix.preview.emergentagent.com'
+base_url = 'https://next-chat-build.preview.emergentagent.com'
 
     @pytest.fixture(scope='module', autouse=True)
     def cleanup_test_copies(admin, base_url):
@@ -428,7 +428,7 @@ E           json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char
 During handling of the above exception, another exception occurred:
 
 admin = &lt;requests.sessions.Session object at 0xfb9009ca0b10&gt;
-base_url = 'https://folder-picker-ui-fix.preview.emergentagent.com'
+base_url = 'https://next-chat-build.preview.emergentagent.com'
 
     @pytest.fixture(scope='module', autouse=True)
     def cleanup_test_copies(admin, base_url):
@@ -542,7 +542,7 @@ E           json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char
 During handling of the above exception, another exception occurred:
 
 admin = &lt;requests.sessions.Session object at 0xfb9009ca0b10&gt;
-base_url = 'https://folder-picker-ui-fix.preview.emergentagent.com'
+base_url = 'https://next-chat-build.preview.emergentagent.com'
 
     @pytest.fixture(scope='module', autouse=True)
     def cleanup_test_copies(admin, base_url):
@@ -656,7 +656,7 @@ E           json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char
 During handling of the above exception, another exception occurred:
 
 admin = &lt;requests.sessions.Session object at 0xfb9009ca0b10&gt;
-base_url = 'https://folder-picker-ui-fix.preview.emergentagent.com'
+base_url = 'https://next-chat-build.preview.emergentagent.com'
 
     @pytest.fixture(scope='module', autouse=True)
     def cleanup_test_copies(admin, base_url):
@@ -770,7 +770,7 @@ E           json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char
 During handling of the above exception, another exception occurred:
 
 admin = &lt;requests.sessions.Session object at 0xfb9009ca0b10&gt;
-base_url = 'https://folder-picker-ui-fix.preview.emergentagent.com'
+base_url = 'https://next-chat-build.preview.emergentagent.com'
 
     @pytest.fixture(scope='module', autouse=True)
     def cleanup_test_copies(admin, base_url):
@@ -884,7 +884,7 @@ E           json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char
 During handling of the above exception, another exception occurred:
 
 admin = &lt;requests.sessions.Session object at 0xfb9009ca0b10&gt;
-base_url = 'https://folder-picker-ui-fix.preview.emergentagent.com'
+base_url = 'https://next-chat-build.preview.emergentagent.com'
 
     @pytest.fixture(scope='module', autouse=True)
     def cleanup_test_copies(admin, base_url):
