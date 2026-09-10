@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { IconClip, IconClose, IconEye, IconEyeOff, IconMail } from '../icons'
 import { MailContextMenu } from './mail-context-menu'
 import { bridgeCsp, bridgeTag, useMailFrameBridge } from './mail-frame-bridge'
@@ -9,6 +9,7 @@ import { fmtBytes } from '@/lib/data'
 import type { MessageFull } from '@/lib/mail-client'
 import { addrFull, fmtMailDateFull } from '@/lib/mail-format'
 import { escapeHtml } from '@/lib/mail-html'
+import { hasRemoteImages, inlineRemoteImages } from '@/lib/mail-img'
 
 type Props = {
   message: MessageFull | null
@@ -31,7 +32,7 @@ function inlineCids(html: string, m: MessageFull): string {
   })
 }
 
-function frameDoc(m: MessageFull): string {
+function frameDoc(body: string): string {
   /* Картинки грузятся напрямую с их адресов; скрипт — только наш, по nonce. */
   const csp = [
     "default-src 'none'",
@@ -41,14 +42,16 @@ function frameDoc(m: MessageFull): string {
     "font-src https: data:",
     "frame-src 'none'",
   ].join('; ')
-  const raw = m.html ?? `<pre class="plain">${escapeHtml(m.text ?? '')}</pre>`
-  const body = inlineCids(raw, m)
   return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${csp}"><base target="_blank"><style>
 html,body{margin:0;background:#fff;color:#1c1f24}body{padding:16px 18px;font:14px/1.55 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;word-break:break-word}
 img{max-width:100%;height:auto}a{color:#1a5fb4}pre.plain{white-space:pre-wrap;font:13.5px/1.55 ui-monospace,Menlo,Consolas,monospace;margin:0}table{max-width:100%}
 ::selection{background:#cfe3ff}
 </style></head><body>${body}${bridgeTag()}</body></html>`
 }
+
+/** Тело письма: HTML как есть либо текст, с подставленными cid:-картинками. */
+const bodyOf = (m: MessageFull): string =>
+  inlineCids(m.html ?? `<pre class="plain">${escapeHtml(m.text ?? '')}</pre>`, m)
 
 function AddrLine({ label, list }: { label: string; list: { name: string; address: string }[] }) {
   if (list.length === 0) return null
@@ -61,7 +64,28 @@ function AddrLine({ label, list }: { label: string; list: { name: string; addres
 }
 
 export function MailMsgView({ message: m, loading, error, onFlag, onBack }: Props) {
-  const doc = useMemo(() => (m ? frameDoc(m) : ''), [m])
+  /* Внешние картинки скачивает страница и вставляет как data:-URI: у песочницы
+     iframe opaque origin, поэтому её запросы идут без cookie сессии, а часть
+     CDN отвечает 403 на запрос с null-origin. */
+  const [doc, setDoc] = useState('')
+  useEffect(() => {
+    if (!m) {
+      setDoc('')
+      return
+    }
+    const raw = bodyOf(m)
+    if (!hasRemoteImages(raw)) {
+      setDoc(frameDoc(raw))
+      return
+    }
+    let alive = true
+    void inlineRemoteImages(raw).then((html) => {
+      if (alive) setDoc(frameDoc(html))
+    })
+    return () => {
+      alive = false
+    }
+  }, [m])
   const frameRef = useRef<HTMLIFrameElement>(null)
   const { ctx, closeCtx, selectAll } = useMailFrameBridge(frameRef, {
     subject: m?.subject,

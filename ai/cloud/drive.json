@@ -2,5 +2,40 @@
   "inviteCode": "bd4b98b8",
   "members": [],
   "folders": [],
-  "files": []
+  "files": [
+    {
+      "id": "b566be9f269e",
+      "name": "подпапки-1789003008365.txt",
+      "dir": "Договоры",
+      "path": "Договоры/подпапки-1789003008365.txt",
+      "relPath": "Договоры/подпапки-1789003008365.txt",
+      "sha256": "7d76a2eb75f37a64666f7d59bc0a9985b8d3c31e8d523e963b8e5f5abfb88ced",
+      "contentType": "text/plain",
+      "size": 48,
+      "by": "6989235cd4b65afa",
+      "at": "2026-09-10T01:16:48.953Z",
+      "deleted": true,
+      "shared": false,
+      "analysisStatus": "partial",
+      "title": "подпапки 1789003008365",
+      "description": "e2e содержимое для подпапки",
+      "analysisKind": "text",
+      "analyzedAt": "2026-09-10T01:16:49.062Z",
+      "analysisError": "описание моделью недоступно: модель не подключена — откройте «Настройки → Подключение модели»"
+    },
+    {
+      "id": "0b89e74ffecf",
+      "name": "left-menu-1789003017634.txt",
+      "dir": "Договоры/Приложения",
+      "path": "Договоры/Приложения/left-menu-1789003017634.txt",
+      "relPath": "Договоры/Приложения/left-menu-1789003017634.txt",
+      "sha256": "5aadde2bfb5e0442295d698250adeb822e4006ef6e55b4df74e36c34e28c1caa",
+      "contentType": "text/plain",
+      "size": 46,
+      "by": "6989235cd4b65afa",
+      "at": "2026-09-10T01:16:58.437Z",
+      "deleted": true,
+      "shared": false
+    }
+  ]
 }
