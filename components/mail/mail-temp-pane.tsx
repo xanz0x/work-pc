@@ -164,7 +164,7 @@ export function MailTempPane({ box, onBox, onRemove }: Props) {
   /* ПКМ внутри письма: событие ловит мост внутри iframe и присылает наружу
      всё, что было под курсором (тот же мост, что в обычных ящиках). */
   const frameRef = useRef<HTMLIFrameElement>(null)
-  const { ctx, closeCtx, selectAll } = useMailFrameBridge(frameRef, {
+  const { ctx, closeCtx, selectAll, frameHeight } = useMailFrameBridge(frameRef, {
     subject: msg?.subject,
     fromAddress: msg?.from ?? null,
     resetKey: msg?.mid ?? null,
@@ -344,6 +344,7 @@ export function MailTempPane({ box, onBox, onRemove }: Props) {
                 sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
                 referrerPolicy="no-referrer"
                 srcDoc={doc}
+                style={frameHeight ? { height: `${frameHeight}px` } : undefined}
                 data-testid="mail-temp-frame"
               />
             </div>

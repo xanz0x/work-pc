@@ -58,6 +58,34 @@ export const MAIL_BRIDGE = `
       report(snapshot)
     }, 220)
   })
+  /* Высота письма уезжает наружу: страница подгоняет размер iframe под
+     содержимое, и прокручивает письмо своей полосой. Внутренняя прокрутка
+     iframe при этом не нужна — её край часто оказывается за окном. */
+  var lastH = 0
+  function measure() {
+    var d = document.documentElement
+    var b = document.body
+    var h = Math.max(d.scrollHeight, d.offsetHeight, b ? b.scrollHeight : 0, b ? b.offsetHeight : 0)
+    if (Math.abs(h - lastH) < 2) return
+    lastH = h
+    post('size', { h: h })
+  }
+  measure()
+  window.addEventListener('load', measure)
+  document.addEventListener('load', measure, true)
+  if (window.ResizeObserver) {
+    try { new ResizeObserver(measure).observe(document.documentElement) } catch (e) {}
+  }
+  ;[80, 300, 800, 2000, 4000].forEach(function (t) { setTimeout(measure, t) })
+  /* Колесо мыши внутри iframe наружу само не уходит (песочница без общего
+     origin не отдаёт прокрутку родителю), поэтому дельту пересылаем мостом. */
+  document.addEventListener('wheel', function (e) {
+    post('wheel', { dy: e.deltaY, dx: e.deltaX, mode: e.deltaMode })
+  }, { passive: true })
+  document.addEventListener('keydown', function (e) {
+    var keys = { PageDown: 1, PageUp: 1, Home: 1, End: 1 }
+    if (keys[e.key]) { e.preventDefault(); post('key', { key: e.key }) }
+  })
   document.addEventListener('pointerdown', function (e) { if (e.button !== 2) post('close') })
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') post('close') })
   document.addEventListener('scroll', function () { post('close') }, true)
@@ -91,6 +119,7 @@ type Meta = {
  */
 export function useMailFrameBridge(frameRef: RefObject<HTMLIFrameElement | null>, meta: Meta) {
   const [ctx, setCtx] = useState<MailCtx | null>(null)
+  const [frameHeight, setFrameHeight] = useState<number | null>(null)
   const closeCtx = useCallback(() => setCtx(null), [])
   const metaRef = useRef(meta)
   metaRef.current = meta
@@ -101,6 +130,11 @@ export function useMailFrameBridge(frameRef: RefObject<HTMLIFrameElement | null>
       if (!frame) return
       const d = e.data as {
         wsxMail?: string
+        h?: number
+        dy?: number
+        dx?: number
+        mode?: number
+        key?: string
         x?: number
         y?: number
         linkURL?: string | null
@@ -113,6 +147,27 @@ export function useMailFrameBridge(frameRef: RefObject<HTMLIFrameElement | null>
       /* Источник сверяем, только если браузер его отдал: у песочницы с
          opaque origin e.source в части сборок приходит пустым. */
       if (e.source && frame.contentWindow && e.source !== frame.contentWindow) return
+      if (d.wsxMail === 'size') {
+        const h = Number(d.h)
+        if (Number.isFinite(h) && h > 0) setFrameHeight(Math.ceil(h))
+        return
+      }
+      if (d.wsxMail === 'wheel' || d.wsxMail === 'key') {
+        const pane = frame.closest('.mail-view-body') as HTMLElement | null
+        if (!pane) return
+        if (d.wsxMail === 'wheel') {
+          const mode = d.mode ?? 0
+          const unit = mode === 1 ? 16 : mode === 2 ? pane.clientHeight : 1
+          pane.scrollBy({ top: (d.dy ?? 0) * unit, left: (d.dx ?? 0) * unit })
+          return
+        }
+        const step = pane.clientHeight * 0.9
+        if (d.key === 'PageDown') pane.scrollBy({ top: step })
+        else if (d.key === 'PageUp') pane.scrollBy({ top: -step })
+        else if (d.key === 'Home') pane.scrollTo({ top: 0 })
+        else if (d.key === 'End') pane.scrollTo({ top: pane.scrollHeight })
+        return
+      }
       if (d.wsxMail === 'close') {
         setCtx(null)
         return
@@ -137,11 +192,14 @@ export function useMailFrameBridge(frameRef: RefObject<HTMLIFrameElement | null>
 
   useEffect(() => {
     setCtx(null)
-  }, [meta.resetKey])
+    setFrameHeight(null)
+    const pane = frameRef.current?.closest('.mail-view-body') as HTMLElement | null
+    if (pane) pane.scrollTop = 0
+  }, [meta.resetKey, frameRef])
 
   const selectAll = useCallback(() => {
     frameRef.current?.contentWindow?.postMessage({ wsxMailCmd: 'select-all' }, '*')
   }, [frameRef])
 
-  return { ctx, closeCtx, selectAll }
+  return { ctx, closeCtx, selectAll, frameHeight }
 }

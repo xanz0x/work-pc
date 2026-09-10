@@ -258,6 +258,14 @@ async function mockMailRoutes(page: Page) {
   })
 }
 
+/** Прокрутку письма делает не iframe, а панель просмотра: iframe подогнан под
+ *  содержимое, а колесо и клавиши мост пересылает наружу. */
+const paneTop = (page: Page, frameTestId: string) =>
+  page.getByTestId(frameTestId).evaluate((el) => {
+    const pane = el.closest('.mail-view-body') as HTMLElement
+    return Math.round(pane.scrollTop)
+  })
+
 async function scrollToLastParagraphByWheel(page: Page, frameTestId: string, lastSelector = '#last') {
   const host = page.getByTestId(frameTestId)
   await expect(host).toBeVisible()
@@ -266,35 +274,42 @@ async function scrollToLastParagraphByWheel(page: Page, frameTestId: string, las
   expect(box).toBeTruthy()
   if (!box) return
 
-  await page.mouse.move(box.x + box.width / 2, box.y + Math.min(box.height / 2, 160))
   const frame = page.frameLocator(`[data-testid="${frameTestId}"]`)
   await expect(frame.locator(lastSelector)).toBeVisible({ timeout: 15_000 })
-  await frame.locator('body').click({ position: { x: 20, y: 20 } })
 
   // A visible iframe border alone is not a readable message (mobile regression).
-  expect(await host.evaluate(el => el.clientHeight)).toBeGreaterThan(100)
+  const pane = await host.evaluate((el) => {
+    const p = el.closest('.mail-view-body') as HTMLElement
+    return { ch: p.clientHeight, sh: p.scrollHeight }
+  })
+  expect(pane.ch).toBeGreaterThan(100)
+  expect(pane.sh, 'длинное письмо должно быть выше панели').toBeGreaterThan(pane.ch + 50)
 
+  await page.mouse.move(box.x + box.width / 2, box.y + Math.min(box.height / 2, 160))
   let reached = false
   for (let i = 0; i < 24; i++) {
     await page.mouse.wheel(0, 560)
     await page.waitForTimeout(80)
     const rect = await frame.locator(lastSelector).evaluate((el) => {
       const r = el.getBoundingClientRect()
-      return { top: r.top, bottom: r.bottom, vh: window.innerHeight }
+      return { top: r.top, bottom: r.bottom }
     })
-    if (rect.top < rect.vh && rect.bottom > 0) {
+    const frameBox = await host.boundingBox()
+    const top = (frameBox?.y ?? 0) + rect.top
+    const vh = page.viewportSize()?.height ?? 800
+    if (top < vh && top > 0) {
       reached = true
       break
     }
   }
-  expect(reached, 'wheel should bring LAST paragraph into iframe viewport').toBe(true)
+  expect(reached, 'wheel should bring LAST paragraph into the visible pane').toBe(true)
   await page.screenshot({ path: `test_reports/mail-scroll-${frameTestId}-${page.viewportSize()?.width}.jpeg`, quality: 20, fullPage: false })
 }
 
 async function expectFrameBottom(page: Page, frameTestId: string) {
-  await expect.poll(async () => page.frameLocator(`[data-testid="${frameTestId}"]`).locator('html').evaluate(() => {
-    const root = document.scrollingElement!
-    return Math.abs(root.scrollHeight - innerHeight - root.scrollTop)
+  await expect.poll(async () => page.getByTestId(frameTestId).evaluate((el) => {
+    const pane = el.closest('.mail-view-body') as HTMLElement
+    return Math.abs(pane.scrollHeight - pane.clientHeight - pane.scrollTop)
   })).toBeLessThan(3)
 }
 
@@ -361,10 +376,7 @@ for (const vp of VIEWPORTS) {
     await page.keyboard.press('End')
     await expectFrameBottom(page, 'mail-msg-view-frame')
     await page.getByTestId('mail-msg-open-1001').click()
-    const topAfterSwitch = await page.frameLocator('[data-testid="mail-msg-view-frame"]').locator('body').evaluate(() => {
-      const root = document.scrollingElement ?? document.documentElement
-      return root.scrollTop
-    })
+    const topAfterSwitch = await paneTop(page, 'mail-msg-view-frame')
     expect(topAfterSwitch).toBeLessThan(30)
 
     // ---- MailTempPane (временный ящик) ----
@@ -377,11 +389,8 @@ for (const vp of VIEWPORTS) {
 
     // Scroll back to top and ensure body starts near top.
     await page.mouse.wheel(0, -9_000)
-    await page.waitForTimeout(120)
-    const topAfterBack = await page.frameLocator('[data-testid="mail-temp-frame"]').locator('body').evaluate(() => {
-      const root = document.scrollingElement ?? document.documentElement
-      return root.scrollTop
-    })
+    await page.waitForTimeout(200)
+    const topAfterBack = await paneTop(page, 'mail-temp-frame')
     expect(topAfterBack).toBeLessThan(20)
 
     await page.getByTestId('mail-temp-open-tmp-short').click()

@@ -2150,11 +2150,15 @@
     min-height: 0;
     padding: 12px 18px;
     background: var(--bg-2);
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
   }
 
   .mail-frame {
     width: 100%;
     height: 100%;
+    min-height: 100%;
     border: 1px solid var(--border-2);
     border-radius: var(--r);
     background: #fff;

@@ -1,6 +1,7 @@
 # Тестовые реквизиты (актуально: сессия «прокрутка открытого письма»)
 
-- Превью: https://bb33431c-b483-49a3-9a1a-4eb300fe5e7c.preview.emergentagent.com (локально http://localhost:3000)
+- Превью: https://tokens-84.preview.emergentagent.com (локально http://localhost:3000)
+- Онбординг в чистом профиле: «Дальше · мастер-ключ» → «Продолжить без защиты» → «Да, продолжить без защиты» → «Посмотреть демо».
 - Вход: логин `admin`, пароль `WsxQa2026!lib` (значение лежит в `/app/.env.local` → `APP_PASSWORD`, `ADMIN_LOGIN=admin`).
   Поля входа: `data-testid=login-login`, `data-testid=login-password`.
 - `/app/.env.local` восстановлен после сброса пода: `APP_SESSION_SECRET` и `MAIL_SECRET` **новые**,

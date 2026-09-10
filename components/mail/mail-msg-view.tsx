@@ -88,7 +88,7 @@ export function MailMsgView({ message: m, loading, error, onFlag, onBack }: Prop
     }
   }, [m])
   const frameRef = useRef<HTMLIFrameElement>(null)
-  const { ctx, closeCtx, selectAll } = useMailFrameBridge(frameRef, {
+  const { ctx, closeCtx, selectAll, frameHeight } = useMailFrameBridge(frameRef, {
     subject: m?.subject,
     fromAddress: m?.from?.address ?? null,
     resetKey: m ? `${m.folder}:${m.uid}` : null,
@@ -166,6 +166,7 @@ export function MailMsgView({ message: m, loading, error, onFlag, onBack }: Prop
           sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
           referrerPolicy="no-referrer"
           srcDoc={doc}
+          style={frameHeight ? { height: `${frameHeight}px` } : undefined}
           data-testid="mail-msg-view-frame"
         />
       </div>
