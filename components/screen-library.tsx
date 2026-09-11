@@ -1284,7 +1284,10 @@ export function ScreenLibrary() {
       const reason = validateShare(request)
       menuActions.push({ id: cloudId ? 'unshare' : 'share', label: cloudId ? 'Удалить с общего диска' : 'Добавить в общий диск', icon: <IconDatabase />, disabled: !!reason, note: reason ?? undefined, run: () => setShareRequest(request) })
     }
-    if (!contextObject.shared) menuActions.push({ id: 'delete', label: kind === 'file' ? 'Убрать из библиотеки' : 'Стереть заметку', icon: <IconTrash />, danger: true, run: () => {
+    /* Файл из папки хранения удаляется тем же окном, что и локальный:
+       галочка «удалить также с компьютера» стирает байты на диске. */
+    const diskFile = contextFile?.cloudId ? absPathOf(contextFile) : null
+    if (!contextObject.shared || diskFile) menuActions.push({ id: 'delete', label: kind === 'file' ? (diskFile ? 'Удалить файл' : 'Убрать из библиотеки') : 'Стереть заметку', icon: <IconTrash />, danger: true, run: () => {
       if (kind === 'file') {
         setDeleteErr(null)
         setDeleteRequest({ kind: 'file', id, title: contextTitle, absPath: contextFile ? absPathOf(contextFile) : null, cloudId: contextFile?.cloudId ?? null })

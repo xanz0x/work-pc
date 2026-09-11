@@ -399,11 +399,18 @@ export function LibraryFileInspector({
               data-testid="insp-cloud-delete"
               onClick={() => {
                 if (!selFile?.cloudId) return
+                /* Файл лежит в папке хранения на ПК: удаление идёт через окно
+                   с галочкой «удалить также с компьютера», иначе на диске
+                   оставалась бы копия удалённого файла. */
+                if (selFileAbsPath) {
+                  onDeleteRequest({ id: selFile.id, title: selFile.name, absPath: selFileAbsPath, cloudId: selFile.cloudId })
+                  return
+                }
                 setShareRequest({ mode: 'remove', kind: 'file', id: selFile.id, title: selFile.name, cloudId: selFile.cloudId })
               }}
             >
               <IconTrash />
-              Удалить из общей папки
+              {selFileAbsPath ? 'Удалить файл' : 'Удалить из общей папки'}
             </button>
           </>
         ) : (

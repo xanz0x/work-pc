@@ -1,0 +1,27 @@
+{
+  "summary": "Iter66: Verified the main bug fix — deleting a file from the Library now can also remove the physical bytes from /root/wsx-store. Backend DELETE /ai-api/cloud/file/{id} with {removeBytes:true} deletes the file on disk and from library; with {removeBytes:false} the disk copy remains and the library record is gone. UI: inspector button [data-testid=insp-cloud-delete] labelled «Удалить файл» opens [data-testid=library-delete-dialog] with checkbox [data-testid=library-delete-remove-bytes] default checked; warning text matches spec; confirm removes both library record and file bytes. Context menu on right-click card shows «Удалить файл» that opens same dialog. Cleanup performed: /root/wsx-store empty at end.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "components/library-delete-dialog.tsx: warning copy correctly differentiates canTouchDisk vs regular; canTouchDisk defaults checkbox to ON — matches spec.",
+    "lib/cloud-store.ts:deleteFileImpl: performs up-to-3 fs.rm attempts with 200ms wait, then verifies with fs.stat before setting deleted:true — record survives if unlink fails, per spec.",
+    "app/ai-api/cloud/file/[id]/route.ts DELETE reads body.removeBytes === true — correct."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "admin / WsxQa2026!lib",
+  "seed_data_creation": "Uploaded and later deleted temporary files QA_UI1/2/3.txt, QA_CTX.txt, QA_CTX2.txt. /root/wsx-store left empty; drive.json contains only the pre-existing deleted DelTest.txt record.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Manually simulated right-click via dispatchEvent('contextmenu') because Playwright page.mouse.click(button='right') was consumed by another handler on some cards — in real browser right-click works as designed. Chat AI regression and intake strip visuals were NOT re-tested this iteration (out of primary scope; iter65 already validated). To test AI chat: navigate «Чат с ИИ», send message, accept consent, wait ~10s and assert [data-testid=md-body] non-empty.",
+  "verified_flows": [
+    "POST /ai-api/cloud/upload (shared) → file appears on /root/wsx-store/",
+    "DELETE /ai-api/cloud/file/{id} {removeBytes:true} → file removed from disk AND library",
+    "DELETE /ai-api/cloud/file/{id} {removeBytes:false} → file stays on disk, library record removed",
+    "UI: insp-cloud-delete opens library-delete-dialog with checkbox default checked and correct warning",
+    "UI: library-delete-confirm with checkbox unchecked keeps file on disk",
+    "UI context menu on file card contains 'Удалить файл' item that opens same delete dialog"
+  ]
+}

@@ -72,9 +72,11 @@ export function LibraryDeleteDialog({
         <div className="library-share-body">
           <strong data-testid="library-delete-name">{request.title}</strong>
           <p data-testid="library-delete-warning">
-            {request.kind === 'file'
-              ? 'Файл исчезнет из библиотеки и из контекста ИИ. Вернуть можно 10 секунд, пока не исчезли байты.'
-              : 'Заметка будет стёрта без восстановления.'}
+            {request.kind !== 'file'
+              ? 'Заметка будет стёрта без восстановления.'
+              : canTouchDisk
+                ? 'Файл исчезнет из библиотеки и из контекста ИИ. С галочкой ниже он удаляется и из папки хранения на компьютере — без восстановления.'
+                : 'Файл исчезнет из библиотеки и из контекста ИИ. Вернуть можно 10 секунд, пока не исчезли байты.'}
           </p>
           {canTouchDisk ? (
             <label className="check">
