@@ -17,7 +17,7 @@ import { cloudWrite } from './cloud-write-lock'
 import type { CloudNoteSnapshot, CloudSource } from './cloud-types'
 import { getUser } from './users-server'
 import { accessState } from './users'
-import { getLocalObject, putLocalObject } from './local-objects'
+import { dropLocalObject, getLocalObject, putLocalObject } from './local-objects'
 
 function cloudEnv(key: 'AI_DIR' | 'INTEGRATION_PROXY_URL') {
   const value = process.env[key]?.trim()
@@ -101,8 +101,32 @@ async function getObject(objPath: string): Promise<{ data: ArrayBuffer; contentT
   return { data: await r.arrayBuffer(), contentType: r.headers.get('Content-Type') || 'application/octet-stream' }
 }
 
-/* ---------- папка хранения (куда физически пишутся новые файлы) ---------- */
+/**
+ * Стереть байты объекта. Нужно при удалении файла «вместе с копией», когда
+ * файл лежит не в папке на ПК, а во внутреннем хранилище байтов. Ошибку
+ * наружу не поднимаем: запись библиотеки всё равно должна уйти, а объект без
+ * записи никому не виден.
+ */
+async function dropObject(objPath: string): Promise<void> {
+  if (localStorage()) {
+    await dropLocalObject(objPath).catch(() => {})
+    return
+  }
+  try {
+    const key = await initStorage()
+    await fetch(`${storageUrl()}/objects/${objPath}`, {
+      method: 'DELETE',
+      headers: { 'X-Storage-Key': key },
+      cache: 'no-store',
+      signal: AbortSignal.timeout(30_000),
+    })
+  } catch {
+    /* хранилище недоступно — байты подчистит владелец хранилища */
+  }
+}
 
+
+/* ---------- папка хранения (куда физически пишутся новые файлы) ---------- */
 /**
  * Папка на ПК пользователя, выбранная как место хранения общего диска:
  * новые загрузки пишутся в неё под исходными именами. Путь хранится в
@@ -649,6 +673,11 @@ async function deleteFileImpl(id: string, opts: { removeBytes?: boolean } = {}):
     if (!removed || (await fs.stat(abs).then(() => true).catch(() => false))) {
       throw new CloudError('PROVIDER', 'Не удалось удалить файл с ПК: закройте его в просмотрщике или проводнике и повторите.')
     }
+  } else if (opts.removeBytes && !f.relPath) {
+    /* Файл лежит не в папке хранения, а во внутреннем хранилище байтов
+       (так бывает у файлов, добавленных до выбора папки на ПК). Раз человек
+       просил стереть копию — стираем и её. */
+    await dropObject(f.path)
   }
   f.deleted = true
   await writeDrive(d)

@@ -4,9 +4,9 @@
    Отправлять с таких адресов нельзя — только принимать (регистрации, коды, рассылки). */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { IconClock, IconCopy, IconInbox, IconMail, IconRefresh, IconTrash } from '../icons'
+import { IconClock, IconCopy, IconInbox, IconLink, IconMail, IconRefresh, IconTrash } from '../icons'
 import { isFail, tempApi, TEMP_LABEL, type TempBoxView, type TempFull, type TempRow } from '@/lib/mail-client'
-import { fmtMailDate, fmtMailDateFull, extractCode, letterWord, subjectCode } from '@/lib/mail-format'
+import { fmtMailDate, fmtMailDateFull, extractActionLink, extractCode, letterWord, subjectCode } from '@/lib/mail-format'
 import { escapeHtml } from '@/lib/mail-html'
 import { MAIL_FRAME_SCROLL_STYLE } from '@/lib/mail-frame-style'
 import { hasRemoteImages, inlineRemoteImages } from '@/lib/mail-img'
@@ -159,7 +159,10 @@ export function MailTempPane({ box, onBox, onRemove }: Props) {
       alive = false
     }
   }, [msg])
-  const code = useMemo(() => (msg ? extractCode(msg.html, msg.text) : null), [msg])
+  const code = useMemo(() => (msg ? extractCode(msg.html, msg.text, msg.subject) : null), [msg])
+  /* Кнопку в письме нажать нельзя (песочница без переходов), поэтому её адрес
+     выносим наружу: рядом с кодом — «Копировать ссылку». */
+  const action = useMemo(() => (msg ? extractActionLink(msg.html, msg.text) : null), [msg])
   const remain = left(box.expiresAt, now)
 
   /* ПКМ внутри письма: событие ловит мост внутри iframe и присылает наружу
@@ -177,6 +180,15 @@ export function MailTempPane({ box, onBox, onRemove }: Props) {
       flash(`Код ${value} скопирован`)
     } catch {
       flash(`Код: ${value}`)
+    }
+  }
+
+  async function copyLink(url: string) {
+    try {
+      await navigator.clipboard.writeText(url)
+      flash('Ссылка из письма скопирована')
+    } catch {
+      flash(url)
     }
   }
 
@@ -320,11 +332,23 @@ export function MailTempPane({ box, onBox, onRemove }: Props) {
             <header className="mail-view-head">
               <div className="mail-view-title">
                 <h2 data-testid="mail-temp-msg-subject">{msg.subject || '(без темы)'}</h2>
-                {code && (
-                  <button className="btn btn-sm btn-primary mail-temp-code" onClick={() => void copyCode(code)} title="Скопировать код подтверждения" data-testid="mail-temp-code">
-                    <IconCopy width={12} height={12} aria-hidden="true" /> Код {code}
-                  </button>
-                )}
+                <div className="mail-quick-acts" data-testid="mail-temp-quick">
+                  {code && (
+                    <button className="btn btn-sm btn-primary mail-temp-code" onClick={() => void copyCode(code)} title="Скопировать код подтверждения" data-testid="mail-temp-code">
+                      <IconCopy width={12} height={12} aria-hidden="true" /> Код {code}
+                    </button>
+                  )}
+                  {action && (
+                    <button
+                      className="btn btn-sm btn-ghost mail-temp-link"
+                      onClick={() => void copyLink(action.url)}
+                      title={`Скопировать ссылку из письма: ${action.url}`}
+                      data-testid="mail-temp-link"
+                    >
+                      <IconLink width={12} height={12} aria-hidden="true" /> Копировать ссылку
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="mail-view-meta">
                 <span className="mail-avatar" aria-hidden="true">

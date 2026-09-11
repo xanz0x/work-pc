@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { extractCode, subjectCode } from '@/lib/mail-format'
+import { extractActionLink, extractCode, subjectCode } from '@/lib/mail-format'
 import { mtRows, sortRows, spRows } from '@/lib/temp-mail-parse'
 
 describe('временная почта · разбор ответов провайдеров', () => {
@@ -52,12 +52,27 @@ describe('временная почта · код подтверждения', (
     expect(extractCode(null, 'Code: A1B2C3')).toBe('A1B2C3')
   })
 
-  it('без ключевых слов берёт отдельное 4–8-значное число', () => {
-    expect(extractCode(null, 'Подтвердите вход: 1234')).toBe('1234')
+  it('без слов про код кода НЕ придумывает', () => {
+    /* Письмо-подтверждение без кода: раньше бралось первое же число. */
+    expect(extractCode(null, 'Подтвердите вход по ссылке ниже. Ссылка живёт 24 часа.')).toBe(null)
+    expect(
+      extractCode(
+        '<p>Hey, thanks for signing up.</p><a href="https://x.dev/confirm?t=1">Confirm Email</a><p>Emergent, 100 Pine St, San Francisco, CA 94111</p>',
+        null,
+      ),
+    ).toBe(null)
+    expect(extractCode(null, 'Ваш заказ 483920 отправлен со склада')).toBe(null)
   })
 
-  it('игнорирует даты, суммы и годы в тексте без кода', () => {
+  it('тема про код разрешает одиночное число в теле', () => {
+    expect(extractCode('<p>Введите это число: <b>483920</b></p>', null, 'Ваш код для входа')).toBe('483920')
+    expect(extractCode('<p>Введите это число: <b>483920</b></p>', null, 'Добро пожаловать')).toBe(null)
+  })
+
+  it('игнорирует даты, суммы, годы и адреса ссылок', () => {
     expect(extractCode(null, 'Счёт на 1 200,50 от 12.03.2026')).toBe(null)
+    expect(extractCode(null, 'Код внутри ссылки https://t.co/abcd123456 не считается')).toBe(null)
+    expect(extractCode(null, 'Ваш код: 483920 — действует 10 минут')).toBe('483920')
   })
 
   it('не путает код с частью hex-строки или слова', () => {
@@ -70,6 +85,34 @@ describe('временная почта · код подтверждения', (
   it('пустое письмо — без кода', () => {
     expect(extractCode(null, null)).toBe(null)
     expect(extractCode('<div><style>.a{color:#123456}</style>Привет</div>', null)).toBe(null)
+  })
+})
+
+describe('почта · ссылка-кнопка из письма', () => {
+  it('находит кнопку подтверждения', () => {
+    const html =
+      '<table><tr><td bgcolor="#1f6feb"><a href="https://smld.awstrack.me/L0/https:%2F%2Fapp.dev%2Fconfirm" style="background:#1f6feb;border-radius:24px">Confirm Email &rarr;</a></td></tr></table>' +
+      '<p><a href="https://app.dev/unsubscribe">Unsubscribe</a></p>'
+    const link = extractActionLink(html, null)
+    expect(link?.url).toBe('https://smld.awstrack.me/L0/https:%2F%2Fapp.dev%2Fconfirm')
+    expect(link?.label).toContain('Confirm Email')
+  })
+
+  it('понимает русскую кнопку и не берёт служебные ссылки', () => {
+    const html =
+      '<a href="https://site.ru/privacy">Политика конфиденциальности</a>' +
+      '<a href="https://site.ru/v/abc" class="btn">Подтвердить почту</a>' +
+      '<a href="https://site.ru/unsub">Отписаться</a>'
+    expect(extractActionLink(html, null)?.url).toBe('https://site.ru/v/abc')
+  })
+
+  it('в письме без кнопки ссылки не выдумывает', () => {
+    expect(extractActionLink('<p>Привет! Просто письмо <a href="https://site.ru/blog">блог</a></p>', null)).toBe(null)
+    expect(extractActionLink(null, 'Обычное письмо без ссылок')).toBe(null)
+  })
+
+  it('берёт единственную ссылку из текстового письма со словами действия', () => {
+    expect(extractActionLink(null, 'Подтвердите адрес: https://site.ru/confirm/abc')?.url).toBe('https://site.ru/confirm/abc')
   })
 })
 

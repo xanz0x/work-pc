@@ -7,7 +7,7 @@ import os
 import pytest
 import requests
 
-BASE_URL = os.environ.get("APP_URL", "https://ai-compiler-issue.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("APP_URL", "https://library-storage-sync.preview.emergentagent.com").rstrip("/")
 LOGIN = os.environ.get("ADMIN_LOGIN", "admin")
 PASSWORD = os.environ.get("APP_PASSWORD", "<APP_PASSWORD>")
 

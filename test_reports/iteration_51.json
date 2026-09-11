@@ -55,6 +55,6 @@
   "seed_data_creation": "Created 2 disposable users for member/nonmember checks via admin API and removed both in teardown; no persistent new test accounts remain.",
   "retest_needed": true,
   "should_main_agent_self_test": false,
-  "context_for_next_testing_agent": "Run with APP_URL=https://ai-compiler-issue.preview.emergentagent.com APP_PASSWORD=<admin password> ADMIN_LOGIN=admin. First verify /ai-api/cloud/share returns 201 for multipart; if fixed, rerun full file /app/tests/api/test_cloud_sharing_iter51.py and then execute UI publish/remove scenarios.",
+  "context_for_next_testing_agent": "Run with APP_URL=https://library-storage-sync.preview.emergentagent.com APP_PASSWORD=<admin password> ADMIN_LOGIN=admin. First verify /ai-api/cloud/share returns 201 for multipart; if fixed, rerun full file /app/tests/api/test_cloud_sharing_iter51.py and then execute UI publish/remove scenarios.",
   "rca of the issue": "Repro: POST /ai-api/cloud/share or /ai-api/cloud/upload as admin with valid payload -> 503 PROVIDER and message 'init 404'. Backend env has INTEGRATION_PROXY_URL ending with '/llm'. cloud-store builds STORAGE_URL as `${INTEGRATION_PROXY_URL}/objstore/api/v1/storage`, resulting in '/llm/objstore/.../init' which returns 404. Because all share/upload paths depend on initStorage(), backend cloud copy creation is blocked and downstream UI/integration validations fail."
 }

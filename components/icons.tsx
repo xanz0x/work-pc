@@ -246,6 +246,17 @@ export function IconExternal(p: P) {
   )
 }
 
+/** Звено цепи: «ссылка из письма». */
+export function IconLink(p: P) {
+  return (
+    <svg {...base} {...p}>
+      <path d="M10 13a5 5 0 0 0 7.07 0l2.12-2.12a5 5 0 0 0-7.07-7.07L10.7 5.2" />
+      <path d="M14 11a5 5 0 0 0-7.07 0L4.8 13.12a5 5 0 0 0 7.07 7.07l1.42-1.42" />
+    </svg>
+  )
+}
+
+
 export function IconDocPreview(p: P) {
   return (
     <svg {...base} {...p}>

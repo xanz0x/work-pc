@@ -1,16 +1,17 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import { IconClip, IconClose, IconEye, IconEyeOff, IconMail } from '../icons'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { IconClip, IconClose, IconCopy, IconEye, IconEyeOff, IconLink, IconMail } from '../icons'
 import { MailContextMenu } from './mail-context-menu'
 import { bridgeCsp, bridgeTag, useMailFrameBridge } from './mail-frame-bridge'
 import { Star } from './mail-msg-list'
 import { fmtBytes } from '@/lib/data'
 import type { MessageFull } from '@/lib/mail-client'
-import { addrFull, fmtMailDateFull } from '@/lib/mail-format'
+import { addrFull, extractActionLink, extractCode, fmtMailDateFull } from '@/lib/mail-format'
 import { escapeHtml } from '@/lib/mail-html'
 import { MAIL_FRAME_SCROLL_STYLE } from '@/lib/mail-frame-style'
 import { hasRemoteImages, inlineRemoteImages } from '@/lib/mail-img'
+import { useToast } from '@/lib/vault-store'
 
 type Props = {
   message: MessageFull | null
@@ -93,6 +94,19 @@ export function MailMsgView({ message: m, loading, error, onFlag, onBack }: Prop
     fromAddress: m?.from?.address ?? null,
     resetKey: m ? `${m.folder}:${m.uid}` : null,
   })
+  const { flash } = useToast()
+  /* Код подтверждения и ссылка-кнопка письма: код показываем только когда он
+     в письме действительно есть, ссылку — когда есть кнопка действия. */
+  const code = useMemo(() => (m ? extractCode(m.html, m.text, m.subject) : null), [m])
+  const action = useMemo(() => (m ? extractActionLink(m.html, m.text) : null), [m])
+  const copyTo = async (value: string, done: string) => {
+    try {
+      await navigator.clipboard.writeText(value)
+      flash(done)
+    } catch {
+      flash(value)
+    }
+  }
 
   if (error) {
     return (
@@ -118,6 +132,26 @@ export function MailMsgView({ message: m, loading, error, onFlag, onBack }: Prop
         <div className="mail-view-title">
           <h2 data-testid="mail-msg-view-subject">{m.subject || '(без темы)'}</h2>
           <div className="mail-view-tools">
+            {code && (
+              <button
+                className="btn btn-sm btn-primary mail-temp-code"
+                onClick={() => void copyTo(code, `Код ${code} скопирован`)}
+                title="Скопировать код подтверждения"
+                data-testid="mail-msg-view-code"
+              >
+                <IconCopy width={12} height={12} aria-hidden="true" /> Код {code}
+              </button>
+            )}
+            {action && (
+              <button
+                className="btn btn-sm btn-ghost mail-temp-link"
+                onClick={() => void copyTo(action.url, 'Ссылка из письма скопирована')}
+                title={`Скопировать ссылку из письма: ${action.url}`}
+                data-testid="mail-msg-view-link"
+              >
+                <IconLink width={12} height={12} aria-hidden="true" /> Копировать ссылку
+              </button>
+            )}
             <button
               className={`btn btn-sm btn-ghost mail-view-star${m.flagged ? ' on' : ''}`}
               onClick={() => onFlag({ flagged: !m.flagged })}

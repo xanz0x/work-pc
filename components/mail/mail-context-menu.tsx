@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 
 /* ============================================================
    ПОЧТА · КОНТЕКСТНОЕ МЕНЮ ПИСЬМА
@@ -65,6 +66,9 @@ export function MailContextMenu({
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const [copied, setCopied] = useState<string | null>(null)
+  /* Меню рисуется у самого курсора. Размер до первого кадра неизвестен,
+     поэтому сперва вешаем его скрытым, замеряем и ставим на место. */
+  const [place, setPlace] = useState<{ left: number; top: number; ready: boolean }>({ left: 0, top: 0, ready: false })
 
   /* Закрытие: клик мимо меню, Escape, прокрутка и resize. */
   useEffect(() => {
@@ -75,13 +79,20 @@ export function MailContextMenu({
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
     }
+    /* Прокрутка страницы уводит письмо из-под меню — закрываем. */
+    const onScroll = (e: Event) => {
+      if (ref.current && e.target instanceof Node && ref.current.contains(e.target)) return
+      onClose()
+    }
     window.addEventListener('pointerdown', onPointer, true)
     window.addEventListener('keydown', onKey, true)
     window.addEventListener('resize', onClose)
+    document.addEventListener('scroll', onScroll, true)
     return () => {
       window.removeEventListener('pointerdown', onPointer, true)
       window.removeEventListener('keydown', onKey, true)
       window.removeEventListener('resize', onClose)
+      document.removeEventListener('scroll', onScroll, true)
     }
   }, [onClose])
 
@@ -158,19 +169,36 @@ export function MailContextMenu({
     disabled: !ctx.subject,
   })
 
-  /* Меню не должно вылезать за край окна. */
-  const width = 266
-  const height = Math.min(items.length * 30 + 16, 420)
-  const left = Math.max(6, Math.min(ctx.x, window.innerWidth - width - 8))
-  const top = Math.max(6, Math.min(ctx.y, window.innerHeight - height - 8))
+  /* Меню держится курсора: если снизу/справа не хватает места — разворачивается
+     влево/вверх от точки клика, а не прилипает к краю окна далеко от курсора.
+     Координаты приходят в пикселях окна, а `left/top` считаются в единицах
+     каркаса (на <body> действует `zoom`), поэтому делим на масштаб. */
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const r = el.getBoundingClientRect()
+    const scale = (el.offsetWidth ? r.width / el.offsetWidth : 1) || 1
+    const w = r.width || 266
+    const h = r.height || 300
+    const pad = 6
+    const maxX = window.innerWidth - pad
+    const maxY = window.innerHeight - pad
+    let left = ctx.x
+    let top = ctx.y
+    if (left + w > maxX) left = Math.max(pad, ctx.x - w)
+    if (top + h > maxY) top = Math.max(pad, ctx.y - h)
+    /* Меню выше окна: прижимаем к верху, но всё равно рядом с курсором. */
+    if (h > window.innerHeight - 2 * pad) top = pad
+    setPlace({ left: left / scale, top: top / scale, ready: true })
+  }, [ctx.x, ctx.y, items.length])
 
-  return (
+  return createPortal(
     <div
       ref={ref}
       className="mail-ctx-menu"
       role="menu"
       aria-label="Действия с письмом"
-      style={{ left, top, width }}
+      style={{ left: place.left, top: place.top, width: 266, visibility: place.ready ? 'visible' : 'hidden' }}
       data-testid="mail-ctx-menu"
       onContextMenu={(e) => e.preventDefault()}
     >
@@ -194,6 +222,7 @@ export function MailContextMenu({
           </button>
         ),
       )}
-    </div>
+    </div>,
+    document.body,
   )
 }

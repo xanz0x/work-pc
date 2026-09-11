@@ -1186,6 +1186,21 @@
     letter-spacing: 0.06em;
   }
 
+  /* «Копировать ссылку»: адрес кнопки письма — нажать её в песочнице нельзя. */
+  .mail-temp-link {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  /* Код и ссылка письма живут одной группой справа от темы. */
+  .mail-quick-acts {
+    display: inline-flex;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+  }
+
   /* список писем временного ящика */
 
   .mail-temp-items {
@@ -2298,6 +2313,11 @@
     position: fixed;
     z-index: 80;
     min-width: 240px;
+    /* Высокое меню не должно вылезать за окно: прокручивается внутри себя,
+       оставаясь рядом с курсором. */
+    max-height: calc(100dvh / var(--ui-zoom, 1) - 16px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
     display: flex;
     flex-direction: column;
     padding: 4px;

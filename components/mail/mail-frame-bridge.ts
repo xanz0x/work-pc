@@ -174,9 +174,14 @@ export function useMailFrameBridge(frameRef: RefObject<HTMLIFrameElement | null>
       }
       if (d.wsxMail !== 'ctx') return
       const rect = frame.getBoundingClientRect()
+      /* Внутри письма координаты считаются в его собственных пикселях: на
+         каркас действует `zoom`, и рамка на экране крупнее/мельче своей
+         разметки. Переводим точку клика в пиксели окна, иначе меню уезжает
+         от курсора тем сильнее, чем дальше письмо от левого верхнего угла. */
+      const scale = (frame.offsetWidth ? rect.width / frame.offsetWidth : 1) || 1
       setCtx({
-        x: rect.left + (d.x ?? 0),
-        y: rect.top + (d.y ?? 0),
+        x: rect.left + (d.x ?? 0) * scale,
+        y: rect.top + (d.y ?? 0) * scale,
         linkURL: d.linkURL ?? null,
         linkText: d.linkText ?? null,
         imageSrc: d.imageSrc ?? null,

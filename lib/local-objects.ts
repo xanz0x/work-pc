@@ -24,3 +24,7 @@ export async function getLocalObject(key: string): Promise<{ data: ArrayBuffer; 
   const buffer = await fs.readFile(objectFile(key))
   return { data: Uint8Array.from(buffer).buffer, contentType: 'application/octet-stream' }
 }
+/** Стереть байты объекта на главном ПК (удаление файла «вместе с копией»). */
+export async function dropLocalObject(key: string): Promise<void> {
+  await fs.rm(objectFile(key), { force: true })
+}

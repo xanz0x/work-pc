@@ -1,8 +1,30 @@
+# Тестовые реквизиты (актуально: итерация 67 «удаление с ПК + ПКМ у курсора + код/ссылка письма»)
+
+- Вход: логин `admin`, пароль `WsxQa2026!lib` (`ADMIN_LOGIN`/`APP_PASSWORD` в `/app/.env.local`).
+- Превью: https://library-storage-sync.preview.emergentagent.com (локально http://localhost:3000)
+- Под сбрасывали: заново `pnpm install` в `/app`, `pnpm install --prod --ignore-scripts`
+  в `/app/desktop`, пересоздан `/app/.env.local` (**новые** `APP_SESSION_SECRET`, `MAIL_SECRET`,
+  `AI_DIR=/app/.data`, `CLOUD_STORAGE=local`). Затем `node_modules/.bin/next build` и
+  `sudo supervisorctl restart frontend` — БЕЗ сборки превью показывает старый бандл.
+- Папка хранения: `/root/wsx-store` (задана через `PUT /ai-api/cloud/storage-root`).
+- Временный ящик mail.tm для проверок: `330947478dd9@uberip.com`, id `5945287b`.
+  Письма: `6aa36280a5387287a78baf87` (QA1, без кода, с кнопкой), `6aa36281a379a1cefe8f0c92`
+  (QA2, код 483920 + кнопка), `6aa3628292c70f029943b33a` (QA3, ни кода, ни кнопки).
+- Новые письма можно доставить по-настоящему: `python3 scripts/qa-send-mail.py <адрес@uberip.com>`
+  (прямое SMTP на `in.mail.tm:25`, порт из пода открыт).
+- Онбординг пропускается через localStorage `wf.settings.v1` →
+  `onboarding: {at:1700000000000, mode:'hybrid', keyChoice:'declined', start:'demo'}`.
+- Масштаб интерфейса для проверки ПКМ: localStorage `wf.ui.scale` = `125`.
+- `SONJJ_API_KEY` отсутствует → ящики Gmail/Outlook во «Временных» создать нельзя.
+
+---
+
+
 # Тестовые реквизиты (актуально: итерация 66 «пустой ответ ИИ в exe + полоса приёма файлов»)
 
 - Вход: логин `admin`, пароль `WsxQa2026!lib` (`ADMIN_LOGIN`/`APP_PASSWORD` в `/app/.env.local`).
   Поля: `data-testid=login-login`, `data-testid=login-password`.
-- Превью: https://34cd453d-e163-4966-bc1b-50789f23bd6f.preview.emergentagent.com (локально http://localhost:3000)
+- Превью: https://library-storage-sync.preview.emergentagent.com (локально http://localhost:3000)
 - Под сбрасывали: заново `corepack enable && pnpm install` в `/app`,
   `pnpm install --prod --ignore-scripts` в `/app/desktop`, пересоздан `/app/.env.local`
   (**новые** `APP_SESSION_SECRET` и `MAIL_SECRET`, `AI_DIR=/app/.data`, `CLOUD_STORAGE=local`).
@@ -35,7 +57,7 @@
 
 # Прежние реквизиты (сессия «прокрутка открытого письма»)
 
-- Превью: https://ai-compiler-issue.preview.emergentagent.com (локально http://localhost:3000)
+- Превью: https://library-storage-sync.preview.emergentagent.com (локально http://localhost:3000)
 - Онбординг в чистом профиле: «Дальше · мастер-ключ» → «Продолжить без защиты» → «Да, продолжить без защиты» → «Посмотреть демо».
 - Вход: логин `admin`, пароль `WsxQa2026!lib` (значение лежит в `/app/.env.local` → `APP_PASSWORD`, `ADMIN_LOGIN=admin`).
   Поля входа: `data-testid=login-login`, `data-testid=login-password`.

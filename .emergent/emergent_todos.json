@@ -1,34 +1,26 @@
 [
   {
-    "content": "Восстановить среду после сброса пода (node_modules, .env.local, прод-сборка)",
+    "content": "Восстановить окружение (node_modules, .env.local, прод-сборка)",
     "status": "completed"
   },
   {
-    "content": "Баг 1: убрать выделение всего интерфейса (user-select для оболочки почты + шелла)",
+    "content": "Баг 1: удаление файла из библиотеки стирает копию в папке хранения",
     "status": "completed"
   },
   {
-    "content": "Баг 1: Ctrl+A на экране почты выделяет только письмо",
+    "content": "Баг 2: ПКМ в письме открывается у курсора",
     "status": "completed"
   },
   {
-    "content": "Баг 1: сбрасывать чужое выделение при смене письма",
+    "content": "Баг 3: код не выдумывается + кнопка «Копировать ссылку»",
     "status": "completed"
   },
   {
-    "content": "Баг 2: в инспекторе файла осталась одна панель действий",
+    "content": "Проверка живыми письмами + юнит-тесты (356/356)",
     "status": "completed"
   },
   {
-    "content": "Пересборка, tsc/eslint/vitest (349/349), проверка в браузере",
-    "status": "completed"
-  },
-  {
-    "content": "Тестирование testing-агентом (iteration_65.json) — оба бага закрыты",
-    "status": "completed"
-  },
-  {
-    "content": "Обновить memory/test_credentials.md, PRD.md, NEXT_SESSION.md",
+    "content": "End-to-end проверка testing-агентом + допроверка UI удаления на прод-сборке",
     "status": "completed"
   }
 ]
