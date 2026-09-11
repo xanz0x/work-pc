@@ -6,7 +6,7 @@ import requests
 import pytest
 
 BASE = os.environ.get("WF_BASE", "http://localhost:3000")
-PASSWORD = "IceKrymTeam13@"
+PASSWORD = "<APP_PASSWORD>"
 
 
 @pytest.fixture(scope="module")

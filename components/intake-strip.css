@@ -1,0 +1,129 @@
+/* Приём файлов · полоса состояния в библиотеке */
+
+@layer wf073 {
+  .ik-strip {
+    margin: 0 0 14px;
+    border: 1px solid var(--line, var(--border-2));
+    border-radius: 13px;
+    background: var(--panel, var(--bg-2));
+    overflow: hidden;
+    animation: ik-in 0.22s ease-out;
+  }
+
+  @keyframes ik-in {
+    from {
+      opacity: 0;
+      transform: translateY(-6px);
+    }
+  }
+
+  .ik-strip[data-busy='1'] {
+    border-color: color-mix(in oklab, var(--accent) 45%, var(--line, var(--border-2)));
+  }
+
+  .ik-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--line, var(--border-2));
+    background: color-mix(in oklab, var(--accent) 5%, transparent);
+  }
+
+  .ik-x {
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    border: 1px solid var(--line, var(--border-2));
+    border-radius: 7px;
+    background: none;
+    color: inherit;
+    cursor: pointer;
+  }
+
+  .ik-strip ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .ik-strip li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border-bottom: 1px solid color-mix(in oklab, var(--line, var(--border-2)) 55%, transparent);
+  }
+
+  .ik-strip li:last-child {
+    border-bottom: 0;
+  }
+
+  .ik-ico {
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    flex: none;
+    border: 1px solid var(--line, var(--border-2));
+    border-radius: 8px;
+    color: var(--muted, var(--text-3));
+  }
+
+  .ik-strip li[data-state='done'] .ik-ico,
+  .ik-strip li[data-state='partial'] .ik-ico {
+    color: var(--ok, #3fa66a);
+    border-color: color-mix(in oklab, var(--ok, #3fa66a) 45%, transparent);
+  }
+
+  .ik-strip li[data-state='failed'] .ik-ico {
+    color: var(--danger, #d9534f);
+    border-color: color-mix(in oklab, var(--danger, #d9534f) 45%, transparent);
+  }
+
+  .ik-ico.spin {
+    color: var(--accent);
+    border-color: color-mix(in oklab, var(--accent) 50%, transparent);
+    animation: ik-pulse 1.2s ease-in-out infinite;
+  }
+
+  @keyframes ik-pulse {
+    50% {
+      opacity: 0.45;
+    }
+  }
+
+  .ik-text {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .ik-text b {
+    font-size: 13px;
+  }
+
+  .ik-sub {
+    font-size: 11.5px;
+    line-height: 1.45;
+    color: var(--muted, var(--text-3));
+  }
+
+  .ik-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 2px;
+  }
+
+  .ik-tags i {
+    padding: 1px 8px;
+    border: 1px solid var(--line, var(--border-2));
+    border-radius: 999px;
+    font-style: normal;
+    font-size: 10.5px;
+    color: var(--accent);
+  }
+}

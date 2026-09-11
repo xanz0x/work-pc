@@ -178,7 +178,7 @@ function handlers() {
     const values = validateHostInput(input)
     logEvent('info', 'create-host', { step: 'form-validated' })
     const hardware = await publicState()
-    if (hardware.ramGB < 8 || hardware.freeGB < 12) throw new Error('Для главного ПК нужно не менее 8 ГБ оперативной памяти и 12 ГБ свободного места.')
+    if (hardware.ramGB < 2 || hardware.freeGB < 4) throw new Error('Для главного ПК нужно не менее 2 ГБ оперативной памяти и 4 ГБ свободного места.')
     busy = true
     try {
       const env = await runtimeEnv(resources, root)
@@ -218,7 +218,6 @@ function handlers() {
   handle('setup:pause', () => runtime?.cancel())
   handle('setup:open', openWorkspace)
   handle('setup:copy-invite', () => { if (config?.role !== 'host') throw new Error('Приглашение создаётся на главном ПК.'); clipboard.writeText(encodeInvite(config)); return config.url })
-  handle('setup:license', () => shell.openExternal('https://ollama.com/library/qwen2.5vl:3b/blobs/832dd9e00a68'))
   handle('setup:update-mail', async (input) => {
     if (config?.role !== 'host' || busy) throw new Error('Настройка доступна только на главном ПК.')
     if (!secretValues) throw new Error('Сначала восстановите доступ к защищённым настройкам Windows. Ключи не перезаписаны.')

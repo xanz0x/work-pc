@@ -27,9 +27,6 @@ export const ENV_SPEC: Spec[] = [
   { name: 'AI_PROXY_URL', required: false, kind: 'url', note: 'шлюз облачной модели' },
   { name: 'EMERGENT_LLM_KEY', required: false, kind: 'string', min: 8, note: 'ключ шлюза модели' },
   { name: 'AI_MODEL', required: false, kind: 'string', note: 'идентификатор модели' },
-  { name: 'OLLAMA_URL', required: false, kind: 'url', note: 'адрес локального Ollama; в desktop только loopback' },
-  { name: 'OLLAMA_NUM_CTX', required: false, kind: 'int', note: 'контекст локальной модели в токенах' },
-  { name: 'OLLAMA_KEEP_ALIVE', required: false, kind: 'string', note: 'время удержания модели в памяти' },
   {
     name: 'NEXT_PUBLIC_AI_MODEL_LABEL',
     required: false,

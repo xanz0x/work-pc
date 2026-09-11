@@ -1,6 +1,6 @@
 """Модуль «Почта» — фаза 3: ВРЕМЕННАЯ почта (mail.tm бесплатно, SmailPro без ключа → 503 NO_KEY).
 
-Прогон: APP_URL=https://ai-ready-launcher.preview.emergentagent.com \
+Прогон: APP_URL=https://ui-cleanup-34.preview.emergentagent.com \
         python3 -m pytest tests/api/test_mail_temp.py -q
 """
 import os
@@ -8,8 +8,8 @@ import os
 import pytest
 import requests
 
-BASE = os.environ.get("APP_URL", "https://ai-ready-launcher.preview.emergentagent.com").rstrip("/")
-PASSWORD = os.environ.get("APP_PASSWORD", "IceKrymTeam13@")
+BASE = os.environ.get("APP_URL", "https://ui-cleanup-34.preview.emergentagent.com").rstrip("/")
+PASSWORD = os.environ.get("APP_PASSWORD", "<APP_PASSWORD>")
 T = f"{BASE}/ai-api/mail/temp"
 
 

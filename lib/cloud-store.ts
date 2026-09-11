@@ -193,22 +193,25 @@ function safeDiskName(raw: string): string {
 }
 
 /**
- * Записать байты в папку хранения под исходным именем. Имя занято —
- * «имя-1.ext», «имя-2.ext»… Возвращает относительный путь внутри папки.
+ * Записать байты в папку хранения под исходным именем. `relDir` — подпапка
+ * внутри корня (пусто — сам корень), она создаётся при необходимости.
+ * Имя занято — «имя-1.ext», «имя-2.ext»… Возвращает путь внутри корня.
  */
-async function writeIntoRoot(root: string, name: string, data: Uint8Array): Promise<string> {
+async function writeIntoRoot(root: string, name: string, data: Uint8Array, relDir = ''): Promise<string> {
   const safe = safeDiskName(name)
   const dot = safe.lastIndexOf('.')
   const stem = dot > 0 ? safe.slice(0, dot) : safe
   const ext = dot > 0 ? safe.slice(dot) : ''
   const candidates = [safe, ...Array.from({ length: 99 }, (_, i) => `${stem}-${i + 1}${ext}`)]
+  const segments = relDir.split('/').filter(Boolean).map(safeDiskName)
+  const dir = segments.length > 0 ? path.join(root, segments.join('/')) : root
   try {
-    await fs.mkdir(root, { recursive: true })
+    await fs.mkdir(dir, { recursive: true })
   } catch {
     throw new CloudError('PROVIDER', 'Папка хранения недоступна: проверьте путь и права доступа.')
   }
   for (const candidate of candidates) {
-    const target = path.join(root, candidate)
+    const target = path.join(dir, candidate)
     let handle: Awaited<ReturnType<typeof fs.open>>
     try {
       handle = await fs.open(target, 'wx', 0o600)
@@ -218,7 +221,7 @@ async function writeIntoRoot(root: string, name: string, data: Uint8Array): Prom
     }
     try {
       await handle.writeFile(data)
-      return candidate
+      return [...segments, candidate].join('/')
     } catch {
       await fs.rm(target, { force: true })
       throw new CloudError('PROVIDER', 'Не удалось записать файл в папку хранения. Проверьте свободное место и права доступа.')
@@ -275,7 +278,7 @@ async function migrateObjectsIntoRoot(root: string, previousRoot: string | null)
             throw new Error('файл лежит вне прежней папки хранения')
           }
           const data = new Uint8Array(await fs.readFile(from))
-          f.relPath = await writeIntoRoot(rootResolved, f.name, data)
+          f.relPath = await writeIntoRoot(rootResolved, f.name, data, f.dir)
           f.path = f.relPath
           report.copied += 1
         } catch (e) {
@@ -287,7 +290,7 @@ async function migrateObjectsIntoRoot(root: string, previousRoot: string | null)
       /* Легаси-объект — байты достаём из объектного хранилища. */
       try {
         const data = new Uint8Array((await getObject(f.path)).data)
-        f.relPath = await writeIntoRoot(rootResolved, f.name, data)
+        f.relPath = await writeIntoRoot(rootResolved, f.name, data, f.dir)
         f.path = f.relPath
         report.copied += 1
       } catch (e) {
@@ -354,6 +357,13 @@ export type CloudFile = {
   by: string
   at: string
   deleted: boolean
+  /**
+   * Файл лежит на общем диске (виден всем участникам). false — личный файл:
+   * он физически в локальной папке хранения и виден только владельцу, пока
+   * тот не добавит его в общую папку вручную. Старые записи без поля
+   * считаются общими: раньше весь диск был общим.
+   */
+  shared?: boolean
   kind?: 'file' | 'note'
   source?: CloudSource
   note?: CloudNoteSnapshot
@@ -405,6 +415,9 @@ async function writeDrive(d: Drive): Promise<void> {
 /* ---------- доступ ---------- */
 
 const isAdmin = (): boolean => requireUser().role === 'admin'
+
+/** Записи без поля shared остались со времён, когда весь диск был общим. */
+const isShared = (f: { shared?: boolean }): boolean => f.shared !== false
 
 /** Менять общий диск (загрузка, удаление, папки) может только администратор. */
 function requireAdmin(): void {
@@ -473,8 +486,11 @@ export async function driveView(): Promise<DriveView> {
     membersCount: admin ? d.members.length : undefined,
     ...(admin ? { storageRoot: root } : {}),
     folders: d.folders.slice().sort(),
-    files: d.files.filter((f) => !f.deleted).map(({ path: _p, source, ...rest }) => ({
+    /* Личные файлы (shared:false) видит только их владелец: локальная папка
+       на ПК — личное хранилище, общим становится лишь добавленное вручную. */
+    files: d.files.filter((f) => !f.deleted && (isShared(f) || f.by === uid)).map(({ path: _p, source, ...rest }) => ({
       ...rest,
+      shared: isShared(rest as CloudFile),
       /* absPath нужен админу для «Открыть на ПК»/«Показать в папке» через мост. */
       ...(admin && root && rest.relPath ? { absPath: absPathInRoot(root, rest.relPath) ?? undefined } : {}),
       // Связь с личным оригиналом нужна только создателю копии.
@@ -513,6 +529,17 @@ async function createFolderImpl(parent: string, name: string): Promise<void> {
   if (!nm) throw new CloudError('INVALID_ARGS', 'Укажите имя папки.')
   const p = cleanDir(parent ? `${parent}/${nm}` : nm)
   if (!p) throw new CloudError('INVALID_ARGS', 'Некорректное имя папки.')
+  /* Папка настоящая: создаём её на диске внутри выбранной папки хранения. */
+  const root = await readStorageRoot()
+  if (root) {
+    const rel = p.split('/').map(safeDiskName).join('/')
+    const abs = path.resolve(root, rel)
+    try {
+      await fs.mkdir(/*turbopackIgnore: true*/ abs, { recursive: true })
+    } catch {
+      throw new CloudError('PROVIDER', 'Не удалось создать папку на диске: проверьте права доступа.')
+    }
+  }
   if (!d.folders.includes(p)) {
     d.folders.push(p)
     await writeDrive(d)
@@ -529,7 +556,14 @@ async function removeFolderImpl(dirPath: string): Promise<void> {
   await writeDrive(d)
 }
 
-async function uploadFileImpl(name: string, dir: string, data: Uint8Array, contentType: string, source?: CloudSource, note?: CloudNoteSnapshot): Promise<CloudFile> {
+async function uploadFileImpl(
+  name: string,
+  dir: string,
+  data: Uint8Array,
+  contentType: string,
+  opts: { shared?: boolean; source?: CloudSource; note?: CloudNoteSnapshot } = {},
+): Promise<CloudFile> {
+  const { shared = true, source, note } = opts
   const d = await readDrive()
   requireAdmin()
   if (source) {
@@ -537,13 +571,15 @@ async function uploadFileImpl(name: string, dir: string, data: Uint8Array, conte
     if (existing) return existing
   }
   const nm = cleanName(name) || 'file'
+  const dirPath = cleanDir(dir)
   const root = await readStorageRoot()
   let objPath: string
   let relPath: string | undefined
   let size: number
   if (root) {
-    /* Выбрана папка на ПК: байты физически пишутся в неё под исходным именем. */
-    relPath = await writeIntoRoot(root, nm, data)
+    /* Выбрана папка на ПК: байты физически пишутся в неё (в подпапку, если
+       человек выбрал её при добавлении) под исходным именем. */
+    relPath = await writeIntoRoot(root, nm, data, dirPath)
     objPath = relPath
     size = data.byteLength
   } else {
@@ -556,7 +592,7 @@ async function uploadFileImpl(name: string, dir: string, data: Uint8Array, conte
   const file: CloudFile = {
     id: randomBytes(6).toString('hex'),
     name: nm,
-    dir: cleanDir(dir),
+    dir: dirPath,
     path: objPath,
     ...(relPath ? { relPath } : {}),
     sha256: createHash('sha256').update(data).digest('hex'),
@@ -565,6 +601,7 @@ async function uploadFileImpl(name: string, dir: string, data: Uint8Array, conte
     by: requireUser().uid,
     at: new Date().toISOString(),
     deleted: false,
+    shared,
     ...(source ? { source, kind: source.kind } : {}),
     ...(note ? { note } : {}),
   }
@@ -584,11 +621,35 @@ async function renameFileImpl(id: string, name: string): Promise<void> {
   await writeDrive(d)
 }
 
-async function deleteFileImpl(id: string): Promise<void> {
+async function deleteFileImpl(id: string, opts: { removeBytes?: boolean } = {}): Promise<void> {
   const d = await readDrive()
   requireAdmin()
   const f = d.files.find((x) => x.id === id && !x.deleted)
   if (!f) throw new CloudError('NOT_FOUND', 'Файл не найден.')
+  /* «Удалить также с ПК»: байты в папке хранения стираются до пометки записи.
+     Если байты не ушли — запись остаётся живой: файл не должен исчезнуть из
+     библиотеки, продолжая лежать на диске. */
+  if (opts.removeBytes && f.relPath) {
+    const root = await readStorageRoot()
+    if (!root) throw new CloudError('PROVIDER', 'Папка хранения не выбрана: файл нельзя удалить с ПК.')
+    const abs = path.resolve(root, f.relPath)
+    if (abs !== root && !abs.startsWith(root + path.sep)) {
+      throw new CloudError('FORBIDDEN', 'Файл находится вне папки хранения.')
+    }
+    // Windows держит файл, если он открыт просмотрщиком: несколько попыток.
+    let removed = false
+    for (let attempt = 0; attempt < 3 && !removed; attempt += 1) {
+      try {
+        await fs.rm(/*turbopackIgnore: true*/ abs, { force: true })
+        removed = true
+      } catch {
+        await new Promise((r) => setTimeout(r, 200))
+      }
+    }
+    if (!removed || (await fs.stat(abs).then(() => true).catch(() => false))) {
+      throw new CloudError('PROVIDER', 'Не удалось удалить файл с ПК: закройте его в просмотрщике или проводнике и повторите.')
+    }
+  }
   f.deleted = true
   await writeDrive(d)
 }
@@ -598,6 +659,9 @@ export async function readFileBytes(id: string): Promise<{ name: string; content
   requireMember(d)
   const f = d.files.find((x) => x.id === id && !x.deleted)
   if (!f) throw new CloudError('NOT_FOUND', 'Файл не найден.')
+  if (!isShared(f) && f.by !== requireUser().uid) {
+    throw new CloudError('FORBIDDEN', 'Это личный файл владельца локальной папки.')
+  }
   if (f.relPath) {
     /* Новый файл лежит в папке хранения под исходным именем. */
     const root = await readStorageRoot()
@@ -607,7 +671,7 @@ export async function readFileBytes(id: string): Promise<{ name: string; content
       throw new CloudError('FORBIDDEN', 'Файл находится вне папки хранения.')
     }
     try {
-      const buf = await fs.readFile(abs)
+      const buf = await fs.readFile(/*turbopackIgnore: true*/ abs)
       return {
         name: f.name,
         contentType: f.contentType || 'application/octet-stream',
@@ -700,15 +764,35 @@ export const rotateInvite = () => cloudWrite(rotateInviteImpl)
 export const createFolder = (parent: string, name: string) => cloudWrite(() => createFolderImpl(parent, name))
 export const removeFolder = (dir: string) => cloudWrite(() => removeFolderImpl(dir))
 export const renameFile = (id: string, name: string) => cloudWrite(() => renameFileImpl(id, name))
-export const deleteFile = (id: string) => cloudWrite(() => deleteFileImpl(id))
-export const uploadFile = (name: string, dir: string, data: Uint8Array, contentType: string) =>
-  cloudWrite(() => uploadFileImpl(name, dir, data, contentType))
+export const deleteFile = (id: string, opts: { removeBytes?: boolean } = {}) => cloudWrite(() => deleteFileImpl(id, opts))
+export const uploadFile = (name: string, dir: string, data: Uint8Array, contentType: string, shared = true) =>
+  cloudWrite(() => uploadFileImpl(name, dir, data, contentType, { shared }))
 
 /** Повторный запрос для того же личного объекта возвращает прежнюю общую копию. */
 export const shareFile = (sourceId: string, name: string, data: Uint8Array, contentType: string) =>
-  cloudWrite(() => uploadFileImpl(name, '', data, contentType, { kind: 'file', id: sourceId }))
+  cloudWrite(() => uploadFileImpl(name, '', data, contentType, { shared: true, source: { kind: 'file', id: sourceId } }))
 
 export const shareNote = (sourceId: string, note: CloudNoteSnapshot) => cloudWrite(() => {
   const bytes = new TextEncoder().encode(JSON.stringify(note))
-  return uploadFileImpl(`${note.title}.json`, '', bytes, 'application/json; charset=utf-8', { kind: 'note', id: sourceId }, note)
+  return uploadFileImpl(`${note.title}.json`, '', bytes, 'application/json; charset=utf-8', {
+    shared: true,
+    source: { kind: 'note', id: sourceId },
+    note,
+  })
 })
+
+/**
+ * Перевести файл между «моей папкой» и общим диском. Байты не двигаются:
+ * файл так и лежит в локальной папке хранения, меняется только видимость
+ * для участников. Так задумано: локальная папка — личная, в общую попадает
+ * только то, что человек добавил сам.
+ */
+export const setFileShared = (id: string, shared: boolean) =>
+  cloudWrite(async () => {
+    const d = await readDrive()
+    requireAdmin()
+    const f = d.files.find((x) => x.id === id && !x.deleted)
+    if (!f) throw new CloudError('NOT_FOUND', 'Файл не найден.')
+    f.shared = shared
+    await writeDrive(d)
+  })

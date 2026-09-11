@@ -64,9 +64,9 @@ export type Graph = {
  */
 export const MAX_DEGREE = 8
 
-function shared(a: string[], b: string[]): number {
+function sharedCount(a: Set<string>, b: string[]): number {
   let n = 0
-  for (const t of a) if (b.includes(t)) n++
+  for (const t of b) if (a.has(t)) n++
   return n
 }
 
@@ -148,12 +148,23 @@ export function buildGraph(files: VaultFile[], notes: Note[], now: number): Grap
   const noteStart = files.length
 
   // Стикер ↔ файл: самая крепкая связь, её пользователь создал руками.
-  notes.forEach((n) => {
-    const i = nodes.findIndex((x) => x.id === n.id)
-    if (i < 0 || !n.pinnedTo) return
-    const j = nodes.findIndex((x) => x.kind === 'file' && x.id === n.pinnedTo)
-    if (j >= 0) link(i, j, 1, 'pin')
+  /* Индексы по id: раньше на каждый стикер делались два линейных поиска по
+     всем узлам — на большом сейфе это тысячи проходов на пустом месте. */
+  const idxById = new Map<string, number>()
+  const fileIdxById = new Map<string, number>()
+  nodes.forEach((n, i) => {
+    idxById.set(n.id, i)
+    if (n.kind === 'file') fileIdxById.set(n.id, i)
   })
+  notes.forEach((n) => {
+    const i = idxById.get(n.id)
+    if (i === undefined || !n.pinnedTo) return
+    const j = fileIdxById.get(n.pinnedTo)
+    if (j !== undefined) link(i, j, 1, 'pin')
+  })
+
+  /** Метки узла как множества: проверка общей метки — за одно обращение. */
+  const tagSets = nodes.map((n) => new Set(n.tags))
 
   /* Всё остальное: общие метки крепче общего кластера.
      Бюджет связей на узел (MAX_DEGREE) — не «красота», а необходимость:
@@ -172,7 +183,7 @@ export function buildGraph(files: VaultFile[], notes: Note[], now: number): Grap
         continue
       }
       if (seen.has(keyOf(i, j))) continue
-      const s = shared(nodes[i].tags, nodes[j].tags)
+      const s = sharedCount(tagSets[i], nodes[j].tags)
       const same = nodes[i].cluster === nodes[j].cluster
       if (s > 0) link(i, j, Math.min(1, 0.5 + s * 0.2), 'tag')
       else if (same && (i < noteStart) === (j < noteStart)) link(i, j, 0.34, 'cluster')

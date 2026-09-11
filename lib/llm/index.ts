@@ -1,55 +1,55 @@
 /* ============================================================
-   LLM · ВЫБОР ПРОВАЙДЕРА (NF-2)
-   Настройка движка выбирает провайдера по-настоящему: «Локальный» идёт
-   в Ollama на устройстве, «Гибридный» и «Внешняя модель» — в облачный
-   прокси. Никаких тихих подмен: если локальный движок не готов, маршрут
-   отвечает честной ошибкой, а не уходит в облако.
+   LLM · ВЫБОР ПРОВАЙДЕРА
+   Локального движка в продукте больше нет. Отвечает та модель,
+   которую владелец подключил в «Настройки → Подключение модели»:
+   свой OpenAI-совместимый сервер или OpenRouter. Оба говорят на
+   одном протоколе, поэтому адаптер один (./cloud).
    ============================================================ */
 
-import type { EngineId, ModelId } from '@/lib/data'
+import { providerReady, readProvider, type AiProviderConfig } from '@/lib/ai-provider'
 import { cloudProvider } from './cloud'
-import { ollamaProvider, probeOllama } from './ollama'
-import { ollamaTag } from './models'
 import type { LlmProvider, ProviderStatus } from './types'
-
-export const CLOUD_MODEL = process.env.AI_MODEL || 'claude-sonnet-4-5-20250929'
 
 export type Resolved =
   | { ok: true; provider: LlmProvider; status: ProviderStatus }
   | { ok: false; status: ProviderStatus }
 
-/** Состояние локального движка для настроек и чата. */
-export async function localStatus(model: ModelId): Promise<ProviderStatus> {
-  return probeOllama(ollamaTag(model))
+const KIND_LABEL: Record<AiProviderConfig['kind'], string> = {
+  custom: 'свой сервер',
+  openrouter: 'OpenRouter',
 }
 
-export function cloudStatus(): ProviderStatus {
-  const proxy = process.env.AI_PROXY_URL
-  const key = process.env.EMERGENT_LLM_KEY
-  const ok = Boolean(proxy && key)
+export function statusOf(c: AiProviderConfig): ProviderStatus {
+  const ok = providerReady(c)
   return {
     ok,
-    provider: 'cloud',
-    base: null,
-    model: ok ? CLOUD_MODEL : null,
-    models: [],
+    kind: c.kind,
+    kindLabel: KIND_LABEL[c.kind],
+    base: c.baseUrl || null,
+    model: ok ? c.model : null,
+    visionModel: c.visionModel || c.model || null,
     code: ok ? null : 'CLOUD_NOT_CONFIGURED',
-    hint: ok ? null : 'Доступ к внешней модели не настроен на сервере.',
+    hint: ok
+      ? null
+      : c.kind === 'openrouter'
+        ? 'Добавьте ключ OpenRouter и выберите модель в «Настройки → Подключение модели».'
+        : 'Укажите адрес сервера, токен и имя модели в «Настройки → Подключение модели».',
   }
 }
 
-/** Кто будет отвечать на этот ход. Проверка живости — до первого токена. */
-export async function resolveProvider(engine: EngineId, model: ModelId): Promise<Resolved> {
-  if (engine === 'local') {
-    const status = await localStatus(model)
-    if (!status.ok) return { ok: false, status }
-    return { ok: true, provider: ollamaProvider(status.model!), status }
-  }
-  const status = cloudStatus()
+/** Состояние подключения модели для настроек и чата. */
+export async function providerStatus(): Promise<ProviderStatus> {
+  return statusOf(await readProvider())
+}
+
+/** Кто будет отвечать на этот ход. Проверка конфигурации — до первого токена. */
+export async function resolveProvider(): Promise<Resolved> {
+  const c = await readProvider()
+  const status = statusOf(c)
   if (!status.ok) return { ok: false, status }
   return {
     ok: true,
-    provider: cloudProvider(process.env.AI_PROXY_URL!, process.env.EMERGENT_LLM_KEY!, CLOUD_MODEL),
+    provider: cloudProvider(c.baseUrl, c.apiKey, c.model, c.kind),
     status,
   }
 }

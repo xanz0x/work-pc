@@ -2150,11 +2150,15 @@
     min-height: 0;
     padding: 12px 18px;
     background: var(--bg-2);
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
   }
 
   .mail-frame {
     width: 100%;
     height: 100%;
+    min-height: 100%;
     border: 1px solid var(--border-2);
     border-radius: var(--r);
     background: #fff;
@@ -2234,6 +2238,7 @@
       overflow-y: auto;
     }
     .mail-client {
+      flex: 0 0 auto;
       grid-template-columns: 1fr;
       overflow: visible;
     }
@@ -2255,6 +2260,7 @@
       max-height: 360px;
     }
     .mail-view-body {
+      flex: 0 0 auto;
       height: 520px;
     }
   }
@@ -2266,6 +2272,21 @@
     .mail-bar {
       flex-direction: column;
       align-items: flex-start;
+    }
+    .mail-view-title,
+    .mail-view-tools,
+    .mail-view-meta {
+      flex-wrap: wrap;
+    }
+    .mail-view-title h2 {
+      flex: 1 1 100%;
+    }
+    .mail-view-who {
+      flex-basis: 200px;
+    }
+    .mail-view-date {
+      flex-shrink: 1;
+      overflow-wrap: anywhere;
     }
     .mail-ep-row {
       grid-template-columns: 1fr;
@@ -2287,10 +2308,12 @@
   }
 
   .mail-ctx-item {
-    display: block;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
     width: 100%;
     text-align: left;
-    padding: 8px 10px;
+    padding: 6px 10px;
     border: 0;
     border-radius: var(--r);
     background: transparent;
@@ -2313,5 +2336,50 @@
     height: 1px;
     margin: 4px 6px;
     background: var(--border-2);
+  }
+
+  .mail-ctx-label {
+    display: block;
+    line-height: 1.35;
+  }
+
+  .mail-ctx-hint {
+    display: block;
+    font-size: 10.5px;
+    line-height: 1.3;
+    color: var(--text-3, var(--muted));
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ============================================================
+     ВЫДЕЛЕНИЕ ТЕКСТА НА ЭКРАНЕ ПОЧТЫ
+     Оболочка (рейл ящиков, список писем, шапки, кнопки) выделяться
+     не должна: одно движение мышью по списку или Ctrl+A красили весь
+     интерфейс — казалось, что поверх легла плёнка и клики не проходят.
+     Само письмо живёт в iframe и выделяется своим документом, а снаружи
+     копировать имеет смысл только адрес ящика, тему, отправителя,
+     дату, вложения и поля ввода — им выделение возвращаем.
+     ============================================================ */
+  .mail-page {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  .mail-page :is(input, textarea, select, [contenteditable='']),
+  .mail-page [contenteditable='true'],
+  .mail-page .mail-dlg,
+  .mail-page [data-testid='mail-temp-address'],
+  .mail-page .mail-view-title h2,
+  .mail-page .mail-view-who,
+  .mail-page .mail-view-date,
+  .mail-page .mail-view-addr,
+  .mail-page .mail-view-hint,
+  .mail-page .mail-file-name,
+  .mail-page .mail-list-state,
+  .mail-page .mail-view-state {
+    -webkit-user-select: text;
+    user-select: text;
   }
 }

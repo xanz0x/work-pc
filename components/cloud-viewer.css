@@ -1,4 +1,4 @@
-/* Полноэкранный просмотр файла общего диска (картинки, PDF). */
+/* Полноэкранный просмотр файла: картинки с зумом, PDF, docx, текст, архивы. */
 
 .cloud-viewer {
   position: fixed;
@@ -25,8 +25,8 @@
 .cloud-viewer-panel {
   display: flex;
   flex-direction: column;
-  width: min(1100px, 100%);
-  height: min(88vh, 900px);
+  width: min(1320px, 100%);
+  height: min(90vh, 940px);
   background: var(--panel);
   border: 1px solid var(--border-2);
   border-radius: 16px;
@@ -69,10 +69,17 @@
   overflow: auto;
 }
 
-.cloud-viewer-body img {
-  max-width: 100%;
-  max-height: 100%;
+.cloud-viewer-body img.lv-img {
   object-fit: contain;
+  transform-origin: center center;
+  transition: transform 0.18s cubic-bezier(0.2, 0.9, 0.3, 1);
+  will-change: transform;
+}
+
+.cloud-viewer-body.is-scroll {
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 24px;
 }
 
 .cloud-viewer-body iframe {
@@ -202,6 +209,11 @@
 
 .lv-entries .lv-entry svg {
   flex: none;
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.5px;
   color: var(--text-3);
 }
 
@@ -236,6 +248,8 @@
 }
 
 .lv-empty svg {
+  stroke: currentColor;
+  fill: none;
   color: var(--text-3);
 }
 
@@ -291,4 +305,251 @@
   .cloud-viewer-head {
     flex-wrap: wrap;
   }
+}
+
+/* ---------- шапка: тип, название, инструменты ---------- */
+
+.cloud-viewer-main {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.lv-kind {
+  flex: none;
+  padding: 3px 9px;
+  border: 1px solid var(--accent-line, var(--border-2));
+  border-radius: 999px;
+  color: var(--accent);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.lv-title {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  max-width: 46ch;
+}
+
+.lv-file {
+  font-size: 10.5px;
+  color: var(--text-3);
+}
+
+.lv-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border-2);
+  border-radius: 999px;
+}
+
+.lv-tool {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--text-2, inherit);
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.lv-tool:hover {
+  background: color-mix(in oklab, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+
+.lv-tool.on {
+  color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 14%, transparent);
+}
+
+.lv-zoom {
+  min-width: 52px;
+  text-align: center;
+  font-size: 10.5px;
+  color: var(--text-3);
+}
+
+.lv-x {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border: 1px solid var(--border-2);
+  border-radius: 9px;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.lv-x:hover {
+  color: var(--danger, #d9534f);
+  border-color: currentColor;
+}
+
+.btn.is-on {
+  color: var(--accent);
+  border-color: var(--accent-line, currentColor);
+}
+
+/* ---------- паспорт файла ---------- */
+
+.lv-info {
+  flex: none;
+  width: 306px;
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  padding: 18px 16px;
+  border-left: 1px solid var(--border);
+  background: var(--panel);
+  overflow: auto;
+}
+
+.lv-info-block {
+  display: grid;
+  gap: 5px;
+}
+
+.lv-info-block p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-2, inherit);
+}
+
+.lv-info-title {
+  font-size: 14px !important;
+  font-weight: 600;
+  color: var(--text) !important;
+  line-height: 1.35 !important;
+}
+
+.lv-info-mono {
+  font-size: 11px !important;
+  color: var(--text-3) !important;
+  overflow-wrap: anywhere;
+}
+
+.lv-info-dim {
+  font-size: 11.5px !important;
+  color: var(--text-3) !important;
+}
+
+.lv-info-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.lv-info-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px;
+  border: 1px solid var(--accent-line, var(--border-2));
+  border-radius: 999px;
+  color: var(--accent);
+  font-size: 10.5px;
+}
+
+.lv-info-tag svg {
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.6px;
+}
+
+.lv-info-state {
+  font-size: 12px !important;
+}
+
+.lv-info-state.is-done {
+  color: var(--ok, #3fa66a) !important;
+}
+
+.lv-info-state.is-partial {
+  color: var(--warn, #d3a343) !important;
+}
+
+.lv-info-state.is-failed {
+  color: var(--danger, #d9534f) !important;
+}
+
+/* ---------- docx / медиа ---------- */
+
+.lv-docx {
+  flex: 1;
+  overflow: auto;
+  padding: 26px 34px;
+  background: #fff;
+  color: #1c1f24;
+  font: 14px/1.65 -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+.lv-docx h1,
+.lv-docx h2,
+.lv-docx h3 {
+  margin: 1.2em 0 0.5em;
+  line-height: 1.25;
+}
+
+.lv-docx p {
+  margin: 0 0 0.85em;
+}
+
+.lv-docx table {
+  border-collapse: collapse;
+  max-width: 100%;
+  margin: 0 0 1em;
+}
+
+.lv-docx td,
+.lv-docx th {
+  border: 1px solid #d8dce2;
+  padding: 6px 9px;
+}
+
+.lv-code.is-wrap {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.lv-media {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  padding: 40px;
+}
+
+.lv-media audio {
+  width: min(560px, 100%);
+}
+
+@media (max-width: 1000px) {
+  .lv-info {
+    display: none;
+  }
+}
+
+.lv-tool svg,
+.lv-x svg {
+  width: 13px;
+  height: 13px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.6px;
 }

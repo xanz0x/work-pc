@@ -25,7 +25,7 @@
     {
       "bug": "#4 P1 · На /login не было фирменного лого",
       "status": "FIXED",
-      "evidence": "На /login виден блок [data-testid=login-logo] с текстом «WORKFLOW» (LogoWord), над ним IconLogoMark в круге, overflow=visible, размер 362×34 px, ничего не обрезано. Вход паролем IceKrymTeam13@ → редирект на /."
+      "evidence": "На /login виден блок [data-testid=login-logo] с текстом «WORKFLOW» (LogoWord), над ним IconLogoMark в круге, overflow=visible, размер 362×34 px, ничего не обрезано. Вход паролем <APP_PASSWORD> → редирект на /."
     },
     {
       "bug": "Онбординг · вкладка Пароль (регресс)",
@@ -41,7 +41,7 @@
   ],
   "updated_files": [],
   "success_rate": { "backend": "не тестировалось (frontend only)", "frontend": "8/8 сценариев из ТЗ пройдено" },
-  "test_credentials": "IceKrymTeam13@ (пароль приложения) валиден; PIN 123456 и пароль e2e-master-2026 создавались в одноразовых профилях Playwright",
+  "test_credentials": "<APP_PASSWORD> (пароль приложения) валиден; PIN 123456 и пароль e2e-master-2026 создавались в одноразовых профилях Playwright",
   "seed_data_creation": "Одноразовые профили Playwright: онбординг пройден честно, мастер-ключ создан PIN'ом 123456 в одном прогоне и паролем e2e-master-2026 в другом. Демо-корпус (13 файлов, 33 связи, 4 стикера) наблюдался без изменений — приложение всегда показывает эти дефолты в чистом профиле.",
   "retest_needed": false,
   "should_main_agent_self_test": false,

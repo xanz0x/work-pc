@@ -13,6 +13,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { ENGINES } from '@/lib/data'
+import { OnboardingModelStep } from './onboarding-model-step'
 import { validateSecret, type LockMethod } from '@/lib/lock-store'
 import {
   needsOnboarding,
@@ -21,31 +22,16 @@ import {
   type PrivacyMode,
   type StartChoice,
 } from '@/lib/onboarding'
+import { useAccount } from '@/lib/account'
 import { useIndexActions, useIndexSummary } from '@/lib/indexer/context'
 import { logJournal } from '@/lib/journal'
 import { useLockStore, useNavStore, useNotifsStore, useSettingsStore } from '@/lib/vault-store'
 import { IconCheck, IconFolder, IconLockRound, IconShield } from './icons'
 import { MkPassField, MkPinRow, strengthPw } from './mk-fields'
+import { FolderPickerDialog } from './folder-picker-dialog'
 import { RecoveryCodeCard } from './recovery-key-dialog'
 import { useDialog } from '@/hooks/use-dialog'
 import '@/app/styles/onboarding.css'
-
-const MODES: PrivacyMode[] = ['local', 'hybrid']
-
-/** Что именно покидает устройство в каждом режиме — без обтекаемых формулировок. */
-const LEAKS: Record<PrivacyMode, string[]> = {
-  local: [
-    'Ничего: индексация, поиск и ответы модели считаются на этом устройстве.',
-    'Внешних запросов нет — в статус-баре так и написано.',
-    'Нужен запущенный Ollama с выбранной моделью, иначе чат честно откажет.',
-  ],
-  hybrid: [
-    'Текст вашего вопроса и подобранные фрагменты файлов уходят провайдеру модели.',
-    'Имена файлов и метки попадают в запрос как контекст.',
-    'Индексация и хранение остаются локальными: сам файл не выгружается.',
-    'Согласие фиксируется с датой и отзывается в настройках одним переключателем.',
-  ],
-}
 
 /** Атрибуты выбора папки для фолбэка без File System Access API. */
 const DIR_ATTRS = { webkitdirectory: 'true', directory: 'true' } as unknown as Record<string, string>
@@ -55,13 +41,16 @@ export function Onboarding() {
   const L = useLockStore()
   const NAV = useNavStore()
   const { notify } = useNotifsStore()
+  const account = useAccount()
   const idxa = useIndexActions()
   const idx = useIndexSummary()
 
   const [step, setStep] = useState<1 | 2 | 3>(1)
   const [active, setActive] = useState<boolean | null>(null)
-  const [mode, setMode] = useState<PrivacyMode | null>(null)
+  const [mode, setMode] = useState<PrivacyMode>('hybrid')
   const [ack, setAck] = useState(false)
+  /** Модель подключена на первом шаге (или уже была подключена раньше). */
+  const [connectedModel, setConnectedModel] = useState<string | null>(null)
   const [method, setMethod] = useState<LockMethod>('pin')
   const [secret, setSecret] = useState('')
   const [repeat, setRepeat] = useState('')
@@ -70,6 +59,8 @@ export function Onboarding() {
   const [recoveryCode, setRecoveryCode] = useState<string | null>(null)
   const [keyChoice, setKeyChoice] = useState<KeyChoice | null>(null)
   const [declining, setDeclining] = useState(false)
+  const [pickingFolder, setPickingFolder] = useState(false)
+  const [folderError, setFolderError] = useState<string | null>(null)
   const dirPicker = useRef<HTMLInputElement>(null)
   const { dialogProps } = useDialog({
     onClose: () => {},
@@ -93,7 +84,7 @@ export function Onboarding() {
       /* Перезагрузка посреди онбординга: ключ уже выбран — возвращаемся на шаг 3. */
       if (onb.keyChoice) {
         setKeyChoice(onb.keyChoice)
-        setMode(onb.mode ?? 'local')
+        setMode(onb.mode ?? 'hybrid')
         setStep(3)
       }
       return
@@ -166,7 +157,7 @@ export function Onboarding() {
       icon: keyChoice === 'created' ? 'check' : 'shield',
       title: 'Первый запуск завершён',
       body:
-        `Режим: ${keyChoice === 'declined' ? 'локальный (без ключа облако отключено)' : mode === 'local' ? 'локальный' : 'гибридный'}. ` +
+        `Режим: ${keyChoice === 'declined' ? 'гибридный (без ключа согласие не выдано)' : mode === 'cloud' ? 'полный контекст' : 'гибридный'}. ` +
         `Мастер-ключ: ${keyChoice === 'created' ? 'создан' : 'не создан'}. ` +
         `Начали с: ${start === 'folder' ? 'подключения папки' : 'демо-корпуса'}.`,
     })
@@ -174,27 +165,46 @@ export function Onboarding() {
   }
 
   function pickFolder() {
-    finish('folder')
     // В Electron-приложении «папка» — это и хранилище общего диска: выбираем
     // её нативным диалогом и сохраняем серверно (файлы будут писаться туда).
     const pick = (window as unknown as { workspacexDesktop?: { pickFolder?: () => Promise<string | null> } }).workspacexDesktop?.pickFolder
     if (typeof pick === 'function') {
+      finish('folder')
       void pick().then(async (root) => {
         if (!root || !root.trim()) return
         try {
-          await fetch('/ai-api/cloud/storage-root', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ root: root.trim(), migrate: true }),
-          })
+          await saveStorageRoot(root.trim())
         } catch { /* онбординг не блокируем: папку можно выбрать в настройках диска */ }
       })
+      if (idx.fsaSupported) void idxa.connectFolder()
+      else dirPicker.current?.click()
+      return
     }
-    if (idx.fsaSupported) void idxa.connectFolder()
-    else dirPicker.current?.click()
+    /* В браузере абсолютного пути не получить, а серверу нужен именно он:
+       выбираем папку обзором на этой машине — тем же диалогом, что в настройках.
+       Папка диска общая, менять её может только администратор. */
+    if (!account.isAdmin) {
+      setFolderError('папку диска задаёт администратор')
+      if (idx.fsaSupported) void idxa.connectFolder()
+      else dirPicker.current?.click()
+      return
+    }
+    setPickingFolder(true)
   }
 
-  const canNext1 = mode !== null && (mode === 'local' || ack)
+  async function saveStorageRoot(root: string): Promise<void> {
+    const r = await fetch('/ai-api/cloud/storage-root', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ root, migrate: true }),
+    })
+    if (!r.ok) {
+      const j = (await r.json().catch(() => ({}))) as { error?: string }
+      throw new Error(j.error ?? `сервер ответил ${r.status}`)
+    }
+  }
+
+  const canNext1 = mode === 'hybrid' || ack
   /* PIN — ровно 6 цифр (как требует экран разблокировки), пароль — от 8. */
   const secretOk = method === 'pin' ? /^\d{6}$/.test(secret) : secret.length >= 8
   const canCreate = secretOk && secret === repeat && !L.lock.busy
@@ -222,74 +232,73 @@ export function Onboarding() {
           </span>
         </div>
 
-        {/* ---------- шаг 1 · режим приватности ---------- */}
+        {/* ---------- шаг 1 · подключение модели ---------- */}
         {step === 1 && (
           <>
             <div className="onb-body">
-              <p className="onb-kicker">Шаг 1 из 3 · приватность</p>
-              <h2 className="onb-title">Где считать и что можно отпускать наружу</h2>
+              <p className="onb-kicker">Шаг 1 из 3 · модель</p>
+              <h2 className="onb-title">Подключите модель — устанавливать ничего не нужно</h2>
               <p className="onb-lede">
-                Режим меняется в настройках в любой момент, но начать честнее с осознанного
-                выбора: ниже — ровно то, что уходит с устройства.
+                Программа не скачивает модели на компьютер. Подключите ключ OpenRouter и выберите
+                модель из живого списка либо укажите адрес своего OpenAI-совместимого сервера.
+                Это можно сделать и позже, в настройках.
               </p>
 
-              <div className="onb-grid">
-                {MODES.map((id) => {
-                  const e = ENGINES.find((x) => x.id === id)!
-                  return (
-                    <button
-                      key={id}
-                      className="onb-pick"
-                      aria-pressed={mode === id}
-                      onClick={() => {
-                        setMode(id)
-                        setAck(false)
-                      }}
-                      data-testid={`onb-mode-${id}`}
-                    >
-                      <span className="onb-pick-top">
-                        <span className="onb-pick-name">{e.name}</span>
-                        {e.badge && <span className="onb-badge">{e.badge}</span>}
-                      </span>
-                      <span className="onb-pick-sub">{e.sub}</span>
-                    </button>
-                  )
-                })}
+              <OnboardingModelStep
+                connected={connectedModel !== null}
+                onConnected={(m) => setConnectedModel(m)}
+              />
+
+              <div className="onb-grid onb-grid-tight">
+                {ENGINES.map((e) => (
+                  <button
+                    key={e.id}
+                    className="onb-pick"
+                    aria-pressed={mode === e.id}
+                    onClick={() => {
+                      setMode(e.id)
+                      setAck(false)
+                    }}
+                    data-testid={`onb-mode-${e.id}`}
+                  >
+                    <span className="onb-pick-top">
+                      <span className="onb-pick-name">{e.name}</span>
+                      {e.badge && <span className="onb-badge">{e.badge}</span>}
+                    </span>
+                    <span className="onb-pick-sub">{e.sub}</span>
+                  </button>
+                ))}
               </div>
 
-              {mode && (
-                <div
-                  className={`onb-leaks${mode === 'local' ? ' ok' : ''}`}
-                  data-testid="onb-leaks"
-                >
-                  <p className="onb-kicker">
-                    {mode === 'local' ? 'Что уходит: ничего' : 'Что уходит наружу'}
-                  </p>
-                  <ul>
-                    {LEAKS[mode].map((t) => (
-                      <li key={t}>{t}</li>
-                    ))}
-                  </ul>
-                  {mode === 'hybrid' && (
-                    <label className="onb-ack">
-                      <input
-                        type="checkbox"
-                        checked={ack}
-                        onChange={(e) => setAck(e.target.checked)}
-                        data-testid="onb-cloud-ack"
-                      />
-                      <span>
-                        Понимаю: в гибридном режиме вопрос и фрагменты файлов уходят внешнему
-                        провайдеру. Согласие будет записано с датой.
-                      </span>
-                    </label>
-                  )}
-                </div>
-              )}
+              <div className="onb-leaks" data-testid="onb-leaks">
+                <p className="onb-kicker">Что уходит наружу</p>
+                <ul>
+                  <li>Текст вопроса и подобранные фрагменты файлов уходят подключённой модели.</li>
+                  <li>Имена файлов и метки попадают в запрос как контекст.</li>
+                  <li>Индексация и хранение остаются локальными: сам файл не выгружается.</li>
+                  <li>Согласие фиксируется с датой и отзывается в настройках одним переключателем.</li>
+                </ul>
+                {mode === 'cloud' && (
+                  <label className="onb-ack">
+                    <input
+                      type="checkbox"
+                      checked={ack}
+                      onChange={(e) => setAck(e.target.checked)}
+                      data-testid="onb-cloud-ack"
+                    />
+                    <span>
+                      Понимаю: в режиме «Полный контекст» фрагменты файлов уходят провайдеру целиком.
+                      Согласие будет записано с датой.
+                    </span>
+                  </label>
+                )}
+              </div>
             </div>
 
             <div className="onb-foot">
-              <span className="onb-legend">Шаг 1 / 3</span>
+              <span className="onb-legend">
+                {connectedModel ? `Модель: ${connectedModel}` : 'Модель можно подключить позже'}
+              </span>
               <span className="grow" />
               <button
                 className="onb-btn primary"
@@ -535,9 +544,9 @@ export function Onboarding() {
                     <span className="onb-pick-name">Подключить папку</span>
                   </span>
                   <span className="onb-pick-sub">
-                    {idx.fsaSupported
-                      ? 'Выберите папку: она станет хранилищем общего диска, а её файлы проиндексируются для поиска — всё на этом устройстве.'
-                      : 'Выберите папку: она станет хранилищем общего диска; файлы проиндексируются через диалог выбора.'}
+                    Выберите папку на этом компьютере: она станет вашим личным хранилищем — каждый
+                    добавленный файл физически ложится в неё. В общую папку файлы попадают только
+                    по вашему решению, из карточки файла.
                   </span>
                 </button>
                 <button
@@ -557,6 +566,12 @@ export function Onboarding() {
                   </span>
                 </button>
               </div>
+
+              {folderError && (
+                <p className="onb-lede" data-testid="onb-folder-error">
+                  Папку не удалось сохранить: {folderError}. Её можно выбрать позже в «Настройки → Общее облако».
+                </p>
+              )}
 
               {/* Фолбэк без File System Access API (Firefox/Safari). */}
               <input
@@ -598,6 +613,19 @@ export function Onboarding() {
           </>
         )}
       </div>
+      {pickingFolder && (
+        <FolderPickerDialog
+          current={null}
+          onClose={() => setPickingFolder(false)}
+          onPick={(root) => {
+            setPickingFolder(false)
+            setFolderError(null)
+            void saveStorageRoot(root)
+              .then(() => finish('folder'))
+              .catch((e: unknown) => setFolderError(e instanceof Error ? e.message : 'неизвестная ошибка'))
+          }}
+        />
+      )}
     </div>
   )
 }

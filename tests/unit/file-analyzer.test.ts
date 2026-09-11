@@ -17,7 +17,6 @@ vi.mock('mammoth', () => ({
 }))
 
 import {
-  analyzerModel,
   buildAnalysisMessages,
   decodeTextUtf8,
   detectKind,
@@ -265,17 +264,19 @@ describe('промпт архивариуса: buildAnalysisMessages', () => {
     expect(msgs[1].content).toContain('Тип: application/pdf')
     expect(msgs[1].content).toContain('Содержимое:')
     expect(msgs[1].content).toContain('Сумма 100 000 ₽.')
-    expect(msgs[1].images).toBeUndefined()
+    expect(typeof msgs[1].content).toBe('string')
   })
 
-  it('фото: base64 уходит в images той же модели — отдельной vision-модели больше нет', () => {
+  it('фото: base64 уходит частью image_url в том же запросе', () => {
     const msgs = buildAnalysisMessages(
       { id: 'f2', name: 'фото.jpg', contentType: 'image/jpeg', size: 3 },
-      { sample: 'Изображение: 640×480.', imageBase64: 'QUJD' },
+      { sample: 'Изображение: 640×480.', imageBase64: 'QUJD', imageMime: 'image/jpeg' },
     )
     expect(msgs).toHaveLength(2)
-    expect(msgs[1].images).toEqual(['QUJD'])
-    expect(msgs[1].content).toContain('Имя файла: фото.jpg')
+    const parts = msgs[1].content as { type: string; text?: string; image_url?: { url: string } }[]
+    expect(Array.isArray(parts)).toBe(true)
+    expect(parts[0].text).toContain('Имя файла: фото.jpg')
+    expect(parts[1].image_url?.url).toBe('data:image/jpeg;base64,QUJD')
   })
 
   it('пустая выборка: модель просит описать по имени файла', () => {
@@ -283,23 +284,6 @@ describe('промпт архивариуса: buildAnalysisMessages', () => {
     expect(msgs[1].content).toContain('Имя файла: blob.bin')
     expect(msgs[1].content).toContain('опиши по имени файла')
     expect(msgs[1].content).not.toContain('Содержимое:')
-  })
-})
-
-describe('анализатор: единая модель из OLLAMA_MODEL', () => {
-  it('без env — qwen2.5vl:3b, с env — значение env (пустое — фолбэк)', () => {
-    const prev = process.env.OLLAMA_MODEL
-    try {
-      delete process.env.OLLAMA_MODEL
-      expect(analyzerModel()).toBe('qwen2.5vl:3b')
-      process.env.OLLAMA_MODEL = 'qwen2.5vl:7b'
-      expect(analyzerModel()).toBe('qwen2.5vl:7b')
-      process.env.OLLAMA_MODEL = '   '
-      expect(analyzerModel()).toBe('qwen2.5vl:3b')
-    } finally {
-      if (prev === undefined) delete process.env.OLLAMA_MODEL
-      else process.env.OLLAMA_MODEL = prev
-    }
   })
 })
 

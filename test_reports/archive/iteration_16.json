@@ -40,9 +40,9 @@
     "backend": "н/п (только фронт)",
     "frontend": "100% на всех однократных прогонах; 88.9% (16/18) в стрессе чата — фейлы из-за внешнего rate-limit, не бага приложения; 100% (9/9) стресса главного бага"
   },
-  "test_credentials": "APP_PASSWORD=IceKrymTeam13@, PIN e2e=e2e-master-2026 / 123456 (в онбординге)",
+  "test_credentials": "APP_PASSWORD=<APP_PASSWORD>, PIN e2e=e2e-master-2026 / 123456 (в онбординге)",
   "seed_data_creation": "В тесте вручную создалась одна тестовая сессия в чате с ответом 'RATE_LIMITED' — можно оставить как демо или очистить в UI.",
   "retest_needed": false,
   "should_main_agent_self_test": true,
-  "context_for_next_testing_agent": "Быстрая проверка главного бага: cd /app && PLAYWRIGHT_BROWSERS_PATH=/pw-browsers APP_URL=<preview> APP_PASSWORD='IceKrymTeam13@' node_modules/.bin/playwright test tests/e2e/99-settings-nav-stress.spec.ts. Если 9/9 зелёные — регрессии нет. Полный чат-набор пускать один раз (без --repeat-each), иначе поймаешь rate-limit."
+  "context_for_next_testing_agent": "Быстрая проверка главного бага: cd /app && PLAYWRIGHT_BROWSERS_PATH=/pw-browsers APP_URL=<preview> APP_PASSWORD='<APP_PASSWORD>' node_modules/.bin/playwright test tests/e2e/99-settings-nav-stress.spec.ts. Если 9/9 зелёные — регрессии нет. Полный чат-набор пускать один раз (без --repeat-each), иначе поймаешь rate-limit."
 }

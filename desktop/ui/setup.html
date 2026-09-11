@@ -18,11 +18,11 @@
     <aside>
       <span class="eyebrow" data-testid="setup-step">ШАГ 1 ИЗ 4 · РОЛЬ КОМПЬЮТЕРА</span>
       <h1 data-testid="setup-heading">Один главный ПК.<br>Общее пространство.</h1>
-      <p data-testid="setup-description">База и локальный ИИ остаются на вашем компьютере. Друг входит со своей учётной записью.</p>
+      <p data-testid="setup-description">База остаётся на вашем компьютере. Модель подключается в настройках после установки: OpenRouter или свой сервер. Друг входит со своей учётной записью.</p>
       <ol id="steps" class="steps" data-testid="setup-steps">
         <li data-step="1" data-testid="setup-step-role" aria-current="step"><span>01</span><div><strong>Роль компьютера</strong><small>Главный ПК или подключение</small></div></li>
         <li data-step="2" data-testid="setup-step-form"><span>02</span><div><strong>Данные доступа</strong><small>Логин, пароль, адрес</small></div></li>
-        <li data-step="3" data-testid="setup-step-download"><span>03</span><div><strong>Загрузка ИИ</strong><small>qwen2.5vl:3b · 3,2 ГБ</small></div></li>
+        <li data-step="3" data-testid="setup-step-download"><span>03</span><div><strong>Запуск сервера</strong><small>Модель подключается позже в настройках</small></div></li>
         <li data-step="4" data-testid="setup-step-done"><span>04</span><div><strong>Готово</strong><small>Открыть WorkSpaceX</small></div></li>
       </ol>
       <div class="hardware" data-testid="setup-hardware">Проверяем компьютер…</div>
@@ -31,7 +31,7 @@
     </aside>
     <section class="content" aria-label="Настройка подключения">
       <div id="choice" class="choice" role="group" aria-label="Роль этого компьютера">
-        <button type="button" id="choose-host" class="role selected" data-testid="setup-choose-host" aria-pressed="true"><strong>Главный ПК</strong><small>Хранить базу и запускать локальный ИИ</small></button>
+        <button type="button" id="choose-host" class="role selected" data-testid="setup-choose-host" aria-pressed="true"><strong>Главный ПК</strong><small>Хранить общую базу и обслуживать второй компьютер</small></button>
         <button type="button" id="choose-client" class="role" data-testid="setup-choose-client" aria-pressed="false"><strong>Подключиться</strong><small>Войти со своего компьютера по приглашению</small></button>
       </div>
 
@@ -42,9 +42,7 @@
         <label>Адрес главного ПК для друга<input id="host" data-testid="setup-host-address" required placeholder="Например, адрес в локальной сети" list="host-addresses"><datalist id="host-addresses" data-testid="setup-host-address-options"></datalist></label>
         <p class="field-note" data-testid="setup-network-note">Используйте постоянный IPv4-адрес в общей сети или VPN. При первом запуске Windows разрешите доступ только в частной сети. Порты роутера открывать не нужно.</p>
         <label>Ключ SmailPro / Sonjj <span class="optional">можно добавить позже</span><input id="mail-key" data-testid="setup-mail-key" type="password" autocomplete="off" maxlength="4096" placeholder="Для временных Gmail и Outlook"></label>
-        <div class="model-info" data-testid="setup-model-info"><strong>Qwen2.5-VL 3B · зрение + текст</strong><span>Модель ≈ 3,2 ГБ и движок Ollama ≈ 1,5 ГБ скачиваются один раз. На 8 ГБ памяти ответы могут быть медленнее; запросы обрабатываются по очереди.</span></div>
-        <label class="check"><input id="license" data-testid="setup-model-license-consent" type="checkbox" required><span>Принимаю <button class="text-button" type="button" id="license-link" data-testid="setup-model-license-link">условия Apache License 2.0</button> для модели Qwen2.5-VL 3B.</span></label>
-        <button class="primary" id="create-host" type="submit" data-testid="setup-create-host">Создать пространство и скачать ИИ <span aria-hidden="true">→</span></button>
+        <button class="primary" id="create-host" type="submit" data-testid="setup-create-host">Создать пространство <span aria-hidden="true">→</span></button>
         <div class="form-foot"><button class="text-button back" type="button" id="back-host" data-testid="setup-back-role">← Выбрать другую роль</button><p class="field-note" data-testid="setup-admin-help">Вторую учётную запись вы создадите в разделе «Администрирование». Для второго администратора выберите роль «Администратор».</p></div>
       </form>
 
@@ -68,7 +66,6 @@
 
       <div id="status-panel" class="status" hidden>
         <span class="eyebrow" data-testid="setup-progress-label">СОСТОЯНИЕ</span>
-        <div class="model-chip" data-testid="setup-model-download-info"><strong>qwen2.5vl:3b</strong><span>3,2 ГБ · зрение + текст</span></div>
         <p id="status" data-testid="setup-status" role="status" aria-live="polite"></p>
         <progress id="progress" data-testid="setup-download-progress" hidden max="100"></progress><span id="progress-text" class="field-note" data-testid="setup-progress-text"></span>
         <div class="actions"><button id="retry" class="secondary" type="button" data-testid="setup-retry">Повторить</button><button id="pause" class="text-button" type="button" data-testid="setup-pause">Приостановить загрузку</button></div>
@@ -77,6 +74,6 @@
       <p id="error" role="alert" class="error" data-testid="setup-error" hidden></p>
     </section>
   </main>
-  <footer><span data-testid="setup-footer">Локальный ИИ · Защищённое соединение · Отдельные учётные записи</span><span id="version" data-testid="setup-version"></span></footer>
+  <footer><span data-testid="setup-footer">Модель по подключению · Защищённое соединение · Отдельные учётные записи</span><span id="version" data-testid="setup-version"></span></footer>
 </body>
 </html>

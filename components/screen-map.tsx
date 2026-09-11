@@ -64,6 +64,17 @@ const IDLE_GUARD = 2200
 /** Золотой угол: узлы кластера ложатся ровно и не прыгают между сборками. */
 const GOLDEN = 2.399963
 
+/* Порог облегчённого режима. Большой сейф даёт тысячи узлов и рёбер, и полная
+   сцена (сияние на каждый узел, кометы, метеоры, лучи звёзд) перестаёт
+   укладываться в кадр. Начиная с этого числа узлов карта рисует то же самое,
+   но дешевле: узлы вне экрана пропускаются, сияние остаётся только у крупных
+   и подсвеченных, случайные кометы и метеоры отключаются, кадр — 30 к/с. */
+const LITE_MIN = 300
+/* Сколько связей карта рисует в облегчённом режиме: самые крепкие плюс
+   магистрали ядра. Полторы-две тысячи тонких кривых за кадр — и рисунок
+   превращается в белую паутину, и кадр не успевает. */
+const LITE_EDGES = 400
+
 type Node = {
   /** id объекта сейфа: файл или стикер. У ядра — пустая строка. */
   id: string
@@ -157,6 +168,8 @@ export function ScreenMap() {
   const [phase, setPhase] = useState<Phase>('idle')
   const [cands, setCands] = useState(0)
   const [wave, setWave] = useState<WaveMeta | null>(null)
+  const [lite, setLite] = useState(false)
+  const [liteHidden, setLiteHidden] = useState(0)
   const [history, setHistory] = useState<{ name: string; cluster: string; at: number }[]>([])
 
   /* Движок читает эти ссылки внутри кадра: сам эффект не пересоздаётся,
@@ -164,10 +177,17 @@ export function ScreenMap() {
   const graphRef = useRef<Graph>(graph)
   graphRef.current = graph
   const sharedIdsRef = useRef(new Set<string>())
-  sharedIdsRef.current = new Set([
-    ...D.views.filter((f) => f.shared).map((f) => f.id),
-    ...D.liveNotes.filter((n) => n.shared).map((n) => n.id),
-  ])
+  /* Множество «общих» id пересобирается только когда меняется сейф: на большом
+     корпусе делать это на каждый рендер карты — лишняя работа в главном потоке. */
+  const sharedIds = useMemo(
+    () =>
+      new Set<string>([
+        ...D.views.filter((f) => f.shared).map((f) => f.id),
+        ...D.liveNotes.filter((n) => n.shared).map((n) => n.id),
+      ]),
+    [D.views, D.liveNotes],
+  )
+  sharedIdsRef.current = sharedIds
   const matchedRef = useRef<Set<string>>(NAV.matchedFiles)
   matchedRef.current = NAV.matchedFiles
 
@@ -229,6 +249,8 @@ export function ScreenMap() {
     let dpr = 1
     let nodes: Node[] = []
     let edges: Edge[] = []
+    /* Что рисуется в облегчённом режиме (в обычном — те же самые рёбра). */
+    let liteEdges: Edge[] = []
     let byId = new Map<string, Node>()
     const adj = new Map<Node, Node[]>()
     let pulses: Pulse[] = []
@@ -255,6 +277,10 @@ export function ScreenMap() {
     let hovered: Node | null = null
     let filterCluster: number | null = null
     let hiddenAt = 0
+    /* Облегчённый режим: включается сам, когда узлов больше порога. */
+    let liteMode = false
+    /* Видимая область в координатах графа: пересчитывается раз в кадр. */
+    const vp = { x0: 0, y0: 0, x1: 0, y1: 0 }
 
     /* Поиск: единственное состояние анимации, без вложенных таймеров. */
     let search: {
@@ -527,10 +553,15 @@ export function ScreenMap() {
       }))
 
       const perCluster = new Array(CLUSTERS.length).fill(0)
+      /* Сколько узлов в каждом облаке — считаем один раз. Раньше это была
+         `filter` внутри цикла по узлам: на тысяче файлов — миллион проходов
+         и заметный спайк главного потока при каждой пересборке. */
+      const ringTotal = new Array(CLUSTERS.length).fill(0)
+      for (const gn of g.nodes) ringTotal[gn.ring]++
       for (const gn of g.nodes) {
         const ring = gn.ring
         const k = perCluster[ring]++
-        const total = g.nodes.filter((x) => x.ring === ring).length
+        const total = ringTotal[ring]
         /* Радиус растёт от центра облака к краю: плотный центр, воздух снаружи. */
         const rad = CR * (total <= 1 ? 0 : 0.3 + 0.62 * Math.sqrt((k + 0.5) / total))
         const ang = k * GOLDEN + ring * 0.7
@@ -579,7 +610,8 @@ export function ScreenMap() {
 
       /* Звёздное поле канваса поверх CSS-космоса: даёт параллакс при панораме. */
       const STAR_TINT = ['230,238,255', '198,220,255', '255,236,208', '208,255,236']
-      const count = Math.round(clamp((W * H) / 12000, 60, 150))
+      const heavy = g.nodes.length > LITE_MIN
+      const count = Math.round(clamp((W * H) / 12000, 60, heavy ? 70 : 150))
       for (let i = 0; i < count; i++) {
         const big = Math.random() < 0.12
         dust.push({
@@ -662,6 +694,20 @@ export function ScreenMap() {
       for (const n of nodes) {
         if (!n.core) n.r = 2.1 + n.weight * 2.2 + Math.min(n.deg, 12) * 0.22
       }
+
+      liteMode = nodes.length > LITE_MIN
+      setLite(liteMode)
+      /* Что рисовать в облегчённом режиме: связи по убыванию силы, магистрали
+         всегда. Набор считается один раз при сборке — от кадра к кадру карта
+         показывает одни и те же линии и не мигает. */
+      liteEdges = liteMode
+        ? [...edges].sort((a, b) => (b.spoke ? 2 : b.w) - (a.spoke ? 2 : a.w)).slice(0, LITE_EDGES)
+        : edges
+      setLiteHidden(liteMode ? edges.length - liteEdges.length : 0)
+      if (liteMode) {
+        pulses = []
+        meteors = []
+      }
     }
 
     /* ---------- Волна активации ---------- */
@@ -690,8 +736,11 @@ export function ScreenMap() {
             )
           : target
       const pool = family.filter((n) => n !== target && n !== q)
+      /* В облегчённом режиме кандидатов меньше: пакетов и подсветок за кадр
+         столько же, сколько на небольшом сейфе, поэтому волна не роняет кадр. */
+      const cands = liteMode ? pool.slice(0, 30) : pool
       const packets: Packet[] = [{ a: q, b: core!, t: 0, sp: 0, keep: true, fade: 1 }]
-      for (const c of [target, ...pool]) {
+      for (const c of [target, ...cands]) {
         packets.push({ a: core!, b: c, t: 0, sp: 0, keep: c === target, fade: 1 })
       }
       search = {
@@ -699,13 +748,13 @@ export function ScreenMap() {
         phase: instant ? 'settled' : 'query',
         q,
         target,
-        cands: pool,
+        cands,
         packets,
         dim: 0,
         ring,
       }
       setPhase(search.phase)
-      setCands(instant ? 1 : pool.length + 1)
+      setCands(instant ? 1 : cands.length + 1)
       waveSeq++
       setWave({
         seq: waveSeq,
@@ -768,7 +817,9 @@ export function ScreenMap() {
     }
 
     function spawnPulse() {
-      if (reduced || !edges.length || pulses.length >= 12) return
+      /* В облегчённом режиме случайные кометы не запускаем: каждая — восемь
+         отрезков по кривой на кадр, а узлов и без них хватает. */
+      if (reduced || liteMode || !edges.length || pulses.length >= 12) return
       const n = Math.random() < 0.3 ? 2 : 1
       for (let i = 0; i < n && pulses.length < 12; i++) {
         const e = edges[Math.floor(Math.random() * edges.length)]
@@ -785,7 +836,7 @@ export function ScreenMap() {
 
     /* Метеор раз в ~18 секунд: небо живое, но внимание не перетягивает. */
     const meteorTimer = setInterval(() => {
-      if (reduced || document.hidden || Math.random() > 0.55 || meteors.length > 1) return
+      if (reduced || liteMode || document.hidden || Math.random() > 0.55 || meteors.length > 1) return
       const fromLeft = Math.random() < 0.7
       meteors.push({
         x: fromLeft ? -80 : Math.random() * W * 0.6,
@@ -855,10 +906,16 @@ export function ScreenMap() {
 
     function drawNode(n: Node, alpha: number, scale: number) {
       const rr = Math.max(n.r, 2.4 / view.z) * scale
-      const R = rr * 3.2
-      ctx!.globalAlpha = alpha
-      ctx!.drawImage(sprite(n.hue), n.x - R, n.y - R, R * 2, R * 2)
-      ctx!.globalAlpha = 1
+      const hi = n.core || n === selected || n === hovered || n.hot > 0.05 || Boolean(n.flash)
+      /* Сияние — самый дорогой мазок кадра (растянутый спрайт с прозрачностью).
+         В облегчённом режиме он остаётся у ядра, подсвеченных и выбранных узлов,
+         остальные рисуются кольцом: рисунок карты тот же, кадр — вдвое дешевле. */
+      if (!liteMode || hi) {
+        const R = rr * 3.2
+        ctx!.globalAlpha = alpha
+        ctx!.drawImage(sprite(n.hue), n.x - R, n.y - R, R * 2, R * 2)
+        ctx!.globalAlpha = 1
+      }
       /* Стикер с таймером — пунктирный контур: видно, что он растает. */
       if (n.temp) ctx!.setLineDash([2, 2])
       ctx!.beginPath()
@@ -908,16 +965,149 @@ export function ScreenMap() {
       return `rgba(255,255,255,${(0.05 + e.w * 0.16) * off})`
     }
 
+    /* ---------- Облегчённая отрисовка ----------
+       Тысячи рёбер и узлов по отдельности — это тысячи вызовов stroke() за
+       кадр, и главный поток не успевает. Здесь то же самое собирается в
+       несколько путей: линии одной толщины и яркости рисуются одним мазком.
+       Рисунок карты не меняется, меняется только число обращений к канвасу. */
+    const EDGE_STEPS = [
+      { w: 0.7, a: 0.09 },
+      { w: 1.1, a: 0.15 },
+      { w: 1.7, a: 0.21 },
+    ]
+    function drawEdgesLite() {
+      const buckets: (Path2D | null)[] = [null, null, null, null, null, null]
+      let spokePath: Path2D | null = null
+      const glowing: Edge[] = []
+      for (const e of liteEdges) {
+        if (!edgeSeen(e)) continue
+        if ((e.glow || 0) > 0.02) glowing.push(e)
+        if (e.spoke) {
+          spokePath = spokePath ?? new Path2D()
+          spokePath.moveTo(e.a.x, e.a.y)
+          spokePath.quadraticCurveTo(e.qx!, e.qy!, e.b.x, e.b.y)
+          continue
+        }
+        const dimmed =
+          filterCluster !== null && e.a.cluster !== filterCluster && e.b.cluster !== filterCluster
+        const step = e.w < 0.45 ? 0 : e.w < 0.75 ? 1 : 2
+        const bi = step + (dimmed ? 3 : 0)
+        const p = buckets[bi] ?? new Path2D()
+        buckets[bi] = p
+        p.moveTo(e.a.x, e.a.y)
+        p.quadraticCurveTo(e.qx!, e.qy!, e.b.x, e.b.y)
+      }
+      for (let i = 0; i < buckets.length; i++) {
+        const p = buckets[i]
+        if (!p) continue
+        const s = EDGE_STEPS[i % 3]
+        ctx!.strokeStyle = `rgba(255,255,255,${(i > 2 ? s.a * 0.25 : s.a).toFixed(3)})`
+        ctx!.lineWidth = s.w
+        ctx!.stroke(p)
+      }
+      if (spokePath) {
+        ctx!.strokeStyle = 'rgba(47,190,126,.2)'
+        ctx!.lineWidth = 1.1
+        ctx!.stroke(spokePath)
+      }
+      /* Подсвеченные волной рёбра — их единицы, рисуем как обычно. */
+      for (const e of glowing) {
+        ctx!.beginPath()
+        ctx!.moveTo(e.a.x, e.a.y)
+        ctx!.quadraticCurveTo(e.qx!, e.qy!, e.b.x, e.b.y)
+        ctx!.strokeStyle = `rgba(${e.lastHue || WAVE},${((e.glow || 0) * 0.4).toFixed(3)})`
+        ctx!.lineWidth = 1 + (e.glow || 0) * 1.2
+        ctx!.stroke()
+      }
+    }
+
+    const NODE_STEPS = [0.34, 0.55, 0.75, 0.95]
+    function drawNodesLite(now: number, dt: number) {
+      const plain = new Map<string, Path2D>()
+      const rich: Node[] = []
+      for (const n of nodes) {
+        if (!nodeSeen(n)) {
+          if (n.flash) n.flash = Math.max(0, n.flash - dt * 0.0022)
+          continue
+        }
+        /* Всё, что отличается от простой точки, рисуется по-старому: ядро,
+           выбранный и подсвеченный узел, стикеры, файлы общего диска. */
+        if (
+          n.core ||
+          n === selected ||
+          n === hovered ||
+          n.hot > 0.05 ||
+          Boolean(n.flash) ||
+          n.temp ||
+          n.shared ||
+          n.processing ||
+          n.kind === 'note'
+        ) {
+          rich.push(n)
+          continue
+        }
+        const a = nodeAlpha(n, now)
+        const li = a < 0.45 ? 0 : a < 0.65 ? 1 : a < 0.85 ? 2 : 3
+        const key = `${n.hue}|${li}`
+        const p = plain.get(key) ?? new Path2D()
+        if (!plain.has(key)) plain.set(key, p)
+        const rr = Math.max(n.r, 2.4 / view.z)
+        p.moveTo(n.x + rr, n.y)
+        p.arc(n.x, n.y, rr, 0, 7)
+      }
+      ctx!.lineWidth = 1
+      for (const [key, p] of plain) {
+        const cut = key.lastIndexOf('|')
+        ctx!.strokeStyle = `rgba(${key.slice(0, cut)},${NODE_STEPS[Number(key.slice(cut + 1))]})`
+        ctx!.stroke(p)
+      }
+      for (const n of rich) {
+        const rr = drawNode(n, nodeAlpha(n, now), 1)
+        if (n === selected) {
+          ctx!.beginPath()
+          ctx!.arc(n.x, n.y, rr + 6, 0, 7)
+          ctx!.strokeStyle = 'rgba(47,190,126,.9)'
+          ctx!.lineWidth = 1.5
+          ctx!.stroke()
+        }
+        if (n.flash && n.flash > 0) {
+          ctx!.beginPath()
+          ctx!.arc(n.x, n.y, rr + 2 + (1 - n.flash) * 9, 0, 7)
+          ctx!.strokeStyle = `rgba(${n.hue},${(n.flash * 0.55).toFixed(3)})`
+          ctx!.lineWidth = 1
+          ctx!.stroke()
+          n.flash = Math.max(0, n.flash - dt * 0.0022)
+        }
+      }
+    }
+
     let last = performance.now()
     let drawCost = 8
     let lastDraw = 0
+    /* Видимая область в координатах графа + запас: всё, что за краем экрана,
+       не рисуем. На большом сейфе это главный выигрыш при приближении. */
+    function updateViewport() {
+      const pad = 80 / view.z
+      vp.x0 = (0 - view.x) / view.z - pad
+      vp.y0 = (0 - view.y) / view.z - pad
+      vp.x1 = (W - view.x) / view.z + pad
+      vp.y1 = (H - view.y) / view.z + pad
+    }
+    const nodeSeen = (n: Node) => n.x >= vp.x0 && n.x <= vp.x1 && n.y >= vp.y0 && n.y <= vp.y1
+    const edgeSeen = (e: Edge) =>
+      Math.max(e.a.x, e.b.x) >= vp.x0 &&
+      Math.min(e.a.x, e.b.x) <= vp.x1 &&
+      Math.max(e.a.y, e.b.y) >= vp.y0 &&
+      Math.min(e.a.y, e.b.y) <= vp.y1
     function tick(now: number) {
       /* Сцена перерисовывается целиком, и на слабой видеоподсистеме кадр
          не укладывается в 16 мс. Тогда карта честно идёт на 30 к/с: движение
          остаётся плавным, а браузер перестаёт захлёбываться — прокрутка
          панелей поверх карты снова живая. */
-      const budget = drawCost > 12 ? 30 : 15
-      if (frozen || now - lastDraw < budget) {
+      const budget = liteMode || drawCost > 12 ? 30 : 15
+      /* Скрытая вкладка не рисуется вообще: браузер и так режет rAF, но
+         на плотной карте даже редкий кадр — заметная работа впустую. */
+      if (frozen || document.hidden || now - lastDraw < budget) {
         raf = requestAnimationFrame(tick)
         return
       }
@@ -928,6 +1118,7 @@ export function ScreenMap() {
       ctx!.fillStyle = MAP_BG
       ctx!.fillRect(0, 0, W, H)
       place()
+      updateViewport()
 
       if (!reduced) {
         const lim = drift
@@ -976,8 +1167,11 @@ export function ScreenMap() {
         if (st >= 180 && core) core.hot = 1
         if (st >= 200) {
           const flash = clamp((st - 200) / 200, 0, 1)
-          for (const n of nodes)
-            if (n.cluster === search.ring) n.hot = Math.max(n.hot, 0.3 + flash * 0.55)
+          const heat = 0.3 + flash * 0.55
+          /* Облегчённый режим: вспыхивает не весь кластер (это могут быть сотни
+             узлов со сиянием каждый), а его кандидаты — рисунок волны тот же. */
+          if (liteMode) for (const n of search.cands) n.hot = Math.max(n.hot, heat)
+          else for (const n of nodes) if (n.cluster === search.ring) n.hot = Math.max(n.hot, heat)
         }
         if (st >= 500) {
           for (let i = 0; i < search.cands.length; i++) {
@@ -1016,7 +1210,7 @@ export function ScreenMap() {
         ctx!.fillStyle = `rgba(${d.hue},1)`
         ctx!.fill()
         /* Крупные звёзды получают короткие лучи — небо перестаёт быть «точками». */
-        if (d.r > 1) {
+        if (d.r > 1 && !liteMode) {
           ctx!.globalAlpha = d.a * tw * 0.5
           ctx!.strokeStyle = `rgba(${d.hue},1)`
           ctx!.lineWidth = 0.6
@@ -1060,7 +1254,7 @@ export function ScreenMap() {
         beatAcc = 0
         core.flash = 1
         rings.push({ r: core.r + 3, a: 0.5 })
-        if (!reduced && spokes.length && pulses.length < 14) {
+        if (!reduced && !liteMode && spokes.length && pulses.length < 14) {
           const sp = spokes[Math.floor(Math.random() * spokes.length)]
           pulses.push({ e: sp, t: 0, sp: 0.014, hue: WAVE, head: 2.2 })
         }
@@ -1084,19 +1278,24 @@ export function ScreenMap() {
         const L = Math.hypot(dx, dy) || 1
         e.qx = mx - (dy / L) * e.bow
         e.qy = my + (dx / L) * e.bow
-        ctx!.beginPath()
-        ctx!.moveTo(e.a.x, e.a.y)
-        ctx!.quadraticCurveTo(e.qx, e.qy, e.b.x, e.b.y)
-        ctx!.strokeStyle = edgeStroke(e)
-        ctx!.lineWidth = e.spoke ? 1.1 : 0.6 + e.w * 1.1
-        ctx!.stroke()
-        const eg = e.glow || 0
-        if (eg > 0.02) {
-          ctx!.strokeStyle = `rgba(${e.lastHue || WAVE},${(eg * 0.4).toFixed(3)})`
-          ctx!.lineWidth = 1 + eg * 1.2
-          ctx!.stroke()
-        }
       }
+      if (liteMode) drawEdgesLite()
+      else
+        for (const e of edges) {
+          if (!edgeSeen(e)) continue
+          ctx!.beginPath()
+          ctx!.moveTo(e.a.x, e.a.y)
+          ctx!.quadraticCurveTo(e.qx!, e.qy!, e.b.x, e.b.y)
+          ctx!.strokeStyle = edgeStroke(e)
+          ctx!.lineWidth = e.spoke ? 1.1 : 0.6 + e.w * 1.1
+          ctx!.stroke()
+          const eg = e.glow || 0
+          if (eg > 0.02) {
+            ctx!.strokeStyle = `rgba(${e.lastHue || WAVE},${(eg * 0.4).toFixed(3)})`
+            ctx!.lineWidth = 1 + eg * 1.2
+            ctx!.stroke()
+          }
+        }
 
       if (core) {
         for (const rg of rings) {
@@ -1108,24 +1307,30 @@ export function ScreenMap() {
         }
       }
 
-      for (const n of nodes) {
-        const rr = drawNode(n, nodeAlpha(n, now), 1)
-        if (n === selected) {
-          ctx!.beginPath()
-          ctx!.arc(n.x, n.y, rr + 6, 0, 7)
-          ctx!.strokeStyle = 'rgba(47,190,126,.9)'
-          ctx!.lineWidth = 1.5
-          ctx!.stroke()
+      if (liteMode) drawNodesLite(now, dt)
+      else
+        for (const n of nodes) {
+          if (!nodeSeen(n)) {
+            if (n.flash) n.flash = Math.max(0, n.flash - dt * 0.0022)
+            continue
+          }
+          const rr = drawNode(n, nodeAlpha(n, now), 1)
+          if (n === selected) {
+            ctx!.beginPath()
+            ctx!.arc(n.x, n.y, rr + 6, 0, 7)
+            ctx!.strokeStyle = 'rgba(47,190,126,.9)'
+            ctx!.lineWidth = 1.5
+            ctx!.stroke()
+          }
+          if (n.flash && n.flash > 0) {
+            ctx!.beginPath()
+            ctx!.arc(n.x, n.y, rr + 2 + (1 - n.flash) * 9, 0, 7)
+            ctx!.strokeStyle = `rgba(${n.hue},${(n.flash * 0.55).toFixed(3)})`
+            ctx!.lineWidth = 1
+            ctx!.stroke()
+            n.flash = Math.max(0, n.flash - dt * 0.0022)
+          }
         }
-        if (n.flash && n.flash > 0) {
-          ctx!.beginPath()
-          ctx!.arc(n.x, n.y, rr + 2 + (1 - n.flash) * 9, 0, 7)
-          ctx!.strokeStyle = `rgba(${n.hue},${(n.flash * 0.55).toFixed(3)})`
-          ctx!.lineWidth = 1
-          ctx!.stroke()
-          n.flash = Math.max(0, n.flash - dt * 0.0022)
-        }
-      }
 
       for (let k = pulses.length - 1; k >= 0; k--) {
         const p = pulses[k]
@@ -1152,7 +1357,7 @@ export function ScreenMap() {
 
         for (const e of edges) {
           const h = Math.min(e.a.hot, e.b.hot)
-          if (h < 0.05) continue
+          if (h < 0.05 || !edgeSeen(e)) continue
           ctx!.beginPath()
           ctx!.moveTo(e.a.x, e.a.y)
           ctx!.quadraticCurveTo(e.qx!, e.qy!, e.b.x, e.b.y)
@@ -1162,7 +1367,7 @@ export function ScreenMap() {
         }
 
         for (const n of nodes) {
-          if (n.hot < 0.05) continue
+          if (n.hot < 0.05 || !nodeSeen(n)) continue
           const isTarget = search && n === search.target && search.phase !== 'idle'
           const grow = isTarget ? 1 + 0.9 * clamp((st - 800) / 260, 0, 1) : 1
           const rr = drawNode(n, clamp(n.hot, 0.2, 1), grow)
@@ -1207,7 +1412,10 @@ export function ScreenMap() {
       }
 
       /* ---- виньетка ---- */
-      if (vignette) {
+      /* Радиальный градиент во весь канвас — заливка на миллионы пикселей.
+         В облегчённом режиме её нет: на плотной карте это самый дорогой мазок
+         кадра, а тёмные края всё равно даёт CSS-космос под канвасом. */
+      if (vignette && !liteMode) {
         ctx!.fillStyle = vignette
         ctx!.fillRect(0, 0, W, H)
       }
@@ -1509,6 +1717,9 @@ export function ScreenMap() {
         scheduleAuto(1600)
         const keep = selected && !selected.core ? selected.id : null
         const wasCore = Boolean(selected?.core)
+        /* Сейф мог перевалить порог облегчённого режима — плотность канваса
+           выбирается заново. */
+        resize()
         build()
         fitView()
         stopSearch()
@@ -1565,11 +1776,12 @@ export function ScreenMap() {
   )
 
   /* Сейф изменился — карта пересобирается. Файл, добавленный в библиотеке,
-     появляется здесь новым узлом, сгоревший стикер исчезает вместе со связями. */
-  const graphKey = `${graph.nodes.map((n) => n.id).join(',')}|${graph.links}`
+     появляется здесь новым узлом, сгоревший стикер исчезает вместе со связями.
+     Снимок графа приходит готовым объектом, поэтому достаточно его самого:
+     склеивать тысячу id в строку на каждый рендер было дороже пересборки. */
   useEffect(() => {
     api.current?.rebuild()
-  }, [graphKey])
+  }, [graph])
 
   /* Фильтр кластера прокидываем в движок */
   useEffect(() => {
@@ -1602,7 +1814,7 @@ export function ScreenMap() {
   useEffect(() => {
     if (!NAV.nodeFocus) return
     api.current?.select(NAV.nodeFocus.id)
-  }, [NAV.nodeFocus, graphKey])
+  }, [NAV.nodeFocus, graph])
 
   /* Горячие клавиши: + − 0 F, Esc — закрыть инспектор */
   useEffect(() => {
@@ -1809,6 +2021,21 @@ export function ScreenMap() {
             <i style={{ background: 'rgba(176,141,87,.9)' }} />
             стикеры · {stats.notes}
           </span>
+          {lite && (
+            <span
+              className="lg lg-lite"
+              title={
+                liteHidden > 0
+                  ? `Узлов больше ${LITE_MIN}: карта рисует упрощённо и показывает ${LITE_EDGES} самых крепких связей (скрыто ${liteHidden} слабых)`
+                  : `Узлов больше ${LITE_MIN}: карта рисует упрощённо, чтобы не подтормаживать`
+              }
+              data-testid="map-lite-badge"
+            >
+              <i style={{ background: 'rgba(120,200,255,.9)' }} />
+              облегчённый режим
+              {liteHidden > 0 && <b className="lg-lite-n mono"> · связей {LITE_EDGES}</b>}
+            </span>
+          )}
         </div>
       </div>
 

@@ -1,0 +1,465 @@
+/* ============================================================
+   ДИАЛОГ ВЫБОРА ЛОКАЛЬНОЙ ПАПКИ
+   Раскладка файлового менеджера: дерево слева, содержимое справа.
+   Стили специально вне @layer и с двойными селекторами: диалог
+   открывается и внутри онбординга, где глобальные правила (.onb svg
+   без размеров) раздували иконки папок до размера картинки.
+   ============================================================ */
+
+.fp-back {
+  position: fixed;
+  inset: 0;
+  z-index: 220;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: color-mix(in oklab, #000 66%, transparent);
+  backdrop-filter: blur(4px);
+  animation: fp-in 0.16s ease-out;
+}
+
+@keyframes fp-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.fp-back .fp-card {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  width: min(880px, 100%);
+  height: min(78vh, 620px);
+  border: 1px solid var(--line, var(--border-2));
+  border-radius: 14px;
+  background: var(--panel, var(--bg-2));
+  color: var(--text, inherit);
+  overflow: hidden;
+  box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.7);
+  animation: fp-rise 0.2s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+@keyframes fp-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.99);
+  }
+}
+
+/* Иконки набора «Графит» размера не имеют — задаём его здесь. */
+.fp-back .fp-card svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  fill: none;
+}
+
+.fp-back .fp-card.is-compact {
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  width: min(560px, 100%);
+  height: min(66vh, 480px);
+}
+
+.fp-back .fp-head {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 13px 14px;
+  border-bottom: 1px solid var(--line, var(--border-2));
+}
+
+.fp-back .fp-ico {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border: 1px solid color-mix(in oklab, var(--accent) 45%, transparent);
+  border-radius: 8px;
+  color: var(--accent);
+}
+
+.fp-back .fp-head-text {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.fp-back .fp-head-text b {
+  font-size: 13.5px;
+  letter-spacing: 0.01em;
+}
+
+.fp-back .fp-head-text span {
+  font-size: 11.5px;
+  color: var(--muted, var(--text-3));
+  overflow-wrap: anywhere;
+}
+
+.fp-back .fp-x {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--line, var(--border-2));
+  border-radius: 7px;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  transition:
+    color 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.fp-back .fp-x:hover {
+  color: var(--danger, #d9534f);
+  border-color: currentColor;
+}
+
+/* ---------- строка пути ---------- */
+
+.fp-back .fp-bar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  min-height: 38px;
+  border-bottom: 1px solid var(--line, var(--border-2));
+  background: color-mix(in oklab, var(--accent) 4%, transparent);
+}
+
+.fp-back .fp-crumbs {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.fp-back .fp-crumbs::-webkit-scrollbar {
+  display: none;
+}
+
+.fp-back .fp-crumb {
+  flex: none;
+  max-width: 160px;
+  padding: 3px 7px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.fp-back .fp-crumb:hover {
+  background: color-mix(in oklab, var(--accent) 12%, transparent);
+  color: var(--accent);
+}
+
+.fp-back .fp-crumb + .fp-crumb::before {
+  content: '/';
+  margin-right: 6px;
+  opacity: 0.45;
+}
+
+.fp-back .fp-crumb-empty,
+.fp-back .fp-path {
+  font-size: 11px;
+  color: var(--muted, var(--text-3));
+}
+
+.fp-back .fp-path {
+  flex: none;
+  max-width: 40%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  direction: ltr;
+  opacity: 0.75;
+}
+
+/* ---------- кнопки ---------- */
+
+.fp-back .fp-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  min-height: 26px;
+  border: 1px solid var(--line, var(--border-2));
+  border-radius: 999px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    border-color 0.16s ease,
+    color 0.16s ease,
+    background-color 0.16s ease;
+}
+
+.fp-back .fp-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.fp-back .fp-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.fp-back .fp-icon-btn {
+  padding: 0;
+  width: 26px;
+  height: 26px;
+  justify-content: center;
+}
+
+.fp-back .fp-btn.is-primary {
+  border-color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+
+/* ---------- тело: дерево + содержимое ---------- */
+
+.fp-back .fp-body {
+  display: grid;
+  grid-template-columns: 246px minmax(0, 1fr);
+  min-height: 0;
+}
+
+.fp-back .fp-tree {
+  overflow: auto;
+  padding: 6px 4px 10px;
+  border-right: 1px solid var(--line, var(--border-2));
+  background: color-mix(in oklab, #000 8%, transparent);
+}
+
+.fp-back .fp-tree ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.fp-back .fp-tree-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 26px;
+  border-radius: 6px;
+}
+
+.fp-back .fp-tree-row:hover {
+  background: color-mix(in oklab, var(--accent) 8%, transparent);
+}
+
+.fp-back .fp-tree-row.is-on {
+  background: color-mix(in oklab, var(--accent) 16%, transparent);
+}
+
+.fp-back .fp-tree-row.is-on .fp-tree-name {
+  color: var(--accent);
+}
+
+.fp-back .fp-tree-caret {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--muted, var(--text-3));
+  cursor: pointer;
+}
+
+.fp-back .fp-tree-caret svg {
+  width: 11px;
+  height: 11px;
+}
+
+.fp-back .fp-caret-right {
+  transform: rotate(180deg);
+}
+
+.fp-back .fp-tree-caret:hover {
+  color: var(--accent);
+}
+
+.fp-back .fp-tree-name {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1;
+  min-width: 0;
+  height: 24px;
+  padding: 0 6px 0 2px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.fp-back .fp-tree-name svg {
+  color: var(--accent);
+  opacity: 0.8;
+}
+
+.fp-back .fp-pane {
+  overflow: auto;
+  padding: 6px;
+}
+
+.fp-back .fp-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.fp-back .fp-list li button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.14s ease;
+}
+
+.fp-back .fp-list li button:hover {
+  background: color-mix(in oklab, var(--accent) 10%, transparent);
+}
+
+.fp-back .fp-list li button svg {
+  color: var(--accent);
+  opacity: 0.8;
+}
+
+.fp-back .fp-ellipsis {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.fp-back .fp-note {
+  margin: 0;
+  padding: 16px 14px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted, var(--text-3));
+}
+
+.fp-back .fp-note.is-err {
+  color: var(--danger, #d9534f);
+}
+
+/* ---------- подвал ---------- */
+
+.fp-back .fp-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--line, var(--border-2));
+}
+
+.fp-back .fp-grow {
+  flex: 1;
+}
+
+.fp-back .fp-new {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fp-back .fp-new input {
+  padding: 5px 10px;
+  border: 1px solid var(--line, var(--border-2));
+  border-radius: 999px;
+  background: var(--bg, var(--bg-1));
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  max-width: 210px;
+}
+
+.fp-back .fp-new input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+@media (max-width: 720px) {
+  .fp-back .fp-body {
+    grid-template-columns: 160px minmax(0, 1fr);
+  }
+
+  .fp-back .fp-path {
+    display: none;
+  }
+}
+
+/* Телефон: подвал переносится по строкам — иначе «Положить в …» уезжает за край. */
+@media (max-width: 560px) {
+  .fp-back {
+    padding: 12px;
+  }
+
+  .fp-back .fp-foot {
+    flex-wrap: wrap;
+  }
+
+  .fp-back .fp-grow {
+    display: none;
+  }
+
+  .fp-back .fp-foot .fp-btn {
+    flex: 1 1 auto;
+    justify-content: center;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .fp-back .fp-new {
+    flex: 1 1 100%;
+  }
+
+  .fp-back .fp-new input {
+    flex: 1;
+    max-width: none;
+    min-width: 0;
+  }
+}

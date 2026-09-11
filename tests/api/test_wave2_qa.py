@@ -15,7 +15,7 @@ import pytest
 import requests
 
 BASE = os.environ.get("APP_URL", "http://localhost:3000").rstrip("/")
-PASSWORD = os.environ.get("APP_PASSWORD", "IceKrymTeam13@")
+PASSWORD = os.environ.get("APP_PASSWORD", "<APP_PASSWORD>")
 T = 40
 
 

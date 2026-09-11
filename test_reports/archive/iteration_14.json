@@ -17,7 +17,7 @@
   ],
   "updated_files": [],
   "success_rate": { "backend": "n/a (frontend-only)", "frontend": "100% (9/9 сценариев из ТЗ пройдено после рестарта сервера)" },
-  "test_credentials": "APP_PASSWORD=IceKrymTeam13@ для /login. Мастер-ключ можно задать в Настройки → Безопасность (PIN 123456 или e2e-master-2026).",
+  "test_credentials": "APP_PASSWORD=<APP_PASSWORD> для /login. Мастер-ключ можно задать в Настройки → Безопасность (PIN 123456 или e2e-master-2026).",
   "seed_data_creation": "Ничего не создавал. Только читал текущее состояние (13 файлов, 33 связи, 6 кластеров — что есть в дефолтном профиле).",
   "retest_needed": false,
   "should_main_agent_self_test": true,

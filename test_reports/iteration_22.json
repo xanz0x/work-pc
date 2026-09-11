@@ -19,7 +19,7 @@
     "Триггер и submit «Выключить» совпадают по имени [ЗАКРЫТО в iteration_23: submit → «Подтвердить»]"
   ],
   "success_rate": { "backend": "не тестировалось (frontend only)", "frontend": "9/9" },
-  "test_credentials": "IceKrymTeam13@ (пароль приложения), PIN онбординга 123456 → сменён на 654321 в одноразовых профилях Playwright",
+  "test_credentials": "<APP_PASSWORD> (пароль приложения), PIN онбординга 123456 → сменён на 654321 в одноразовых профилях Playwright",
   "retest_needed": false,
   "should_main_agent_self_test": false,
   "context_for_next_testing_agent": "Онбординг перекрывает интерфейс в каждом новом профиле — либо честно пройти три шага (onb-mode-local → PIN 6 цифр → onb-pick-demo), либо гасить wf.settings.v1.onboarding через tests/e2e/onboard.ts. Ячейки экрана блокировки теперь имеют data-testid lock-cell-0..5. Локальный Ollama не запущен — статус «локальный движок не подключён» это норма.",

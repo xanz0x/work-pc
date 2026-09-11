@@ -18,6 +18,17 @@ const HOOKS_DEBT = [
   'react-hooks/preserve-manual-memoization',
 ]
 
+const nextConfigs = Array.isArray(next) ? next : [next]
+
+/**
+ * Плагин берём из самого eslint-config-next: во flat-config правило можно
+ * переопределять только в объекте, где объявлен его плагин, а отдельная
+ * установка eslint-plugin-react-hooks дала бы второй экземпляр.
+ */
+const hooksPlugin = nextConfigs.find((c) => c && c.plugins && c.plugins['react-hooks'])?.plugins[
+  'react-hooks'
+]
+
 const config = [
   {
     ignores: [
@@ -30,10 +41,26 @@ const config = [
       'scripts/**',
     ],
   },
-  ...(Array.isArray(next) ? next : [next]),
-  {
-    rules: Object.fromEntries(HOOKS_DEBT.map((r) => [r, 'warn'])),
-  },
+  ...nextConfigs,
+  ...(hooksPlugin
+    ? [
+        {
+          plugins: { 'react-hooks': hooksPlugin },
+          rules: Object.fromEntries(HOOKS_DEBT.map((r) => [r, 'warn'])),
+        },
+      ]
+    : []),
+  ...(hooksPlugin
+    ? [
+        {
+          // Тестовые пробники специально пишут наружу (вытаскивают стор из
+          // рендера) — для них правила чистоты неприменимы.
+          files: ['tests/**/*.{ts,tsx}'],
+          plugins: { 'react-hooks': hooksPlugin },
+          rules: { 'react-hooks/globals': 'warn' },
+        },
+      ]
+    : []),
 ]
 
 export default config

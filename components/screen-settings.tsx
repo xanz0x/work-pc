@@ -43,9 +43,8 @@ import {
   type ToggleId,
 } from '@/lib/vault-store'
 import { useIndexActions, useIndexSummary } from '@/lib/indexer/context'
-import { ENGINES, MODELS, NO_DATA, engineOf, fmtBytes, modelOf, type ModelId } from '@/lib/data'
-import { ollamaTag } from '@/lib/llm/models'
-import { EnginePanel } from '@/components/engine-panel'
+import { fmtBytes } from '@/lib/data'
+import { AiProviderSection } from './ai-provider-section'
 import { useEngineStore } from '@/lib/store/engine'
 import { SecuritySection } from './security-section'
 import { SecretsSection } from './secrets-section'
@@ -210,56 +209,6 @@ const plural = (n: number, one: string, few: string, many: string) => {
   if (m10 === 1 && m100 !== 11) return one
   if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return few
   return many
-}
-
-/* ============================================================
-   NF-9 · СПИСОК МОДЕЛЕЙ — ТОЛЬКО РЕАЛЬНЫЕ
-   Названия моделей не захардкожены: список привозит /ai-api/models,
-   а тот читает теги из GET /api/tags у Ollama. Не установлена модель —
-   её нет в списке; пусто — честная надпись «Локальная модель ещё не
-   скачана». Активная (та, что отвечает сейчас) помечена.
-   ============================================================ */
-
-type InstalledModels = {
-  loaded: boolean
-  /** Запрос не дошёл (нет сети/сессии) — отдельная честная подпись. */
-  failed: boolean
-  models: string[]
-  active: string | null
-}
-
-function useInstalledModels(model: ModelId, refreshKey: unknown): InstalledModels {
-  const [state, setState] = useState<InstalledModels>({ loaded: false, failed: false, models: [], active: null })
-  useEffect(() => {
-    const ac = new AbortController()
-    fetch(`/ai-api/models?model=${encodeURIComponent(model)}`, { signal: ac.signal })
-      .then((r) => {
-        if (!r.ok) throw new Error(String(r.status))
-        return r.json() as Promise<{ ok?: unknown; models?: unknown; active?: unknown }>
-      })
-      .then((j) =>
-        setState({
-          loaded: true,
-          failed: false,
-          models: Array.isArray(j.models) ? j.models.filter((t): t is string => typeof t === 'string') : [],
-          active: typeof j.active === 'string' ? j.active : null,
-        }),
-      )
-      .catch(() => {
-        if (!ac.signal.aborted) setState({ loaded: true, failed: true, models: [], active: null })
-      })
-    return () => ac.abort()
-  }, [model, refreshKey])
-  return state
-}
-
-/** Установленный тег Ollama → модель профиля. Суффикс квантования — та же модель (как hasModel в lib/llm). */
-function modelIdOfTag(tag: string): ModelId | null {
-  for (const m of MODELS) {
-    const t = ollamaTag(m.id)
-    if (tag === t || tag.startsWith(`${t}-`)) return m.id
-  }
-  return null
 }
 
 /**
@@ -488,21 +437,6 @@ export function ScreenSettings() {
   }
 
   const notifyOn = NOTIFY_TOGGLES.filter((t) => d.toggles[t.id]).length
-  const draftEngine = engineOf(d.engine)
-  /* NF-2: готов ли локальный движок — знает домен движка, а не константа. */
-  const localReady = engine.local?.ok === true
-  const draftModel = modelOf(d.model)
-  /* NF-9: список моделей привозит /ai-api/models (теги из Ollama /api/tags);
-     обновляется вместе со статусом движка — «Проверить снова» тоже обновит. */
-  const installed = useInstalledModels(S.settings.model, engine.local)
-  const modelOptions = useMemo(() => {
-    const ids: ModelId[] = []
-    for (const tag of installed.models) {
-      const id = modelIdOfTag(tag)
-      if (id && !ids.includes(id)) ids.push(id)
-    }
-    return ids
-  }, [installed.models])
   const { stats, mix } = D
 
   /** Шаги конвейера — снимок настоящего состояния корпуса. */
@@ -623,112 +557,7 @@ export function ScreenSettings() {
               </div>
             </div>
 
-            {account.has('ai') && <section className="sec panel" id="set-engine" aria-labelledby="settings-engine-title" data-testid="settings-engine-section">
-              <div className="sec-head">
-                <span className="sec-icon">
-                  <IconChipAi />
-                </span>
-                <div className="sec-head-text">
-                  <h2 className="setting-title" id="settings-engine-title" data-testid="settings-engine-title">Движок ИИ</h2>
-                  <div className="setting-note" data-testid="settings-engine-description">Режим работы и модель для ответов</div>
-                </div>
-                <span className="sec-meta label-mono">{ENGINES.length} варианта</span>
-              </div>
-
-              <div className="engine-group" role="radiogroup" aria-label="Движок ИИ">
-                {ENGINES.map((e) => (
-                  <button
-                    key={e.id}
-                    type="button"
-                    role="radio"
-                    aria-checked={d.engine === e.id}
-                    className={`engine-option${d.engine === e.id ? ' selected' : ''}`}
-                    onClick={() => S.setDraftSettings((s) => ({ ...s, engine: e.id }))}
-                    onKeyDown={(event) => {
-                      const direction = ['ArrowRight', 'ArrowDown'].includes(event.key) ? 1 : ['ArrowLeft', 'ArrowUp'].includes(event.key) ? -1 : 0
-                      if (!direction) return
-                      event.preventDefault()
-                      const next = ENGINES[(ENGINES.indexOf(e) + direction + ENGINES.length) % ENGINES.length]
-                      S.setDraftSettings((s) => ({ ...s, engine: next.id }))
-                      event.currentTarget.parentElement?.querySelector<HTMLButtonElement>(`[data-testid="engine-${next.id}"]`)?.focus()
-                    }}
-                    tabIndex={d.engine === e.id ? 0 : -1}
-                    data-testid={`engine-${e.id}`}
-                  >
-                    <span className="radio-dot" />
-                    <span>
-                      <span className="engine-name">
-                        {e.name}
-                      </span>
-                      <span className="engine-sub">{ENGINE_NOTES[e.id]}</span>
-                    </span>
-                  </button>
-                ))}
-              </div>
-
-              <div className="model-row">
-                <span className="label-mono">Модель</span>
-                {!installed.loaded ? (
-                  <select className="select" value={d.model} disabled aria-label="Модель" data-testid="settings-model" style={{ maxWidth: 260 }}>
-                    <option>Уточняем список моделей…</option>
-                  </select>
-                ) : installed.failed ? (
-                  <span className="setting-note" data-testid="settings-model-error">Не удалось получить список моделей. Нажмите «Проверить снова».</span>
-                ) : modelOptions.length === 0 ? (
-                  <span className="setting-note" data-testid="settings-model-empty">Локальная модель ещё не скачана</span>
-                ) : (
-                  <select
-                    className="select"
-                    value={d.model}
-                    onChange={(e) =>
-                      S.setDraftSettings((s) => ({ ...s, model: e.target.value as typeof s.model }))
-                    }
-                    aria-label="Модель"
-                    data-testid="settings-model"
-                    style={{ maxWidth: 260 }}
-                  >
-                    {modelOptions.map((id) => (
-                      <option key={id} value={id}>
-                        {modelOf(id).label}
-                        {ollamaTag(id) === installed.active ? ' · активная' : ''}
-                      </option>
-                    ))}
-                  </select>
-                )}
-                {(localReady || engine.local?.code === 'MODEL_NOT_PULLED') && <span
-                  className={`badge ${localReady ? 'badge-ok' : 'badge-warn'}`}
-                  data-testid="model-state"
-                >
-                  {localReady
-                    ? d.model === S.settings.model
-                      ? `установлена · ${engine.local?.model ?? ''}`
-                      : 'применится после сохранения'
-                    : engine.local?.code === 'MODEL_NOT_PULLED'
-                      ? 'модели нет на устройстве'
-                      : 'локальный движок не запущен'}
-                </span>}
-                <span className="stat-line" style={{ marginTop: 0 }}>
-                  {draftModel.ram ?? NO_DATA} ОЗУ ·{' '}
-                  <b className="num">
-                    {engine.metrics.tokensPerSec ?? draftModel.tokensPerSec ?? NO_DATA} токенов/с
-                  </b>
-                </span>
-              </div>
-
-              {/* NF-2: настоящее состояние локального движка и что сделать, если он молчит. */}
-              <EnginePanel />
-
-              <div className="sec-note">
-                Скорость — по последнему ответу локального движка. «{NO_DATA}» означает, что данных пока нет.
-              </div>
-
-              {!draftEngine.offline && (
-                <div className="sec-note">
-                  Выбран режим «{draftEngine.short}»: часть запросов уйдёт наружу. Статус-бар и
-                  колокольчик сообщат об этом сразу после сохранения.
-                </div>
-              )}
-            </section>}
+            {account.has('ai') && <AiProviderSection />}
 
             <UiScaleSection />
 

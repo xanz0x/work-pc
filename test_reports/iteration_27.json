@@ -33,10 +33,10 @@
   "action_items": [],
   "updated_files": [],
   "success_rate": { "backend": "10/10 pytest + 9/9 unit (100%)", "frontend": "1/1 e2e (100%)" },
-  "test_credentials": "APP_URL=https://ai-ready-launcher.preview.emergentagent.com; admin=IceKrymTeam13@ (login-password без email); e2e-<ts>@test.local создаются одноразово",
+  "test_credentials": "APP_URL=https://ui-cleanup-34.preview.emergentagent.com; admin=<APP_PASSWORD> (login-password без email); e2e-<ts>@test.local создаются одноразово",
   "seed_data_creation": "pytest создаёт e2e-пользователя user-<hex6>@test.local с временным паролем, выдаёт ему лицензию на 30 дней, затем сбрасывает пароль/блокирует/удаляет. e2e создаёт e2e-<Date.now()>@test.local в отдельных контекстах браузера, в конце удаляется через admin-card-delete.",
   "retest_needed": false,
   "should_main_agent_self_test": false,
-  "context_for_next_testing_agent": "Полный набор аккаунтов и админки проходит 100% против preview. Пароль админа IceKrymTeam13@ остаётся стабильным. При проверке блокировки после reload обязательно дождаться networkidle перед fill формы /login (гидратация), иначе submit уйдёт нативным GET (уже учтено в 23-admin-accounts.spec.ts).",
+  "context_for_next_testing_agent": "Полный набор аккаунтов и админки проходит 100% против preview. Пароль админа <APP_PASSWORD> остаётся стабильным. При проверке блокировки после reload обязательно дождаться networkidle перед fill формы /login (гидратация), иначе submit уйдёт нативным GET (уже учтено в 23-admin-accounts.spec.ts).",
   "rca of the issue": "Отклонений нет — приёмка чистая."
 }

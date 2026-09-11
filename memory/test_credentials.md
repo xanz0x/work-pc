@@ -1,37 +1,45 @@
-# Тестовые реквизиты (2026-09-06, чат и навыки)
+# Тестовые реквизиты (актуально: сессия «выделение в почте + одно меню в инспекторе»)
 
-## Текущий проход Windows-установщика
-- Для повторной проверки включён отдельный чистый preview AI_DIR=/app/desktop/.runtime/preview-data, CLOUD_STORAGE=local, admin с теми же тестовыми реквизитами ниже. Старые /app/.data и /app/ai сохранены; данные в них не мигрируются и не стираются.
-- Актуальный адрес из supervisor: https://740f42ae-8f7f-41f8-9cf3-18e33fd981ed.preview.emergentagent.com
-- Существующие admin / IceKrymTeam13@ сохранены. Восстановлен локальный файл окружения; служебный ключ cookie создан заново, поскольку исходный отсутствовал. Почтовый ключ не заменялся: прежние данные не трогать.
-- Desktop создаёт отдельное чистое хранилище в профиле Windows. Постоянных desktop-аккаунтов пока не создано: владелец задаёт пароль сам в мастере. В installer никакие тестовые пароли/ключи не включать.
+- **Под снова сбрасывали**: пропали `node_modules` и `/app/.env.local`, фронтенд был `FATAL`.
+  Восстановлено: `corepack enable && pnpm install` в `/app` и `pnpm install --prod --ignore-scripts`
+  в `/app/desktop`, заново создан `/app/.env.local` (**новые** `APP_SESSION_SECRET` и `MAIL_SECRET`),
+  затем `node_modules/.bin/next build` и `sudo supervisorctl restart frontend`.
+- **`SONJJ_API_KEY` (SmailPro / Gmail-ящики) потерян вместе с `.env.local`** — пользователь сказал,
+  что токена нет. Gmail-ящики во «Временных» создать нельзя, проверять почту нужно на mail.tm.
+- Прежний временный ящик `c1813a12de3f@uberip.com` стал нечитаем (другой `MAIL_SECRET`) и удалён.
+  Для проверок оставлен рабочий ящик `2034af68977e@uberip.com` (id `c7c4cbd2`) с двумя QA-письмами.
+- Онбординг в чистом профиле браузера быстрее пропускать через localStorage:
+  `wf.settings.v1` → `onboarding: {at: 1700000000000, mode:'hybrid', keyChoice:'declined', start:'demo'}`
+  и перезагрузить страницу.
+- Playwright в скриншот-инструменте — **асинхронный API**: без `await` вызовы молча не выполняются.
 
-## Проверка логотипа — 2026-09-06
-- Используется прежняя учётная запись admin ниже; серверные пароли и ключи не менялись.
-- `tests/e2e/54-branding-desktop.spec.ts`: одноразовый мастер-пароль `Brand54-LocalOnly!` создаётся исключительно в новом изолированном браузерном контексте; после теста контекст удаляется. Это не пароль аккаунта или пользовательского сейфа.
-- Текущий внешний адрес взят из действующего `APP_URL` в `.env.local`/supervisor; `REACT_APP_BACKEND_URL` отсутствует в этом Next.js-окружении.
+---
 
-## Текущий проход чата
-- Превью: https://ai-ready-launcher.preview.emergentagent.com
-- Существующий admin / IceKrymTeam13@ сохранён; восстановлена .env.local и служебный ключ cookie.
-- Claude Sonnet 4.5: прежний TypeScript-адаптер, конфигурация универсального ключа восстановлена через менеджер интеграций. Реальная генерация пароля, сохранение секрета и следующий ход после отмены проверены успешно.
-- 2026-06: `SONJJ_API_KEY` (внешний платный SmailPro) задан пользователем, `MAIL_SECRET` сгенерирован заново (прежнего в окружении не было). Оба в `/app/.env.local`, значения не дублировать в документах. Реальная выдача Gmail и бесплатного mail.tm проверена.
-- После изменений production Next требует `yarn next build && supervisorctl restart frontend`.
-- Запуск тестов на внешнем APP_URL; старые сведения ниже об отсутствии всех ключей относятся к задаче карты.
+# Прежние реквизиты (сессия «прокрутка открытого письма»)
 
-## Вход в приложение
-- Логин: `admin`
-- Пароль: `IceKrymTeam13@`
-- Источник: `/app/.env.local` → `APP_PASSWORD`, `ADMIN_LOGIN=admin`
+- Превью: https://ui-cleanup-34.preview.emergentagent.com (локально http://localhost:3000)
+- Онбординг в чистом профиле: «Дальше · мастер-ключ» → «Продолжить без защиты» → «Да, продолжить без защиты» → «Посмотреть демо».
+- Вход: логин `admin`, пароль `WsxQa2026!lib` (значение лежит в `/app/.env.local` → `APP_PASSWORD`, `ADMIN_LOGIN=admin`).
+  Поля входа: `data-testid=login-login`, `data-testid=login-password`.
+- `/app/.env.local` восстановлен после сброса пода: `APP_SESSION_SECRET` и `MAIL_SECRET` **новые**,
+  `AI_DIR=/app/ai`, `CLOUD_STORAGE=local`. Перед восстановлением `ai/mail/temp.json` был пуст.
+- Пользовательский токен SmailPro сохранён только в `.env.local` как `SONJJ_API_KEY`; не печатать его в отчётах.
+- Ключей внешних ИИ-сервисов нет: модель не подключена, ИИ-разбор файла отвечает
+  «модель не подключена» — это ожидаемо и не баг.
+- Временная почта mail.tm работает без ключей; тестовое письмо с кнопкой, текстом и картинкой:
+  `python3 scripts/qa-send-rich-mail.py <адрес>`.
+- Реального IMAP-ящика в среде НЕТ — конвейер картинок для обычных ящиков проверен кодом,
+  unit-тестами (`tests/unit/mail-img.test.ts`) и временной почтой.
+- Зависимости: `pnpm install` в корне и `pnpm install --prod --ignore-scripts` в `/app/desktop`.
+  Playwright-браузеры не установлены: `npx playwright install chromium` перед e2e.
+- E2E: `cd /app && APP_URL=http://localhost:3000 APP_PASSWORD='WsxQa2026!lib' ADMIN_LOGIN=admin npx playwright test tests/e2e/<spec>`
+- Фронтенд — прод-сборка: `cd /app && npx next build && sudo supervisorctl restart frontend`.
+- Постоянных тестовых аккаунтов не создаётся; тестовые файлы, подпапки и ящики удаляются после проверок.
 
-## Запуск e2e
-```
-cd /app && APP_URL=http://localhost:3000 APP_PASSWORD='IceKrymTeam13@' ADMIN_LOGIN=admin npx playwright test tests/e2e/<spec>
-```
+---
 
-## Прочее
-- Мастер-ключ и пароли бэкапов создаются самими спеками (одноразовые), постоянных значений нет.
-- Внешний URL превью этого запуска (supervisor APP_URL): https://ai-ready-launcher.preview.emergentagent.com
-- В задаче карты логин/пароль не менялись; использованы существующие реквизиты. Онбординг пропускается только в изолированном браузерном профиле теста через `tests/e2e/onboard.ts`.
-- После восстановления окружения .env.local содержит прежние admin/пароль, новый служебный ключ cookie и AI_DIR=/app/.data. Ключи внешних сервисов отсутствуют; не заменялись выдуманными.
-- Фронтенд — продакшн-сборка под supervisor (`next start`), после правок нужен `npx next build && sudo supervisorctl restart frontend`.
+# История (предыдущие сессии)
+
+- Логин администратора не менялся между сессиями: `admin` / `APP_PASSWORD` из `.env.local`.
+- Одноразовые мастер-пароли и ключи создаются самими спеками в изолированных браузерных профилях.
+- Онбординг пропускается в тестовом профиле через `tests/e2e/onboard.ts`.

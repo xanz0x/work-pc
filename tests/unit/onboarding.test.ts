@@ -38,18 +38,18 @@ describe('NF-4 · политика онбординга', () => {
     })
   })
 
-  it('отказ от ключа не оставляет полудоверенного состояния: облако отрезано', () => {
-    const r = resolveOnboarding({ mode: 'hybrid', keyChoice: 'declined', start: 'demo' }, 7)
-    expect(r.engine).toBe('local')
+  it('отказ от ключа не оставляет полудоверенного состояния: согласие не выдано', () => {
+    const r = resolveOnboarding({ mode: 'cloud', keyChoice: 'declined', start: 'demo' }, 7)
+    expect(r.engine).toBe('hybrid')
     expect(r.cloudConsent).toBe(false)
     expect(r.downgraded).toBe(true)
     expect(r.onboarding.keyChoice).toBe('declined')
     expect(r.onboarding.at).toBe(7)
   })
 
-  it('локальный режим без ключа остаётся локальным и молчит про понижение', () => {
-    const r = resolveOnboarding({ mode: 'local', keyChoice: 'declined', start: 'demo' }, 5)
-    expect(r.engine).toBe('local')
+  it('гибридный режим без ключа остаётся гибридным и молчит про понижение', () => {
+    const r = resolveOnboarding({ mode: 'hybrid', keyChoice: 'declined', start: 'demo' }, 5)
+    expect(r.engine).toBe('hybrid')
     expect(r.downgraded).toBe(false)
   })
 

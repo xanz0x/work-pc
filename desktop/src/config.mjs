@@ -20,7 +20,6 @@ export function validateHostInput(input) {
   if (password !== input.confirmPassword) throw new Error('Пароли не совпадают.')
   const mailKey = String(input.mailKey ?? '').trim()
   if (mailKey && (mailKey.length < 8 || mailKey.length > 4096 || /[\r\n\0]/.test(mailKey))) throw new Error('Проверьте ключ SmailPro.')
-  if (input.acceptLicense !== true) throw new Error('Подтвердите ознакомление с условиями модели.')
   return { login, password, mailKey, host: hostName(input.host) }
 }
 export function connection(value) {
@@ -50,16 +49,15 @@ export async function loadConfig(root) {
 }
 export async function runtimeEnv(resources, root) {
   const env = parse(await readFile(path.join(resources, 'runtime.env')))
-  for (const key of ['WSX_HTTPS_PORT', 'WSX_NEXT_PORT', 'WSX_LOOPBACK', 'WSX_LISTEN_HOST', 'OLLAMA_HOST', 'OLLAMA_URL', 'OLLAMA_MODEL', 'OLLAMA_NUM_CTX', 'OLLAMA_KEEP_ALIVE']) {
+  for (const key of ['WSX_HTTPS_PORT', 'WSX_NEXT_PORT', 'WSX_LOOPBACK', 'WSX_LISTEN_HOST']) {
     if (!env[key]) throw new Error(`В сборке отсутствует ${key}`)
   }
   for (const key of ['WSX_HTTPS_PORT', 'WSX_NEXT_PORT']) {
     if (!/^\d+$/.test(env[key]) || +env[key] < 1024 || +env[key] > 65535) throw new Error(`Некорректный ${key}`)
   }
-  const ollama = new URL(env.OLLAMA_URL)
-  if (ollama.hostname !== env.WSX_LOOPBACK || env.OLLAMA_HOST !== ollama.host || env.WSX_LOOPBACK !== '127.0.0.1') throw new Error('Ollama должен слушать только локальный адрес.')
-  if (new Set([env.WSX_HTTPS_PORT, env.WSX_NEXT_PORT, ollama.port]).size !== 3) throw new Error('Порты приложения должны различаться.')
-  return { ...env, AI_DIR: path.join(root, 'data'), OLLAMA_MODELS: path.join(root, 'models') }
+  if (env.WSX_LOOPBACK !== '127.0.0.1') throw new Error('Приложение должно слушать только локальный адрес.')
+  if (env.WSX_HTTPS_PORT === env.WSX_NEXT_PORT) throw new Error('Порты приложения должны различаться.')
+  return { ...env, AI_DIR: path.join(root, 'data') }
 }
 export function newSecrets(input) {
   return { ADMIN_LOGIN: input.login, APP_PASSWORD: input.password, APP_SESSION_SECRET: randomBytes(48).toString('hex'), MAIL_SECRET: randomBytes(48).toString('hex'), ...(input.mailKey ? { SONJJ_API_KEY: input.mailKey } : {}) }

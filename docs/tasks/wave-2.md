@@ -263,7 +263,7 @@ localStorage «старым» сейфом (файлы, стикеры, диал
    (тогда CI с `--frozen-lockfile` корректен) либо переехать на yarn целиком.
    Локальный `node_modules` собран yarn'ом и работает.
 2. **`/app/.env` был потерян** (в git его нет) и восстановлен вручную из
-   `memory/test_credentials.md`: `APP_PASSWORD=IceKrymTeam13@`, новый
+   `memory/test_credentials.md`: `APP_PASSWORD=<APP_PASSWORD>`, новый
    `APP_SESSION_SECRET` (32+ hex). Смена секрета инвалидировала прежние cookie —
    это ожидаемо. Полный список переменных теперь в `.env.example`.
 3. **`AI_DIR=/root/.workflow/ai` был пуст**: `skills/` и `mcp/` отсутствовали,

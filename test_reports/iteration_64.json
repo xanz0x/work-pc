@@ -1,0 +1,22 @@
+{
+  "summary": "Frontend-only verification of library viewer icon visibility fix (CSS: stroke: currentColor on .lv-tool svg / .lv-x svg / .lv-info-tag svg). Logged in as admin, opened viewer for демо-PDF (договор_аренды_2026.pdf) and for демо-JPG (фото_офиса.jpg). All header icons (Паспорт / Открыть на ПК / В папке / Скачать / крестик закрытия) render with non-zero size and proper stroke; крестик 13x13, stroke rgb(230,234,238), fill none. Метки-чипы .lv-info-tag имеют svg 10x10 со stroke rgb(47,190,126) (акцент) и fill none. Панель инструментов картинки (lv-zoom-out/in/fit/rotate) — все 13x13, stroke=currentColor, fill=none, все кнопки кликаются: зум изменился с 'по окну' на '150%', lv-fit вернул к 'по окну', lv-rotate клик прошёл без ошибок. Клик по cloud-viewer-close закрывает окно, Esc также закрывает. После закрытия боковая панель и топбар библиотеки на месте (sidebar-nav содержит 14 ссылок). Иконки в CSS-регрессии исправлены корректно, багов не выявлено.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "CSS-фикс минимален и правилен: '.lv-tool svg, .lv-x svg { stroke: currentColor; fill: none; stroke-width: 1.6 }' + '.lv-info-tag svg { stroke: currentColor; fill: none }'. Стоит рассмотреть глобальный fallback в самом компоненте icons.tsx (например задавать stroke='currentColor' на корневом svg по умолчанию), чтобы избежать повторения ошибки при добавлении новых мест использования."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A", "frontend": "100%"},
+  "test_credentials": "admin / WsxQa2026!lib (из /app/memory/test_credentials.md, seed onboarding через wf.settings.v1)",
+  "seed_data_creation": "none — использованы демо-файлы",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Для открытия просмотрщика: 1) сеять wf.settings.v1.onboarding до навигации; 2) залогиниться admin/APP_PASSWORD; 3) на экране Библиотеки — правый инспектор всегда содержит кнопку 'Просмотр' (get_by_role button name='Просмотр'). Селекторы: cloud-viewer-close, cloud-viewer-download, lv-info-toggle, lv-open-pc, lv-reveal, lv-zoom-in/out/fit/rotate, lv-zoom-value, .lv-info-tag. Метки чипов присутствуют только у файлов с тегами (у PROJECT_MASTER.md их нет), поэтому для проверки .lv-info-tag выбирать договор_аренды_2026.pdf или подобный демо-файл.",
+  "rca of the issue": "Оригинальный баг: SVG-иконки внутри .lv-tool и .lv-x имели fill='none' по атрибуту, а stroke не задавался ни в JSX (иконки задают stroke=currentColor только на элементах path/line), ни в CSS. В результате внутренние линии рисовались с default browser stroke='' (не наследовалось) и получались пустыми ✕/иконки метки. Фикс — в cloud-viewer.css добавлен блок '.lv-tool svg, .lv-x svg { stroke: currentColor; fill: none; stroke-width: 1.6 }' и такой же для .lv-info-tag svg. После правки computed stroke становится ненулевым цветом, все иконки видны."
+}

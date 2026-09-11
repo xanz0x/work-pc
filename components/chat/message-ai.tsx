@@ -171,14 +171,14 @@ export function MessageAi({
                     Войти
                   </a>
                 ) : null}
-                {failure.code === 'ENGINE_NOT_CONFIGURED' ? (
+                {failure.code === 'CLOUD_NOT_CONFIGURED' ? (
                   <button
                     type="button"
                     className="btn btn-tertiary btn-sm"
                     onClick={() => openSetting('engine')}
                     data-testid="ai-error-engine"
                   >
-                    Сменить движок
+                    Подключить модель
                   </button>
                 ) : null}
                 {onRegenerate ? (

@@ -20,13 +20,9 @@ import {
 import { usePersistedState } from '@/hooks/use-persisted-state'
 import {
   CLOUD_MODEL_LABEL,
-  DEFAULT_MODEL,
-  DESKTOP_BUILD,
-  LOCAL_ENGINE_READY,
+
   engineOf,
-  modelOf,
   type EngineId,
-  type ModelId,
 } from '@/lib/data'
 import {
   NO_ONBOARDING,
@@ -50,7 +46,6 @@ export type ToggleId =
 
 export type Settings = {
   engine: EngineId
-  model: ModelId
   folder: string
   toggles: Record<ToggleId, boolean>
   /** Когда пользователь согласился отправлять запросы во внешнюю модель. */
@@ -60,8 +55,7 @@ export type Settings = {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  engine: 'local',
-  model: DEFAULT_MODEL,
+  engine: 'cloud',
   folder: '',
   toggles: {
     ocr: true,
@@ -80,9 +74,12 @@ export const DEFAULT_SETTINGS: Settings = {
 
 /** Профиль мог быть записан старой сборкой — добираем поля. */
 export function normalizeSettings(s: Settings): Settings {
+  const engine: EngineId = s.engine === 'hybrid' ? 'hybrid' : 'cloud'
   return {
     ...DEFAULT_SETTINGS,
     ...s,
+    /* Профиль мог быть записан сборкой с локальным движком — его больше нет. */
+    engine,
     toggles: { ...DEFAULT_SETTINGS.toggles, ...s.toggles },
     onboarding: { ...NO_ONBOARDING, ...s.onboarding },
   }
@@ -104,36 +101,24 @@ export type EngineView = {
 }
 
 /**
- * NF-2: готовность локального движка приходит снаружи — от домена движка,
- * который спросил сервер, запущена ли Ollama и стоит ли модель. Без этих
- * данных (второй аргумент не передан) продукт по-прежнему честно пишет
- * «локальный движок не подключён», а не выдумывает готовность.
+ * Готовность приходит снаружи — от подключения модели, которое владелец
+ * задал в настройках (свой сервер или OpenRouter). Без этих данных
+ * продукт честно пишет «модель не подключена», а не выдумывает готовность.
  */
 export function buildEngineView(
   s: Settings,
-  local?: { ok: boolean; model: string | null } | null,
+  provider?: { ok: boolean; model: string | null; kindLabel?: string } | null,
 ): EngineView {
   const e = engineOf(s.engine)
-  const isCloud = !e.offline
-  const localReady = local?.ok ?? LOCAL_ENGINE_READY
+  const ready = provider?.ok === true
   return {
     mode: s.engine,
-    label: e.short,
-    model: isCloud
-      ? CLOUD_MODEL_LABEL
-      : localReady && local?.model
-        ? local.model
-        : modelOf(s.model).short,
-    isCloud,
-    ready: isCloud || localReady,
-    statusLabel: isCloud
-      ? s.engine === 'cloud'
-        ? 'ВНЕШНЯЯ МОДЕЛЬ'
-        : 'ГИБРИДНЫЙ РЕЖИМ'
-      : localReady
-        ? 'ЛОКАЛЬНЫЙ РЕЖИМ'
-        : 'ЛОКАЛЬНЫЙ ДВИЖОК НЕ ПОДКЛЮЧЁН',
-    netLabel: isCloud ? 'ВНИМАНИЕ · ЕСТЬ ИСХОДЯЩИЕ' : DESKTOP_BUILD ? 'ИИ НА ГЛАВНОМ ПК' : 'НЕТ ИСХОДЯЩИХ ЗАПРОСОВ',
+    label: provider?.kindLabel ? provider.kindLabel : e.short,
+    model: (ready && provider?.model) || CLOUD_MODEL_LABEL,
+    isCloud: true,
+    ready,
+    statusLabel: ready ? 'МОДЕЛЬ ПОДКЛЮЧЕНА' : 'МОДЕЛЬ НЕ ПОДКЛЮЧЕНА',
+    netLabel: ready ? 'ВНИМАНИЕ · ЕСТЬ ИСХОДЯЩИЕ' : 'МОДЕЛЬ НЕ ПОДКЛЮЧЕНА',
     consented: s.cloudConsentAt !== null,
   }
 }

@@ -34,7 +34,7 @@ export class OwnedProcess {
       const dir = this._logDir
       if (!dir) return
       await mkdir(dir, { recursive: true })
-      const file = path.join(dir, `${this.name === 'Ollama' ? 'ollama' : 'server'}.log`)
+      const file = path.join(dir, 'server.log')
       try { if ((await stat(file)).size > 5 * 1024 * 1024) await rename(file, `${file}.old`) } catch { /* no previous log */ }
       this.logStream = createWriteStream(file, { flags: 'a' })
     } catch { this.logStream = null }

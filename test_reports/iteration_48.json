@@ -28,7 +28,7 @@
     "backend": "100% (3/3)",
     "frontend": "96% (all target flows passed; one follow-up selector adjustment needed only in test script)"
   },
-  "test_credentials": "admin / IceKrymTeam13@ from /app/memory/test_credentials.md",
+  "test_credentials": "admin / <APP_PASSWORD> from /app/memory/test_credentials.md",
   "seed_data_creation": "No persistent seed data created. Notification and offline toggles were restored to original values after verification.",
   "retest_needed": false,
   "should_main_agent_self_test": true,

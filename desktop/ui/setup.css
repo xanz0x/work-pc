@@ -253,16 +253,6 @@ input:user-invalid, textarea:user-invalid { border-color: #b76661; }
 .optional { font-size: 10px; color: var(--text-3); float: right; }
 .field-note { font-size: 11px; color: var(--text-3); margin: 9px 0 0; line-height: 1.6; }
 
-.model-info {
-  padding: 14px 16px;
-  margin-top: 24px;
-  border: 1px solid var(--border-card);
-  border-radius: var(--r);
-  background: var(--panel);
-}
-.model-info strong { display: block; font-weight: 550; font-size: 13px; color: #6bd9a7; }
-.model-info span { display: block; font-size: 12px; color: var(--text-2); margin-top: 5px; line-height: 1.55; }
-
 .check {
   display: flex;
   gap: 10px;
@@ -325,19 +315,6 @@ input:user-invalid, textarea:user-invalid { border-color: #b76661; }
 /* ---------- Шаг 3: состояние и загрузка ---------- */
 .status { margin-top: 4px; }
 .status > p { margin: 12px 0 0; color: var(--text); }
-.model-chip {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-top: 16px;
-  padding: 12px 16px;
-  border: 1px solid var(--accent-line);
-  border-radius: var(--r);
-  background: var(--accent-soft);
-}
-.model-chip strong { font-size: 14px; font-weight: 600; color: #6bd9a7; font-variant-numeric: tabular-nums; }
-.model-chip span { font-size: 12px; color: var(--text-2); }
 progress {
   accent-color: var(--accent);
   width: 100%;

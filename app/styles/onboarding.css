@@ -460,3 +460,152 @@
     gap: 6px;
   }
 }
+
+/* ---------- шаг 1 · подключение модели ---------- */
+
+.onb-grid-tight {
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.onb-model {
+  display: grid;
+  gap: 10px;
+  margin: 4px 0 6px;
+}
+
+.onb-model-kinds {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.onb-model-kinds .onb-tab {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+  padding: 9px 12px;
+}
+
+.onb-model-kinds .onb-tab span {
+  font-size: 11.5px;
+  opacity: 0.7;
+}
+
+.onb-model-kinds .onb-tab.is-on {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.onb-model-field {
+  display: grid;
+  gap: 4px;
+}
+
+.onb-model-field input {
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--bg);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+}
+
+.onb-model-field input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.onb-model-acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.onb-model-ok {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--ok, #3fa66a);
+}
+
+.onb-model-err {
+  margin: 0;
+  font-size: 12px;
+  color: var(--danger, #d9534f);
+}
+
+.onb-model-list {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.onb-model-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.onb-model-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 12.5px;
+  outline: none;
+}
+
+.onb-model-list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 190px;
+  overflow: auto;
+}
+
+.onb-model-list li button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.14s ease;
+}
+
+.onb-model-list li button:hover {
+  background: color-mix(in oklab, var(--accent) 8%, transparent);
+}
+
+.onb-model-list li button.is-on {
+  background: color-mix(in oklab, var(--accent) 16%, transparent);
+}
+
+.onb-model-list li button i {
+  flex: none;
+  padding: 1px 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 10px;
+  font-style: normal;
+  color: var(--muted);
+}
+
+.onb-model-list li button i.free {
+  color: var(--ok, #3fa66a);
+}

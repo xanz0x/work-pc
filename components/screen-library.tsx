@@ -3,6 +3,7 @@
 /* AR-2: слой стилей библиотеки приезжает вместе с чанком экрана. */
 import '@/app/styles/screen-library.css'
 import './cloud-viewer.css'
+import './library-dirs.css'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   IconCheck,
@@ -14,7 +15,6 @@ import {
   IconExternal,
   IconFolder,
   IconGraph,
-  IconGridBoard,
   IconKey,
   IconLayers,
   IconLock,
@@ -23,27 +23,22 @@ import {
   IconPin,
   IconPlus,
   IconRefresh,
-  IconSparkText,
   IconSticker,
   IconTag,
   IconTrash,
 } from './icons'
 import { CLUSTERS, clusterOf, fmtBytes, type ClusterId, type FileView } from '@/lib/data'
-import { DAY, HOUR, TTL_OPTIONS, fmtLeft, fmtWhen, type Note } from '@/lib/notes'
-import type { EdgeReason } from '@/lib/graph'
+import { DAY, TTL_OPTIONS, fmtLeft, fmtWhen, type Note } from '@/lib/notes'
 import {
   useDataStore,
   useMutations,
   useLockStore,
   useNavStore,
-  useNotifsStore,
   useNow,
-  useSettingsStore,
   useToast,
 } from '@/lib/vault-store'
 import { useIndexActions, useIndexSummary } from '@/lib/indexer/context'
 import {
-  DENSITY_LABEL,
   isCustom,
   layoutOf,
   parseTileKey,
@@ -57,57 +52,37 @@ import {
 } from '@/lib/board-layout'
 import { LibraryBoard, type BoardItem } from '@/components/library-board'
 import { IndexStrip } from '@/components/index-strip'
-import {
-  checkStickerSecret,
-  looksEncrypted,
-  useFileKeys,
-} from '@/hooks/use-file-keys'
-import { Beam } from '@/components/ui/beam'
+import { looksEncrypted, useFileKeys } from '@/hooks/use-file-keys'
 import { NumTicker } from '@/components/ui/num-ticker'
 import { usePersistedState } from '@/hooks/use-persisted-state'
 import { useBulkRunner } from '@/lib/bulk'
 import { useIntent } from '@/lib/commands'
 import { BulkBar, type BulkAction } from '@/components/bulk-bar'
-import { DialogShell } from '@/components/dialog-shell'
 import { PasswordInput } from './password-input'
 import { trackAction, trackDrop } from '@/lib/telemetry'
 import { useAccount } from '@/lib/account'
 import { LibraryContextMenu, type LibraryMenuAction, type LibraryMenuTarget } from './library-context-menu'
 import { LibraryShareDialog, type LibraryShareRequest } from './library-share-dialog'
+import { LibraryDeleteDialog, type LibraryDeleteRequest } from './library-delete-dialog'
+import { IntakeDirDialog } from './intake-dir-dialog'
 import { SharedNoteInspector } from './shared-note-inspector'
 import { LibraryViewer, type LibraryViewerTarget } from './library-viewer'
+import { IntakeStrip } from './intake-strip'
+import { LibraryNoteInspector } from './library-note-inspector'
+import { LibraryFileInspector } from './library-file-inspector'
+import { FileCardContent, NoteCardContent } from './library-cards'
+import { LibraryDirStrip } from './library-dir-strip'
+import { LibraryToolbar } from './library-toolbar'
+import { FileKeyAskDialog, FileKeySetDialog } from './library-fk-dialogs'
+import { BRIDGE_HINT, absPathOf, desktopBridge } from './library-shared'
+import { intakeFiles, type IntakeTrack } from '@/lib/intake'
+import { QUEUE_EVENT, takeIntake } from '@/lib/intake-queue'
 
 /** Локальный алиас: короче в объявлении состояния доски. */
 const usePersisted = usePersistedState
 
 /** Сколько карточек файлов рисуется за раз (NF-1: тысяча — не сразу). */
 const FILE_PAGE = 150
-
-/* ============================================================
-   МОСТ DESKTOP-ПРИЛОЖЕНИЯ (contract п.7 плана)
-   window.workspacexDesktop появляется в Electron-обёртке: openPath —
-   открыть файл программой по умолчанию, revealInExplorer — показать
-   в проводнике. В браузере моста нет — действия выключены с подсказкой.
-   ============================================================ */
-
-type WorkspaceXBridge = {
-  openExternal?: (url: string) => void
-  revealInExplorer?: (absPath: string) => void
-  openPath?: (absPath: string) => void
-}
-
-const BRIDGE_HINT = 'Доступно в приложении для Windows'
-
-function desktopBridge(): WorkspaceXBridge | undefined {
-  if (typeof window === 'undefined') return undefined
-  return (window as unknown as { workspacexDesktop?: WorkspaceXBridge }).workspacexDesktop
-}
-
-/** absPath читается опционально: поле появится в метаданных у другого исполнителя. */
-function absPathOf(f: unknown): string | null {
-  const p = (f as { absPath?: unknown } | null | undefined)?.absPath
-  return typeof p === 'string' && p.trim() ? p.trim() : null
-}
 
 /* ============================================================
    КОНЦЕПЦИЯ «ДВА СЛОЯ ПАМЯТИ»
@@ -127,13 +102,6 @@ type MarkKey = string
 type Layer = 'all' | 'files' | 'notes'
 type CatId = ClusterId | 'all'
 
-/** Подпись, почему два объекта связаны: связь считает graph.ts, а не дизайн. */
-const REASON_LABEL: Record<EdgeReason, string> = {
-  pin: 'стикер',
-  tag: 'метка',
-  cluster: 'кластер',
-}
-
 export function ScreenLibrary() {
   const D = useDataStore()
   const NAV = useNavStore()
@@ -141,8 +109,28 @@ export function ScreenLibrary() {
   const { flash } = useToast()
   const account = useAccount()
   const [cloudPreview, setCloudPreview] = useState<FileView | null>(null)
+  /** Живой приём файлов: перенос в папку хранения и разбор ИИ. */
+  const [intake, setIntake] = useState<IntakeTrack[]>([])
+  /** Открытая подпапка папки хранения ('' — её корень). */
+  const [dir, setDir] = useState('')
+  /** Файлы ждут ответа «куда положить». */
+  const [pendingFiles, setPendingFiles] = useState<File[] | null>(null)
+  /* Кнопка «Добавить файл» в меню отдаёт файлы сюда — спрашиваем подпапку. */
+  useEffect(() => {
+    const pick = () => {
+      const list = takeIntake()
+      if (list.length > 0) setPendingFiles(list)
+    }
+    pick()
+    window.addEventListener(QUEUE_EVENT, pick)
+    return () => window.removeEventListener(QUEUE_EVENT, pick)
+  }, [])
   const [contextMenu, setContextMenu] = useState<LibraryMenuTarget | null>(null)
   const [shareRequest, setShareRequest] = useState<LibraryShareRequest | null>(null)
+  /** Окно удаления: с галочкой «удалить также с ПК» для файлов в папке хранения. */
+  const [deleteRequest, setDeleteRequest] = useState<LibraryDeleteRequest | null>(null)
+  const [deleteBusy, setDeleteBusy] = useState(false)
+  const [deleteErr, setDeleteErr] = useState<string | null>(null)
   const menuReturn = useRef<HTMLElement | null>(null)
   const closeContextMenu = useCallback(() => {
     setContextMenu(null)
@@ -280,9 +268,18 @@ export function ScreenLibrary() {
 
   const shownFiles = useMemo(() => {
     let list = cat === 'all' ? views : views.filter((f) => f.cluster === cat)
+    /* Подпапка выбранной папки на ПК: в ней видны только её файлы. Локальные
+       файлы без папки живут в корне. При поиске папка не мешает искать. */
+    if (!searching) list = list.filter((f) => (f.dir ?? '') === dir)
     if (searching) list = list.filter((f) => NAV.matchedFiles.has(f.id))
     return list
-  }, [views, cat, searching, NAV.matchedFiles])
+  }, [views, cat, dir, searching, NAV.matchedFiles])
+
+  /** Подпапки текущей папки — полоса над списком. */
+  const subDirs = useMemo(
+    () => D.cloudFolders.filter((f) => f.split('/').slice(0, -1).join('/') === dir).sort((a, b) => a.localeCompare(b, 'ru')),
+    [D.cloudFolders, dir],
+  )
 
   /**
    * NF-1: на папке из тысячи файлов рисовать всё сразу нельзя — каждая
@@ -290,7 +287,7 @@ export function ScreenLibrary() {
    * Показываем страницами, «Показать ещё» добавляет следующую.
    */
   const [fileLimit, setFileLimit] = useState(FILE_PAGE)
-  useEffect(() => setFileLimit(FILE_PAGE), [cat, searching, NAV.query, view])
+  useEffect(() => setFileLimit(FILE_PAGE), [cat, dir, searching, NAV.query, view])
   const pagedFiles = useMemo(
     () => (shownFiles.length > fileLimit ? shownFiles.slice(0, fileLimit) : shownFiles),
     [shownFiles, fileLimit],
@@ -1202,8 +1199,24 @@ export function ScreenLibrary() {
     [liveNotes, selFile],
   )
 
-  function validateShare(request: LibraryShareRequest): string | null {
-    if (!account.isAdmin || !account.has('cloud')) return 'Изменять общий диск может только администратор.'
+  /** Перевести серверный файл между «моей папкой» и общим диском. */
+  async function setCloudShared(cloudId: string, shared: boolean) {
+    try {
+      const r = await fetch(`/ai-api/cloud/file/${encodeURIComponent(cloudId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shared }),
+      })
+      const body = (await r.json().catch(() => ({}))) as { error?: string }
+      if (!r.ok) throw new Error(body.error ?? `Ошибка ${r.status}`)
+      window.dispatchEvent(new Event('wsx:cloud-changed'))
+      flash(shared ? 'Файл добавлен в общую папку' : 'Файл убран из общей папки — он остался в вашей')
+    } catch (e) {
+      flash(e instanceof Error ? e.message : 'Не удалось изменить доступ к файлу')
+    }
+  }
+
+  function validateShare(request: LibraryShareRequest): string | null {    if (!account.isAdmin || !account.has('cloud')) return 'Изменять общий диск может только администратор.'
     if (LK.lock.status === 'locked' || LK.lock.busy) return 'Сначала разблокируйте сейф.'
     if (request.mode === 'remove') return null
     if (request.kind === 'note') {
@@ -1255,15 +1268,30 @@ export function ScreenLibrary() {
     }
     menuActions.push({ id: 'map', label: 'Показать на карте', icon: <IconGraph />, run: () => NAV.openOnMap(id) })
     if (contextFile && !contextFile.shared) menuActions.push({ id: 'pin-note', label: 'Приколоть заметку', icon: <IconSticker />, run: () => startNew(id) })
-    if (account.isAdmin && account.has('cloud')) {
+    if (account.isAdmin && account.has('cloud') && contextFile?.shared && contextFile.cloudId) {
+      /* Файл уже лежит в локальной папке на ПК: в общую папку он попадает
+         одним действием — байты при этом остаются на месте. */
+      const toShared = contextFile.cloudShared === false
+      menuActions.push({
+        id: toShared ? 'to-shared' : 'to-local',
+        label: toShared ? 'Добавить в общую папку' : 'Убрать из общей папки',
+        icon: <IconDatabase />,
+        run: () => void setCloudShared(contextFile.cloudId!, toShared),
+      })
+    } else if (account.isAdmin && account.has('cloud')) {
       const cloudId = contextObject.shared ? contextObject.cloudId : D.cloudCopies[`${kind}:${id}`]
       const request: LibraryShareRequest = { mode: cloudId ? 'remove' : 'share', kind, id, title: contextTitle, cloudId }
       const reason = validateShare(request)
       menuActions.push({ id: cloudId ? 'unshare' : 'share', label: cloudId ? 'Удалить с общего диска' : 'Добавить в общий диск', icon: <IconDatabase />, disabled: !!reason, note: reason ?? undefined, run: () => setShareRequest(request) })
     }
     if (!contextObject.shared) menuActions.push({ id: 'delete', label: kind === 'file' ? 'Убрать из библиотеки' : 'Стереть заметку', icon: <IconTrash />, danger: true, run: () => {
-      if (!window.confirm(kind === 'file' ? `Убрать «${contextTitle}» из библиотеки? Файл на компьютере и общая копия останутся.` : `Стереть «${contextTitle}» без восстановления? Общая копия, если она есть, останется на диске.`)) return
-      if (kind === 'file') { fk.forgetKey(id); D.removeFile(id) } else burnNow(id)
+      if (kind === 'file') {
+        setDeleteErr(null)
+        setDeleteRequest({ kind: 'file', id, title: contextTitle, absPath: contextFile ? absPathOf(contextFile) : null, cloudId: contextFile?.cloudId ?? null })
+      } else {
+        if (!window.confirm(`Стереть «${contextTitle}» без восстановления? Общая копия, если она есть, останется на диске.`)) return
+        burnNow(id)
+      }
     } })
   }
 
@@ -1275,8 +1303,47 @@ export function ScreenLibrary() {
         bytes: cloudPreview.bytes,
         cloudId: cloudPreview.cloudId ?? D.cloudCopies[`file:${cloudPreview.id}`] ?? null,
         absPath: absPathOf(cloudPreview),
+        /* Паспорт файла в просмотрщике — разбор ИИ-архивариуса. */
+        description: cloudPreview.desc,
+        tags: cloudPreview.tags,
+        ...(cloudPreview.analysisStatus ? { analysisStatus: cloudPreview.analysisStatus } : {}),
+        ...(cloudPreview.fileName ? { fileName: cloudPreview.fileName } : {}),
       }
     : null
+
+  /**
+   * Подтверждённое удаление из окна: при включённой галочке сервер сначала
+   * стирает байты из папки хранения (с проверкой «файла больше нет на диске»),
+   * и только потом запись покидает библиотеку. Без галочки байты остаются.
+   */
+  async function confirmDelete(removeBytes: boolean) {
+    const req = deleteRequest
+    if (!req) return
+    setDeleteBusy(true)
+    setDeleteErr(null)
+    try {
+      if (req.kind === 'file' && req.cloudId) {
+        const r = await fetch(`/ai-api/cloud/file/${encodeURIComponent(req.cloudId)}`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ removeBytes }),
+        })
+        const body = (await r.json().catch(() => ({}))) as { error?: string }
+        if (!r.ok) throw new Error(body.error ?? `Ошибка ${r.status}`)
+        window.dispatchEvent(new Event('wsx:cloud-changed'))
+      }
+      if (req.kind === 'file') {
+        fk.forgetKey(req.id)
+        D.removeFile(req.id)
+        flash(removeBytes ? `«${req.title}» удалён из библиотеки и с ПК.` : `«${req.title}» убран из библиотеки; файл остался в папке на ПК.`)
+      }
+      setDeleteRequest(null)
+    } catch (e) {
+      setDeleteErr(e instanceof Error ? e.message : 'Не удалось удалить файл.')
+    } finally {
+      setDeleteBusy(false)
+    }
+  }
 
   return (
     <div className="scroll-col" data-testid="screen-library"
@@ -1284,6 +1351,23 @@ export function ScreenLibrary() {
       onKeyDownCapture={(e) => { if ((e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) && openContext(e.target)) { e.preventDefault(); e.stopPropagation() } }}>
       {contextMenu && contextObject && <LibraryContextMenu target={contextMenu} title={contextTitle} actions={menuActions} onClose={closeContextMenu} />}
       {shareRequest && <LibraryShareDialog key={`${shareRequest.mode}:${shareRequest.kind}:${shareRequest.id}`} request={shareRequest} validate={validateShare} onClose={() => setShareRequest(null)} />}
+      {deleteRequest && <LibraryDeleteDialog request={deleteRequest} busy={deleteBusy} error={deleteErr} onConfirm={(removeBytes) => void confirmDelete(removeBytes)} onClose={() => { if (!deleteBusy) setDeleteRequest(null) }} />}
+      {pendingFiles && (
+        <IntakeDirDialog
+          root={D.cloudRoot}
+          folders={D.cloudFolders}
+          initialDir={dir}
+          count={pendingFiles.length}
+          onCancel={() => setPendingFiles(null)}
+          onPick={(target) => {
+            const list = pendingFiles
+            setPendingFiles(null)
+            setDir(target)
+            void intakeFiles(list, setIntake, target)
+            trackAction('files.intake')
+          }}
+        />
+      )}
       {/* Единственная live-область на все доски: скринридер слышит
          каждое действие один раз, без дублей из двух смонтированных
          досок режима «Всё». */}
@@ -1291,6 +1375,7 @@ export function ScreenLibrary() {
       {viewerTarget && (
         <LibraryViewer target={viewerTarget} onClose={() => setCloudPreview(null)} />
       )}
+      <IntakeStrip tracks={intake} onClose={() => setIntake([])} />
       <div className="lib-layout">
         <main>
           <div className="page-head">
@@ -1366,13 +1451,22 @@ export function ScreenLibrary() {
                   if (list.length > 0) {
                     setCat('all')
                     if (view === 'notes') setView('all')
-                    void M.runExclusive('index:files', () => idxa.indexFiles(list), {
-                      errorMessage: 'Файлы не приняты. Сейф остался прежним.',
-                    }).then((r) => {
-                      /* NF-9: счётчик исхода приёма — без имён и размеров. */
-                      if (r.ok) trackAction('files.intake')
-                      else if (r.reason === 'error') trackDrop('files.intake.failed')
-                    })
+                    /* Один файл — одна запись. Есть локальная папка хранения:
+                       спрашиваем подпапку, файл физически уезжает туда, и его
+                       разбирает ИИ. Папки нет — работает прежний локальный
+                       индексатор. Раньше шли оба пути сразу, и в библиотеке
+                       появлялись две карточки. */
+                    if (account.has('cloud') && D.cloudRoot) {
+                      setPendingFiles(list)
+                    } else {
+                      void M.runExclusive('index:files', () => idxa.indexFiles(list), {
+                        errorMessage: 'Файлы не приняты. Сейф остался прежним.',
+                      }).then((r) => {
+                        /* NF-9: счётчик исхода приёма — без имён и размеров. */
+                        if (r.ok) trackAction('files.intake')
+                        else if (r.reason === 'error') trackDrop('files.intake.failed')
+                      })
+                    }
                   }
                   e.target.value = ''
                 }}
@@ -1450,95 +1544,34 @@ export function ScreenLibrary() {
             </div>
           </div>
 
-          <div className="lib-toolbar">
-            <div className="seg" role="group" aria-label="Слой библиотеки">
-              {(
-                [
-                  { v: 'all', l: 'Всё' },
-                  { v: 'files', l: 'Файлы' },
-                  { v: 'notes', l: 'Стикеры' },
-                ] as const
-              ).map((s) => (
-                <button
-                  key={s.v}
-                  className={`seg-btn${view === s.v ? ' on' : ''}`}
-                  onClick={() => switchLayer(s.v)}
-                  aria-pressed={view === s.v}
-                >
-                  {s.l}
-                </button>
-              ))}
-            </div>
-            {view === 'notes' ? (
-              <div className="filters" role="group" aria-label="Теги стикеров">
-                {tags.map((f) => (
-                  <button
-                    key={f.label}
-                    className={`f-chip${tag === f.label ? ' on' : ''}`}
-                    onClick={() => setTag(f.label)}
-                    aria-pressed={tag === f.label}
-                  >
-                    {f.label} <b className="num">{f.count}</b>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="filters" role="group" aria-label="Кластеры файлов">
-                {cats.map((f) => (
-                  <button
-                    key={f.id}
-                    className={`f-chip${cat === f.id ? ' on' : ''}${
-                      boardDragActive && f.id !== 'all' ? ' drop-target' : ''
-                    }`}
-                    onClick={() => setCat(f.id)}
-                    aria-pressed={cat === f.id}
-                    /* Цель для файла, брошенного на кластер. */
-                    data-drop-cluster={f.id === 'all' ? undefined : f.id}
-                  >
-                    {f.label} <b className="num">{f.count}</b>
-                  </button>
-                ))}
-              </div>
-            )}
-            <span className="grow" />
-            <button
-              className={`btn btn-ghost btn-sm${selectMode ? ' on' : ''}`}
-              onClick={() => {
-                setSelectMode((m) => !m)
-                if (selectMode) clearMarks()
-              }}
-              aria-pressed={selectMode}
-              title="Мультивыделение: Ctrl/Cmd+клик добавляет карточку, Shift+клик берёт диапазон"
-              data-testid="lib-select-mode"
-            >
-              <IconCheck />
-              {selectMode ? 'Выбор включён' : 'Выделение'}
-            </button>
-            <button
-              className={`btn btn-ghost btn-sm${density === 'compact' ? ' on' : ''}`}
-              onClick={() => setDensity((d) => (d === 'cozy' ? 'compact' : 'cozy'))}
-              aria-pressed={density === 'compact'}
-              aria-label={`Плотность доски: ${DENSITY_LABEL[density]}`}
-              title={`Плотность: ${DENSITY_LABEL[density]}`}
-            >
-              <IconGridBoard />
-              {density === 'compact' ? 'Плотно' : 'Свободно'}
-            </button>
-            {isCustom(curLayout) && (
-              <button
-                className="btn btn-ghost btn-sm"
-                onClick={() => {
-                  setLayouts((prev) => putBoard(prev, boardId, resetBoard()))
-                  flash('Раскладка сброшена к сортировке по умолчанию')
-                }}
-                aria-label="Сбросить раскладку этой доски"
-                title="Сбросить раскладку"
-              >
-                <IconRefresh />
-                Сбросить раскладку
-              </button>
-            )}
-          </div>
+          {/* Полоса подпапок: те же настоящие папки внутри выбранной папки на ПК. */}
+          {account.has('cloud') && D.cloudRoot && (
+            <LibraryDirStrip root={D.cloudRoot} dir={dir} subDirs={subDirs} onDir={setDir} />
+          )}
+
+          <LibraryToolbar
+            view={view}
+            onLayer={switchLayer}
+            tags={tags}
+            tag={tag}
+            onTag={setTag}
+            cats={cats}
+            cat={cat}
+            onCat={setCat}
+            boardDragActive={boardDragActive}
+            selectMode={selectMode}
+            onSelectMode={() => {
+              setSelectMode((m) => !m)
+              if (selectMode) clearMarks()
+            }}
+            density={density}
+            onDensity={() => setDensity((d) => (d === 'cozy' ? 'compact' : 'cozy'))}
+            canResetBoard={isCustom(curLayout)}
+            onResetBoard={() => {
+              setLayouts((prev) => putBoard(prev, boardId, resetBoard()))
+              flash('Раскладка сброшена к сортировке по умолчанию')
+            }}
+          />
 
           {/* NF-5: панель массовых действий. Появляется, когда что-то выбрано,
               и живёт до конца операции — прогресс и отмена внутри неё. */}
@@ -1808,1078 +1841,100 @@ export function ScreenLibrary() {
         {selNote?.shared ? (
           <SharedNoteInspector note={selNote} canWrite={account.isAdmin && account.has('cloud')} onRemove={() => setShareRequest({ mode: 'remove', kind: 'note', id: selNote.id, title: selNote.title, cloudId: selNote.cloudId })} />
         ) : selNote ? (
-          <aside className="inspector panel fade-in" aria-label="Инспектор стикера">
-            <div className="insp-tabs">
-              <span className="chip chip-note">
-                <IconSticker width={11} height={11} stroke="currentColor" strokeWidth={1.6} />
-                стикер
-              </span>
-              {selNote.expiresAt === null ? (
-                <span className="chip">постоянный</span>
-              ) : (
-                <span className="chip chip-warn num">
-                  {fmtLeft(selNote.expiresAt - now)} до стирания
-                </span>
-              )}
-            </div>
-
-            <div className={`preview note-preview${noteOpen ? '' : ' shut'}`}>
-              <p aria-hidden={!noteOpen}>{selNote.body}</p>
-              {!noteOpen && <span className="sr-only">Содержимое закрыто паролем</span>}
-            </div>
-
-            {!noteOpen && (
-              <div className="unlock unlock-insp">
-                <div className="unlock-row">
-                  <PasswordInput
-                    className={`input input-sm mono${keyError && askKey === selNote.id ? ' err' : ''}`}
-                    testId="note-inspector-password"
-                    value={askKey === selNote.id ? keyValue : ''}
-                    onFocus={() => {
-                      if (askKey !== selNote.id) openKeyPrompt(selNote.id)
-                    }}
-                    onChange={(e) => {
-                      if (askKey !== selNote.id) setAskKey(selNote.id)
-                      setKeyValue(e.target.value)
-                      if (keyError) setKeyError(null)
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.nativeEvent.isComposing) submitKey(selNote.id)
-                    }}
-                    placeholder="локальный ключ"
-                    aria-label="Локальный ключ"
-                    aria-invalid={!!(keyError && askKey === selNote.id)}
-                  />
-                  <button
-                    className="btn btn-primary btn-sm"
-                    onClick={() => submitKey(selNote.id)}
-                    aria-label="Открыть стикер"
-                  >
-                    <IconKey />
-                  </button>
-                </div>
-                <span
-                  className={`key-hint mono${keyError && askKey === selNote.id ? ' err' : ''}`}
-                  role="status"
-                >
-                  {(keyError && askKey === selNote.id ? keyError : null) ??
-                    (selNote.secret
-                      ? 'ключ проверяется на устройстве, ничего не уходит в сеть'
-                      : 'демо-сейф: подойдёт любой ключ')}
-                </span>
-              </div>
-            )}
-
-            <div className="file-name">{selNote.title}</div>
-
-            <div className="meta-grid">
-              <div>
-                <span className="label-mono">Создан</span>
-                <div className="v num">{fmtWhen(selNote.createdAt, now)}</div>
-              </div>
-              <div>
-                <span className="label-mono">Символов</span>
-                <div className="v num">{noteOpen ? selNote.body.length : '—'}</div>
-              </div>
-              <div style={{ gridColumn: '1/-1' }}>
-                <span className="label-mono">Состояние</span>
-                <div className="badges-row">
-                  {selNote.expiresAt === null ? (
-                    <span className="badge badge-ok">
-                      <IconPin />
-                      живёт постоянно
-                    </span>
-                  ) : (
-                    <span className="badge badge-warn">
-                      <IconClock />
-                      временный
-                    </span>
-                  )}
-                  <span className={selNote.locked ? 'badge badge-info' : 'badge'}>
-                    <IconLock />
-                    {selNote.locked ? (noteOpen ? 'ключ введён' : 'пароль включён') : 'без пароля'}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="insp-block panel">
-              <div className="blk-head">
-                <span className="label-mono">Жизнь стикера</span>
-                <IconClock width={13} height={13} stroke="currentColor" strokeWidth={1.5} />
-              </div>
-              <p>
-                {selNote.expiresAt === null
-                  ? 'Стикер закреплён: он остаётся в сейфе, пока вы сами его не удалите.'
-                  : 'По истечении таймера стикер стирается локально, вместе с телом, тегами и связями на карте. Корзины нет.'}
-              </p>
-              <div className="life-btns">
-                {selNote.expiresAt !== null && (
-                  <>
-                    <button
-                      className="btn btn-ghost btn-sm"
-                      onClick={() => D.extendNote(selNote.id, DAY)}
-                    >
-                      <IconRefresh />
-                      +24 часа
-                    </button>
-                    <button
-                      className="btn btn-ghost btn-sm"
-                      onClick={() => makePermanent(selNote.id)}
-                    >
-                      <IconPin />
-                      Оставить навсегда
-                    </button>
-                  </>
-                )}
-                <button
-                  className="btn btn-ghost btn-sm btn-danger"
-                  onClick={() => burnNow(selNote.id)}
-                >
-                  <IconTrash />
-                  Стереть сейчас
-                </button>
-              </div>
-            </div>
-
-            <div className="insp-block panel">
-              <div className="blk-head">
-                <span className="label-mono">Защита</span>
-                <button
-                  className={`toggle${selNote.locked ? ' on' : ''}`}
-                  role="switch"
-                  aria-checked={selNote.locked}
-                  aria-label="Пароль на стикер"
-                  onClick={() => {
-                    if (selNote.locked) removeLock(selNote.id)
-                    else {
-                      setSettingKeyFor(selNote.id)
-                      setNewKey('')
-                    }
-                  }}
-                >
-                  <i />
-                </button>
-              </div>
-              <p>
-                {selNote.locked
-                  ? 'Тело шифруется ключом AES-256, который не покидает устройство. До ввода ключа виден только размытый силуэт текста.'
-                  : 'Стикер лежит открытым: его читает любой, кто уже вошёл в сейф. Включите пароль для отдельного ключа.'}
-              </p>
-              {settingKeyFor === selNote.id && !selNote.locked && (
-                <div className="key-setup">
-                  <PasswordInput
-                    className="input input-sm mono"
-                    testId="note-set-password"
-                    autoFocus
-                    value={newKey}
-                    onChange={(e) => setNewKey(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.nativeEvent.isComposing) applyLock(selNote.id)
-                    }}
-                    placeholder="придумайте локальный ключ"
-                    aria-label="Новый локальный ключ"
-                  />
-                  <button
-                    className="btn btn-primary btn-sm"
-                    onClick={() => applyLock(selNote.id)}
-                    disabled={!newKey.trim()}
-                  >
-                    <IconCheck />
-                    Закрыть
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div className="insp-block panel">
-              <div className="blk-head">
-                <span className="label-mono">Привязка</span>
-                <IconPin width={13} height={13} stroke="currentColor" strokeWidth={1.5} />
-              </div>
-              {selNote.pinnedTo ? (
-                <button
-                  className="rel-item pin-item"
-                  onClick={() => {
-                    const f = selNote.pinnedTo ? D.fileById(selNote.pinnedTo) : undefined
-                    if (f) {
-                      if (view === 'notes') setView('all')
-                      setSel({ kind: 'file', id: f.id })
-                    } else flash('Файл больше не в сейфе')
-                  }}
-                >
-                  <IconDoc width={14} height={14} stroke="currentColor" strokeWidth={1.5} />
-                  <span className="rn mono ellipsis">
-                    {D.fileById(selNote.pinnedTo)?.name ?? 'файл удалён'}
-                  </span>
-                  <span className="rp mono num">открыть</span>
-                </button>
-              ) : (
-                <p>Стикер ни к чему не приколот. ИИ предложит файл, когда найдёт пересечение.</p>
-              )}
-            </div>
-
-            <div className="insp-block panel">
-              <div className="blk-head">
-                <span className="label-mono">Что увидел ИИ</span>
-                <span className="chip">
-                  <IconSparkText width={11} height={11} stroke="currentColor" strokeWidth={1.6} />
-                  локально
-                </span>
-              </div>
-              <p>
-                {selNote.locked && !noteOpen
-                  ? 'Закрытый стикер индексируется только по вашим тегам: модель не читает тело, пока не введён ключ.'
-                  : `Текст разобран на смыслы и добавлен в карту памяти: ${
-                      D.neighbors(selNote.id).length
-                    } связей в сейфе.`}
-              </p>
-            </div>
-
-            <div className="insp-actions">
-              <button
-                className="btn btn-primary btn-full"
-                onClick={() => (noteOpen ? startEdit(selNote) : openKeyPrompt(selNote.id))}
-              >
-                {noteOpen ? <IconPencil /> : <IconKey />}
-                {noteOpen ? 'Редактировать' : 'Ввести ключ'}
-              </button>
-              <button
-                className="btn btn-ghost btn-full"
-                onClick={() => NAV.openOnMap(selNote.pinnedTo ?? selNote.id)}
-              >
-                <IconGraph />
-                Показать на карте
-              </button>
-            </div>
-          </aside>
+          <LibraryNoteInspector
+            note={selNote}
+            now={now}
+            noteOpen={noteOpen}
+            askKey={askKey}
+            keyValue={keyValue}
+            keyError={keyError}
+            setAskKey={setAskKey}
+            setKeyValue={setKeyValue}
+            setKeyError={setKeyError}
+            openKeyPrompt={openKeyPrompt}
+            submitKey={submitKey}
+            settingKeyFor={settingKeyFor}
+            setSettingKeyFor={setSettingKeyFor}
+            newKey={newKey}
+            setNewKey={setNewKey}
+            applyLock={applyLock}
+            removeLock={removeLock}
+            makePermanent={makePermanent}
+            burnNow={burnNow}
+            startEdit={startEdit}
+            view={view}
+            setView={setView}
+            setSel={setSel}
+          />
         ) : (
-          <aside className="inspector panel fade-in" aria-label="Инспектор файла">
-            <div className="insp-tabs">
-              <button
-                className={`insp-tab${tab === 'details' ? ' on' : ''}`}
-                onClick={() => setTab('details')}
-                aria-pressed={tab === 'details'}
-              >
-                Детали
-              </button>
-              <button
-                className={`insp-tab${tab === 'ai' ? ' on' : ''}`}
-                onClick={() => setTab('ai')}
-                aria-pressed={tab === 'ai'}
-              >
-                ИИ-анализ
-              </button>
-            </div>
-
-            <div className="preview panel">
-              <IconDocPreview width={44} height={44} stroke="currentColor" strokeWidth={1.2} />
-              {selFile?.pages ? (
-                <span className="chip page-badge num">СТР 1/{selFile.pages}</span>
-              ) : null}
-            </div>
-
-            <div className="file-name mono num">{selFile?.name ?? '—'}</div>
-
-            {selFile?.shared && (
-              <div className="insp-block panel" data-testid="insp-cloud">
-                <div className="blk-head">
-                  <span className="label-mono">Общий диск</span>
-                  <span className="chip" style={{ borderColor: 'var(--accent-line)', color: 'var(--accent)' }}>
-                    облако
-                  </span>
-                </div>
-                <p>Файл лежит в общем облаке — его видят все участники. В библиотеке и на карте он помечен «общий диск».</p>
-                <div className="insp-actions">
-                  <button className="btn btn-primary btn-sm" data-testid="insp-cloud-view" onClick={() => setCloudPreview(selFile)}>
-                    <IconDocPreview />
-                    Просмотр
-                  </button>
-                  <a
-                    className="btn btn-ghost btn-sm"
-                    href={`/ai-api/cloud/file/${selFile.cloudId}`}
-                    data-testid="insp-cloud-download"
-                  >
-                    <IconExternal />
-                    Скачать
-                  </a>
-                  {account.isAdmin ? (
-                    <button
-                      className="btn btn-ghost btn-sm"
-                      data-testid="insp-cloud-delete"
-                      onClick={() => {
-                        if (!selFile?.cloudId) return
-                        setShareRequest({ mode: 'remove', kind: 'file', id: selFile.id, title: selFile.name, cloudId: selFile.cloudId })
-                      }}
-                    >
-                      <IconTrash />
-                      Удалить с диска
-                    </button>
-                  ) : (
-                    <span className="setting-note" data-testid="insp-cloud-readonly">только просмотр · удаление у администратора</span>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {tab === 'details' ? (
-              <div className="meta-grid">
-                <div>
-                  <span className="label-mono">Размер</span>
-                  <div className="v num">{selFile ? fmtBytes(selFile.bytes) : '—'}</div>
-                </div>
-                <div>
-                  <span className="label-mono">Добавлен</span>
-                  <div className="v num">{selFile?.date ?? '—'}</div>
-                </div>
-                <div style={{ gridColumn: '1/-1' }}>
-                  <span className="label-mono">Кластер</span>
-                  <div className="badges-row">
-                    <button
-                      className="chip chip-cat chip-btn"
-                      onClick={() => selFile && NAV.openCluster(selFile.cluster)}
-                      disabled={!selFile}
-                    >
-                      {selFile?.cat ?? '—'}
-                    </button>
-                  </div>
-                </div>
-                <div style={{ gridColumn: '1/-1' }}>
-                  <span className="label-mono">Безопасность</span>
-                  <div className="badges-row">
-                    <span className="badge badge-ok">
-                      <IconLock />
-                      {stats.offline ? 'локально' : 'есть исходящие'}
-                    </span>
-                    <span className="badge badge-info">
-                      <IconLock />
-                      зашифровано
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="insp-block panel">
-                <div className="blk-head">
-                  <span className="label-mono">Оценка ИИ</span>
-                  <span className="chip">
-                    модель <span className="num">{stats.model}</span>
-                  </span>
-                </div>
-                <p>
-                  {selFile?.processing
-                    ? 'Файл ещё разбирается на устройстве: как только модель дочитает его, здесь появятся тип, ключевые сущности и связи.'
-                    : `Файл отнесён к кластеру «${selFile?.cat ?? '—'}». Найдено ${related.length} смысловых связей: ${
-                        related.filter((r) => r.reason === 'tag').length
-                      } по общим меткам, ${
-                        related.filter((r) => r.reason === 'pin').length
-                      } через приколотые стикеры.`}
-                </p>
-              </div>
-            )}
-
-            <div className="insp-block panel">
-              <div className="blk-head">
-                <span className="label-mono">Описание ИИ</span>
-                <IconPencil width={13} height={13} stroke="currentColor" strokeWidth={1.5} />
-              </div>
-              <p>
-                {selFile && fkGatedSelFile
-                  ? 'Содержимое под файловым ключом. Введите ключ, чтобы расшифровать описание.'
-                  : selFile?.processing
-                    ? 'Описание появится после локального разбора.'
-                    : (selFile?.desc ?? 'Файл не выбран.')}
-              </p>
-              {fkGatedSelFile && (
-                <div className="badges-row">
-                  <span className="fk-badge">
-                    <IconLockRound width={10} height={10} stroke="currentColor" strokeWidth={1.6} />
-                    под ключом
-                  </span>
-                </div>
-              )}
-            </div>
-
-            <div className="insp-block panel">
-              <div className="blk-head">
-                <span className="label-mono">Приколотые стикеры</span>
-                <span className="chip num">{pinnedToSel.length}</span>
-              </div>
-              {pinnedToSel.length > 0 ? (
-                pinnedToSel.map((n) => (
-                  <button
-                    key={n.id}
-                    className="rel-item pin-item"
-                    onClick={() => {
-                      if (view === 'files') setView('all')
-                      setSel({ kind: 'note', id: n.id })
-                    }}
-                  >
-                    <IconSticker width={14} height={14} stroke="currentColor" strokeWidth={1.5} />
-                    <span className="rn ellipsis">{n.title}</span>
-                    <span className="rp mono num">
-                      {n.expiresAt === null ? '∞' : fmtLeft(n.expiresAt - now)}
-                    </span>
-                  </button>
-                ))
-              ) : (
-                <p>К этому файлу пока нет стикеров. Напишите первый — он будет виден рядом.</p>
-              )}
-              <button
-                className="btn btn-ghost btn-sm btn-full pin-add"
-                onClick={() => startNew(selFile?.id)}
-                disabled={!selFile}
-              >
-                <IconPlus />
-                Приколоть стикер
-              </button>
-
-              {/* Этап 5: файловый ключ — пароль ×2, wrapped мастер-ключом (п.4). */}
-              <button
-                className="btn btn-ghost btn-sm btn-full pin-add"
-                data-testid="fk-set-open"
-                onClick={() => {
-                  setFkSetFor(selFile?.id ?? null)
-                  setFkNew1('')
-                  setFkNew2('')
-                  setFkSetErr(null)
-                }}
-                disabled={!selFile || selFile.shared || fk.isProtected(selFile.id)}
-              >
-                <IconLockRound width={13} height={13} stroke="currentColor" strokeWidth={1.6} />
-                Поставить на ключ
-              </button>
-            </div>
-
-            {/* Соседи берутся из графа связей, а не из фиксированного списка. */}
-            <div className="insp-block panel">
-              <div className="blk-head">
-                <span className="label-mono">Связаны</span>
-                <span className="chip num">{related.length}</span>
-              </div>
-              {related.length > 0 ? (
-                related.map((r) => (
-                  <button
-                    key={r.node.id}
-                    className="rel-item pin-item"
-                    onClick={() =>
-                      setSel({ kind: r.node.kind === 'note' ? 'note' : 'file', id: r.node.id })
-                    }
-                  >
-                    {r.node.kind === 'note' ? (
-                      <IconSticker width={14} height={14} stroke="currentColor" strokeWidth={1.5} />
-                    ) : (
-                      <IconDoc width={14} height={14} stroke="currentColor" strokeWidth={1.5} />
-                    )}
-                    <span className="rn mono ellipsis">{r.node.label}</span>
-                    <span className="rp mono num">
-                      {Math.round(r.w * 100)}% · {REASON_LABEL[r.reason]}
-                    </span>
-                  </button>
-                ))
-              ) : (
-                <p>Связей пока нет: у файла нет общих меток и стикеров с другими объектами.</p>
-              )}
-            </div>
-
-            <div className="insp-actions">
-              {/* П.4 плана: «Открыть» раньше ничего не делало — теперь открывает просмотрщик. */}
-              <button
-                className="btn btn-primary btn-full"
-                onClick={() => {
-                  if (!selFile) return
-                  if (fkGatedSelFile) {
-                    /* Файл под ключом: сначала ключ, потом просмотр (как из сетки). */
-                    setFkAsk(selFile.id)
-                    setFkVal('')
-                    setFkErr(null)
-                    setFkCooldownUntil(0)
-                    return
-                  }
-                  setCloudPreview(selFile)
-                }}
-                disabled={!selFile}
-                data-testid="insp-preview"
-              >
-                <IconDocPreview />
-                Просмотр файла
-              </button>
-              <button
-                className="btn btn-ghost btn-full"
-                onClick={() => {
-                  const abs = absPathOf(selFile)
-                  const bridge = desktopBridge()
-                  if (bridge?.openPath && abs) bridge.openPath(abs)
-                }}
-                disabled={!selFile || !selFileAbsPath || !selFileBridgeReady}
-                title={selFileBridgeReady && selFileAbsPath ? 'Открыть файл в программе по умолчанию' : BRIDGE_HINT}
-                data-testid="insp-open-pc"
-              >
-                <IconExternal />
-                Открыть на ПК
-              </button>
-              <button
-                className="btn btn-ghost btn-full"
-                onClick={() => {
-                  const abs = selFileAbsPath
-                  const bridge = desktopBridge()
-                  if (bridge?.revealInExplorer && abs) bridge.revealInExplorer(abs)
-                }}
-                disabled={!selFile || !selFileAbsPath || !selFileBridgeReady}
-                title={selFileBridgeReady && selFileAbsPath ? 'Показать файл в проводнике' : BRIDGE_HINT}
-                data-testid="insp-reveal"
-              >
-                <IconFolder />
-                Показать в папке
-              </button>
-              <button
-                className="btn btn-ghost btn-full"
-                onClick={() => selFile && NAV.openOnMap(selFile.id)}
-                disabled={!selFile}
-              >
-                <IconGraph />
-                Показать на карте
-              </button>
-              <button
-                className="btn btn-ghost btn-full btn-danger"
-                onClick={() => {
-                  if (!selFile) return
-                  if (selFile.shared) return
-                  fk.forgetKey(selFile.id)
-                  D.removeFile(selFile.id)
-                }}
-                disabled={!selFile || selFile.shared}
-              >
-                <IconTrash />
-                Удалить из сейфа
-              </button>
-            </div>
-          </aside>
+          <LibraryFileInspector
+            selFile={selFile}
+            tab={tab}
+            setTab={setTab}
+            isAdmin={account.isAdmin}
+            fk={fk}
+            now={now}
+            view={view}
+            setView={setView}
+            setSel={setSel}
+            related={related}
+            pinnedToSel={pinnedToSel}
+            fkGatedSelFile={fkGatedSelFile}
+            selFileAbsPath={selFileAbsPath}
+            selFileBridgeReady={selFileBridgeReady}
+            setCloudPreview={setCloudPreview}
+            setCloudShared={setCloudShared}
+            setShareRequest={setShareRequest}
+            onDeleteRequest={(r) => {
+              setDeleteErr(null)
+              setDeleteRequest({ kind: 'file', id: r.id, title: r.title, absPath: r.absPath, cloudId: r.cloudId })
+            }}
+            openFileTile={openFileTile}
+            startNew={startNew}
+            setFkAsk={setFkAsk}
+            setFkVal={setFkVal}
+            setFkErr={setFkErr}
+            setFkCooldownUntil={setFkCooldownUntil}
+            setFkSetFor={setFkSetFor}
+            setFkNew1={setFkNew1}
+            setFkNew2={setFkNew2}
+            setFkSetErr={setFkSetErr}
+          />
         )}
       </div>
 
       {/* ===== FILE-KEYS v3.2b · модалки файловых ключей ===== */}
-      {fkAsk !== null &&
-        (() => {
-          const f = views.find((x) => x.id === fkAsk)
-          const cooling = Date.now() < fkCooldownUntil
-          return (
-            <DialogShell
-              className="fk-modal"
-              label="Файловый ключ"
-              testId="fk-ask-modal"
-              onClose={() => {
-                setFkAsk(null)
-                setFkErr(null)
-                setFkVal('')
-                setFkCooldownUntil(0)
-              }}
-            >
-              <div className="lock-card">
-                <div className="lk-head" data-testid="fk-ask-title">
-                  <IconKey width={12} height={12} aria-hidden="true" focusable="false" />
-                  Файл защищён паролем
-                </div>
-                <div className="file-name" data-testid="fk-ask-filename">{f?.name ?? '—'}</div>
-                <div className="lock-form">
-                  <label className="access-hint" htmlFor="file-unlock-password" data-testid="fk-ask-label">Пароль файла</label>
-                  <PasswordInput
-                    id="file-unlock-password"
-                    className={`lock-input mono${fkErr ? ' err' : ''}`}
-                    autoFocus
-                    testId="fk-ask-input"
-                    value={fkVal}
-                    disabled={cooling}
-                    onChange={(e) => {
-                      setFkVal(e.target.value)
-                      if (fkErr) setFkErr(null)
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.nativeEvent.isComposing) submitFileKey()
-                    }}
-                    placeholder="Введите пароль"
-                    aria-label="Ключ файла"
-                    aria-invalid={!!fkErr}
-                  />
-                  <span
-                    className={`key-hint mono${fkErr ? ' err' : ''}`}
-                    role="status"
-                    data-testid="fk-ask-hint"
-                  >
-                    {fkErr ??
-                      (cooling
-                        ? 'Подождите перед следующей попыткой.'
-                        : 'Введите пароль, заданный для этого файла.')}
-                  </span>
-                </div>
-                <div className="fk-modal-row">
-                  <button
-                    className="btn btn-primary btn-sm"
-                    data-testid="fk-ask-submit"
-                    onClick={() => void submitFileKey()}
-                    disabled={!fkVal.trim() || cooling}
-                  >
-                    <IconKey />
-                    Открыть
-                  </button>
-                  <button
-                    className="btn btn-ghost btn-sm"
-                    data-testid="fk-ask-cancel"
-                    onClick={() => {
-                      setFkAsk(null)
-                      setFkErr(null)
-                      setFkVal('')
-                      setFkCooldownUntil(0)
-                    }}
-                  >
-                    Отмена
-                  </button>
-                </div>
-              </div>
-            </DialogShell>
-          )
-        })()}
+      {fkAsk !== null && (
+        <FileKeyAskDialog
+          fileName={views.find((x) => x.id === fkAsk)?.name ?? '—'}
+          value={fkVal}
+          error={fkErr}
+          cooling={Date.now() < fkCooldownUntil}
+          onValue={setFkVal}
+          onError={setFkErr}
+          onSubmit={() => void submitFileKey()}
+          onClose={() => {
+            setFkAsk(null)
+            setFkErr(null)
+            setFkVal('')
+            setFkCooldownUntil(0)
+          }}
+        />
+      )}
 
-      {fkSetFor !== null &&
-        (() => {
-          const f = views.find((x) => x.id === fkSetFor)
-          return (
-            <DialogShell
-              className="fk-modal"
-              label="Новый файловый ключ"
-              testId="fk-set-modal"
-              onClose={() => closeFkSet()}
-            >
-              <div className="lock-card">
-                <div className="lk-head" data-testid="fk-set-title">
-                  <IconLockRound width={12} height={12} aria-hidden="true" focusable="false" />
-                  Установить пароль файла
-                </div>
-                <div className="file-name" data-testid="fk-set-filename">{f?.name ?? '—'}</div>
-                <p className="fk-note" data-testid="fk-set-warning">
-                  Пароль защищает описание файла. Сброс мастер-ключа удалит файловые ключи и доступ к защищённому описанию.
-                </p>
-                <div className="lock-form">
-                  <label className="access-hint" htmlFor="file-new-password" data-testid="fk-set-pass1-label">Новый пароль</label>
-                  <PasswordInput
-                    id="file-new-password"
-                    className={`lock-input mono${fkSetErr ? ' err' : ''}`}
-                    autoFocus
-                    testId="fk-set-pass1"
-                    autoComplete="new-password"
-                    value={fkNew1}
-                    onChange={(e) => {
-                      setFkNew1(e.target.value)
-                      if (fkSetErr) setFkSetErr(null)
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.nativeEvent.isComposing) saveFileKeySetup()
-                    }}
-                    placeholder="Не менее 8 символов"
-                    aria-label="Новый ключ файла"
-                    aria-invalid={!!fkSetErr}
-                  />
-                  <label className="access-hint" htmlFor="file-repeat-password" data-testid="fk-set-pass2-label">Повторите пароль</label>
-                  <PasswordInput
-                    id="file-repeat-password"
-                    className={`lock-input mono${fkSetErr ? ' err' : ''}`}
-                    testId="fk-set-pass2"
-                    autoComplete="new-password"
-                    value={fkNew2}
-                    onChange={(e) => {
-                      setFkNew2(e.target.value)
-                      if (fkSetErr) setFkSetErr(null)
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.nativeEvent.isComposing) saveFileKeySetup()
-                    }}
-                    placeholder="Тот же пароль ещё раз"
-                    aria-label="Повторите ключ файла"
-                  />
-                  <span
-                    className={`key-hint mono${fkSetErr ? ' err' : ''}`}
-                    role="status"
-                    data-testid="fk-set-hint"
-                  >
-                    {fkSetErr ?? 'описание файла будет зашифровано этим ключом'}
-                  </span>
-                </div>
-                <div className="fk-modal-row">
-                  <button className="btn btn-primary btn-sm" data-testid="fk-set-save" onClick={() => void saveFileKeySetup()}>
-                    <IconLockRound width={13} height={13} stroke="currentColor" strokeWidth={1.6} />
-                    Установить пароль
-                  </button>
-                  <button
-                    className="btn btn-ghost btn-sm"
-                    data-testid="fk-set-cancel"
-                    onClick={() => {
-                      closeFkSet()
-                    }}
-                  >
-                    Отмена
-                  </button>
-                </div>
-              </div>
-            </DialogShell>
-          )
-        })()}
+      {fkSetFor !== null && (
+        <FileKeySetDialog
+          fileName={views.find((x) => x.id === fkSetFor)?.name ?? '—'}
+          pass1={fkNew1}
+          pass2={fkNew2}
+          error={fkSetErr}
+          onPass1={setFkNew1}
+          onPass2={setFkNew2}
+          onError={setFkSetErr}
+          onSave={() => void saveFileKeySetup()}
+          onClose={closeFkSet}
+        />
+      )}
     </div>
-  )
-}
-
-/* ============================================================
-   СОДЕРЖИМОЕ ПЛИТОК
-   Те же карточки, что рисовала статичная сетка: разметка перенесена
-   как была, меняется только владелец состояния — теперь их рендерит
-   экран, а размещает доска. Клик по карточке по-прежнему открывает
-   инспектор; перенос не превращается в выбор, потому что движок
-   срывает плитку только после порога/долгого нажатия.
-   ============================================================ */
-
-function NoteCardContent({
-  note,
-  onSelect,
-  onTag,
-  isSelected = false,
-  marked = false,
-  pickable = false,
-}: {
-  note: Note
-  onSelect: (id: string, e: React.MouseEvent) => void
-  onTag: (tag: string) => void
-  isSelected?: boolean
-  /** NF-5: карточка попала в мультивыделение. */
-  marked?: boolean
-  /** NF-5: режим выбора включён — курсор и рамка говорят об этом. */
-  pickable?: boolean
-}) {
-  const D = useDataStore()
-  const NAV = useNavStore()
-  const { flash } = useToast()
-  const now = useNow()
-
-  /* Разблокировка — локальное состояние карточки: ключ не покидает её. */
-  const [unlocked, setUnlocked] = useState<string[]>([])
-  const [askKey, setAskKey] = useState<string | null>(null)
-  const [keyValue, setKeyValue] = useState('')
-  const [keyError, setKeyError] = useState<string | null>(null)
-  const keyFailRef = useRef(0)
-
-  const left = note.expiresAt === null ? null : note.expiresAt - now
-  const pct =
-    left === null || !note.lifeSpan ? 100 : Math.max(2, Math.min(100, (left / note.lifeSpan) * 100))
-  const soon = left !== null && left < HOUR
-  const open = !note.locked || unlocked.includes(note.id)
-  const pinnedFile = note.pinnedTo ? D.fileById(note.pinnedTo) : undefined
-  const keyApplies = askKey === note.id
-
-  async function submitKey() {
-    const val = keyValue.trim()
-    if (!val) {
-      setKeyError('Введите ключ')
-      return
-    }
-    /* П.10.6: зашифрованный секрет проверяется криптографически (ct:iv). */
-    if (note.secret && looksEncrypted(note.secret)) {
-      const verdict = await checkStickerSecret(note.secret, val)
-      if (verdict === '') {
-        setKeyError('Сейф нужно разблокировать заново')
-        return
-      }
-      if (!verdict) {
-        keyFailRef.current += 1
-        setKeyError(
-          keyFailRef.current > 1
-            ? `Ключ не подходит · неудачных попыток: ${keyFailRef.current}`
-            : 'Ключ не подходит',
-        )
-        setKeyValue('')
-        return
-      }
-    } else if (note.secret && note.secret !== val) {
-      /* Демо-секрет до миграции: прежняя честная сверка строки. */
-      keyFailRef.current += 1
-      setKeyError(
-        keyFailRef.current > 1
-          ? `Ключ не подходит · неудачных попыток: ${keyFailRef.current}`
-          : 'Ключ не подходит',
-      )
-      setKeyValue('')
-      return
-    }
-    keyFailRef.current = 0
-    setUnlocked((u) => (u.includes(note.id) ? u : [...u, note.id]))
-    setAskKey(null)
-    setKeyValue('')
-    setKeyError(null)
-    flash('Стикер расшифрован на этом устройстве')
-  }
-
-  return (
-    <article
-      className={`ncard panel card-hover${isSelected ? ' sel' : ''}${
-        left !== null ? ' temp' : ''
-      }${open ? ' fade-in' : ''}${marked ? ' marked' : ''}${pickable ? ' pickable' : ''}`}
-      onClick={(e) => onSelect(note.id, e)}
-      onKeyDown={(e) => {
-        if (e.target !== e.currentTarget) return
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
-          onSelect(note.id, e as unknown as React.MouseEvent)
-        }
-      }}
-      aria-label={`Стикер «${note.title}»: открыть в инспекторе`}
-      aria-current={isSelected ? 'true' : undefined}
-      tabIndex={0}
-      data-testid={`lib-note-${note.id}`}
-      data-library-id={note.id}
-      data-library-kind="note"
-      data-marked={marked ? '1' : undefined}
-    >
-      {(marked || pickable) && (
-        <span className={`card-mark${marked ? ' on' : ''}`} aria-hidden="true">
-          {marked ? <IconCheck width={11} height={11} stroke="currentColor" strokeWidth={2} /> : null}
-        </span>
-      )}
-      <div className="ncard-top">
-        <span className="chip chip-note">
-          <IconSticker width={11} height={11} stroke="currentColor" strokeWidth={1.6} />
-          стикер
-        </span>
-        {note.demo && (
-          <span className="demo-tag" title="Объект демо-корпуса" data-testid={`demo-tag-${note.id}`}>
-            демо
-          </span>
-        )}
-        {note.shared && <span className="chip" style={{ borderColor: 'var(--accent-line)', color: 'var(--accent)' }} data-testid={`shared-tag-${note.id}`}>общий диск</span>}
-        {left === null ? (
-          <span className="ttl mono">постоянный</span>
-        ) : (
-          <span className={`ttl mono num${soon ? ' soon' : ''}`}>
-            <IconClock width={11} height={11} stroke="currentColor" strokeWidth={1.6} />
-            {fmtLeft(left)}
-          </span>
-        )}
-      </div>
-
-      <h3 className="ntitle">{note.title}</h3>
-
-      <div className={`nbody-shell${open ? '' : ' shut'}`}>
-        <p className="nbody" aria-hidden={!open}>
-          {note.body}
-        </p>
-        {!open && <span className="sr-only">Содержимое закрыто паролем</span>}
-      </div>
-
-      {!open &&
-        (keyApplies ? (
-          <div className="unlock" onClick={(e) => e.stopPropagation()}>
-            <div className="unlock-row">
-              <PasswordInput
-                className={`input input-sm mono${keyError ? ' err' : ''}`}
-                testId={`note-unlock-password-${note.id}`}
-                autoFocus
-                value={keyValue}
-                onChange={(e) => {
-                  setKeyValue(e.target.value)
-                  if (keyError) setKeyError(null)
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.nativeEvent.isComposing) submitKey()
-                }}
-                placeholder="локальный ключ"
-                aria-label="Локальный ключ"
-                aria-invalid={!!keyError}
-              />
-              <button className="btn btn-primary btn-sm" onClick={submitKey} aria-label="Открыть стикер" data-testid={`note-unlock-submit-${note.id}`}>
-                <IconKey />
-              </button>
-            </div>
-            <span className={`key-hint mono${keyError ? ' err' : ''}`} role="status">
-              {keyError ??
-                (note.secret ? 'ключ проверяется на устройстве' : 'демо-сейф: подойдёт любой ключ')}
-            </span>
-          </div>
-        ) : (
-          <button
-            className="btn btn-ghost btn-sm nunlock"
-            onClick={(e) => {
-              e.stopPropagation()
-              setAskKey(note.id)
-              setKeyValue('')
-              setKeyError(null)
-            }}
-            data-testid={`note-unlock-open-${note.id}`}
-          >
-            <IconLock />
-            Ввести ключ
-          </button>
-        ))}
-
-      <div className="tags">
-        {note.locked && (
-          <span className="badge badge-info">
-            <IconLock />
-            пароль
-          </span>
-        )}
-        {note.tags.map((t) => (
-          <button
-            key={t}
-            className="chip chip-ai chip-btn"
-            onClick={(e) => {
-              e.stopPropagation()
-              onTag(t)
-            }}
-            aria-label={`Показать стикеры с тегом ${t}`}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
-
-      {note.pinnedTo && (
-        <button
-          className="pin-row mono pin-jump"
-          onClick={(e) => {
-            e.stopPropagation()
-            if (pinnedFile) NAV.openFile(pinnedFile.id)
-            else flash('Файл больше не в сейфе')
-          }}
-        >
-          <IconPin width={12} height={12} stroke="currentColor" strokeWidth={1.5} />
-          <span className="ellipsis">{pinnedFile?.name ?? 'файл удалён'}</span>
-        </button>
-      )}
-
-      <footer className="mono num">{fmtWhen(note.createdAt, now)}</footer>
-
-      {left !== null && (
-        <span className={`decay${soon ? ' soon' : ''}`} aria-hidden="true">
-          <i style={{ width: `${pct}%` }} />
-        </span>
-      )}
-    </article>
-  )
-}
-
-function FileCardContent({
-  file,
-  onSelect,
-  fkHidden = false,
-  marked = false,
-  pickable = false,
-}: {
-  file: FileView
-  onSelect: (id: string, e: React.MouseEvent) => void
-  /** Файл под ключом: содержимое скрыто, видно имя и бейдж (этап 5). */
-  fkHidden?: boolean
-  /** NF-5: карточка попала в мультивыделение. */
-  marked?: boolean
-  pickable?: boolean
-}) {
-  const D = useDataStore()
-  const NAV = useNavStore()
-  const pinned = D.liveNotes.filter((n) => n.pinnedTo === file.id).length
-
-  return (
-    <article
-      className={`fcard panel card-hover fade-in${file.processing ? ' proc-live beam-host' : ''}${
-        marked ? ' marked' : ''
-      }${pickable ? ' pickable' : ''}`}
-      data-drop-pin={file.id}
-      onClick={(e) => onSelect(file.id, e)}
-      onKeyDown={(e) => {
-        if (e.target !== e.currentTarget) return
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
-          onSelect(file.id, e as unknown as React.MouseEvent)
-        }
-      }}
-      /* UX-4: карточка сама не кнопка — внутри неё живут свои кнопки, и
-         role="button" делал их вложенными интерактивными (axe). Она остаётся
-         в обходе с клавиатуры и открывается Enter/Пробелом. */
-      aria-label={`Файл ${file.name}: открыть в инспекторе`}
-      tabIndex={0}
-      data-testid={`lib-file-${file.id}`}
-      data-library-id={file.id}
-      data-library-kind="file"
-      data-marked={marked ? '1' : undefined}
-    >
-      {(marked || pickable) && (
-        <span className={`card-mark${marked ? ' on' : ''}`} aria-hidden="true">
-          {marked ? <IconCheck width={11} height={11} stroke="currentColor" strokeWidth={2} /> : null}
-        </span>
-      )}
-      {/* Файл в обработке: луч по кромке показывает живую работу модели. */}
-      {file.processing ? <Beam duration={3.2} size={34} /> : null}
-      <div className="fcard-top">
-        <span className="ficon panel">
-          <file.Icon width={18} height={18} stroke="currentColor" strokeWidth={1.5} />
-        </span>
-        {file.demo && (
-          <span className="demo-tag" title="Объект демо-корпуса" data-testid={`demo-tag-${file.id}`}>
-            демо
-          </span>
-        )}
-        {file.shared && (
-          <span
-            className="chip"
-            title="Файл из общего облака"
-            data-testid={`shared-tag-${file.id}`}
-            style={{ borderColor: 'var(--accent-line)', color: 'var(--accent)' }}
-          >
-            общий диск
-          </span>
-        )}
-        <button
-          className="chip chip-cat chip-btn"
-          onClick={(e) => {
-            e.stopPropagation()
-            NAV.openCluster(file.cluster)
-          }}
-          aria-label={`Показать кластер ${file.cat}`}
-        >
-          {file.cat}
-        </button>
-      </div>
-      <div className="fname mono num">
-        <b>{file.name}</b>
-      </div>
-      {file.processing ? (
-        <div className="proc">
-          <i className="net-dot" />
-          <span className="label-mono">Обработка</span>
-          <span className="ellipsis">ИИ изучает файл…</span>
-        </div>
-      ) : fkHidden ? (
-        <p className="desc">
-          <span className="fk-badge" title="Файл заперт файловым ключом">
-            <IconLockRound width={10} height={10} stroke="currentColor" strokeWidth={1.6} />
-            под ключом
-          </span>
-        </p>
-      ) : (
-        <p className="desc">{file.desc}</p>
-      )}
-      {!fkHidden && (
-        <div className="tags">
-          {file.tagList.map((t) => (
-            <span key={t} className="chip chip-ai">
-              {t}
-            </span>
-          ))}
-        </div>
-      )}
-      <footer className="mono num">
-        <span>{file.meta}</span>
-        {pinned ? (
-          <span className="fnotes">
-            <IconSticker width={12} height={12} stroke="currentColor" strokeWidth={1.5} />
-            {pinned}
-          </span>
-        ) : null}
-      </footer>
-    </article>
   )
 }

@@ -1,0 +1,27 @@
+{
+  "summary": "Frontend regression testing after refactor of components/screen-library.tsx into 7 focused modules + verification of instant inline image rendering in mail letters. Executed manual UI flow via browser automation against the preview URL. Библиотека полностью функциональна после декомпозиции: тулбар (поиск, слои Всё/Файлы/Стикеры, сортировки), карточки файлов и стикеров, инспектор файла и инспектор стикера, режим выделения (lib-bulk-*), контекстное меню (library-context-menu с 7 действиями). Никаких ошибок консоли/pageerror на экране Библиотеки нет. Инлайн картинок в письме подтверждён: во временной почте mail.tm письмо с картинкой picsum.photos отображает <img src=\"data:image/jpeg;base64,...\" data-wsx-src=\"https://picsum.photos/...\">, а кнопка «Показать картинки» отсутствует полностью. Прокси-эндпоинт /ai-api/mail/img использован фронтом успешно (иначе картинка бы не появилась как data:URI). Тестовый temp box (7382a65f) удалён после проверки.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/tests/e2e/60-local-subdirs.spec.ts",
+    "/app/tests/e2e/61-mail-ctx-menu.spec.ts",
+    "/app/tests/e2e/62-independent-verification.spec.ts"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "components/screen-library.tsx всё ещё 1891 строка — вынесены только UI-примитивы и инспекторы, но state-машина, хендлеры drag&drop, key-management и bulk-actions по-прежнему в одном большом компоненте. Логическую разбивку можно продолжить (например, хук useLibraryState, хук useBulkActions).",
+    "lib/mail-img.ts подставляет data:-URI на все remote-картинки синхронно перед сборкой srcDoc — при больших письмах (10-20 картинок по 1-2 МБ) srcDoc раздуется до нескольких десятков МБ и iframe станет тяжёлым. Разумно добавить лимит по размеру или fallback на прокси-URL после N MB."
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "n/a", "frontend": "100%" },
+  "test_credentials": "admin / WsxQa2026!lib (из /app/.env.local)",
+  "seed_data_creation": "Создан временный ящик mail.tm 3600268efb94@uberip.com (id=7382a65f), доставлено письмо через scripts/qa-send-rich-mail.py, ящик удалён после проверок (DELETE /ai-api/mail/temp/7382a65f -> 200).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Playwright browsers в среде НЕ установлены (npx playwright test падает 'Executable doesn't exist at /pw-browsers/chromium_headless_shell-1234'). Тестирование выполнено через mcp_browser_automation (свой браузер). Если нужно прогнать существующие spec-ы — сначала: cd /app && npx playwright install chromium. Проверено: (1) Библиотека рендерится и все её подкомпоненты (карточки, инспекторы, полоса папок, тулбар, bulk, контекстное меню) работают штатно; (2) в письме временной почты картинка приходит инлайном (data:image/jpeg;base64,…) с сохранённым оригиналом в data-wsx-src, кнопки «Показать картинки» нет. Проверка на реальном IMAP-ящике невозможна — реального IMAP-аккаунта в среде нет; общий конвейер mail-img.ts един для обычных ящиков и mail.tm, покрыт unit-тестами tests/unit/mail-img.test.ts (по данным основного агента).",
+  "rca of the issue": "N/A — регрессия не найдена, обе фичи работают ожидаемо."
+}

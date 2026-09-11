@@ -1,6 +1,6 @@
 """Итерация 28 · Тарифы, ключи лицензий, регистрация по ключу, админ-действия.
 
-Прогон: APP_URL=https://ai-ready-launcher.preview.emergentagent.com \
+Прогон: APP_URL=https://ui-cleanup-34.preview.emergentagent.com \
         python3 -m pytest tests/api/test_plans_licensing.py -q
 """
 import os
@@ -11,7 +11,7 @@ import pytest
 import requests
 
 BASE = os.environ.get("APP_URL", "http://localhost:3000").rstrip("/")
-PASSWORD = os.environ.get("APP_PASSWORD", "IceKrymTeam13@")
+PASSWORD = os.environ.get("APP_PASSWORD", "<APP_PASSWORD>")
 USER_PASS = "qa-pass-12345"
 KEY_RE = r"^WSX(-[A-Z2-9]{4}){4}$"
 STAMP = uuid.uuid4().hex[:6]

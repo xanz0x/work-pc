@@ -19,8 +19,8 @@ cat /root/.workflow/ai/users/plans.json     # тарифы
 cat /root/.workflow/ai/users/licenses.json  # ключи: только keyHash + маска
 
 ## Шаг 2 — API
-APP=https://ai-ready-launcher.preview.emergentagent.com
-curl -c a.txt -X POST $APP/ai-api/auth/login -H 'Content-Type: application/json' -d '{"login":"admin","password":"IceKrymTeam13@"}'
+APP=https://ui-cleanup-34.preview.emergentagent.com
+curl -c a.txt -X POST $APP/ai-api/auth/login -H 'Content-Type: application/json' -d '{"login":"admin","password":"<APP_PASSWORD>"}'
 curl -b a.txt $APP/admin/api/plans                                      # тарифы со статистикой (users, freeKeys)
 curl -b a.txt -X POST $APP/admin/api/plans -H 'Content-Type: application/json' -d '{"name":"Team","tagline":"…","color":"blue","days":60,"aiDailyLimit":20,"features":{"ai":true,"mcp":false,"sync":true,"secrets":true,"offline":true,"telemetry":true}}'
 curl -b a.txt -X PATCH $APP/admin/api/plans/<id> -d '{"days":90,"archived":true}'   # правка / архив
@@ -40,4 +40,4 @@ curl -b a.txt -X POST $APP/admin/api/users/<uid> -d '{"action":"revoke-license"}
 ## Шаг 3 — автотесты
 npx vitest run tests/unit/users.test.ts
 APP_URL=$APP python3 -m pytest tests/api/test_admin.py -q
-PLAYWRIGHT_BROWSERS_PATH=/pw-browsers APP_URL=$APP APP_PASSWORD=IceKrymTeam13@ npx playwright test tests/e2e/23-admin-accounts.spec.ts
+PLAYWRIGHT_BROWSERS_PATH=/pw-browsers APP_URL=$APP APP_PASSWORD=<APP_PASSWORD> npx playwright test tests/e2e/23-admin-accounts.spec.ts

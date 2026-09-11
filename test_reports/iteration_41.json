@@ -49,7 +49,7 @@
   "seed_data_creation": "Disposable tiny file used for picker smoke (/tmp/wf_shell_test_upload.txt). No intentional persistent server/security setting changes.",
   "retest_needed": true,
   "should_main_agent_self_test": false,
-  "test_credentials": "Read from /app/memory/test_credentials.md and used: admin / IceKrymTeam13@",
+  "test_credentials": "Read from /app/memory/test_credentials.md and used: admin / <APP_PASSWORD>",
   "context_for_next_testing_agent": "Artifacts: /app/test_reports/screenshots_iter41 (desktop 125/collapsed/tools/mobile/320 popup/zoom150 screenshots). Major checks passed: no shell horizontal overflow across tested breakpoints, bottom nav/footer overlap checks OK, notifications Escape-close + focus return, Ctrl+K opens palette, status footer shows 'Облачный ИИ выключен', no hardcoded 'SESSION 7F3A' or blanket 'AES-256' in footer. Re-run matrix specifically at 1280x800 zoom150 for splash/app-ready stability with longer observation window.",
   "rca of the issue": "Probable flaky race between splash dismissal and app-ready signal under high zoom/layout pressure (observed once at 1280x800@150 where ready selector timed out, then passed on retry). Upload cleanup gap is testability-related: shell-level deterministic selectors for uploaded item/delete are not obvious in this scope, so full add->remove assertion remains partial."
 }

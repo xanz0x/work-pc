@@ -16,8 +16,8 @@ from email.message import EmailMessage
 import pytest
 import requests
 
-APP_URL = os.environ.get("APP_URL", "https://ai-ready-launcher.preview.emergentagent.com").rstrip("/")
-PASSWORD = os.environ.get("APP_PASSWORD", "IceKrymTeam13@")
+APP_URL = os.environ.get("APP_URL", "https://ui-cleanup-34.preview.emergentagent.com").rstrip("/")
+PASSWORD = os.environ.get("APP_PASSWORD", "<APP_PASSWORD>")
 LOGIN = os.environ.get("ADMIN_LOGIN", "admin")
 API = f"{APP_URL}/ai-api"
 

@@ -30,7 +30,7 @@
     {
       "bug": "Регресс базовых сценариев",
       "status": "PASS",
-      "evidence": "(а) Логин по IceKrymTeam13@ — 200 → редирект на /. (б) Онбординг чистого профиля прошёл: onb-mode-local → onb-step1-next → PIN 6+6 → onb-create-key → onb-pick-demo. (в) Все шесть экранов без внешнего скролла страницы. (г) Секрет создан (vault-new → editor-title=TEST_e2e_secret → editor-field-value-0..2 → editor-save). (д) Ctrl+Shift+L → 6 [data-testid^=lock-cell-] найдены, ввод 111111 разблокировал сейф (app-ready=1 вернулся). (е) В «Опасной зоне» присутствуют settings-clear-index и settings-delete-vault."
+      "evidence": "(а) Логин по <APP_PASSWORD> — 200 → редирект на /. (б) Онбординг чистого профиля прошёл: onb-mode-local → onb-step1-next → PIN 6+6 → onb-create-key → onb-pick-demo. (в) Все шесть экранов без внешнего скролла страницы. (г) Секрет создан (vault-new → editor-title=TEST_e2e_secret → editor-field-value-0..2 → editor-save). (д) Ctrl+Shift+L → 6 [data-testid^=lock-cell-] найдены, ввод 111111 разблокировал сейф (app-ready=1 вернулся). (е) В «Опасной зоне» присутствуют settings-clear-index и settings-delete-vault."
     }
   ],
   "critical_code_review_comments": [
@@ -41,7 +41,7 @@
   "action_items": [],
   "updated_files": [],
   "success_rate": { "backend": "не тестировалось (frontend only)", "frontend": "5/5 блоков PASS" },
-  "test_credentials": "APP_PASSWORD=IceKrymTeam13@; PIN в одноразовом профиле — 111111",
+  "test_credentials": "APP_PASSWORD=<APP_PASSWORD>; PIN в одноразовом профиле — 111111",
   "seed_data_creation": "Тестовая запись сейфа TEST_e2e_secret создаётся внутри одноразового Playwright-профиля и умирает вместе с ним, prod IndexedDB не трогается.",
   "retest_needed": false,
   "should_main_agent_self_test": false,

@@ -17,7 +17,7 @@ async function enter(page: Page): Promise<void> {
   await skipOnboarding(page)
   await page.goto('/')
   if (page.url().includes('/login')) {
-    await page.locator('input[type=password]').fill(process.env.APP_PASSWORD ?? 'IceKrymTeam13@')
+    await page.locator('input[type=password]').fill(process.env.APP_PASSWORD ?? '<APP_PASSWORD>')
     await page.keyboard.press('Enter')
     await page.waitForURL((u) => !u.pathname.includes('/login'), { timeout: 30_000 })
   }

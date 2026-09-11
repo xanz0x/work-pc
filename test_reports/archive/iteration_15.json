@@ -17,10 +17,10 @@
   ],
   "updated_files": [],
   "success_rate": { "backend": "100% (4/4 сценария из ТЗ)", "frontend": "100% (регресс 5 экранов + оба состояния движка + отправка сообщения в локальном режиме)" },
-  "test_credentials": "APP_PASSWORD=IceKrymTeam13@ для /login. Ollama-ключей нет. Заглушка: node /app/scripts/fake-ollama.mjs & (порт 11434).",
+  "test_credentials": "APP_PASSWORD=<APP_PASSWORD> для /login. Ollama-ключей нет. Заглушка: node /app/scripts/fake-ollama.mjs & (порт 11434).",
   "seed_data_creation": "Ничего не создавал в БД. В сессии чата остался тестовый диалог «привет, кто отвечает?» с ответом заглушки — можно оставить как демо, либо очистить в UI.",
   "retest_needed": false,
   "should_main_agent_self_test": true,
-  "context_for_next_testing_agent": "Быстрый прогон: 1) curl -sc /tmp/c.txt -d '{\"password\":\"IceKrymTeam13@\"}' -H 'Content-Type: application/json' http://localhost:3000/ai-api/auth/login. 2) curl -sb /tmp/c.txt 'http://localhost:3000/ai-api/engine?model=qwen-7b' — без движка ждать code=ENGINE_NOT_RUNNING. 3) node /app/scripts/fake-ollama.mjs & — включить заглушку, повторить, ждать local.ok=true. 4) curl -sN -b /tmp/c.txt -H 'Content-Type: application/json' -d '{\"sessionId\":\"tst\",\"text\":\"hi\",\"engine\":\"local\",\"model\":\"qwen-7b\"}' http://localhost:3000/ai-api/chat — ждать SSE с t=stats provider=ollama tps=<число>. 5) Не забыть pkill -f fake-ollama. Прод-сервер: `node_modules/.bin/next start -p 3000` через nohup (не supervisor).",
+  "context_for_next_testing_agent": "Быстрый прогон: 1) curl -sc /tmp/c.txt -d '{\"password\":\"<APP_PASSWORD>\"}' -H 'Content-Type: application/json' http://localhost:3000/ai-api/auth/login. 2) curl -sb /tmp/c.txt 'http://localhost:3000/ai-api/engine?model=qwen-7b' — без движка ждать code=ENGINE_NOT_RUNNING. 3) node /app/scripts/fake-ollama.mjs & — включить заглушку, повторить, ждать local.ok=true. 4) curl -sN -b /tmp/c.txt -H 'Content-Type: application/json' -d '{\"sessionId\":\"tst\",\"text\":\"hi\",\"engine\":\"local\",\"model\":\"qwen-7b\"}' http://localhost:3000/ai-api/chat — ждать SSE с t=stats provider=ollama tps=<число>. 5) Не забыть pkill -f fake-ollama. Прод-сервер: `node_modules/.bin/next start -p 3000` через nohup (не supervisor).",
   "rca_of_the_issue": "Не применимо — багов не найдено. Единственный минорный момент — расхождение между ожидаемым в ТЗ data-state='off' и фактическим 'ENGINE_NOT_RUNNING' на элементе data-testid=engine-status; функционально не мешает, но контракт data-атрибутов стоит нормализовать."
 }

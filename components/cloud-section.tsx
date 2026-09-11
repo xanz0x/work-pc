@@ -25,6 +25,7 @@ import {
   IconTrash,
 } from './icons'
 import { useToast } from '@/lib/vault-store'
+import { FolderPickerDialog } from './folder-picker-dialog'
 
 type DriveView = {
   isAdmin: boolean
@@ -99,7 +100,9 @@ export function CloudSection() {
   const [joinCode, setJoinCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [uploads, setUploads] = useState<UploadTrack[]>([])
-  /** Фолбэк выбора папки без моста: ручной ввод пути (window.prompt в Electron всегда null). */
+  /** Обзор папок на машине программы: браузер абсолютный путь не отдаёт. */
+  const [browsing, setBrowsing] = useState(false)
+  /** Фолбэк: ручной ввод пути (если обзор недоступен). */
   const [showManualRoot, setShowManualRoot] = useState(false)
   const [manualRoot, setManualRoot] = useState('')
   const fileRef = useRef<HTMLInputElement | null>(null)
@@ -249,7 +252,7 @@ export function CloudSection() {
   }
 
   const rootNote = (root: string | null) =>
-    root ? `Файлы будут сохраняться в «${root}»` : 'Папка хранения отключена — файлы снова идут во внутреннее хранилище'
+    root ? `Ваши файлы будут сохраняться в «${root}»` : 'Локальная папка отключена — файлы снова идут во внутреннее хранилище'
 
   async function pickRoot() {
     /* Нативный диалог — через мост рабочего стола: window.prompt в
@@ -267,9 +270,8 @@ export function CloudSection() {
       await changeRoot(picked.trim(), true, rootNote)
       return
     }
-    /* Фолбэк (браузер без моста): ручной ввод пути в поле. */
-    setManualRoot(data?.storageRoot ?? '')
-    setShowManualRoot(true)
+    /* Без моста (браузер) — обзор папок на той машине, где работает программа. */
+    setBrowsing(true)
   }
 
   async function submitManualRoot() {
@@ -406,16 +408,19 @@ export function CloudSection() {
         </div>
       )}
 
-      {/* Папка хранения — куда физически пишутся новые файлы (только админ). */}
+      {/* Локальная папка на ПК: личное хранилище файлов (только админ). */}
       {data.isAdmin && (
         <div className="cloud-storage" data-testid="cloud-storage">
           <IconFolder width={18} height={18} stroke="currentColor" strokeWidth={1.5} aria-hidden="true" />
           <div className="cloud-storage-text">
-            <span className="label-mono">Папка хранения</span>
+            <span className="label-mono">Моя локальная папка</span>
             <b className="mono cloud-storage-path" data-testid="cloud-storage-path" title={data.storageRoot ?? undefined}>
               {data.storageRoot || 'Не выбрана — файлы хранятся во внутреннем хранилище программы'}
             </b>
-            <span className="setting-note">Новые загрузки физически записываются в эту папку на ПК под исходными именами.</span>
+            <span className="setting-note">
+              Личное хранилище: добавленные файлы физически ложатся сюда под исходными именами и видны только вам.
+              В общую папку файл попадает лишь по вашему действию — из карточки файла в библиотеке.
+            </span>
           </div>
           <div className="tm-actions">
             <button className="btn btn-ghost btn-sm" disabled={busy} onClick={() => void pickRoot()} data-testid="cloud-storage-change">
@@ -437,7 +442,18 @@ export function CloudSection() {
               </>
             )}
           </div>
-          {/* Фолбэк без моста Electron: путь вводится вручную (НЕ window.prompt — он в Electron всегда null). */}
+          <div className="cloud-storage-manual">
+            <button
+              className="btn btn-ghost btn-sm"
+              onClick={() => {
+                setManualRoot(data.storageRoot ?? '')
+                setShowManualRoot((v) => !v)
+              }}
+              data-testid="cloud-storage-manual-toggle"
+            >
+              {showManualRoot ? 'Скрыть ручной ввод' : 'Ввести путь вручную'}
+            </button>
+          </div>
           {showManualRoot && (
             <div className="cloud-storage-manual" data-testid="cloud-storage-manual">
               <input
@@ -461,6 +477,17 @@ export function CloudSection() {
             </div>
           )}
         </div>
+      )}
+
+      {browsing && (
+        <FolderPickerDialog
+          current={data.storageRoot ?? null}
+          onClose={() => setBrowsing(false)}
+          onPick={(picked) => {
+            setBrowsing(false)
+            void changeRoot(picked, true, rootNote)
+          }}
+        />
       )}
 
       {/* Управление диском — только для администратора. */}

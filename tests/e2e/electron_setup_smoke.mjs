@@ -43,7 +43,6 @@ async function run() {
     await page.getByTestId('setup-admin-password').fill('StrongPassword123!')
     await page.getByTestId('setup-admin-password-confirm').fill('StrongPassword123!')
     await page.getByTestId('setup-host-address').fill('127.0.0.1')
-    await page.getByTestId('setup-model-license-consent').check({ force: true })
     await page.getByTestId('setup-create-host').click({ force: true })
     await page.waitForTimeout(700)
     const linuxHostError = await page.getByTestId('setup-error').textContent()

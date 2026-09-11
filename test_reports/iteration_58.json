@@ -1,0 +1,47 @@
+{
+  "summary": "Iter58 verified 3 user-requested fixes: (1) OpenRouter key at-rest encryption, (2) onboarding folder-picker + storage-root wiring + Settings display, (3) mail context menu on iframe email body. Backend: 6/6 pytest PASS in /app/backend/tests/test_iter58_encryption.py — provider.json contains only apiKeyEnc (aes-256-gcm iv:tag:ct base64), GET /ai-api/ai/provider exposes hasKey/keyHint/ready without leaking apiKey, live OpenRouter /models returns 430+ models, storage-root GET works, and — most importantly — legacy migration works: injecting a legacy plaintext apiKey into provider.json and calling GET auto-reseals the file to apiKeyEnc within <5s (verified end-to-end). Frontend: onboarding pick-folder end-to-end works (step1 model-connected → step2 PIN 6-digit → recovery-code → step3 onb-pick-folder opens folder-picker; fp-confirm sets storage-root; onboarding completes and Library opens). Settings → «Общее облако» shows the exact path in [data-testid=cloud-storage-path] (verified '/root'). Physical file write to picked folder confirmed via direct API: PUT storage-root=/tmp/wsx-iter58 → POST /ai-api/cloud/upload → file physically written to /tmp/wsx-iter58/iter58payload.txt (28 bytes, mode 0600). Mail context menu: mailbox + message load fine in UI, iframe (about:srcdoc) renders CTA button/text/image correctly, but real page.mouse right-click at computed CTA/text/image coordinates did NOT open [data-testid=mail-ctx-menu] — 0 items detected, no console errors. Escape and outside-click checks return true trivially (menu was never open). This is either a headless-Chromium-only issue with right-click on about:srcdoc frames OR a real regression in the BRIDGE postMessage flow in components/mail/mail-msg-view.tsx that should be verified manually in a real browser.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "mail/mail-msg-view.tsx (BRIDGE inside srcdoc iframe)",
+        "issue": "Right-click on CTA button, selected text, and image inside the email iframe did NOT open [data-testid=mail-ctx-menu] in headless Playwright — 0 mail-ctx-* items detected after real page.mouse.click(button='right') at computed iframe→page coords. May be a headless-only limitation with contextmenu on about:srcdoc, or the BRIDGE postMessage('ctx', ...) is not being received by the parent. Needs manual verification in a real browser and/or console instrumentation.",
+        "selector": "iframe[srcdoc] #cta / #para / img",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter58_encryption.py",
+    "/app/test_reports/pytest/iter58_results.xml"
+  ],
+  "action_items": [
+    "Manually verify in a real browser that right-clicking the CTA button / selected text / image inside a rendered mail message actually opens mail-ctx-menu. If it works there, add a debug console.log to the BRIDGE in components/mail/mail-msg-view.tsx to help future automated tests. If it doesn't work in a real browser, this is a genuine regression in the postMessage bridge that must be fixed.",
+    "Fix onb-decline flow: on step 2 the decline confirmation panel with 'Да, продолжить без защиты' has NO data-testid on that final confirmation button, so it's hard to skip onboarding in automated tests. Consider adding data-testid=onb-decline-confirm."
+  ],
+  "critical_code_review_comments": [
+    "lib/ai-provider.ts — encryption implementation is clean (AES-256-GCM, scrypt-derived key, iv:tag:ct base64, atomic tmp rename with mode 0600). Legacy apiKey path (lines 106-108, 116) correctly triggers migrateToSealed background write. Good.",
+    "lib/cloud-store.ts is 715 lines and lib/intake.ts is short & clean — the physical write path via writeIntoRoot in cloud-store.ts:199-230 correctly uses 'wx' flag for collision safety and re-tries name-1/name-2 etc.",
+    "components/screen-library.tsx still 2900+ lines — should be split (unchanged from iter57).",
+    "GET /ai-api/ai/provider/models still lacks {ok:true} wrapper — reported in iter57, still applies."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter58_encryption.py"
+  ],
+  "success_rate": {
+    "backend": "100% (6/6 pytest, including live legacy-key migration)",
+    "frontend": "~75% — onboarding folder-picker + settings display + physical file write via API all verified; mail context menu could not be functionally triggered in headless Playwright (see action_items)"
+  },
+  "test_credentials": "admin / <APP_PASSWORD> (source: /app/.env.local APP_PASSWORD)",
+  "seed_data_creation": "Created /tmp/wsx-iter58 temp folder for physical-write test; set storage-root to it via PUT then reset to null after; uploaded iter58payload.txt via /ai-api/cloud/upload; cleaned up /tmp/wsx-iter58 and test file. During onboarding UI run, storage-root got set to /root (default in folder picker) — reset to null at end via PUT. /app/.data/ai/provider.json restored to original ciphertext after legacy-migration test.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Provider key encryption at rest is fully working — do not re-verify heavily. Focus retest on the mail context menu in a real (non-headless) browser or with a Playwright script that enables 'has_touch=False, is_mobile=False, no_viewport=False' and 'chromium.launch(args=[\"--disable-features=UseOzonePlatform\"])'. Mailbox ef20a78b0faa@uberip.com id=215119b2 already contains 1 test message '<Проверка кнопки и ссылки>' with #cta button, #para text, and an img. Login: admin / <APP_PASSWORD>. Onboarding testids: onb-step1-next → 6× onb-secret-{0..5} + onb-secret-repeat-{0..5} → onb-create-key → onb-recovery-done → onb-pick-folder → folder-picker (fp-root/fp-dir/fp-up/fp-new/fp-confirm; fp-path is SPAN not INPUT). fp-dir navigation requires clicking through /root parent first (folder-picker opens at /root by default). Each new mcp_browser_automation call gets a fresh browser context so onboarding always re-triggers; keep everything in one script.",
+  "rca of the issue": "Mail context menu not triggering under headless Playwright: components/mail/mail-msg-view.tsx renders email body in a srcdoc iframe with an in-iframe BRIDGE that listens to contextmenu, preventDefault()'s it, and postMessage's a 'ctx' object to the parent. The parent's message listener then opens the custom menu at the reported client coords. Under headless page.mouse.click(button='right') at proper iframe→page coordinates, either (a) the contextmenu event reaches the iframe DOM but the BRIDGE listener isn't installed by the time the click happens (race between iframe srcdoc load and message-passing setup), or (b) postMessage from about:srcdoc is not fully propagating in headless. No console errors observed. Since iter57 also could not trigger any custom context menu in headless (library cards), the headless-only-limitation theory is likely, but it MUST be manually verified before closing.",
+  "regression": {
+    "pnpm_lint": "not re-run — no source-file changes in iter58",
+    "existing_e2e_specs": "not re-run to preserve OpenRouter budget"
+  }
+}

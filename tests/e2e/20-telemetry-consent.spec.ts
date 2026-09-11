@@ -10,7 +10,7 @@ import { waitAppReady } from './ready'
  */
 
 const APP_URL = process.env.APP_URL ?? 'http://localhost:3000'
-const APP_PASSWORD = process.env.APP_PASSWORD ?? 'IceKrymTeam13@'
+const APP_PASSWORD = process.env.APP_PASSWORD ?? '<APP_PASSWORD>'
 
 test('NF-9: payload виден, отправка только по согласию, отзыв стирает данные', async ({
   browser,

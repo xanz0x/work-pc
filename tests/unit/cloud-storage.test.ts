@@ -72,16 +72,17 @@ describe('cloud storage root', () => {
     const payload = bytes('содержимое отчёта')
     const first = await run(() => cloudStore.uploadFile('отчёт.txt', 'docs', payload, 'text/plain'))
     firstFileId = first.id
-    expect(first.relPath).toBe('отчёт.txt')
+    /* Папка «docs» настоящая: файл ложится в подпапку папки хранения. */
+    expect(first.relPath).toBe('docs/отчёт.txt')
     expect(first.size).toBe(payload.byteLength)
     expect(first.sha256).toBe(createHash('sha256').update(payload).digest('hex'))
-    expect(new Uint8Array(await readFile(path.join(root, 'отчёт.txt')))).toEqual(payload)
+    expect(new Uint8Array(await readFile(path.join(root, 'docs', 'отчёт.txt')))).toEqual(payload)
 
     // Коллизия: то же имя → «имя-1.ext», прежний файл не тронут.
     const second = await run(() => cloudStore.uploadFile('отчёт.txt', 'docs', bytes('второй'), 'text/plain'))
-    expect(second.relPath).toBe('отчёт-1.txt')
-    expect(new Uint8Array(await readFile(path.join(root, 'отчёт-1.txt')))).toEqual(bytes('второй'))
-    expect(new Uint8Array(await readFile(path.join(root, 'отчёт.txt')))).toEqual(payload)
+    expect(second.relPath).toBe('docs/отчёт-1.txt')
+    expect(new Uint8Array(await readFile(path.join(root, 'docs', 'отчёт-1.txt')))).toEqual(bytes('второй'))
+    expect(new Uint8Array(await readFile(path.join(root, 'docs', 'отчёт.txt')))).toEqual(payload)
 
     // Windows-запрещённые символы чистятся, зарезервированные имена — с префиксом.
     const weird = await run(() => cloudStore.uploadFile('CON?.txt', '', bytes('reserved'), 'text/plain'))
@@ -93,7 +94,7 @@ describe('cloud storage root', () => {
     const view = await run(() => cloudStore.driveView())
     expect(view.storageRoot).toBe(root)
     const viewFile = view.files.find((f) => f.id === first.id)
-    expect(viewFile?.relPath).toBe('отчёт.txt')
+    expect(viewFile?.relPath).toBe('docs/отчёт.txt')
     expect(viewFile?.sha256).toBe(first.sha256)
     expect('path' in (viewFile ?? {})).toBe(false)
   })
@@ -165,7 +166,7 @@ describe('cloud storage root', () => {
     // Конфликт имён в новой папке: «новый.txt» уже занят посторонним файлом.
     await writeFile(path.join(root2, 'новый.txt'), 'занято')
     // Один источник портим: файла больше нет в прежней папке.
-    await rm(path.join(oldRoot, 'отчёт-1.txt'))
+    await rm(path.join(oldRoot, 'docs', 'отчёт-1.txt'))
 
     const result = await run(() => cloudStore.setStorageRootMigrating(root2, true))
     expect(result.root).toBe(root2)
@@ -174,7 +175,7 @@ describe('cloud storage root', () => {
     expect(result.migrated?.errors[0]).toContain('отчёт-1.txt')
 
     // Копии в новой папке: контент тот же, коллизия разрешилась «-1».
-    expect(new Uint8Array(await readFile(path.join(root2, 'отчёт.txt')))).toEqual(bytes('содержимое отчёта'))
+    expect(new Uint8Array(await readFile(path.join(root2, 'docs', 'отчёт.txt')))).toEqual(bytes('содержимое отчёта'))
     expect(await readFile(path.join(root2, 'новый.txt'), 'utf8')).toBe('занято')
     expect(new Uint8Array(await readFile(path.join(root2, 'новый-1.txt')))).toEqual(bytes('в папке'))
     expect(new Uint8Array(await readFile(path.join(root2, 'старый.txt')))).toEqual(bytes('легаси-байты'))
@@ -192,7 +193,7 @@ describe('cloud storage root', () => {
     const view = await run(() => cloudStore.driveView())
     expect(view.storageRoot).toBe(root2)
     const viewFirst = view.files.find((f) => f.id === firstFileId)
-    expect(viewFirst?.absPath).toBe(path.resolve(root2, 'отчёт.txt'))
+    expect(viewFirst?.absPath).toBe(path.resolve(root2, 'docs', 'отчёт.txt'))
   })
 
   it('migrate is opt-in: without the flag nothing is copied, empty root clears without a report', async () => {

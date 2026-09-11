@@ -1,13 +1,16 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { IconClip, IconClose, IconEye, IconEyeOff, IconMail } from '../icons'
-import { MailContextMenu, type MailCtx } from './mail-context-menu'
+import { MailContextMenu } from './mail-context-menu'
+import { bridgeCsp, bridgeTag, useMailFrameBridge } from './mail-frame-bridge'
 import { Star } from './mail-msg-list'
 import { fmtBytes } from '@/lib/data'
 import type { MessageFull } from '@/lib/mail-client'
 import { addrFull, fmtMailDateFull } from '@/lib/mail-format'
 import { escapeHtml } from '@/lib/mail-html'
+import { MAIL_FRAME_SCROLL_STYLE } from '@/lib/mail-frame-style'
+import { hasRemoteImages, inlineRemoteImages } from '@/lib/mail-img'
 
 type Props = {
   message: MessageFull | null
@@ -17,23 +20,39 @@ type Props = {
   onBack?: () => void
 }
 
-/** Тело письма живёт в iframe без скриптов; картинки идут через серверный прокси
-    /ai-api/mail/img (часть CDN отвергает null-origin из sandbox-iframe), скрипты
-    по-прежнему запрещены CSP и sandbox. */
-function frameDoc(m: MessageFull): string {
-  const csp = `default-src 'none'; style-src 'unsafe-inline'; img-src 'self' https: http: data:; font-src 'none'; frame-src 'none'`
-  const body = m.html ?? `<pre class="plain">${escapeHtml(m.text ?? '')}</pre>`
+/** cid:-ссылки заменяются данными из вложений: иначе встроенные картинки битые. */
+function inlineCids(html: string, m: MessageFull): string {
+  const byCid = new Map<string, string>()
+  for (const a of m.attachments) {
+    if (a.cid && a.dataUrl) byCid.set(a.cid.replace(/^<|>$/g, '').toLowerCase(), a.dataUrl)
+  }
+  if (byCid.size === 0) return html
+  return html.replace(/(["'(])\s*cid:([^"')\s]+)\s*(["')])/gi, (whole, open: string, cid: string, close: string) => {
+    const url = byCid.get(decodeURIComponent(cid).toLowerCase())
+    return url ? `${open}${url}${close}` : whole
+  })
+}
+
+function frameDoc(body: string): string {
+  /* Картинки грузятся напрямую с их адресов; скрипт — только наш, по nonce. */
+  const csp = [
+    "default-src 'none'",
+    "style-src 'unsafe-inline'",
+    'img-src https: http: data: blob:',
+    bridgeCsp(),
+    "font-src https: data:",
+    "frame-src 'none'",
+  ].join('; ')
   return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${csp}"><base target="_blank"><style>
 html,body{margin:0;background:#fff;color:#1c1f24}body{padding:16px 18px;font:14px/1.55 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;word-break:break-word}
 img{max-width:100%;height:auto}a{color:#1a5fb4}pre.plain{white-space:pre-wrap;font:13.5px/1.55 ui-monospace,Menlo,Consolas,monospace;margin:0}table{max-width:100%}
-</style></head><body>${imgProxy(body)}</body></html>`
+::selection{background:#cfe3ff}
+</style></head><body>${body}${MAIL_FRAME_SCROLL_STYLE}${bridgeTag()}</body></html>`
 }
 
-/** src картинок → серверный прокси: iframe письма имеет opaque origin, и часть
-    CDN отвечает 403 таким запросам. data:-URI не трогаем. */
-function imgProxy(html: string): string {
-  return html.replace(/(\ssrc\s*=\s*)(["'])(https?:\/\/[^"']+)\2/gi, (_m, pre, q, url) => `${pre}${q}/ai-api/mail/img?url=${encodeURIComponent(url)}${q}`)
-}
+/** Тело письма: HTML как есть либо текст, с подставленными cid:-картинками. */
+const bodyOf = (m: MessageFull): string =>
+  inlineCids(m.html ?? `<pre class="plain">${escapeHtml(m.text ?? '')}</pre>`, m)
 
 function AddrLine({ label, list }: { label: string; list: { name: string; address: string }[] }) {
   if (list.length === 0) return null
@@ -46,33 +65,34 @@ function AddrLine({ label, list }: { label: string; list: { name: string; addres
 }
 
 export function MailMsgView({ message: m, loading, error, onFlag, onBack }: Props) {
-  const doc = useMemo(() => (m ? frameDoc(m) : ''), [m])
-  /* ПКМ внутри письма: sandbox-iframe без скриптов не пускает событие до React,
-     поэтому контекст-меню показывает этот компонент по сообщению от моста. */
-  const frameRef = useRef<HTMLIFrameElement>(null)
-  const [ctx, setCtx] = useState<MailCtx | null>(null)
-  const closeCtx = useCallback(() => setCtx(null), [])
-
+  /* Внешние картинки скачивает страница и вставляет как data:-URI: у песочницы
+     iframe opaque origin, поэтому её запросы идут без cookie сессии, а часть
+     CDN отвечает 403 на запрос с null-origin. */
+  const [doc, setDoc] = useState('')
   useEffect(() => {
-    const bridge = (
-      window as unknown as {
-        workspacexDesktop?: { onContextMenu?: (cb: (p: MailCtx) => void) => () => void }
-      }
-    ).workspacexDesktop
-    if (!bridge?.onContextMenu) return
-    return bridge.onContextMenu((p) => {
-      /* Показываем меню, только если клик пришёлся на это письмо. */
-      const rect = frameRef.current?.getBoundingClientRect()
-      if (!rect) return
-      if (p.x < rect.left || p.x > rect.right || p.y < rect.top || p.y > rect.bottom) return
-      setCtx({ x: p.x, y: p.y, linkURL: p.linkURL ?? null, text: p.text ?? '' })
+    if (!m) {
+      setDoc('')
+      return
+    }
+    const raw = bodyOf(m)
+    if (!hasRemoteImages(raw)) {
+      setDoc(frameDoc(raw))
+      return
+    }
+    let alive = true
+    void inlineRemoteImages(raw).then((html) => {
+      if (alive) setDoc(frameDoc(html))
     })
-  }, [])
-
-  /* Новое письмо — старое меню не нужно. */
-  useEffect(() => {
-    setCtx(null)
-  }, [m?.folder, m?.uid])
+    return () => {
+      alive = false
+    }
+  }, [m])
+  const frameRef = useRef<HTMLIFrameElement>(null)
+  const { ctx, closeCtx, selectAll, frameHeight } = useMailFrameBridge(frameRef, {
+    subject: m?.subject,
+    fromAddress: m?.from?.address ?? null,
+    resetKey: m ? `${m.folder}:${m.uid}` : null,
+  })
 
   if (error) {
     return (
@@ -143,9 +163,10 @@ export function MailMsgView({ message: m, loading, error, onFlag, onBack }: Prop
           ref={frameRef}
           className="mail-frame"
           title={`Письмо: ${m.subject || 'без темы'}`}
-          sandbox="allow-popups allow-popups-to-escape-sandbox"
+          sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
           referrerPolicy="no-referrer"
           srcDoc={doc}
+          style={frameHeight ? { height: `${frameHeight}px` } : undefined}
           data-testid="mail-msg-view-frame"
         />
       </div>
@@ -164,7 +185,7 @@ export function MailMsgView({ message: m, loading, error, onFlag, onBack }: Prop
           </ul>
         </footer>
       )}
-      {ctx && <MailContextMenu ctx={ctx} onClose={closeCtx} />}
+      {ctx && <MailContextMenu ctx={ctx} onClose={closeCtx} onSelectAll={selectAll} />}
     </article>
   )
 }

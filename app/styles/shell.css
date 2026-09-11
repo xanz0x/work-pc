@@ -21,9 +21,11 @@
     gap: 9px;
     margin-bottom: 14px;
   }
-  .sidebar .logo-word { font-size: 12px; letter-spacing: .14em; }
-  .sidebar .logo-sub { font-size: 8px; letter-spacing: .1em; color: #859099; }
-  .sidebar .logo-mark { width: 26px; height: 30px; }
+  .sidebar .logo-word { font-size: 9px; letter-spacing: .14em; }
+  .sidebar .logo-mark { width: 17px; height: 20px; }
+  /* Знак в боковой панели чуть мельче: шапка не перетягивает внимание с меню. */
+  .sidebar .logo-mark svg { width: 16px; height: 16px; }
+  .sidebar .workspace-logo-word { width: 78px; }
   .sidebar .sidebar-toggle { width: 24px; min-width: 24px; height: 28px; }
   .sidebar .nav-add {
     height: 38px;
@@ -210,7 +212,7 @@
   .shell-statusbar .shell-engine-status { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 9px; letter-spacing: .02em; }
   .shell-engine-status .net-dot { background: #7f8b94; }
   .shell-engine-status.is-ready .net-dot { background: var(--ok); }
-  .shell-engine-status.is-cloud .net-dot { background: var(--warn); }
+  .shell-engine-status.is-cloud:not(.is-ready) .net-dot { background: var(--warn); }
   .shell-lock-status { display: flex; align-items: center; gap: 6px; }
   .shell-lock-status svg { width: 12px; height: 12px; stroke: currentColor; stroke-width: 1.5; fill: none; }
   .shell-statusbar .sb-alert {
@@ -358,5 +360,27 @@
     .fk-modal { padding-bottom: 100px; }
     .vt-modal { max-height: calc((100dvh - 124px) / var(--ui-zoom, 1)); }
     .vt-modal.vt-editor { max-height: calc((100dvh - 124px) / var(--ui-zoom, 1)); }
+  }
+
+  /* ============================================================
+     ВЫДЕЛЕНИЕ ТЕКСТА В ОБОЛОЧКЕ
+     Меню, верхняя полоса и статусная строка — это органы управления,
+     а не текст для копирования. Раньше Ctrl+A или случайное движение
+     мышью закрашивали их вместе со всем окном, и человек видел «плёнку
+     поверх интерфейса». Поля ввода и всплывающие панели с текстом
+     выделение сохраняют.
+     ============================================================ */
+  .app .sidebar,
+  .app .topbar,
+  .app .shell-statusbar {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  .app .sidebar :is(input, textarea),
+  .app .topbar :is(input, textarea),
+  .app .topbar .notif-panel {
+    -webkit-user-select: text;
+    user-select: text;
   }
 }

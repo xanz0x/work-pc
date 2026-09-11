@@ -24,7 +24,6 @@ import { clientIp, limitChat } from '@/lib/rate-limit'
 import { resolveProvider } from '@/lib/llm'
 import { LlmFail } from '@/lib/llm/fail'
 import type { LlmCall, LlmTool } from '@/lib/llm/types'
-import { DEFAULT_MODEL, isModelId, type ModelId } from '@/lib/data'
 import { CHAT_TOOLS, CHAT_WORKSPACE_RULES } from '@/lib/chat-tools'
 import { chatCapabilities } from '@/lib/chat-access-server'
 
@@ -48,8 +47,6 @@ type Body = {
   regenerate?: boolean
   /** Заявленный клиентом движок — сервер проверяет его сам. */
   engine?: string
-  /** Модель профиля: для локального движка из неё берётся тег Ollama. */
-  model?: string
   /** Разрешён ли вынос индекса сейфа наружу. */
   sendIndex?: boolean
   ctx?: Ctx
@@ -170,31 +167,25 @@ async function handleChat(req: NextRequest) {
     }
   }
 
-  /* Форма тела проверяется после гейтов движка: локальный движок отвечает
-     409 независимо от полей (инвариант волны 1). */
-  const engine = body.engine === 'hybrid' || body.engine === 'cloud' ? body.engine : 'local'
-  const model: ModelId = isModelId(body.model) ? body.model : DEFAULT_MODEL
+  /* Форма тела проверяется после гейта подключения модели. */
+  const engine = body.engine === 'hybrid' || body.engine === 'cloud' ? body.engine : 'cloud'
 
-  /* NF-2: провайдера выбирает настройка движка, и его живость проверяется
-     до первого токена. Локальный режим никогда не подменяется облаком:
-     если Ollama не запущена или модели нет — честный код и инструкция. */
-  const resolved = await resolveProvider(engine, model)
+  /* Отвечает та модель, которую владелец подключил в настройках: свой
+     сервер или OpenRouter. Конфигурация проверяется до первого токена. */
+  const resolved = await resolveProvider()
   if (!resolved.ok) {
     const st = resolved.status
-    const local = st.provider === 'ollama'
-    log(local ? 'warn' : 'error', local ? 'chat.local-off' : 'chat.cloud-off', {
+    log('error', 'chat.provider-off', {
       rid,
       route: '/ai-api/chat',
-      status: local ? 409 : 503,
+      status: 503,
       code: st.code ?? undefined,
     })
     return fail(
-      st.code ?? 'ENGINE_NOT_CONFIGURED',
-      local
-        ? (st.hint ?? 'Локальный движок не подключён.')
-        : 'Облачный движок не настроен.',
-      local ? 409 : 503,
-      local ? { engine: 'local', base: st.base, model: st.model, models: st.models } : undefined,
+      st.code ?? 'CLOUD_NOT_CONFIGURED',
+      st.hint ?? 'Модель не подключена: откройте «Настройки → Подключение модели».',
+      503,
+      undefined,
     )
   }
   const provider = resolved.provider
@@ -261,7 +252,7 @@ async function handleChat(req: NextRequest) {
       try {
         /* LG-1: наружу уходят последние ходы, вытесненное — одним резюме.
            История на диске остаётся полной: это данные пользователя. */
-        const win = trimLlm(session.llm, engine === 'local' && model === 'qwen-3b' ? { maxTurns: 4, budget: 6000 } : {})
+        const win = trimLlm(session.llm, {})
         const sys = win.summary ? `${system}\n\n## Ранее в диалоге\n${win.summary}` : system
         push({
           t: 'ctx',
@@ -274,7 +265,7 @@ async function handleChat(req: NextRequest) {
         countTurn()
 
         /* Поток дельт от провайдера: текст, готовые вызовы скиллов и расход.
-           Маршрут не знает, кто отвечает — Ollama на устройстве или облако. */
+           Маршрут не знает деталей провайдера — только его адаптер. */
         let text = ''
         let usage: { prompt: number | null; completion: number | null; tps: number | null } | null =
           null

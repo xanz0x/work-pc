@@ -33,10 +33,10 @@
   "action_items": [],
   "updated_files": [],
   "success_rate": { "backend": "5/5 (100%) + unit 5/5 (100%)", "frontend": "1/1 e2e (100%)" },
-  "test_credentials": "APP_URL=https://ai-ready-launcher.preview.emergentagent.com; APP_PASSWORD=IceKrymTeam13@; PIN=123456",
+  "test_credentials": "APP_URL=https://ui-cleanup-34.preview.emergentagent.com; APP_PASSWORD=<APP_PASSWORD>; PIN=123456",
   "seed_data_creation": "pytest создал spaceId=64a87901... с двумя устройствами A/B (B отозван), ops.jsonl из 2 записей (ct='c1','c2'). e2e создаёт одноразовые пространства в изолированных контекстах браузера — не пересекаются с прод-данными. MCP-токен 'sync-e2e' в вкладке A ttl=1h.",
   "retest_needed": false,
   "should_main_agent_self_test": false,
-  "context_for_next_testing_agent": "Long-poll /sync/ops держит соединение до ~20 с — Playwright wait_until='networkidle' не сработает, использовать 'load' (учтено в waitAppReady). Server-blindness проверяется grep по каталогу /root/.workflow/ai/sync/<spaceId>/ — ни plaintext заголовков стикеров, ни имён устройств, ни пароля пространства нет. Ключ синхронизации переживает reload (kept в IndexedDB), диск хранит только шифртекст. Пароль входа стабилен: IceKrymTeam13@.",
+  "context_for_next_testing_agent": "Long-poll /sync/ops держит соединение до ~20 с — Playwright wait_until='networkidle' не сработает, использовать 'load' (учтено в waitAppReady). Server-blindness проверяется grep по каталогу /root/.workflow/ai/sync/<spaceId>/ — ни plaintext заголовков стикеров, ни имён устройств, ни пароля пространства нет. Ключ синхронизации переживает reload (kept в IndexedDB), диск хранит только шифртекст. Пароль входа стабилен: <APP_PASSWORD>.",
   "rca of the issue": "Отклонений нет — приёмка чистая."
 }

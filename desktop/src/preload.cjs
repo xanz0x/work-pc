@@ -8,7 +8,6 @@ contextBridge.exposeInMainWorld('workspacexSetup', {
   open: () => ipcRenderer.invoke('setup:open'),
   copyInvite: () => ipcRenderer.invoke('setup:copy-invite'),
   updateMail: (key) => ipcRenderer.invoke('setup:update-mail', key),
-  license: () => ipcRenderer.invoke('setup:license'),
   progress: (callback) => {
     const handler = (_event, value) => callback(value)
     ipcRenderer.on('setup:progress', handler)

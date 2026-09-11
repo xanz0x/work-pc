@@ -56,7 +56,7 @@ const MASTER_A = 'мастер-устройства-A-123'
 const MASTER_B = 'мастер-устройства-B-456'
 const SNAP_PWD = 'пароль-снимка-7890'
 
-const SETTINGS = { engine: 'local', model: 'qwen-7b', folder: '/архив' }
+const SETTINGS = { engine: 'cloud', folder: '/архив' }
 const FILES = [{ id: 'f1', name: 'договор.pdf', bytes: 12_345 }]
 const CHATS = [{ id: 's1', title: 'первый разговор' }]
 

@@ -16,6 +16,6 @@
   ],
   "action_items": [],
   "success_rate": { "backend": "не тестировалось (frontend only)", "frontend": "3/3 замечания закрыты" },
-  "test_credentials": "APP_PASSWORD=IceKrymTeam13@, PIN онбординга в одноразовом профиле 111111",
+  "test_credentials": "APP_PASSWORD=<APP_PASSWORD>, PIN онбординга в одноразовом профиле 111111",
   "retest_needed": false
 }

@@ -18,6 +18,8 @@ import { JournalAlert } from './journal-alert'
 import { useEngineStore } from '@/lib/store/engine'
 import { useVault } from '@/lib/vault-store'
 import { useAccount } from '@/lib/account'
+import { useDataStore } from '@/lib/store/data'
+import { queueIntake } from '@/lib/intake-queue'
 import { useIndexActions } from '@/lib/indexer/context'
 import { fmtBytes } from '@/lib/data'
 import { SCOPES } from '@/lib/search'
@@ -87,6 +89,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   /* NF-2: скорость движка — из его же ответа, а не из выдуманной метрики. */
   const engine = useEngineStore()
   const idxa = useIndexActions()
+  const D = useDataStore()
   const { stats, clusters } = v
 
   const [collapsed, setCollapsed] = useState(false)
@@ -356,7 +359,6 @@ export function AppShell({ children }: { children: ReactNode }) {
             </span>
             <span className="brand-words">
               <LogoWord withMark={false} testId="sidebar-logo-wordmark" />
-              <span className="logo-sub">local ai workspace</span>
             </span>
             <button
               className="sidebar-toggle"
@@ -382,8 +384,17 @@ export function AppShell({ children }: { children: ReactNode }) {
             tabIndex={-1}
             onChange={(e) => {
               const list = Array.from(e.target.files ?? [])
-              /* NF-1: файлы читаются по-настоящему — метаданными не отделаться. */
-              if (list.length > 0) void idxa.indexFiles(list)
+              /* NF-1: файлы читаются по-настоящему — метаданными не отделаться.
+                 Есть личная папка на ПК — приём идёт через библиотеку: она
+                 спросит подпапку и физически положит файл туда. */
+              if (list.length > 0) {
+                if (account.has('cloud') && D.cloudRoot) {
+                  v.go('library')
+                  queueIntake(list)
+                } else {
+                  void idxa.indexFiles(list)
+                }
+              }
               e.target.value = ''
             }}
           />
@@ -418,7 +429,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                     : ''}
                 </span>
               </span>
-              <i aria-hidden="true" className={`net-dot${v.engineView.isCloud ? ' warn' : v.engineView.ready ? '' : ' idle'}`} />
+              <i aria-hidden="true" className={`net-dot${v.engineView.ready ? '' : ' warn'}`} />
             </button>
 
             <div className="sidebar-storage" data-testid="sidebar-storage">
@@ -604,7 +615,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <footer className="statusbar shell-statusbar" data-testid="shell-statusbar" inert={v.lock.status === 'locked'}>
         <div className="shell-status-group shell-status-primary">
         <StatusClock />
-        <span className={`shell-engine-status${v.engineView.isCloud ? ' is-cloud' : v.engineView.ready ? ' is-ready' : ''}`} data-testid="status-mode" title={v.engineView.statusLabel}>
+        <span className={`shell-engine-status${v.engineView.ready ? ' is-ready' : ' is-cloud'}`} data-testid="status-mode" title={v.engineView.statusLabel}>
           <i className="net-dot" aria-hidden="true" />
           {v.engineView.statusLabel}
         </span>
@@ -627,7 +638,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </span>
         ) : (
           <span className="sb-net" data-testid="status-net">
-            <i className={`net-dot${v.engineView.isCloud ? ' warn' : ''}`} />
+            <i className={`net-dot${v.engineView.ready ? '' : ' warn'}`} />
             {v.engineView.isCloud ? 'Облачный ИИ включён' : 'Облачный ИИ выключен'}
           </span>
         )}

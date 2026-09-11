@@ -13,7 +13,7 @@ if not BASE_URL:
     raise RuntimeError("Set REACT_APP_BACKEND_URL or APP_URL before running tests")
 BASE_URL = BASE_URL.rstrip("/")
 
-ADMIN_PASSWORD = os.environ.get("APP_PASSWORD", "IceKrymTeam13@")
+ADMIN_PASSWORD = os.environ.get("APP_PASSWORD", "<APP_PASSWORD>")
 ADMIN_LOGIN = os.environ.get("ADMIN_LOGIN", "admin")
 
 

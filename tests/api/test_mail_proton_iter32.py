@@ -1,6 +1,6 @@
 """
 Iteration 32 · Proton bridge/alt flows + bridge port validation.
-Прогон: APP_URL=https://ai-ready-launcher.preview.emergentagent.com \
+Прогон: APP_URL=https://ui-cleanup-34.preview.emergentagent.com \
         python -m pytest tests/api/test_mail_proton_iter32.py -v
 """
 import os
@@ -8,8 +8,8 @@ import time
 import pytest
 import requests
 
-BASE = os.environ.get("APP_URL", "https://ai-ready-launcher.preview.emergentagent.com").rstrip("/")
-ADMIN_PASS = "IceKrymTeam13@"
+BASE = os.environ.get("APP_URL", "https://ui-cleanup-34.preview.emergentagent.com").rstrip("/")
+ADMIN_PASS = "<APP_PASSWORD>"
 
 
 @pytest.fixture(scope="module")

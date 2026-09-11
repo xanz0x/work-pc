@@ -341,7 +341,6 @@ export function ScreenChat() {
           sessionId,
           ...opts,
           engine: view.mode,
-          model: v.settings.model,
           sendIndex: v.settings.toggles.sendIndex,
           modelLabel: view.model,
           ctx,
@@ -412,7 +411,7 @@ export function ScreenChat() {
           })
         }
         /* NF-2 (шаг 4): цифры движка — из ответа адаптера, а не из часов. */
-        if (r.provider === 'ollama' && !r.errorCode && !r.stopped) {
+        if (r.provider && !r.errorCode && !r.stopped) {
           engine.setMetrics({
             tokensPerSec: r.tokensPerSec ?? null,
             model: r.engineModel ?? null,
@@ -747,7 +746,7 @@ export function ScreenChat() {
           ) : null}
           <button
             type="button"
-            className={`badge ${engine.engineView.ready && !engine.engineView.isCloud ? 'badge-ok' : 'badge-warn'} chat-offline`}
+            className={`badge ${engine.engineView.ready ? 'badge-ok' : 'badge-warn'} chat-offline`}
             onClick={() => v.openSetting('engine')}
             title={
               engine.engineView.isCloud

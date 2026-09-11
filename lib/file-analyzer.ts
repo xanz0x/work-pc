@@ -4,10 +4,11 @@
    mime/расширению, вытаскиваем текстовое содержимое (PDF —
    pdf-parse, DOCX — mammoth, ZIP — adm-zip со списком и
    текстами внутренних файлов, картинки — exifreader), затем
-   ЕДИНАЯ мультимодальная модель (env.OLLAMA_MODEL, в
-   установленной программе — qwen2.5vl) формулирует точное
-   название, описание и метки: и фото, и документы она читает
-   одним и тем же промптом-конвейером /api/chat. Результат
+   подключённая модель (свой сервер или OpenRouter — см.
+   lib/ai-provider.ts) формулирует точное название, описание и
+   метки. Фото уходит той же ручкой /chat/completions отдельной
+   частью image_url, поэтому vision-модель видит сам снимок.
+   Результат
    пишется в метаданные объекта через lib/cloud-store.ts
    (title/description/analysisTags/analysisStatus/analysisKind/
    analyzedAt/analysisError).
@@ -23,6 +24,7 @@ import AdmZip from 'adm-zip'
 import mammoth from 'mammoth'
 import { load as exifLoad } from 'exifreader'
 import type { CloudAnalysisKind } from './cloud-store'
+import { ProviderError, providerChat, providerReady, readProvider, type ChatMsg } from './ai-provider'
 
 /* ---------- лимиты ---------- */
 
@@ -45,51 +47,57 @@ const TAGS_MAX = 5
 const TAG_MAX_CHARS = 24
 
 /**
- * Единая модель-каталогизатор: мультимодальная, тем же API читает
- * и фото (images: [base64]), и документы. Тег приходит из
- * OLLAMA_MODEL (его задаёт runtime.env установленной программы);
- * в dev-окружении без env работаем на qwen2.5vl:3b — решение
- * пользователя «одна модель на всё».
- */
-export function analyzerModel(): string {
-  const fromEnv = (process.env.OLLAMA_MODEL ?? '').trim()
-  return fromEnv || 'qwen2.5vl:3b'
-}
-
-/**
  * Системный промпт архивариуса: один на все типы файлов. Требуем
  * строгий JSON без markdown — парсер ниже достаёт JSON даже из
- * окружения, но лучше не провоцировать маленькую модель.
+ * окружения, но лучше не провоцировать модель.
  */
 export const DESCRIBE_SYSTEM = [
-  'Ты — архивариус: точно и кратко описываешь файлы для каталога.',
+  'Ты — архивариус личного хранилища: ты даёшь файлу точное название, описание и метки для каталога.',
   'Тебе дают имя файла, его тип и содержимое; фото прикладывается к сообщению отдельным изображением.',
   'Верни строго один JSON-объект и ничего больше, без markdown и пояснений:',
   '{"title": "название", "description": "описание", "tags": ["метка"]}.',
-  'Правила: русский язык, без воды и общих слов.',
-  'title — точное название, не больше 8 слов.',
+  'Правила: русский язык, конкретика вместо общих слов, никаких «данный файл содержит».',
+  'title — точное название по существу, не больше 8 слов. Если это документ известного вида, начни с его вида:',
+  '«Паспорт РФ», «Договор аренды», «Счёт на оплату», «План проекта», «Резюме», «Скриншот переписки», «Чек».',
   'description — 1–2 предложения, не больше 48 слов: что это, что внутри и чем полезно.',
-  'Если это фото — что изображено: объекты, сцена, детали, настроение и цвет; если на фото есть текст, коротко передай его суть.',
+  'Называй ключевые факты, которые видишь: стороны, даты, номера, суммы, сроки, выводы, задачи.',
+  'Если это фото — что изображено: объекты, сцена, детали, надписи. Документ на фото назови прямо',
+  '(«на снимке паспорт РФ», «фотография чека»), и передай суть читаемого текста.',
   'Если это ZIP-архив — структура и главное содержимое.',
-  'Если это документ — тип документа, о чём он, ключевые факты: даты, суммы, стороны, выводы.',
-  'tags — до 5 коротких меток: тема, тип, назначение.',
+  'Если это документ — вид документа, о чём он и ключевые факты: даты, суммы, стороны, выводы.',
+  'Персональные данные не выдумывай: пиши только то, что реально видно.',
+  'tags — до 5 коротких меток в нижнем регистре: вид документа, тема, назначение, участник, срок.',
 ].join('\n')
 
 /** Содержимое для модели: текстовая выборка и/или само фото в base64. */
 export type DescribePayload = {
   sample: string
-  /** Base64 изображения — только для фото; уходит в поле images того же /api/chat. */
+  /** Base64 изображения — уходит частью image_url в том же запросе. */
   imageBase64?: string
+  /** MIME картинки для data-URI (по умолчанию image/jpeg). */
+  imageMime?: string
 }
 
 /** Сборка сообщений для модели-архивариуса. Чистая функция — на ней юнит-тесты. */
-export function buildAnalysisMessages(input: AnalyzeInput, payload: DescribePayload): ChatMessage[] {
-  const content =
+export function buildAnalysisMessages(input: AnalyzeInput, payload: DescribePayload): ChatMsg[] {
+  const text =
     `Имя файла: ${input.name}\nТип: ${input.contentType}\n\n` +
     (payload.sample.trim() ? `Содержимое:\n${truncateText(payload.sample)}` : 'Содержимое недоступно — опиши по имени файла.')
+  if (!payload.imageBase64) {
+    return [
+      { role: 'system', content: DESCRIBE_SYSTEM },
+      { role: 'user', content: text },
+    ]
+  }
   return [
     { role: 'system', content: DESCRIBE_SYSTEM },
-    { role: 'user', content, ...(payload.imageBase64 ? { images: [payload.imageBase64] } : {}) },
+    {
+      role: 'user',
+      content: [
+        { type: 'text', text },
+        { type: 'image_url', image_url: { url: `data:${payload.imageMime || 'image/jpeg'};base64,${payload.imageBase64}` } },
+      ],
+    },
   ]
 }
 
@@ -392,33 +400,6 @@ export function humanSize(size: number): string {
   return `${size} Б`
 }
 
-/* ---------- Ollama ---------- */
-
-function ollamaBase(): string {
-  return (process.env.OLLAMA_URL ?? '').trim().replace(/\/+$/, '')
-}
-
-type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string; images?: string[] }
-
-/** Один /api/chat без стрима. Бросает с человекочитаемой причиной. */
-export async function chatOnce(base: string, model: string, messages: ChatMessage[], timeoutMs = 120_000): Promise<string> {
-  let res: Response
-  try {
-    res = await fetch(`${base}/api/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      cache: 'no-store',
-      body: JSON.stringify({ model, stream: false, messages, options: { temperature: 0.2 } }),
-      signal: AbortSignal.timeout(timeoutMs),
-    })
-  } catch (e) {
-    throw new Error(`движок недоступен на ${base}: ${e instanceof Error ? e.message : 'ошибка запроса'}`)
-  }
-  if (!res.ok) throw new Error(`движок вернул ошибку ${res.status} для модели ${model}`)
-  const j = (await res.json()) as { message?: { content?: string } }
-  return typeof j.message?.content === 'string' ? j.message.content : ''
-}
-
 /* ---------- сохранение результата ---------- */
 
 async function storeResult(id: string, res: AnalysisResult): Promise<void> {
@@ -555,9 +536,17 @@ async function analyzeInner(input: AnalyzeInput): Promise<AnalysisResult> {
   const sample = content.trim() || (imageMeta ? exifSummary(imageMeta) : '')
   if (sample || imageBase64) {
     try {
-      const base = ollamaBase()
-      if (!base) throw new Error('адрес Ollama не настроен (OLLAMA_URL)')
-      const raw = await chatOnce(base, analyzerModel(), buildAnalysisMessages(input, { sample, imageBase64 }), 180_000)
+      const cfg = await readProvider()
+      if (!providerReady(cfg)) {
+        throw new ProviderError('NOT_CONFIGURED', 'модель не подключена — откройте «Настройки → Подключение модели»')
+      }
+      /* Фото читает vision-модель, если владелец выбрал её отдельно. */
+      const model = imageBase64 ? cfg.visionModel || cfg.model : cfg.model
+      const raw = await providerChat(
+        cfg,
+        buildAnalysisMessages(input, { sample, imageBase64, imageMime: input.contentType }),
+        { model, timeoutMs: 180_000, maxTokens: 700 },
+      )
       const parsed = parseTitleDescription(raw)
       if (parsed?.title) title = parsed.title
       if (parsed?.description) description = parsed.description

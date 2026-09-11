@@ -34,8 +34,6 @@ extraResources:
       - '!**/users/sessions.json'
   - from: runtime.env
     to: runtime.env
-  - from: ollama-release.json
-    to: ollama-release.json
   - from: THIRD_PARTY.md
     to: THIRD_PARTY.md
 win:

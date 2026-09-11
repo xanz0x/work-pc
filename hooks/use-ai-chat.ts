@@ -9,8 +9,9 @@ import { isAiErrorCode, type AiErrorCode } from '@/lib/ai-errors'
 import { logJournal } from '@/lib/journal'
 
 /**
- * Живой разговор с моделью через /ai-api/chat (SSE) — локальной (Ollama)
- * или облачной: клиент не знает, кто отвечает, это решает сервер. Цикл агента:
+ * Живой разговор с моделью через /ai-api/chat (SSE) — той, которую владелец
+ * подключил в настройках: клиент не знает, кто отвечает, это решает сервер.
+ * Цикл агента:
  * поток текста → вызовы скиллов → выполнение на устройстве → продолжение.
  * Скилл save_password не выполняется без явного разрешения пользователя.
  * Наружу отдаётся код ошибки из каталога, а не текст провайдера.
@@ -37,7 +38,7 @@ export type TurnResult = {
   stopped: boolean
   errorCode?: AiErrorCode
   /** NF-2: кто ответил и с какой скоростью — цифры от самого движка. */
-  provider?: 'ollama' | 'cloud'
+  provider?: 'cloud'
   engineModel?: string
   tokensPerSec?: number | null
 }
@@ -48,14 +49,12 @@ export type TurnBody = {
   text?: string
   dropUsers?: number
   regenerate?: boolean
-  /** Заявленный движок: сервер проверяет его сам и локальный никуда не шлёт. */
-  engine: 'local' | 'hybrid' | 'cloud'
+  /** Заявленный движок: сервер проверяет его сам. */
+  engine: 'cloud' | 'hybrid'
   /** Разрешён ли вынос индекса сейфа наружу. */
   sendIndex: boolean
   /** Подпись источника хода — она же попадает в трассировку. */
   modelLabel: string
-  /** Модель профиля: для локального движка из неё берётся тег Ollama. */
-  model: string
   ctx: {
     files: { id: string; name: string; cat: string; tags: string[] }[]
     pinned: string[]
@@ -100,7 +99,7 @@ export function useAiChat(
     stages: [] as TraceStage[],
     t0: 0,
     wrote: false,
-    provider: undefined as 'ollama' | 'cloud' | undefined,
+    provider: undefined as 'cloud' | undefined,
     engineModel: undefined as string | undefined,
     tokensPerSec: null as number | null,
   })
@@ -183,7 +182,7 @@ export function useAiChat(
             setUsage({ used: ev.used ?? 0, limit: ev.limit ?? 0, fill: ev.fill })
           } else if (ev.t === 'stats') {
             /* NF-2: подпись движка и скорость приходят из ответа адаптера. */
-            if (ev.provider === 'ollama' || ev.provider === 'cloud') s.provider = ev.provider
+            if (ev.provider === 'cloud') s.provider = ev.provider
             if (typeof ev.model === 'string') s.engineModel = ev.model
             s.tokensPerSec = typeof ev.tps === 'number' ? ev.tps : null
           }
@@ -274,7 +273,6 @@ export function useAiChat(
           toolResults: results,
           ctx: { ...(body.ctx as TurnBody['ctx']), passwordRefs: [...new Set([...(body.ctx as TurnBody['ctx']).passwordRefs ?? [], ...s.tools.flatMap((t) => t.passwordRef ? [t.passwordRef] : [])])] },
           engine: body.engine,
-          model: body.model,
           sendIndex: body.sendIndex,
         },
         signal,
@@ -307,9 +305,8 @@ export function useAiChat(
       setActive(true)
       pushStage(`запрос · ${body.modelLabel}`)
 
-      /* LG-3: каждый ход, уходящий наружу, попадает в журнал безопасности.
-         Локальный движок не логируется — из устройства ничего не выходит. */
-      if (body.engine !== 'local') {
+      /* LG-3: каждый ход уходит в журнал безопасности. */
+      {
         void logJournal(
           'cloud-request',
           'Исходящий запрос к внешней модели',

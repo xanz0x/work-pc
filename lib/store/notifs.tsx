@@ -19,7 +19,7 @@ import {
 } from 'react'
 import type { IconId } from '@/components/icons'
 import { usePersistedState } from '@/hooks/use-persisted-state'
-import { engineOf, modelOf } from '@/lib/data'
+import { engineOf } from '@/lib/data'
 import { digestTitle, digestUnread, isDigest, isVisible, pruneNotifs, unreadCount } from '@/lib/notifs'
 import { useCoarseTick } from './clock'
 import { useSettingsStore, type ToggleId } from './settings'
@@ -164,27 +164,13 @@ export function NotifsProvider({ children }: { children: ReactNode }) {
     [setNotifs],
   )
 
-  /* Смена движка и модели — событие ленты, а не забота настроек. */
+  /* Смена движка — событие ленты, а не забота настроек. */
   const prevEngine = useRef<string | null>(null)
-  const prevModel = useRef<string | null>(null)
   useEffect(() => {
     const engine = settings.engine
-    const model = settings.model
     if (prevEngine.current === null) {
       prevEngine.current = engine
-      prevModel.current = model
       return
-    }
-    if (prevModel.current !== model) {
-      prevModel.current = model
-      const m = modelOf(model)
-      notify({
-        kind: 'info',
-        cat: 'system',
-        icon: 'chipAi',
-        title: `Модель в профиле: ${m.short}`,
-        body: 'Локальный движок не подключён — модель выбрана на будущее, ответы идут через выбранный движок.',
-      })
     }
     if (prevEngine.current !== engine) {
       prevEngine.current = engine
@@ -199,7 +185,7 @@ export function NotifsProvider({ children }: { children: ReactNode }) {
           : 'Часть запросов уйдёт наружу. Перед первым облачным ходом спросим согласие.',
       })
     }
-  }, [notify, settings.engine, settings.model])
+  }, [notify, settings.engine])
 
   /* Вкладки видят одну ленту. */
   useEffect(() => {

@@ -23,15 +23,18 @@ try {
   const env = parse(await readFile(path.join(desktop, 'runtime.env')))
   await run(process.execPath, [path.join(root, 'node_modules/next/dist/bin/next'), 'build', '--webpack'], {
     cwd: root,
-    env: { ...process.env, ...env, WSX_DESKTOP_BUILD: '1', NEXT_PUBLIC_DESKTOP: '1', NEXT_PUBLIC_DEFAULT_MODEL: 'qwen-3b', NEXT_TELEMETRY_DISABLED: '1',
+    env: { ...process.env, ...env, WSX_DESKTOP_BUILD: '1', NEXT_PUBLIC_DESKTOP: '1', NEXT_TELEMETRY_DISABLED: '1',
       APP_PASSWORD: randomBytes(32).toString('hex'), APP_SESSION_SECRET: randomBytes(48).toString('hex'), AI_DIR: path.join(staging, 'build-only-data'),
       AI_PROXY_URL: '', EMERGENT_LLM_KEY: '', SONJJ_API_KEY: '', MAIL_SECRET: '',
     },
   })
   await rm(server, { recursive: true, force: true })
   await cp(path.join(output, 'standalone'), server, { recursive: true, dereference: true, filter: (source) => {
+    /* .env* — приватное на любой глубине; служебные каталоги репозитория
+       вырезаем ТОЛЬКО на верхнем уровне стейджинга, иначе фильтр зацепит
+       настоящие маршруты вида app/ai-api/ai/provider (имя «ai» совпадает). */
     const parts = path.relative(path.join(output, 'standalone'), source).split(path.sep)
-    return !parts.some((p) => p.startsWith('.env') || ['.data', 'memory', 'test_reports', 'desktop', 'ai'].includes(p))
+    return !parts.some((p) => p.startsWith('.env')) && !['.data', 'memory', 'test_reports', 'desktop', 'ai'].includes(parts[0])
   } })
   // Standalone from a pnpm workspace keeps node_modules as symlinks into the
   // virtual store; electron-builder silently drops nested node_modules, so

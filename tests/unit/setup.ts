@@ -31,7 +31,6 @@ class MemoryStorage {
 
 const g = globalThis as unknown as Record<string, unknown>
 if (!g.localStorage) g.localStorage = new MemoryStorage()
-if (!process.env.OLLAMA_URL) process.env.OLLAMA_URL = 'http://127.0.0.1:11434'
 
 /* Словарь файловых ключей кэшируется в памяти модуля: между тестами кэш
    обязан обнуляться, иначе один тест видит ключи другого. */

@@ -40,7 +40,7 @@
     "backend": "н/п (только фронт)",
     "frontend": "100% (2/2 сценария)"
   },
-  "test_credentials": "APP_PASSWORD=IceKrymTeam13@ (не использовался — экран activity не требует входа)",
+  "test_credentials": "APP_PASSWORD=<APP_PASSWORD> (не использовался — экран activity не требует входа)",
   "seed_data_creation": "skipOnboarding засеивает wf.settings.v1.onboarding; тест сам создаёт severe-запись 'vault-wipe' через кнопку 'Удалить сейф' в Настройках.",
   "retest_needed": false,
   "should_main_agent_self_test": true,

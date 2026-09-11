@@ -18,7 +18,7 @@
   "seed_data_creation": "Нового seed не создавалось. Ящики 91030592 и 84968612 не тронуты. В обычном ящике Read QA письмо «QA iter35 compose» переключалось звездой/прочитано и возвращено в исходное состояние (со звездой, прочитано, бейдж непрочитанных снова пуст).",
   "should_call_test_agent_after_fix": false,
   "should_main_agent_self_test": true,
-  "test_credentials": "admin / IceKrymTeam13@ (форма /login: login-login, login-password, login-submit)",
+  "test_credentials": "admin / <APP_PASSWORD> (форма /login: login-login, login-password, login-submit)",
   "context_for_next_testing_agent": "Логин: goto /login (wait_until='domcontentloaded'), затем localStorage.setItem('wf.settings.v1', JSON.stringify({onboarding:{at:1700000000000}})) до отправки формы. Экран почты — [data-testid=nav-mail]. Временный ящик mail-temp-row-91030592 (4 письма, mid'ы: 6a9b43ba6953ce75cb33a6dd, 6a9b430b57aab320657d319c, 6a9b41d668e6ff7cca223c7f, 6a9b3e7b5a3a3b962a98a360 — последний Vercel с пилюлей 317884), пустой — mail-temp-row-84968612. Карточка письма: внешний div .mail-temp-item получает класс on, внутренний [data-testid=mail-temp-open-<mid>] имеет role=button, tabIndex=0 и aria-current=true — проверять класс через inner.closest('.mail-temp-item'). Кнопки в карточке обычного письма: mail-msg-view-star / mail-msg-view-seen / mail-msg-view-close (label — действие: 'Не прочитано' = пометить непрочитанным). В headless clipboard недоступен → тост flash-toast показывает fallback 'Код: 317884'.",
   "detailed_results": {
     "1_click_open": "PASS — клик по mail-temp-open-6a9b43ba6953ce75cb33a6dd открыл mail-temp-msg, iframe mail-temp-frame присутствует, aria-current=true, .mail-temp-item.on = true. Карточки: role=button, tabindex=0 у всех 4.",

@@ -454,9 +454,9 @@ export const COMMANDS: Command[] = [
     id: 'set.engine',
     group: 'setting',
     title: 'Движок ИИ',
-    hint: 'Где считается модель: на устройстве, в облаке или гибридно',
+    hint: 'Где считается модель: у подключённого провайдера — OpenRouter или свой сервер',
     icon: 'chat',
-    words: ['движок', 'модель', 'ollama', 'облако'],
+    words: ['движок', 'модель', 'подключение', 'облако'],
     run: (c) => c.openSetting('engine'),
   },
   {

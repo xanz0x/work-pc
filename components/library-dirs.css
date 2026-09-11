@@ -1,0 +1,33 @@
+/* Полоса подпапок библиотеки: крошки пути и папки текущего уровня. */
+
+.lib-dirs {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+}
+
+.lib-dirs-crumbs,
+.lib-dirs-list {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.lib-dirs-list {
+  padding-top: 8px;
+  border-top: 1px solid var(--border-2);
+}
+
+.lib-dirs .f-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lib-dirs .f-chip svg {
+  stroke: currentColor;
+  stroke-width: 1.5;
+  fill: none;
+}

@@ -15,7 +15,7 @@ import requests
 
 BASE_URL = os.environ.get("APP_URL", "http://localhost:3000").rstrip("/")
 AI_DIR = os.environ.get("AI_DIR", "/root/.workflow/ai")
-APP_PASSWORD = os.environ.get("APP_PASSWORD", "IceKrymTeam13@")
+APP_PASSWORD = os.environ.get("APP_PASSWORD", "<APP_PASSWORD>")
 
 
 @pytest.fixture(scope="session")

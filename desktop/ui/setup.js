@@ -6,9 +6,9 @@ let submitting = false
 let step = 1
 
 /* Фазы активной работы: визард держит шаг 3, пока они идут. */
-const ACTIVE_PHASES = ['starting', 'engine-download', 'verify', 'extract', 'model-download', 'warmup', 'app-ready', 'ready']
+const ACTIVE_PHASES = ['starting', 'app-ready', 'ready']
 const STEP_LABELS = { 1: 'ШАГ 1 ИЗ 4 · РОЛЬ КОМПЬЮТЕРА', 2: 'ШАГ 2 ИЗ 4 · ДАННЫЕ ДОСТУПА', 3: 'ШАГ 3 ИЗ 4 · ЗАГРУЗКА ИИ', 4: 'ШАГ 4 ИЗ 4 · ГОТОВО' }
-const DOWNLOAD_PHASES = ['engine-download', 'model-download', 'verify', 'extract']
+const DOWNLOAD_PHASES = []
 
 function error(message) { $('error').textContent = message || ''; $('error').hidden = !message }
 async function call(fn) {
@@ -85,7 +85,6 @@ $('choose-client').onclick = () => showRole('client')
 /* ---------- Шаг 2: формы ---------- */
 $('back-host').onclick = () => { pickedRole = null; setStep(1) }
 $('back-client').onclick = () => { pickedRole = null; setStep(1) }
-$('license-link').onclick = () => call(api.license).catch(() => {})
 
 $('host-form').onsubmit = async (e) => {
   e.preventDefault()
@@ -93,7 +92,7 @@ $('host-form').onsubmit = async (e) => {
   submitting = true; $('create-host').disabled = true
   setStep(3)
   try {
-    const data = await call(() => api.createHost({ login: $('login').value, password: $('password').value, confirmPassword: $('confirm-password').value, host: $('host').value, mailKey: $('mail-key').value, acceptLicense: $('license').checked }))
+    const data = await call(() => api.createHost({ login: $('login').value, password: $('password').value, confirmPassword: $('confirm-password').value, host: $('host').value, mailKey: $('mail-key').value }))
     render(data)
   } catch { setStep(2) /* сообщение уже показано */ }
   finally { submitting = false; $('create-host').disabled = false }

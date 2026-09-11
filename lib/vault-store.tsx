@@ -6,7 +6,6 @@ import type { OnboardingResult, OnboardingState } from './onboarding'
 import {
   CLUSTERS,
   fmtBytes,
-  modelOf,
   totalBytes,
   viewOf,
   type ClusterId,
@@ -316,7 +315,6 @@ function VaultFacade({ children }: { children: ReactNode }) {
     const files = D.files
     const bytes = totalBytes(files)
     const g = buildGraph(files, [], t0)
-    const m = modelOf(S.settings.model)
     N.replaceNotifs([
       {
         id: 'seed-index',
@@ -335,8 +333,8 @@ function VaultFacade({ children }: { children: ReactNode }) {
         kind: 'info',
         cat: 'system',
         icon: 'chipAi',
-        title: `Модель ${m.short} выбрана в профиле`,
-        body: 'Локальный движок работает через Ollama на этом устройстве. В настройках видно, запущен ли он и стоит ли выбранная модель.',
+        title: 'Модель подключается в настройках',
+        body: 'Локального движка в продукте нет: подключите OpenRouter или свой сервер в «Настройки → Подключение модели».',
         at: t0 - 3 * HOUR,
         unread: false,
       },

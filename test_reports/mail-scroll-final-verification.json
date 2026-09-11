@@ -1,0 +1,36 @@
+{
+  "status": "pass",
+  "scope": "Opened email scrolling in existing temporary and regular mail viewers",
+  "supersedes_unresolved_findings": "iteration_63.json mobile iframe wheel failure",
+  "root_causes": [
+    "Sender root overflow:hidden prevents iframe document scroll",
+    "Stacked mobile flex/grid layout shrinks iframe inner viewport to zero height"
+  ],
+  "results": {
+    "e2e_scroll": "3/3 PASS; both viewers at 1920x800, 1280x800 and 390x800",
+    "real_mail_delivery_images_context_menu": "61-mail-ctx-menu.spec.ts PASS after final changes (mail.tm)",
+    "smailpro": "Real Gmail creation and read-only inbox successful with supplied server-side key; test box removed",
+    "unit": "45/45 PASS across 5 targeted files",
+    "typescript": "PASS",
+    "production_build": "PASS; frontend restarted with final build",
+    "eslint": "0 errors; 4 pre-existing effects/refs warnings"
+  },
+  "test_data": {
+    "production_mocked_apis": false,
+    "deterministic_browser_fixtures": "63-mail-scroll-regression.spec.ts only; no production API changes",
+    "test_mailboxes_cleaned_up": true
+  },
+  "limitations": [
+    "No real IMAP account or original user message provided",
+    "SmailPro test inbox was empty; real delivered-message smoke used mail.tm",
+    "Physical touch devices and 150% UI zoom not tested in this scope"
+  ],
+  "logs": [
+    "mail-scroll-final-e2e.log",
+    "mail-scroll-real-mail.log",
+    "mail-scroll-unit.log",
+    "mail-scroll-types.log",
+    "mail-scroll-lint.log",
+    "mail-scroll-build-final.log"
+  ]
+}

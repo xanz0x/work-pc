@@ -40,7 +40,18 @@ export type MessageRow = {
   hasAttachments: boolean
 }
 
-export type AttachmentView = { filename: string; contentType: string; size: number; cid: string | null; inline: boolean }
+export type AttachmentView = {
+  filename: string
+  contentType: string
+  size: number
+  cid: string | null
+  inline: boolean
+  /** data:-URI встроенной картинки (cid): без него письмо показывает битые иконки. */
+  dataUrl?: string
+}
+
+/** Встроенную картинку отдаём целиком, но только небольшую: письмо и так летит в браузер. */
+export const MAX_INLINE_IMAGE_BYTES = 2 * 1024 * 1024
 
 export type MessageFull = {
   uid: number
@@ -335,13 +346,20 @@ export async function getMessage(acc: MailAccount, folder: string, uid: number, 
         answered: flags.has('\\Answered'),
         html,
         text: html ? null : parsed.text ?? '',
-        attachments: parsed.attachments.map((a) => ({
-          filename: a.filename ?? 'без имени',
-          contentType: a.contentType,
-          size: a.size,
-          cid: a.cid ?? null,
-          inline: a.contentDisposition === 'inline' || (!!a.cid && !!a.related),
-        })),
+        attachments: parsed.attachments.map((a) => {
+          const inline = a.contentDisposition === 'inline' || (!!a.cid && !!a.related)
+          const isImage = typeof a.contentType === 'string' && a.contentType.startsWith('image/')
+          /* cid-картинку показать иначе нельзя: она живёт только внутри письма. */
+          const embeddable = inline && isImage && a.content && a.size <= MAX_INLINE_IMAGE_BYTES
+          return {
+            filename: a.filename ?? 'без имени',
+            contentType: a.contentType,
+            size: a.size,
+            cid: a.cid ?? null,
+            inline,
+            ...(embeddable ? { dataUrl: `data:${a.contentType};base64,${Buffer.from(a.content).toString('base64')}` } : {}),
+          }
+        }),
         truncated: (meta.size ?? 0) > MAX_MESSAGE_BYTES,
       }
     } finally {

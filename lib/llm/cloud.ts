@@ -8,7 +8,9 @@
 import { LlmFail } from './fail'
 import type { LlmCall, LlmDelta, LlmProvider, LlmRequest } from './types'
 
-const UPSTREAM_TIMEOUT_MS = 60_000
+const UPSTREAM_TIMEOUT_MS = 120_000
+/** Тишина в открытом потоке дольше этого — провайдер считается зависшим. */
+const STREAM_IDLE_TIMEOUT_MS = 120_000
 const MAX_RETRIES = 2
 
 type SseJson = {
@@ -70,6 +72,7 @@ async function callUpstream(
   key: string,
   payload: unknown,
   signal: AbortSignal,
+  idle: AbortSignal,
 ): Promise<Response> {
   let last: LlmFail | null = null
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt += 1) {
@@ -78,9 +81,12 @@ async function callUpstream(
     try {
       res = await fetch(`${proxy}/chat/completions`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+        headers: {
+          ...(key ? { Authorization: `Bearer ${key}` } : {}),
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify(payload),
-        signal: AbortSignal.any([signal, AbortSignal.timeout(UPSTREAM_TIMEOUT_MS)]),
+        signal: AbortSignal.any([signal, idle, AbortSignal.timeout(UPSTREAM_TIMEOUT_MS)]),
       })
     } catch (e) {
       if (signal.aborted) throw new LlmFail('UPSTREAM_ERROR', 'клиент отменил запрос')
@@ -102,58 +108,79 @@ async function callUpstream(
   throw last ?? new LlmFail('UPSTREAM_ERROR', 'провайдер недоступен')
 }
 
-export function cloudProvider(proxy: string, key: string, model: string): LlmProvider {
+export function cloudProvider(
+  proxy: string,
+  key: string,
+  model: string,
+  kind: 'custom' | 'openrouter' = 'custom',
+): LlmProvider {
   return {
-    id: 'cloud',
+    id: kind,
     label: model,
     async *stream(req: LlmRequest): AsyncGenerator<LlmDelta> {
-      const res = await callUpstream(
-        proxy,
-        key,
-        {
-          model,
-          stream: true,
-          stream_options: { include_usage: true },
-          max_tokens: 2048,
-          messages: [{ role: 'system', content: req.system }, ...req.messages],
-          ...(req.tools.length ? { tools: req.tools, tool_choice: 'auto' } : {}),
-        },
-        req.signal,
-      )
+      /* Idle-страж: если провайдер открыл поток и молчит дольше лимита,
+         ход не должен висеть вечно — прерываем с понятной ошибкой. */
+      const idle = new AbortController()
+      let idleTimer = setTimeout(() => idle.abort(new Error('stream idle timeout')), STREAM_IDLE_TIMEOUT_MS)
+      try {
+        const res = await callUpstream(
+          proxy,
+          key,
+          {
+            model,
+            stream: true,
+            stream_options: { include_usage: true },
+            max_tokens: 2048,
+            messages: [{ role: 'system', content: req.system }, ...req.messages],
+            ...(req.tools.length ? { tools: req.tools, tool_choice: 'auto' } : {}),
+          },
+          req.signal,
+          idle.signal,
+        )
 
-      const reader = res.body!.getReader()
-      const dec = new TextDecoder()
-      let buf = ''
-      const acc: CallAcc = []
-      let usage: { prompt: number | null; completion: number | null } | null = null
+        const reader = res.body!.getReader()
+        const dec = new TextDecoder()
+        let buf = ''
+        const acc: CallAcc = []
+        let usage: { prompt: number | null; completion: number | null } | null = null
 
-      for (;;) {
-        const { done, value } = await reader.read()
-        if (done) break
-        buf += dec.decode(value, { stream: true })
-        const lines = buf.split('\n')
-        buf = lines.pop() ?? ''
-        for (const line of lines) {
-          const l = line.trim()
-          if (!l.startsWith('data:')) continue
-          const out = parseCloudEvent(l.slice(5), acc)
-          if (out.usage) usage = out.usage
-          for (const d of out.deltas) yield d
+        for (;;) {
+          const { done, value } = await reader.read()
+          if (done) break
+          clearTimeout(idleTimer)
+          idleTimer = setTimeout(() => idle.abort(new Error('stream idle timeout')), STREAM_IDLE_TIMEOUT_MS)
+          buf += dec.decode(value, { stream: true })
+          const lines = buf.split('\n')
+          buf = lines.pop() ?? ''
+          for (const line of lines) {
+            const l = line.trim()
+            if (!l.startsWith('data:')) continue
+            const out = parseCloudEvent(l.slice(5), acc)
+            if (out.usage) usage = out.usage
+            for (const d of out.deltas) yield d
+          }
         }
-      }
 
-      const calls: LlmCall[] = acc
-        .filter((c) => c && c.name)
-        .map((c) => ({ id: c.id, name: c.name, args: c.args || '{}' }))
-      if (calls.length > 0) yield { k: 'calls', calls }
+        const calls: LlmCall[] = acc
+          .filter((c) => c && c.name)
+          .map((c) => ({ id: c.id, name: c.name, args: c.args || '{}' }))
+        if (calls.length > 0) yield { k: 'calls', calls }
 
-      /* Скорость облака не измеряем: у провайдера нет честного времени
-         генерации, а стенные часы включают сеть. */
-      yield {
-        k: 'usage',
-        promptTokens: usage?.prompt ?? null,
-        completionTokens: usage?.completion ?? null,
-        tokensPerSec: null,
+        /* Скорость облака не измеряем: у провайдера нет честного времени
+           генерации, а стенные часы включают сеть. */
+        yield {
+          k: 'usage',
+          promptTokens: usage?.prompt ?? null,
+          completionTokens: usage?.completion ?? null,
+          tokensPerSec: null,
+        }
+      } catch (e) {
+        if (idle.signal.aborted && !req.signal.aborted) {
+          throw new LlmFail('UPSTREAM_ERROR', `провайдер молчал дольше ${Math.round(STREAM_IDLE_TIMEOUT_MS / 1000)} с — соединение прервано`)
+        }
+        throw e
+      } finally {
+        clearTimeout(idleTimer)
       }
     },
   }

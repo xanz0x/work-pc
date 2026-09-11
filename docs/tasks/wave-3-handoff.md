@@ -66,7 +66,7 @@ e2e-гейты гоняются по **https-адресу превью**, а н�
 (на localhost всё отвечает 401). `pnpm` в этой среде нужен версии 10
 (`npm i -g pnpm@10`): 11-я требует Node 22, а стоит Node 20.
 
-Вход в приложение: пароль `IceKrymTeam13@` (см. `/app/memory/test_credentials.md`).
+Вход в приложение: пароль `<APP_PASSWORD>` (см. `/app/memory/test_credentials.md`).
 
 ---
 

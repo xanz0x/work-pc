@@ -22,7 +22,7 @@ InstallDirRegKey HKCU "Software\WorkSpaceX" "InstallPath"
 !insertmacro MUI_PAGE_INSTFILES
 !insertmacro MUI_PAGE_FINISH
 !insertmacro MUI_UNPAGE_CONFIRM
-; P10: пользовательская страница удаления — удалить ли базу, модель и все данные
+; P10: пользовательская страница удаления — удалить ли базу и все данные
 ; в профиле Windows (чекбокс по умолчанию ВКЛ).
 UninstPage custom un.PageData un.PageDataLeave
 !insertmacro MUI_UNPAGE_INSTFILES
@@ -45,7 +45,7 @@ Function .onInit
   SetRegView 64
   ReadRegStr $0 HKLM "SOFTWARE\Microsoft\Windows NT\CurrentVersion" "CurrentBuildNumber"
   ${If} $0 < 19045
-    MessageBox MB_OK|MB_ICONSTOP "Для локального ИИ требуется Windows 10 22H2 (19045) или новее."
+    MessageBox MB_OK|MB_ICONSTOP "Для WorkSpaceX требуется Windows 10 22H2 (19045) или новее."
     Abort
   ${EndIf}
 FunctionEnd
@@ -58,13 +58,13 @@ Function .onVerifyInstDir
 FunctionEnd
 
 Function un.PageData
-  !insertmacro MUI_HEADER_TEXT "Удаление данных WorkSpaceX" "Выберите, удалить ли базу, модель и все данные в профиле."
+  !insertmacro MUI_HEADER_TEXT "Удаление данных WorkSpaceX" "Выберите, удалить ли базу и все данные в профиле."
   nsDialogs::Create 1018
   Pop $0
-  ${NSD_CreateCheckbox} 0 14u 100% 18u "Удалить также базу, модель и все данные (папку WorkSpaceX в профиле)"
+  ${NSD_CreateCheckbox} 0 14u 100% 18u "Удалить также общую базу и все данные (папку WorkSpaceX в профиле)"
   Pop $UnDataCheckbox
   ${NSD_Check} $UnDataCheckbox
-  ${NSD_CreateLabel} 0 40u 100% 64u "Будет удалено целиком: $APPDATA\WorkSpaceX — общая база, локальный ИИ (модель qwen2.5vl:3b), личные сейфы, ключи, журналы и настройки.$\r$\n$\r$\nСнимите галочку, если данные нужно сохранить: папку можно удалить позже вручную."
+  ${NSD_CreateLabel} 0 40u 100% 64u "Будет удалено целиком: $APPDATA\WorkSpaceX — общая база, подключение модели, личные сейфы, ключи, журналы и настройки.$\r$\n$\r$\nСнимите галочку, если данные нужно сохранить: папку можно удалить позже вручную."
   Pop $0
   nsDialogs::Show
 FunctionEnd
@@ -104,9 +104,9 @@ Section "Uninstall"
   SetRegView 64
   ; Выбор пользователя с пользовательской страницы удаления (un.PageDataLeave).
   ${If} $DeleteAppData = 1
-    MessageBox MB_OKCANCEL|MB_ICONINFORMATION "Закройте WorkSpaceX перед удалением.$\r$\n$\r$\nБудет удалена и папка данных: $APPDATA\WorkSpaceX (база, модель ИИ, сейфы, ключи, журналы)." IDOK proceed
+    MessageBox MB_OKCANCEL|MB_ICONINFORMATION "Закройте WorkSpaceX перед удалением.$\r$\n$\r$\nБудет удалена и папка данных: $APPDATA\WorkSpaceX (общая база, подключение модели, сейфы, ключи, журналы)." IDOK proceed
   ${Else}
-    MessageBox MB_OKCANCEL|MB_ICONINFORMATION "Закройте WorkSpaceX перед удалением.$\r$\n$\r$\nОбщая база, личные сейфы, модель и ключи в профиле Windows будут сохранены." IDOK proceed
+    MessageBox MB_OKCANCEL|MB_ICONINFORMATION "Закройте WorkSpaceX перед удалением.$\r$\n$\r$\nОбщая база, личные сейфы и ключи в профиле Windows будут сохранены." IDOK proceed
   ${EndIf}
   Abort
   proceed:

@@ -1,0 +1,38 @@
+{
+  "summary": "Iter59 frontend E2E on external URL verified all four user-requested fixes for the 'local folder / shared drive' work: (1) New folder-picker dialog design — tree LEFT + content RIGHT + breadcrumbs — is in place; SVG icons inside .fp-card measure 14x14 px max (was huge before). All testids present: folder-picker, fp-tree, fp-root, fp-tree-dir, fp-tree-caret, fp-crumbs, fp-crumb, fp-path, fp-up, fp-refresh, fp-body, fp-dir, fp-new, fp-new-name, fp-new-create, fp-confirm, fp-close. Created /tmp/wsx-e2e-* subfolders via the picker and confirmed. (2) Settings → «Общее облако» block: [data-testid=cloud-storage] label contains 'Моя локальная папка' and [data-testid=cloud-storage-path] shows exactly the picked path. (3) MAIN DEDUP BUG: verified by uploading 1 small text file via [data-testid=lib-add-file]. Library tile count went from N→N+1 (exactly ONE new [data-testid=lib-file-*] card), NOT two — confirmed twice. Chip on the new card [data-testid=shared-tag-<id>] shows 'моя папка' (NOT 'общий диск') and the file physically appears in the selected local folder (verified /tmp/wsx-e2e-59/wsx-iter59-hello.txt on disk). (4) Regression: file inspector [data-testid=insp-cloud] shows 'Моя папка на ПК / Личный' for the new personal file; [data-testid=insp-cloud-toggle-shared], insp-cloud-view, insp-cloud-download all present. Cleanup: PUT /ai-api/cloud/storage-root {root:''} returned 200; /tmp/wsx-e2e-* and /root/wsx-e2e temp dirs removed.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Right-click on library file card → context menu",
+        "issue": "Under headless Playwright, page.mouse.click(button='right') at the card center did NOT open [data-testid=library-context-menu] (same headless limitation reported in iter57/iter58 for library and mail context menus). Could not verify the 'Добавить в общую папку' / 'Убрать из общей папки' menu item interactively. Menu item logic is present in components/screen-library.tsx L1281-1287 with id 'to-shared'/'to-local' → data-testid library-menu-to-shared/to-local. Needs a real-browser check (or run existing e2e in a headed Playwright).",
+        "affected_selectors": ["library-context-menu", "library-menu-to-shared", "library-menu-to-local"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/test_reports/iter59_afterlogin.jpeg",
+    "/app/test_reports/iter59_afteronboard.jpeg",
+    "/app/test_reports/iter59_lib.jpeg",
+    "/app/test_reports/iter59_final.jpeg"
+  ],
+  "action_items": [
+    "Main agent: manually verify in a real (non-headless) browser that right-clicking a personal library card opens library-context-menu with the 'Добавить в общую папку' item (data-testid library-menu-to-shared), clicking it flips the chip to 'общий диск' and the item to 'Убрать из общей папки' (library-menu-to-local). Because the same setCloudShared PATCH is wired to the inspector toggle (which is present and reachable), a lighter alternative is to add a headed CI e2e for the context menu path."
+  ],
+  "critical_code_review_comments": [
+    "components/folder-picker-dialog.tsx is compact (~325 lines) and well-structured — tree/pane split is clean.",
+    "app/ai-api/cloud/upload/route.ts correctly reads scope=local → shared=false; lib/intake.ts always sends scope=local so uploaded files are personal by default. Good.",
+    "components/screen-library.tsx onChange at L1400-1423 now takes exactly ONE path: if account.has('cloud') && D.cloudRoot → intakeFiles, ELSE local indexer — no more parallel dual-write. Bug fixed.",
+    "components/screen-library.tsx is still 2974 lines — should be split (recurring comment from iter57/58, unchanged).",
+    "Small nit: FolderPickerDialog opens at /root by default (first roots entry) — for a first-time user on Linux this is unexpected; consider opening at $HOME or the user's Documents-equivalent."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (skipped per request)", "frontend": "~90% — icon size, tree/body layout, testids, folder creation, storage-root wiring, Settings label+path, single-card upload, 'моя папка' chip, physical file on disk, inspector regression: ALL PASS. Only right-click library-context-menu path could not be triggered under headless Playwright."},
+  "test_credentials": "admin / IceKrymTeam13@ (source /app/.env.local APP_PASSWORD)",
+  "seed_data_creation": "Created and deleted /tmp/wsx-e2e-59, /tmp/wsx-e2e-59b, /tmp/wsx-e2e-59c, /root/wsx-e2e; uploaded 2 tiny .txt files via UI (auto-cleaned). Reset PUT /ai-api/cloud/storage-root {root:''} at end (HTTP 200). No user data in /app/ai or /app/.data touched.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Folder-picker new layout works, dedup fix works, chip 'моя папка' works, physical write to picked local folder works, inspector shows correct labels. Only unresolved: verify library-context-menu (right-click) 'to-shared'/'to-local' in a headed browser — headless right-click cannot open the custom menu (same limitation as iter57/58). The onboarding flow (step1 → 6-digit PIN in onb-secret-{0..5} + onb-secret-repeat-{0..5} → onb-create-key → onb-recovery-done → onb-pick-folder → folder-picker → fp-confirm) is stable; each new browser context re-runs onboarding, so keep everything in one script. For folder-picker: fp-path opens at /root by default; click first fp-crumb ('/') to jump to root, then fp-dir 'tmp' to enter /tmp, then fp-new/fp-new-name/fp-new-create/fp-confirm."
+}

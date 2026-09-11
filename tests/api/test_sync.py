@@ -12,7 +12,7 @@ import pytest
 import requests
 
 BASE = os.environ.get("APP_URL", os.environ.get("WF_BASE", "http://localhost:3000")).rstrip("/")
-PASSWORD = os.environ.get("APP_PASSWORD", "IceKrymTeam13@")
+PASSWORD = os.environ.get("APP_PASSWORD", "<APP_PASSWORD>")
 
 
 @pytest.fixture(scope="module")
