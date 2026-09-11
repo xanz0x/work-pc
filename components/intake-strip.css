@@ -1,45 +1,113 @@
-/* Приём файлов · полоса состояния в библиотеке */
+/* Приём файлов · строгая полоса состояния в библиотеке */
 
 @layer wf073 {
   .ik-strip {
-    margin: 0 0 14px;
-    border: 1px solid var(--line, var(--border-2));
-    border-radius: 13px;
-    background: var(--panel, var(--bg-2));
+    margin: 0 0 12px;
+    max-width: 760px;
+    border: 1px solid var(--border-2);
+    border-radius: 10px;
+    background: var(--panel);
     overflow: hidden;
-    animation: ik-in 0.22s ease-out;
+    animation: ik-in 0.2s ease-out;
   }
 
   @keyframes ik-in {
     from {
       opacity: 0;
-      transform: translateY(-6px);
+      transform: translateY(-4px);
     }
   }
 
   .ik-strip[data-busy='1'] {
-    border-color: color-mix(in oklab, var(--accent) 45%, var(--line, var(--border-2)));
+    border-color: color-mix(in oklab, var(--accent) 32%, var(--border-2));
   }
 
   .ik-head {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 9px 12px;
-    border-bottom: 1px solid var(--line, var(--border-2));
-    background: color-mix(in oklab, var(--accent) 5%, transparent);
+    padding: 7px 10px;
+    background: var(--bg-2);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .ik-title {
+    letter-spacing: 0.12em;
+  }
+
+  .ik-count {
+    font-size: 11px;
+    color: var(--text-2);
+  }
+
+  .ik-state {
+    color: var(--text-3);
+    letter-spacing: 0.1em;
+  }
+
+  .ik-strip[data-busy='1'] .ik-state {
+    color: var(--accent);
+  }
+
+  /* Полоса прогресса: доля разобранных файлов, без выдуманных процентов. */
+  .ik-bar {
+    position: relative;
+    height: 2px;
+    background: var(--border);
+    overflow: hidden;
+  }
+
+  .ik-bar > i {
+    display: block;
+    height: 100%;
+    background: var(--accent);
+    transition: width 0.25s ease-out;
+  }
+
+  .ik-strip[data-busy='1'] .ik-bar::after {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 28%;
+    background: color-mix(in oklab, var(--accent) 55%, transparent);
+    animation: ik-run 1.3s linear infinite;
+  }
+
+  @keyframes ik-run {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(360%);
+    }
   }
 
   .ik-x {
     display: grid;
     place-items: center;
-    width: 22px;
-    height: 22px;
-    border: 1px solid var(--line, var(--border-2));
-    border-radius: 7px;
+    width: 20px;
+    height: 20px;
+    border: 1px solid var(--border-2);
+    border-radius: 6px;
     background: none;
-    color: inherit;
+    color: var(--text-2);
     cursor: pointer;
+    transition:
+      color 0.15s ease,
+      border-color 0.15s ease,
+      background-color 0.15s ease;
+  }
+
+  .ik-x:hover {
+    color: var(--text);
+    border-color: var(--border-3);
+    background: var(--raise-1);
+  }
+
+  .ik-x svg {
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: round;
   }
 
   .ik-strip ul {
@@ -51,9 +119,9 @@
   .ik-strip li {
     display: flex;
     align-items: flex-start;
-    gap: 10px;
-    padding: 10px 12px;
-    border-bottom: 1px solid color-mix(in oklab, var(--line, var(--border-2)) 55%, transparent);
+    gap: 9px;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
   }
 
   .ik-strip li:last-child {
@@ -63,28 +131,39 @@
   .ik-ico {
     display: grid;
     place-items: center;
-    width: 26px;
-    height: 26px;
+    width: 22px;
+    height: 22px;
     flex: none;
-    border: 1px solid var(--line, var(--border-2));
-    border-radius: 8px;
-    color: var(--muted, var(--text-3));
+    border: 1px solid var(--border-2);
+    border-radius: 6px;
+    color: var(--text-3);
+  }
+
+  /* Иконки набора не задают ни размер, ни обводку — это делает экран. */
+  .ik-ico svg {
+    width: 13px;
+    height: 13px;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    fill: none;
   }
 
   .ik-strip li[data-state='done'] .ik-ico,
   .ik-strip li[data-state='partial'] .ik-ico {
     color: var(--ok, #3fa66a);
-    border-color: color-mix(in oklab, var(--ok, #3fa66a) 45%, transparent);
+    border-color: color-mix(in oklab, var(--ok, #3fa66a) 40%, transparent);
   }
 
   .ik-strip li[data-state='failed'] .ik-ico {
     color: var(--danger, #d9534f);
-    border-color: color-mix(in oklab, var(--danger, #d9534f) 45%, transparent);
+    border-color: color-mix(in oklab, var(--danger, #d9534f) 40%, transparent);
   }
 
   .ik-ico.spin {
     color: var(--accent);
-    border-color: color-mix(in oklab, var(--accent) 50%, transparent);
+    border-color: color-mix(in oklab, var(--accent) 45%, transparent);
     animation: ik-pulse 1.2s ease-in-out infinite;
   }
 
@@ -96,34 +175,76 @@
 
   .ik-text {
     display: grid;
-    gap: 3px;
+    gap: 2px;
     min-width: 0;
     flex: 1;
   }
 
   .ik-text b {
-    font-size: 13px;
+    font-size: 12.5px;
+    font-weight: 600;
   }
 
   .ik-sub {
-    font-size: 11.5px;
+    font-size: 11px;
     line-height: 1.45;
-    color: var(--muted, var(--text-3));
+    color: var(--text-3r);
+  }
+
+  .ik-strip li[data-state='failed'] .ik-sub {
+    color: var(--danger, #d9534f);
+  }
+
+  .ik-badge {
+    flex: none;
+    align-self: center;
+    padding: 1px 7px;
+    border: 1px solid var(--border-2);
+    border-radius: 4px;
+    font-size: 9.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+
+  .ik-strip li[data-state='done'] .ik-badge,
+  .ik-strip li[data-state='partial'] .ik-badge {
+    color: var(--ok, #3fa66a);
+    border-color: color-mix(in oklab, var(--ok, #3fa66a) 35%, transparent);
+  }
+
+  .ik-strip li[data-state='failed'] .ik-badge {
+    color: var(--danger, #d9534f);
+    border-color: color-mix(in oklab, var(--danger, #d9534f) 35%, transparent);
+  }
+
+  .ik-strip li[data-state='upload'] .ik-badge,
+  .ik-strip li[data-state='analyzing'] .ik-badge {
+    color: var(--accent);
+    border-color: color-mix(in oklab, var(--accent) 35%, transparent);
   }
 
   .ik-tags {
     display: flex;
     flex-wrap: wrap;
-    gap: 5px;
+    gap: 4px;
     margin-top: 2px;
   }
 
   .ik-tags i {
-    padding: 1px 8px;
-    border: 1px solid var(--line, var(--border-2));
+    padding: 1px 7px;
+    border: 1px solid var(--border-2);
     border-radius: 999px;
     font-style: normal;
-    font-size: 10.5px;
+    font-size: 10px;
     color: var(--accent);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ik-strip,
+    .ik-ico.spin,
+    .ik-strip[data-busy='1'] .ik-bar::after {
+      animation: none;
+    }
   }
 }

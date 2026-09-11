@@ -109,21 +109,34 @@ function CodeBlock({ lang, code }: { lang: string; code: string }) {
   )
 }
 
-const components: Components = {
-  /* Блок кода рисует сам CodeBlock: pre остаётся только обёрткой. */
-  pre: ({ children }) => <>{children}</>,
-  code: ({ className, children }) => {
-    const raw = String(children ?? '')
-    const m = /language-([\w#+-]+)/.exec(className ?? '')
-    if (!m && !raw.includes('\n')) return <code className="m-code">{raw}</code>
-    return <CodeBlock lang={m?.[1] ?? ''} code={raw.replace(/\n$/, '')} />
-  },
-  /* Ссылки открываются снаружи; протокол уже отфильтрован react-markdown. */
-  a: ({ href, children }) => (
-    <a href={href} target="_blank" rel="noopener noreferrer" className="md-link">
-      {children}
-    </a>
-  ),
+/**
+ * Сноски подставляются ВНУТРИ рендеров блоков: сам ReactMarkdown обязан
+ * получить строку. Клонирование <ReactMarkdown> с массивом детей ломало
+ * разбор (в production-сборке ответ выходил пустым).
+ */
+function makeComponents(ctx: FootnoteCtx): Components {
+  const fn = (children: ReactNode, key: string) => augmentFootnotes(children, key, ctx)
+  return {
+    /* Блок кода рисует сам CodeBlock: pre остаётся только обёрткой. */
+    pre: ({ children }) => <>{children}</>,
+    code: ({ className, children }) => {
+      const raw = String(children ?? '')
+      const m = /language-([\w#+-]+)/.exec(className ?? '')
+      if (!m && !raw.includes('\n')) return <code className="m-code">{raw}</code>
+      return <CodeBlock lang={m?.[1] ?? ''} code={raw.replace(/\n$/, '')} />
+    },
+    /* Ссылки открываются снаружи; протокол уже отфильтрован react-markdown. */
+    a: ({ href, children }) => (
+      <a href={href} target="_blank" rel="noopener noreferrer" className="md-link">
+        {children}
+      </a>
+    ),
+    p: ({ children }) => <p>{fn(children, 'p')}</p>,
+    li: ({ children }) => <li>{fn(children, 'li')}</li>,
+    td: ({ children }) => <td>{fn(children, 'td')}</td>,
+    th: ({ children }) => <th>{fn(children, 'th')}</th>,
+    blockquote: ({ children }) => <blockquote>{fn(children, 'bq')}</blockquote>,
+  }
 }
 
 export function AiMarkdown({
@@ -144,13 +157,9 @@ export function AiMarkdown({
   }
   return (
     <div className="md-body" data-testid="md-body">
-      {augmentFootnotes(
-        <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
-          {text}
-        </ReactMarkdown>,
-        'md',
-        ctx,
-      )}
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={makeComponents(ctx)}>
+        {text}
+      </ReactMarkdown>
     </div>
   )
 }

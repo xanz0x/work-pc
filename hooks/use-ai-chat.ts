@@ -181,8 +181,9 @@ export function useAiChat(
           } else if (ev.t === 'ctx' && typeof ev.fill === 'number') {
             setUsage({ used: ev.used ?? 0, limit: ev.limit ?? 0, fill: ev.fill })
           } else if (ev.t === 'stats') {
-            /* NF-2: подпись движка и скорость приходят из ответа адаптера. */
-            if (ev.provider === 'cloud') s.provider = ev.provider
+            /* NF-2: подпись движка и скорость приходят из ответа адаптера.
+               id провайдера — 'openrouter' или 'custom': оба означают облако. */
+            if (typeof ev.provider === 'string' && ev.provider) s.provider = 'cloud'
             if (typeof ev.model === 'string') s.engineModel = ev.model
             s.tokensPerSec = typeof ev.tps === 'number' ? ev.tps : null
           }

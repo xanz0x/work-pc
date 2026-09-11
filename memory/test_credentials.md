@@ -1,3 +1,21 @@
+# Тестовые реквизиты (актуально: итерация 66 «пустой ответ ИИ в exe + полоса приёма файлов»)
+
+- Вход: логин `admin`, пароль `WsxQa2026!lib` (`ADMIN_LOGIN`/`APP_PASSWORD` в `/app/.env.local`).
+  Поля: `data-testid=login-login`, `data-testid=login-password`.
+- Превью: https://34cd453d-e163-4966-bc1b-50789f23bd6f.preview.emergentagent.com (локально http://localhost:3000)
+- Под сбрасывали: заново `corepack enable && pnpm install` в `/app`,
+  `pnpm install --prod --ignore-scripts` в `/app/desktop`, пересоздан `/app/.env.local`
+  (**новые** `APP_SESSION_SECRET` и `MAIL_SECRET`, `AI_DIR=/app/.data`, `CLOUD_STORAGE=local`).
+  Затем `node_modules/.bin/next build && sudo supervisorctl restart frontend`.
+- Модель подключена ключом пользователя: OpenRouter, `z-ai/glm-5.3-flash`
+  (файл `/app/.data/ai/provider.json`, ключ шифруется `APP_SESSION_SECRET`). Ключ в отчётах не печатать.
+- Папка хранения для проверок: `/root/wsx-store` (`PUT /ai-api/cloud/storage-root`).
+- Онбординг пропускается через localStorage `wf.settings.v1` →
+  `onboarding: {at:1700000000000, mode:'hybrid', keyChoice:'declined', start:'demo'}` + перезагрузка.
+- `SONJJ_API_KEY` (Gmail-ящики SmailPro) по-прежнему отсутствует.
+
+---
+
 # Тестовые реквизиты (актуально: сессия «выделение в почте + одно меню в инспекторе»)
 
 - **Под снова сбрасывали**: пропали `node_modules` и `/app/.env.local`, фронтенд был `FATAL`.
@@ -17,7 +35,7 @@
 
 # Прежние реквизиты (сессия «прокрутка открытого письма»)
 
-- Превью: https://ui-cleanup-34.preview.emergentagent.com (локально http://localhost:3000)
+- Превью: https://ai-compiler-issue.preview.emergentagent.com (локально http://localhost:3000)
 - Онбординг в чистом профиле: «Дальше · мастер-ключ» → «Продолжить без защиты» → «Да, продолжить без защиты» → «Посмотреть демо».
 - Вход: логин `admin`, пароль `WsxQa2026!lib` (значение лежит в `/app/.env.local` → `APP_PASSWORD`, `ADMIN_LOGIN=admin`).
   Поля входа: `data-testid=login-login`, `data-testid=login-password`.

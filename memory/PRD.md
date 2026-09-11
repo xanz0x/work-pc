@@ -89,7 +89,7 @@
 Под был сброшен: восстановлены `pnpm install --frozen-lockfile` и `/app/.env.local`
 (APP_PASSWORD/ADMIN_LOGIN прежние, APP_SESSION_SECRET и MAIL_SECRET сгенерированы заново — прежних в
 окружении не было; AI_DIR=/app/.data, CLOUD_STORAGE=local). Внешний адрес превью сменился:
-`https://ui-cleanup-34.preview.emergentagent.com`. Фронтенд — прод-сборка под
+`https://ai-compiler-issue.preview.emergentagent.com`. Фронтенд — прод-сборка под
 supervisor, hot-reload нет.
 
 ### Сделано
@@ -734,3 +734,45 @@ iframe без общего origin. Колесо мыши над таким ifram
 письма открывается, пункты на месте); библиотека 100%; ошибок консоли нет.
 Юнит-тесты: `npx vitest run` — 349/349 (новые `tests/unit/mail-selection.test.ts`,
 `tests/unit/library-inspector-actions.test.ts`), `tsc --noEmit` и eslint по изменённым файлам чисто.
+
+---
+
+## Итерация 66 (11.09.2026) · «пустой ответ ИИ в exe + строгая полоса приёма файлов»
+
+### 1. Чат молчал только в собранной программе (exe) — исправлено
+- **Корень**: `components/chat/markdown.tsx` клонировал сам элемент `<ReactMarkdown>`
+  (`augmentFootnotes(<ReactMarkdown>…)`), из-за чего в `children` уезжал МАССИВ вместо строки.
+  В dev-сборке `react-markdown` кидает ошибку через `devlop`, а в production/webpack
+  (именно так собирается desktop: `next build --webpack`) `devlop.unreachable`
+  компилируется в пустую функцию `function i(){}` — проверка молчит, `file.value`
+  остаётся `undefined`, и разметка рендерится ПУСТОЙ. Отсюда «ответ есть, текста нет»
+  (метаданные и «Показать полностью» были, сам текст — нет).
+- **Правка**: в `ReactMarkdown` снова уходит строка, сноски `[1]` подставляются внутри
+  рендеров блоков (`p`, `li`, `td`, `th`, `blockquote`) через `makeComponents(ctx)`.
+- Проверка: `tests/unit/md-render.test.tsx` (падал до правки), прод-сборка + живой
+  OpenRouter (`z-ai/glm-5.3-flash`): списки, **жирный**, инлайн-код, блок кода с копированием,
+  кнопки-сноски. В desktop-бандле подтверждено, что `unreachable` — пустышка (grep по чанку).
+- Попутно: `hooks/use-ai-chat.ts` принимал подпись движка только при `provider === 'cloud'`,
+  а адаптер отдаёт `openrouter`/`custom` — метрики движка после хода не обновлялись.
+
+### 2. Полоса «Приём файлов» — иконки и строгий вид
+- Иконки набора не задают ни размер, ни обводку; в `.ik-ico` не было правила для `svg` —
+  значки были невидимы. Добавлено `13×13`, `stroke: currentColor`.
+- Полоса переделана: компактный тёмный тост (max-width 760px, волосяная рамка, radius 10),
+  mono-заголовок + счётчик `готово/всего`, статус справа (`в работе` / `завершено` / `ошибок: N`),
+  полоса прогресса по разобранным файлам + бегущая подсветка пока идёт работа,
+  бейдж состояния в каждой строке (`перенос` / `разбор` / `готово` / `частично` / `ошибка`),
+  иконка предупреждения для неудачи, `prefers-reduced-motion`.
+
+### Среда
+- Под сбрасывали: восстановлены `node_modules` (`pnpm install` в `/app`, `pnpm install --prod
+  --ignore-scripts` в `/app/desktop`) и `/app/.env.local` (**новые** `APP_SESSION_SECRET`,
+  `MAIL_SECRET`; `SONJJ_API_KEY` по-прежнему нет).
+- Подключение модели настроено ключом пользователя: `.data/ai/provider.json`,
+  OpenRouter + `z-ai/glm-5.3-flash` (ключ хранится шифротекстом после первого чтения).
+- Тесты: vitest 348/348 зелёные, `tsc --noEmit` чист, прод-сборка и desktop-сборка
+  (`WSX_DESKTOP_BUILD=1 next build --webpack`) проходят.
+
+### Дальше (бэклог)
+- P1: пересобрать exe (`node desktop/scripts/build.mjs`) и проверить чат в упакованном виде.
+- P2: перенести проверку разметки в e2e, чтобы прод-регрессии ловились до сборки.
