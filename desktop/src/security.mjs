@@ -34,6 +34,24 @@ export async function createCertificate(root, hosts) {
   await atomicWrite(certFile, pems.cert)
   return { cert: pems.cert, key: pems.private }
 }
+
+/* Осознанный перевыпуск: владелец меняет публичный адрес главного ПК (например,
+   на адрес Tailscale). Пару файлов проверяем так же строго, как при первом
+   выпуске — без неё нельзя писать новую: сломанный ключ у друзей не починить.
+   Все подключённые друзья обязаны принять новое приглашение WSX1-… после смены. */
+export async function renewCertificate(root, hosts) {
+  const certFile = path.join(root, 'certificate.pem')
+  const keyFile = path.join(root, 'private-key.pem')
+  const pems = await selfsigned.generate([{ name: 'commonName', value: 'WorkSpaceX Main PC' }], {
+    keyType: 'ec', curve: 'P-256', algorithm: 'sha256',
+    notBeforeDate: new Date(Date.now() - 60_000),
+    notAfterDate: new Date(Date.now() + 5 * 365 * 86400_000),
+    extensions: [{ name: 'subjectAltName', altNames: [...new Set(hosts)].map((host) => isIP(host) ? { type: 7, ip: host } : { type: 2, value: host }) }],
+  })
+  await atomicWrite(certFile, pems.cert)
+  await atomicWrite(keyFile, pems.private)
+  return { cert: pems.cert, key: pems.private }
+}
 export class PinnedAgent extends https.Agent {
   constructor(target) { super({ keepAlive: false }); this.target = target }
   createConnection(options, done) {

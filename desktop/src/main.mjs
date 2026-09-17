@@ -3,10 +3,11 @@ import path from 'node:path'
 import { spawn } from 'node:child_process'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { readFile, statfs, mkdir, access } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
 import os from 'node:os'
 import { createHash } from 'node:crypto'
-import { atomicWrite, loadConfig, validateHostInput, runtimeEnv, newSecrets, decodeInvite, encodeInvite } from './config.mjs'
-import { createCertificate, fingerprint, verifyPinned, checkConnection } from './security.mjs'
+import { atomicWrite, loadConfig, validateHostInput, runtimeEnv, newSecrets, decodeInvite, encodeInvite, hostName } from './config.mjs'
+import { createCertificate, renewCertificate, fingerprint, verifyPinned, checkConnection } from './security.mjs'
 import { HostRuntime } from './runtime.mjs'
 import { initLogger, logEvent } from './logger.mjs'
 
@@ -218,6 +219,87 @@ function handlers() {
   handle('setup:pause', () => runtime?.cancel())
   handle('setup:open', openWorkspace)
   handle('setup:copy-invite', () => { if (config?.role !== 'host') throw new Error('Приглашение создаётся на главном ПК.'); clipboard.writeText(encodeInvite(config)); return config.url })
+  /* Смена публичного адреса главного ПК (например, на адрес Tailscale 100.x.x.x):
+     перевыпускаем сертификат со всеми текущими адресами ПК + новым, сохраняем
+     connection.json и перезапускаем шлюз с новой парой. Друзья, уже подключённые
+     по прежнему приглашению, теряют доступ до принятия нового WSX1-… — честно
+     предупреждаем в интерфейсе. Валидация hostName отсекает мусор и IPv6. */
+  handle('setup:update-host', async (input) => {
+    if (config?.role !== 'host' || busy) throw new Error('Адрес меняется только на главном ПК.')
+    const host = hostName(input?.host)
+    if (host === new URL(config.url).hostname) return await publicState()
+    busy = true
+    try {
+      await runtime?.stop(); runtime = null
+      const env = await runtimeEnv(resources, root)
+      const pair = await renewCertificate(root, [env.WSX_LOOPBACK, 'localhost', host])
+      const localUrl = `https://localhost:${env.WSX_HTTPS_PORT}`
+      config = { ...config, url: `https://${host}:${env.WSX_HTTPS_PORT}`, localUrl, pin: fingerprint(pair.cert) }
+      await atomicWrite(path.join(root, 'connection.json'), JSON.stringify(config))
+      logEvent('info', 'update-host', { host, url: config.url })
+      await startHost()
+      return await publicState()
+    } finally { busy = false }
+  })
+  /* Tailscale для друга: мастер ставит вшитый MSI и логинит машину ключом
+     авторизации владельца. Ключ владельца не хранится и не логируется.
+     status возвращает булевы признаки, а не текст, чтобы не словить мусор. */
+  handle('setup:tailscale-status', async () => {
+    if (process.platform !== 'win32') return { available: false, installed: false, loggedIn: false, fileMissing: false }
+    const msi = path.join(resources, 'tailscale', 'tailscale-setup-1.102.4-amd64.msi')
+    const exe = 'C:\\Program Files\\Tailscale\\tailscale.exe'
+    let installed = false
+    try { await access(exe); installed = true } catch {}
+    const run = async (args) => {
+      try {
+        const out = await new Promise((resolve) => {
+          const child = spawn(exe, args, { windowsHide: true })
+          let acc = ''
+          child.stdout.on('data', (c) => { acc += c; if (acc.length > 65536) child.kill() })
+          child.on('error', () => resolve(''))
+          child.on('exit', () => resolve(acc))
+        })
+        return out
+      } catch { return '' }
+    }
+    if (!installed) return { available: true, installed: false, loggedIn: false, fileMissing: !existsSync(msi) }
+    const status = await run(['status', '--json'])
+    let loggedIn = false, selfIp = ''
+    try { const j = JSON.parse(status); loggedIn = Boolean(j?.BackendState === 'Running' && (j?.Self?.Online || j?.Self?.HostName)); selfIp = j?.Self?.TailscaleIPs?.[0] || '' } catch {}
+    return { available: true, installed: true, loggedIn, selfIp }
+  })
+  handle('setup:tailscale-install', async (authKey) => {
+    if (process.platform !== 'win32') throw new Error('Tailscale встраивается только в установку для Windows.')
+    if (config) throw new Error('Tailscale подключается на этапе первого входа, до настройки.')
+    const key = String(authKey ?? '').trim()
+    if (!/^tskey-[A-Za-z0-9-]{20,}$/.test(key)) throw new Error('Ключ авторизации не похож на ключ Tailscale (должен начинаться с tskey-).')
+    const msi = path.join(resources, 'tailscale', 'tailscale-setup-1.102.4-amd64.msi')
+    if (!existsSync(msi)) throw new Error('Установочный пакет Tailscale не найден в приложении. Проверьте целостность установки.')
+    const exe = 'C:\\Program Files\\Tailscale\\tailscale.exe'
+    busy = true
+    progress({ phase: 'starting', text: 'Устанавливаем Tailscale…' })
+    try {
+      await new Promise((resolve, reject) => {
+        const child = spawn('msiexec', ['/i', msi, '/qn', '/norestart'], { windowsHide: true })
+        child.on('error', reject)
+        child.on('exit', (code) => code === 0 ? resolve() : reject(new Error(`Установка Tailscale завершилась с кодом ${code}. Возможно, потребуется подтверждение Windows (UAC).`)))
+      })
+      const until = Date.now() + 30000
+      while (!existsSync(exe)) { if (Date.now() > until) throw new Error('tailscale.exe не появился после установки.'); await new Promise((r) => setTimeout(r, 500)) }
+      progress({ phase: 'starting', text: 'Подключаем компьютер к сети владельца…' })
+      const up = await new Promise((resolve) => {
+        const child = spawn(exe, ['up', '--authkey', key, '--accept-dns=false'], { windowsHide: true })
+        let acc = ''
+        child.stdout.on('data', (c) => { acc += c; if (acc.length > 65536) child.kill() })
+        child.stderr.on('data', (c) => { acc += c; if (acc.length > 65536) child.kill() })
+        child.on('error', () => resolve(acc))
+        child.on('exit', () => resolve(acc))
+      })
+      if (/failed|error|denied|invalid/i.test(up)) throw new Error(`Tailscale не принял ключ: ${up.slice(0, 200)}`)
+      progress({ phase: 'ready', text: 'Сеть владельца подключена. Вставьте приглашение и войдите.', appReady: false })
+      return await publicState()
+    } finally { busy = false }
+  })
   handle('setup:update-mail', async (input) => {
     if (config?.role !== 'host' || busy) throw new Error('Настройка доступна только на главном ПК.')
     if (!secretValues) throw new Error('Сначала восстановите доступ к защищённым настройкам Windows. Ключи не перезаписаны.')

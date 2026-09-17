@@ -10,7 +10,7 @@ directories:
   buildResources: assets
 extraMetadata:
   name: workspacex-desktop
-  version: 1.0.0
+  version: 1.1.0
   description: Локальное рабочее пространство с ИИ и подключением к главному ПК
   author: WorkSpaceX
   main: index.js
@@ -32,6 +32,10 @@ extraResources:
       - '!**/.data/**'
       - '!**/users/users.json'
       - '!**/users/sessions.json'
+  - from: assets/tailscale
+    to: tailscale
+    filter:
+      - '*.msi'
   - from: runtime.env
     to: runtime.env
   - from: THIRD_PARTY.md

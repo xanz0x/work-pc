@@ -3,6 +3,7 @@ const $ = (id) => document.getElementById(id)
 let current = {}
 let pickedRole = null /* 'host' | 'client' | null — выбор на шаге 1 */
 let submitting = false
+let tsBusy = false, hostBusy = false
 let step = 1
 
 /* Фазы активной работы: визард держит шаг 3, пока они идут. */
@@ -47,7 +48,7 @@ function render(update) {
   if (current.configured) {
     $('connection-role').textContent = current.role === 'host' ? 'ГЛАВНЫЙ ПК' : 'КОМПЬЮТЕР ДРУГА'
     $('connection-url').textContent = current.url
-    $('copy-invite').hidden = current.role !== 'host'; $('mail-settings').hidden = current.role !== 'host'
+    $('copy-invite').hidden = current.role !== 'host'; $('mail-settings').hidden = current.role !== 'host'; $('host-address-settings').hidden = current.role !== 'host'
     $('mail-state').textContent = current.mailConfigured ? 'Ключ сохранён. Доступность сервиса проверяется при обращении.' : 'Ключ не указан. Gmail и Outlook недоступны; бесплатная временная почта работает отдельно.'
     if (step !== 4) setStep(4)
   } else if (step < 3 && (submitting || ACTIVE_PHASES.includes(current.phase))) {
@@ -65,6 +66,21 @@ function render(update) {
   $('pause').hidden = !DOWNLOAD_PHASES.includes(current.phase)
   $('open').disabled = !current.appReady
   if (current.phase === 'error' && step === 3) error(current.text)
+}
+
+/* ---------- Tailscale на форме друга ---------- */
+async function initTailscale() {
+  try {
+    const ts = await call(api.tailscaleStatus)
+    $('tailscale-panel').hidden = !ts.available
+    if (ts.available && ts.installed && ts.loggedIn) {
+      $('ts-install').textContent = `Tailscale подключён${ts.selfIp ? ` · ${ts.selfIp}` : ''}`
+      $('ts-install').disabled = true
+      $('ts-key').closest('label').hidden = true
+    } else if (ts.available && ts.installed) {
+      $('ts-install').textContent = 'Войти в сеть владельца'
+    }
+  } catch { /* нет моста — блок остаётся скрытым */ }
 }
 
 async function init() {
@@ -85,6 +101,19 @@ $('choose-client').onclick = () => showRole('client')
 /* ---------- Шаг 2: формы ---------- */
 $('back-host').onclick = () => { pickedRole = null; setStep(1) }
 $('back-client').onclick = () => { pickedRole = null; setStep(1) }
+
+$('ts-install').onclick = async () => {
+  if (tsBusy) return
+  tsBusy = true; $('ts-install').disabled = true
+  error('')
+  try {
+    const data = await call(() => api.tailscaleInstall($('ts-key').value.trim()))
+    render(data)
+    $('ts-install').textContent = 'Tailscale подключён'
+    $('ts-key').closest('label').hidden = true
+  } catch { /* сообщение уже показано */ }
+  finally { tsBusy = false; $('ts-install').disabled = false; initTailscale() }
+}
 
 $('host-form').onsubmit = async (e) => {
   e.preventDefault()
@@ -116,5 +145,30 @@ $('open').onclick = async () => { $('open').disabled = true; try { await call(ap
 /* ---------- Шаг 4: готово ---------- */
 $('copy-invite').onclick = async () => { try { await call(api.copyInvite); $('copy-invite').textContent = 'Приглашение скопировано'; setTimeout(() => { $('copy-invite').textContent = 'Скопировать приглашение для друга' }, 2000) } catch {} }
 $('update-mail').onclick = async () => { $('update-mail').disabled = true; try { await call(() => api.updateMail($('new-mail-key').value)); $('new-mail-key').value = ''; render(await call(api.state)) } catch {} finally { $('update-mail').disabled = false } }
+$('update-host').onclick = async () => {
+  if (hostBusy) return
+  error('')
+  /* window.confirm в Electron всегда null (см. ловушки скилла упаковки) —
+     вместо него второе нажатие той же кнопки подтверждает операцию. */
+  const host = $('new-host').value.trim()
+  if (!host) { error('Введите новый адрес главного ПК.'); return }
+  if ($('update-host').dataset.confirm !== host) {
+    $('update-host').dataset.confirm = host
+    $('update-host').textContent = 'Нажмите ещё раз — перевыпустить сертификат'
+    setTimeout(() => { if ($('update-host').dataset.confirm === host) { delete $('update-host').dataset.confirm; $('update-host').textContent = 'Сменить адрес и перевыпустить приглашение' } }, 5000)
+    return
+  }
+  delete $('update-host').dataset.confirm
+  hostBusy = true; $('update-host').disabled = true
+  try {
+    render(await call(() => api.updateHost({ host })))
+    $('new-host').value = ''
+    await call(api.copyInvite)
+    $('update-host').textContent = 'Готово — новое приглашение в буфере обмена'
+    setTimeout(() => { $('update-host').textContent = 'Сменить адрес и перевыпустить приглашение' }, 3000)
+  } catch { /* сообщение уже показано */ }
+  finally { hostBusy = false; $('update-host').disabled = false }
+}
 
 init().catch(() => {})
+void initTailscale()

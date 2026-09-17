@@ -8,6 +8,9 @@ contextBridge.exposeInMainWorld('workspacexSetup', {
   open: () => ipcRenderer.invoke('setup:open'),
   copyInvite: () => ipcRenderer.invoke('setup:copy-invite'),
   updateMail: (key) => ipcRenderer.invoke('setup:update-mail', key),
+  updateHost: (input) => ipcRenderer.invoke('setup:update-host', input),
+  tailscaleStatus: () => ipcRenderer.invoke('setup:tailscale-status'),
+  tailscaleInstall: (authKey) => ipcRenderer.invoke('setup:tailscale-install', authKey),
   progress: (callback) => {
     const handler = (_event, value) => callback(value)
     ipcRenderer.on('setup:progress', handler)

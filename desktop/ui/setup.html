@@ -49,6 +49,11 @@
       <form id="client-form" hidden data-testid="setup-client-form">
         <h2 data-testid="setup-client-heading">Подключение к главному ПК</h2>
         <p data-testid="setup-client-instructions">На главном ПК откройте «Программа → Настройка и подключение» и скопируйте приглашение. Получите его лично у владельца.</p>
+        <div id="tailscale-panel" data-testid="setup-tailscale-panel" hidden>
+          <label>Ключ авторизации владельца (tskey-…)<input id="ts-key" data-testid="setup-ts-key" type="password" autocomplete="off" placeholder="Вставьте ключ из сети владельца"></label>
+          <p class="field-note" data-testid="setup-ts-note">Друг из другого дома? Установим Tailscale (вшит в программу) и подключим вас к сети владельца — маршрут до главного ПК появится сам. Ключ выдаёт владелец, он одноразовый.</p>
+          <button type="button" id="ts-install" class="secondary" data-testid="setup-ts-install">Установить Tailscale и подключиться к сети</button>
+        </div>
         <label>Приглашение<textarea id="invite" data-testid="setup-invite-input" rows="5" required maxlength="2048" spellcheck="false" placeholder="WSX1-…"></textarea></label>
         <p class="field-note" data-testid="setup-pin-help">Код содержит адрес и отпечаток сертификата, но не пароль. Программа проверит, что соединяется именно с вашим главным ПК.</p>
         <button class="primary" id="join" type="submit" data-testid="setup-join">Проверить и подключиться <span aria-hidden="true">→</span></button>
@@ -60,6 +65,12 @@
         <h2 data-testid="setup-configured-title">Подключение настроено</h2>
         <p id="connection-url" class="url" data-testid="setup-connection-url"></p>
         <button id="copy-invite" type="button" class="secondary" data-testid="setup-copy-invite">Скопировать приглашение для друга</button>
+        <div id="host-address-settings" data-testid="setup-host-address-settings">
+          <h2 data-testid="setup-host-address-title">Адрес для друзей из других сетей</h2>
+          <label>Новый адрес главного ПК<input id="new-host" data-testid="setup-new-host" placeholder="Например, адрес Tailscale 100.x.y.z" list="host-addresses"></label>
+          <p class="field-note" data-testid="setup-host-address-note">Для друзей из других домов подключите главный ПК к Tailscale и введите его адрес вида 100.x.y.z. Сертификат перевыпустится: друзьям, уже подключённым по прежнему приглашению, придётся принять новое.</p>
+          <button id="update-host" type="button" class="secondary" data-testid="setup-update-host">Сменить адрес и перевыпустить приглашение</button>
+        </div>
         <div id="mail-settings" hidden><h2 data-testid="setup-mail-heading">Временные Gmail и Outlook</h2><p id="mail-state" data-testid="setup-mail-state"></p><label>Новый ключ SmailPro<input id="new-mail-key" type="password" autocomplete="off" maxlength="4096" data-testid="setup-new-mail-key"></label><button id="update-mail" type="button" class="secondary" data-testid="setup-update-mail">Сохранить ключ и перезапустить сервер</button></div>
         <p class="note" data-testid="setup-data-location">Настройки и база сохранены в профиле Windows. Пароли и служебные ключи защищены средствами Windows; они не входят в приглашение.</p>
       </div>
